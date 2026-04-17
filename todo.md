@@ -53,3 +53,16 @@
 - Photo upload limited to 10MB per file
 - Document upload limited to 16MB per file
 - Share links expire after 7 days by default
+
+## Storage Management Features (New)
+- [x] Backend API: คำนวณพื้นที่จัดเก็บที่ใช้ไปแล้ว (รูป + เอกสาร)
+- [x] Backend API: ลบรูปถ่าย (พร้อมลบจาก S3)
+- [x] Backend API: ลบเอกสาร (พร้อมลบจาก S3)
+- [x] Frontend: แสดงขนาดไฟล์แต่ละรายการในหน้า SurveyDetail
+- [x] Frontend: ปุ่มลบรูปถ่ายพร้อม confirm dialog ในหน้า SurveyDetail
+- [x] Frontend: ปุ่มลบเอกสารพร้อม confirm dialog ในหน้า SurveyDetail
+- [x] Frontend: แสดง Storage Usage ใน Dashboard (จำนวนรูป, เอกสาร, ขนาดรวม)
+- [x] Vitest: ทดสอบ storage.stats, photo.delete auth, document.delete auth (17 tests passed)
+- [x] Schema: เพิ่ม fileSize column ให้ survey_photos table
+- [x] Backend: บันทึก fileSize ตอนอัพโหลดรูป
+- [x] Dashboard: แสดงขนาดรวม (รูป + เอกสาร) พร้อมแปลงหน่วยอัตโนมัติ (KB/MB/GB)

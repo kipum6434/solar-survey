@@ -28,6 +28,8 @@ export default function SurveyDetail() {
   const [showAddFollowUp, setShowAddFollowUp] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
+  const [confirmDeletePhoto, setConfirmDeletePhoto] = useState<number | null>(null);
+  const [confirmDeleteDoc, setConfirmDeleteDoc] = useState<number | null>(null);
 
   const { data, isLoading, refetch } = trpc.survey.getById.useQuery({ id: surveyId });
   const { data: photos, refetch: refetchPhotos } = trpc.photo.list.useQuery({ surveyId });
@@ -226,14 +228,21 @@ export default function SurveyDetail() {
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-end">
                           <div className="w-full p-2 translate-y-full group-hover:translate-y-0 transition-transform">
                             <div className="flex items-center justify-between">
-                              <Badge variant="secondary" className="text-[9px] bg-white/90 text-foreground">
-                                {PHOTO_CATEGORY_MAP[photo.category] || photo.category}
-                              </Badge>
+                              <div className="flex items-center gap-1">
+                                <Badge variant="secondary" className="text-[9px] bg-white/90 text-foreground">
+                                  {PHOTO_CATEGORY_MAP[photo.category] || photo.category}
+                                </Badge>
+                                {photo.fileSize && (
+                                  <span className="text-[9px] text-white/80 font-medium">
+                                    {photo.fileSize > 1048576 ? `${(photo.fileSize / 1048576).toFixed(1)} MB` : `${(photo.fileSize / 1024).toFixed(0)} KB`}
+                                  </span>
+                                )}
+                              </div>
                               <div className="flex gap-1">
                                 <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-white" onClick={() => setLightboxImg(photo.url)}>
                                   <Eye className="h-3 w-3" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-red-100" onClick={() => deletePhoto.mutate({ id: photo.id })}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-red-100" onClick={(e) => { e.stopPropagation(); setConfirmDeletePhoto(photo.id); }}>
                                   <Trash2 className="h-3 w-3 text-destructive" />
                                 </Button>
                               </div>
@@ -278,14 +287,14 @@ export default function SurveyDetail() {
                           <p className="text-sm font-medium truncate">{doc.fileName.replace(/^\d+-/, "")}</p>
                           <div className="flex items-center gap-2 mt-0.5">
                             <Badge variant="secondary" className="text-[10px]">{DOC_TYPE_MAP[doc.fileType] || doc.fileType}</Badge>
-                            {doc.fileSize && <span className="text-[10px] text-muted-foreground">{(doc.fileSize / 1024).toFixed(0)} KB</span>}
+                            {doc.fileSize && <span className="text-[10px] text-muted-foreground">{doc.fileSize > 1048576 ? `${(doc.fileSize / 1048576).toFixed(1)} MB` : `${(doc.fileSize / 1024).toFixed(0)} KB`}</span>}
                           </div>
                         </div>
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => window.open(doc.url, "_blank")}>
                             <Download className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-red-50" onClick={() => deleteDoc.mutate({ id: doc.id })}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-red-50" onClick={() => setConfirmDeleteDoc(doc.id)}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
@@ -442,6 +451,34 @@ export default function SurveyDetail() {
 
       {/* Edit Status Dialog */}
       <EditSurveyDialog open={showEditStatus} onOpenChange={setShowEditStatus} survey={s} users={users || []} onSubmit={(d: any) => updateSurvey.mutate({ id: surveyId, ...d })} loading={updateSurvey.isPending} />
+
+      {/* Confirm Delete Photo Dialog */}
+      <Dialog open={confirmDeletePhoto !== null} onOpenChange={() => setConfirmDeletePhoto(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>ยืนยันการลบรูปภาพ</DialogTitle>
+            <DialogDescription>รูปภาพนี้จะถูกลบออกจากระบบอย่างถาวร ไม่สามารถกู้คืนได้</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDeletePhoto(null)}>ยกเลิก</Button>
+            <Button variant="destructive" onClick={() => { if (confirmDeletePhoto) { deletePhoto.mutate({ id: confirmDeletePhoto }); setConfirmDeletePhoto(null); } }} disabled={deletePhoto.isPending}>ลบรูปภาพ</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm Delete Document Dialog */}
+      <Dialog open={confirmDeleteDoc !== null} onOpenChange={() => setConfirmDeleteDoc(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>ยืนยันการลบเอกสาร</DialogTitle>
+            <DialogDescription>เอกสารนี้จะถูกลบออกจากระบบอย่างถาวร ไม่สามารถกู้คืนได้</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDeleteDoc(null)}>ยกเลิก</Button>
+            <Button variant="destructive" onClick={() => { if (confirmDeleteDoc) { deleteDoc.mutate({ id: confirmDeleteDoc }); setConfirmDeleteDoc(null); } }} disabled={deleteDoc.isPending}>ลบเอกสาร</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Follow-up Dialog */}
       <AddFollowUpDialog open={showAddFollowUp} onOpenChange={setShowAddFollowUp} surveyId={surveyId} customerId={c.id} users={users || []} onSubmit={(d: any) => createFollowUp.mutate(d)} loading={createFollowUp.isPending} />

@@ -103,6 +103,7 @@ export const surveyPhotos = mysqlTable("survey_photos", {
     "surroundings",
     "other"
   ]).default("other"),
+  fileSize: int("fileSize"),
   caption: text("caption"),
   uploadedBy: int("uploadedBy"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

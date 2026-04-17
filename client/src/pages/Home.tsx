@@ -12,6 +12,9 @@ import {
   ArrowRight,
   TrendingUp,
   CalendarDays,
+  HardDrive,
+  Image,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
@@ -23,6 +26,7 @@ export default function Home() {
   const { data: stats, isLoading: statsLoading } = trpc.dashboard.stats.useQuery();
   const { data: activities, isLoading: activitiesLoading } = trpc.dashboard.recentActivities.useQuery({ limit: 10 });
   const { data: upcomingSurveys } = trpc.survey.list.useQuery({ limit: 5, status: "scheduled" });
+  const { data: storageStats } = trpc.storage.stats.useQuery();
 
   const statCards = [
     { label: "ลูกค้าทั้งหมด", value: stats?.totalCustomers ?? 0, icon: Users, color: "from-blue-500 to-blue-600", link: "/customers" },
@@ -71,6 +75,52 @@ export default function Home() {
             </Card>
           ))}
         </div>
+
+        {/* Storage Usage Card */}
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-slate-500 to-slate-600 flex items-center justify-center shadow-sm">
+                <HardDrive className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-foreground">พื้นที่จัดเก็บ</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">ข้อมูลรูปภาพและเอกสารที่อัพโหลดในระบบ</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4 mt-4">
+              <div className="text-center p-3 rounded-lg bg-muted/50">
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  <Image className="h-3.5 w-3.5 text-blue-500" />
+                  <span className="text-lg font-bold text-foreground">{storageStats?.totalPhotos ?? 0}</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground">รูปภาพ</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-muted/50">
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  <FileText className="h-3.5 w-3.5 text-amber-500" />
+                  <span className="text-lg font-bold text-foreground">{storageStats?.totalDocuments ?? 0}</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground">เอกสาร</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-muted/50">
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  <HardDrive className="h-3.5 w-3.5 text-emerald-500" />
+                  <span className="text-lg font-bold text-foreground">
+                    {(() => {
+                      const total = (Number(storageStats?.totalPhotoSize) || 0) + (Number(storageStats?.totalDocumentSize) || 0);
+                      if (total > 1073741824) return `${(total / 1073741824).toFixed(1)} GB`;
+                      if (total > 1048576) return `${(total / 1048576).toFixed(1)} MB`;
+                      if (total > 1024) return `${(total / 1024).toFixed(0)} KB`;
+                      return "0 KB";
+                    })()}
+                  </span>
+                </div>
+                <p className="text-[10px] text-muted-foreground">ขนาดรวม</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="border-0 shadow-sm">

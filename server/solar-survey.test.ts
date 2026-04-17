@@ -208,3 +208,35 @@ describe("Solar Survey - Users", () => {
     expect(Array.isArray(result)).toBe(true);
   });
 });
+
+describe("Solar Survey - Storage", () => {
+  it("storage.stats returns storage usage data", async () => {
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+    const stats = await caller.storage.stats();
+    expect(stats).toBeDefined();
+    expect(typeof stats.totalPhotos).toBe("number");
+    expect(typeof stats.totalDocuments).toBe("number");
+    expect(typeof stats.totalPhotoSize).toBe("number");
+    // totalDocumentSize may come as string from SQL SUM
+    expect(Number(stats.totalDocumentSize)).toBeGreaterThanOrEqual(0);
+    expect(stats.totalPhotos).toBeGreaterThanOrEqual(0);
+    expect(stats.totalDocuments).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("Solar Survey - Photo Delete", () => {
+  it("photo.delete requires authentication", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.photo.delete({ id: 999 })).rejects.toThrow();
+  });
+});
+
+describe("Solar Survey - Document Delete", () => {
+  it("document.delete requires authentication", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.document.delete({ id: 999 })).rejects.toThrow();
+  });
+});

@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { nanoid } from "nanoid";
-import { storagePut } from "./storage";
+import { storagePut, storageDelete } from "./storage";
 import * as db from "./db";
 
 // ==================== CUSTOMER ROUTER ====================
@@ -203,6 +203,7 @@ const photoRouter = router({
         fileKey: key,
         fileName: input.fileName,
         category: input.category || "other",
+        fileSize: buffer.length,
         caption: input.caption,
         uploadedBy: ctx.user.id,
       });
@@ -213,8 +214,12 @@ const photoRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
+      const photo = await db.getSurveyPhotoById(input.id);
+      if (photo?.fileKey) {
+        await storageDelete(photo.fileKey);
+      }
       await db.deleteSurveyPhoto(input.id);
-      await db.logActivity({ userId: ctx.user.id, action: "delete_photo", entityType: "photo", entityId: input.id });
+      await db.logActivity({ userId: ctx.user.id, action: "delete_photo", entityType: "photo", entityId: input.id, details: `ลบรูป: ${photo?.fileName || input.id}` });
       return { success: true };
     }),
 });
@@ -263,6 +268,10 @@ const documentRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
+      const doc = await db.getSurveyDocumentById(input.id);
+      if (doc?.fileKey) {
+        await storageDelete(doc.fileKey);
+      }
       await db.deleteSurveyDocument(input.id);
       await db.logActivity({ userId: ctx.user.id, action: "delete_document", entityType: "document", entityId: input.id });
       return { success: true };
@@ -413,6 +422,11 @@ const calendarRouter = router({
     .query(({ input }) => db.getCalendarEvents(input.startDate, input.endDate)),
 });
 
+// ==================== STORAGE ROUTER ====================
+const storageRouter = router({
+  stats: protectedProcedure.query(() => db.getStorageStats()),
+});
+
 // ==================== USERS ROUTER ====================
 const usersRouter = router({
   list: protectedProcedure.query(() => db.getAllUsers()),
@@ -439,6 +453,7 @@ export const appRouter = router({
   dashboard: dashboardRouter,
   calendar: calendarRouter,
   users: usersRouter,
+  storage: storageRouter,
 });
 
 export type AppRouter = typeof appRouter;

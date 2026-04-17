@@ -15,6 +15,13 @@
       "when": 1776357899470,
       "tag": "0001_dark_boomer",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1776396953950,
+      "tag": "0002_salty_quentin_quire",
+      "breakpoints": true
     }
   ]
 }

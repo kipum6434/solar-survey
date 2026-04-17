@@ -100,6 +100,23 @@ export async function storagePut(
   return { key, url };
 }
 
+export async function storageDelete(relKey: string): Promise<boolean> {
+  try {
+    const { baseUrl, apiKey } = getStorageConfig();
+    const key = normalizeKey(relKey);
+    const deleteUrl = new URL("v1/storage/delete", ensureTrailingSlash(baseUrl));
+    deleteUrl.searchParams.set("path", key);
+    const response = await fetch(deleteUrl, {
+      method: "DELETE",
+      headers: buildAuthHeaders(apiKey),
+    });
+    return response.ok;
+  } catch (e) {
+    console.warn("[Storage] Delete failed:", e);
+    return false;
+  }
+}
+
 export async function storageGet(relKey: string): Promise<{ key: string; url: string; }> {
   const { baseUrl, apiKey } = getStorageConfig();
   const key = normalizeKey(relKey);

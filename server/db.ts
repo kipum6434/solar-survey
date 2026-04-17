@@ -391,6 +391,40 @@ export async function getCalendarEvents(startDate: number, endDate: number) {
   return { surveys: surveyEvents, followUps: followUpEvents };
 }
 
+// ==================== STORAGE STATS ====================
+export async function getStorageStats() {
+  const db = await getDb();
+  if (!db) return { totalPhotos: 0, totalDocuments: 0, totalPhotoSize: 0, totalDocumentSize: 0 };
+  const [photoStats] = await db.select({
+    count: sql<number>`count(*)`,
+    totalSize: sql<number>`COALESCE(SUM(fileSize), 0)`,
+  }).from(surveyPhotos);
+  const [docStats] = await db.select({
+    count: sql<number>`count(*)`,
+    totalSize: sql<number>`COALESCE(SUM(fileSize), 0)`,
+  }).from(surveyDocuments);
+  return {
+    totalPhotos: photoStats?.count ?? 0,
+    totalDocuments: docStats?.count ?? 0,
+    totalPhotoSize: Number(photoStats?.totalSize ?? 0),
+    totalDocumentSize: Number(docStats?.totalSize ?? 0),
+  };
+}
+
+export async function getSurveyPhotoById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(surveyPhotos).where(eq(surveyPhotos.id, id)).limit(1);
+  return result[0];
+}
+
+export async function getSurveyDocumentById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(surveyDocuments).where(eq(surveyDocuments.id, id)).limit(1);
+  return result[0];
+}
+
 // ==================== USER QUERIES ====================
 export async function getAllUsers() {
   const db = await getDb();
