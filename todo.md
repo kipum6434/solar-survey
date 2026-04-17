@@ -94,3 +94,6 @@
 - [x] เพิ่มช่องกรอกข้อมูลเทคนิคในหน้าแก้ไขงานสำรวจ (SurveyDetail edit form) + เพิ่ม panelModel, batteryModel, roofDirection, installNotes
 - [x] ตรวจสอบว่า backend update procedure รับ fields เหล่านี้
 - [x] ทดสอบว่ากรอกแล้วแสดงในหน้าแชร์ลิงก์ได้ถูกต้อง
+
+### 5. แสดงข้อมูลเทคนิคด้านบนหน้า SurveyDetail
+- [x] เพิ่มการ์ดข้อมูลเทคนิคไว้ด้านบน ต่อจากข้อมูลลูกค้า ก่อนถึงส่วนรูปภาพ/เอกสาร
