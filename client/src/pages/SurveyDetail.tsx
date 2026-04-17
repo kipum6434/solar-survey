@@ -46,6 +46,11 @@ export default function SurveyDetail() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const updateCustomer = trpc.customer.update.useMutation({
+    onSuccess: () => { refetch(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const uploadPhoto = trpc.photo.upload.useMutation({
     onSuccess: () => { toast.success("อัพโหลดรูปสำเร็จ"); refetchPhotos(); },
     onError: (e: any) => toast.error(e.message),
@@ -190,6 +195,27 @@ export default function SurveyDetail() {
         )}
 
         {/* Technical Info Card - inline editable */}
+        {(() => {
+          const openTechEdit = () => {
+            setTechForm({
+              systemSize: s.systemSize || "",
+              panelCount: s.panelCount ? String(s.panelCount) : "",
+              panelModel: s.panelModel || "",
+              inverterModel: s.inverterModel || "",
+              batteryModel: s.batteryModel || "",
+              roofDirection: s.roofDirection || "",
+              estimatedCost: s.estimatedCost || "",
+              quotedPrice: s.quotedPrice || "",
+              installNotes: s.installNotes || "",
+              electricityBill: c.electricityBill || "",
+              roofType: c.roofType || "",
+              roofArea: c.roofArea || "",
+              phaseType: c.phaseType || "",
+              meterSize: c.meterSize || "",
+            });
+            setTechEditing(true);
+          };
+          return (
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -197,20 +223,7 @@ export default function SurveyDetail() {
                 <Zap className="h-4 w-4 text-amber-500" /> ข้อมูลทางเทคนิค
               </CardTitle>
               {!techEditing && (
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => {
-                  setTechForm({
-                    systemSize: s.systemSize || "",
-                    panelCount: s.panelCount ? String(s.panelCount) : "",
-                    panelModel: s.panelModel || "",
-                    inverterModel: s.inverterModel || "",
-                    batteryModel: s.batteryModel || "",
-                    roofDirection: s.roofDirection || "",
-                    estimatedCost: s.estimatedCost || "",
-                    quotedPrice: s.quotedPrice || "",
-                    installNotes: s.installNotes || "",
-                  });
-                  setTechEditing(true);
-                }}>
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={openTechEdit}>
                   <Pencil className="h-3 w-3" /> แก้ไข
                 </Button>
               )}
@@ -257,32 +270,67 @@ export default function SurveyDetail() {
                   <Label className="text-xs text-muted-foreground">หมายเหตุสำหรับช่างติดตั้ง</Label>
                   <Textarea placeholder="รายละเอียดเพิ่มเติมสำหรับทีมช่าง" value={techForm.installNotes} onChange={(e) => setTechForm({ ...techForm, installNotes: e.target.value })} rows={2} className="mt-1" />
                 </div>
-                {/* ข้อมูลลูกค้า (อ่านอย่างเดียว) */}
-                <div className="rounded-lg bg-muted/50 p-3">
-                  <p className="text-[10px] font-semibold text-muted-foreground mb-2">ข้อมูลจากลูกค้า (แก้ไขที่หน้าลูกค้า)</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-xs">
-                    <div className="bg-white rounded p-2"><span className="text-muted-foreground">ค่าไฟ/เดือน:</span> <span className="font-semibold">{c.electricityBill ? `${Number(c.electricityBill).toLocaleString()} บาท` : "-"}</span></div>
-                    <div className="bg-white rounded p-2"><span className="text-muted-foreground">หลังคา:</span> <span className="font-semibold">{c.roofType || "-"}</span></div>
-                    <div className="bg-white rounded p-2"><span className="text-muted-foreground">พื้นที่:</span> <span className="font-semibold">{c.roofArea ? `${Number(c.roofArea).toLocaleString()} ตร.ม.` : "-"}</span></div>
-                    <div className="bg-white rounded p-2"><span className="text-muted-foreground">ระบบไฟ:</span> <span className="font-semibold">{c.phaseType ? (c.phaseType === "single" ? "1 เฟส" : "3 เฟส") : "-"}</span></div>
-                    <div className="bg-white rounded p-2"><span className="text-muted-foreground">มิเตอร์:</span> <span className="font-semibold">{c.meterSize || "-"}</span></div>
+                {/* ข้อมูลจากลูกค้า (แก้ไขได้) */}
+                <div className="rounded-lg bg-blue-50/50 p-3 border border-blue-100">
+                  <p className="text-[10px] font-semibold text-blue-600 mb-2">ข้อมูลจากลูกค้า</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">ค่าไฟ/เดือน (บาท)</Label>
+                      <Input placeholder="เช่น 3000" value={techForm.electricityBill} onChange={(e) => setTechForm({ ...techForm, electricityBill: e.target.value })} className="mt-1 h-9" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">ประเภทหลังคา</Label>
+                      <Input placeholder="เช่น เมทัลชีท" value={techForm.roofType} onChange={(e) => setTechForm({ ...techForm, roofType: e.target.value })} className="mt-1 h-9" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">พื้นที่หลังคา (ตร.ม.)</Label>
+                      <Input placeholder="เช่น 50" value={techForm.roofArea} onChange={(e) => setTechForm({ ...techForm, roofArea: e.target.value })} className="mt-1 h-9" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">ระบบไฟฟ้า</Label>
+                      <Select value={techForm.phaseType || "none"} onValueChange={(v) => setTechForm({ ...techForm, phaseType: v === "none" ? "" : v })}>
+                        <SelectTrigger className="mt-1 h-9"><SelectValue placeholder="เลือก" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">ไม่ระบุ</SelectItem>
+                          <SelectItem value="single">1 เฟส</SelectItem>
+                          <SelectItem value="three">3 เฟส</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">ขนาดมิเตอร์</Label>
+                      <Input placeholder="เช่น 15(45)A" value={techForm.meterSize} onChange={(e) => setTechForm({ ...techForm, meterSize: e.target.value })} className="mt-1 h-9" />
+                    </div>
                   </div>
                 </div>
                 <div className="flex justify-end gap-2 pt-1">
                   <Button variant="outline" size="sm" onClick={() => setTechEditing(false)}>ยกเลิก</Button>
                   <Button size="sm" className="gap-1.5" disabled={updateSurvey.isPending} onClick={() => {
-                    const payload: any = { status: s.status };
-                    if (techForm.systemSize) payload.systemSize = techForm.systemSize;
-                    if (techForm.panelCount) payload.panelCount = parseInt(techForm.panelCount);
-                    if (techForm.panelModel) payload.panelModel = techForm.panelModel;
-                    if (techForm.inverterModel) payload.inverterModel = techForm.inverterModel;
-                    if (techForm.batteryModel) payload.batteryModel = techForm.batteryModel;
-                    if (techForm.roofDirection) payload.roofDirection = techForm.roofDirection;
-                    if (techForm.estimatedCost) payload.estimatedCost = techForm.estimatedCost;
-                    if (techForm.quotedPrice) payload.quotedPrice = techForm.quotedPrice;
-                    payload.installNotes = techForm.installNotes || "";
-                    updateSurvey.mutate({ id: surveyId, ...payload }, {
-                      onSuccess: () => { setTechEditing(false); toast.success("บันทึกข้อมูลเทคนิคสำเร็จ"); refetch(); },
+                    // Save survey technical data
+                    const surveyPayload: any = { status: s.status };
+                    if (techForm.systemSize) surveyPayload.systemSize = techForm.systemSize;
+                    if (techForm.panelCount) surveyPayload.panelCount = parseInt(techForm.panelCount);
+                    if (techForm.panelModel) surveyPayload.panelModel = techForm.panelModel;
+                    if (techForm.inverterModel) surveyPayload.inverterModel = techForm.inverterModel;
+                    if (techForm.batteryModel) surveyPayload.batteryModel = techForm.batteryModel;
+                    if (techForm.roofDirection) surveyPayload.roofDirection = techForm.roofDirection;
+                    if (techForm.estimatedCost) surveyPayload.estimatedCost = techForm.estimatedCost;
+                    if (techForm.quotedPrice) surveyPayload.quotedPrice = techForm.quotedPrice;
+                    surveyPayload.installNotes = techForm.installNotes || "";
+                    // Save customer data too
+                    const customerPayload: any = { id: c.id };
+                    if (techForm.electricityBill !== (c.electricityBill || "")) customerPayload.electricityBill = techForm.electricityBill || undefined;
+                    if (techForm.roofType !== (c.roofType || "")) customerPayload.roofType = techForm.roofType || undefined;
+                    if (techForm.roofArea !== (c.roofArea || "")) customerPayload.roofArea = techForm.roofArea || undefined;
+                    if (techForm.phaseType !== (c.phaseType || "")) customerPayload.phaseType = techForm.phaseType || undefined;
+                    if (techForm.meterSize !== (c.meterSize || "")) customerPayload.meterSize = techForm.meterSize || undefined;
+                    // Update both
+                    const hasCustomerChanges = Object.keys(customerPayload).length > 1;
+                    if (hasCustomerChanges) {
+                      updateCustomer.mutate(customerPayload);
+                    }
+                    updateSurvey.mutate({ id: surveyId, ...surveyPayload }, {
+                      onSuccess: () => { setTechEditing(false); toast.success("บันทึกข้อมูลสำเร็จ"); refetch(); },
                     });
                   }}>
                     <CheckCircle2 className="h-3.5 w-3.5" /> {updateSurvey.isPending ? "กำลังบันทึก..." : "บันทึกข้อมูลเทคนิค"}
@@ -292,61 +340,61 @@ export default function SurveyDetail() {
             ) : (
               <>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 cursor-pointer hover:bg-amber-100 transition-colors" onClick={() => { setTechForm({ systemSize: s.systemSize || "", panelCount: s.panelCount ? String(s.panelCount) : "", panelModel: s.panelModel || "", inverterModel: s.inverterModel || "", batteryModel: s.batteryModel || "", roofDirection: s.roofDirection || "", estimatedCost: s.estimatedCost || "", quotedPrice: s.quotedPrice || "", installNotes: s.installNotes || "" }); setTechEditing(true); }}>
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 cursor-pointer hover:bg-amber-100 transition-colors" onClick={openTechEdit}>
                     <Sun className="h-4 w-4 text-amber-500 shrink-0" />
                     <div><p className="text-[10px] text-muted-foreground">ขนาดระบบ</p><p className="font-semibold">{s.systemSize ? `${s.systemSize} kW` : <span className="text-muted-foreground">-</span>}</p></div>
                   </div>
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-orange-50 cursor-pointer hover:bg-orange-100 transition-colors" onClick={() => { setTechForm({ systemSize: s.systemSize || "", panelCount: s.panelCount ? String(s.panelCount) : "", panelModel: s.panelModel || "", inverterModel: s.inverterModel || "", batteryModel: s.batteryModel || "", roofDirection: s.roofDirection || "", estimatedCost: s.estimatedCost || "", quotedPrice: s.quotedPrice || "", installNotes: s.installNotes || "" }); setTechEditing(true); }}>
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-orange-50 cursor-pointer hover:bg-orange-100 transition-colors" onClick={openTechEdit}>
                     <Sun className="h-4 w-4 text-orange-500 shrink-0" />
                     <div><p className="text-[10px] text-muted-foreground">จำนวนแผง</p><p className="font-semibold">{s.panelCount ? `${s.panelCount} แผง` : <span className="text-muted-foreground">-</span>}</p></div>
                   </div>
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-orange-50 cursor-pointer hover:bg-orange-100 transition-colors" onClick={() => { setTechForm({ systemSize: s.systemSize || "", panelCount: s.panelCount ? String(s.panelCount) : "", panelModel: s.panelModel || "", inverterModel: s.inverterModel || "", batteryModel: s.batteryModel || "", roofDirection: s.roofDirection || "", estimatedCost: s.estimatedCost || "", quotedPrice: s.quotedPrice || "", installNotes: s.installNotes || "" }); setTechEditing(true); }}>
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-orange-50 cursor-pointer hover:bg-orange-100 transition-colors" onClick={openTechEdit}>
                     <Sun className="h-4 w-4 text-orange-500 shrink-0" />
                     <div><p className="text-[10px] text-muted-foreground">รุ่นแผงโซล่า</p><p className="font-semibold">{s.panelModel || <span className="text-muted-foreground">-</span>}</p></div>
                   </div>
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-green-50 cursor-pointer hover:bg-green-100 transition-colors" onClick={() => { setTechForm({ systemSize: s.systemSize || "", panelCount: s.panelCount ? String(s.panelCount) : "", panelModel: s.panelModel || "", inverterModel: s.inverterModel || "", batteryModel: s.batteryModel || "", roofDirection: s.roofDirection || "", estimatedCost: s.estimatedCost || "", quotedPrice: s.quotedPrice || "", installNotes: s.installNotes || "" }); setTechEditing(true); }}>
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-green-50 cursor-pointer hover:bg-green-100 transition-colors" onClick={openTechEdit}>
                     <Zap className="h-4 w-4 text-green-500 shrink-0" />
                     <div><p className="text-[10px] text-muted-foreground">อินเวอร์เตอร์</p><p className="font-semibold">{s.inverterModel || <span className="text-muted-foreground">-</span>}</p></div>
                   </div>
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-purple-50 cursor-pointer hover:bg-purple-100 transition-colors" onClick={() => { setTechForm({ systemSize: s.systemSize || "", panelCount: s.panelCount ? String(s.panelCount) : "", panelModel: s.panelModel || "", inverterModel: s.inverterModel || "", batteryModel: s.batteryModel || "", roofDirection: s.roofDirection || "", estimatedCost: s.estimatedCost || "", quotedPrice: s.quotedPrice || "", installNotes: s.installNotes || "" }); setTechEditing(true); }}>
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-purple-50 cursor-pointer hover:bg-purple-100 transition-colors" onClick={openTechEdit}>
                     <Battery className="h-4 w-4 text-purple-500 shrink-0" />
                     <div><p className="text-[10px] text-muted-foreground">แบตเตอรี่</p><p className="font-semibold">{s.batteryModel || <span className="text-muted-foreground">-</span>}</p></div>
                   </div>
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => { setTechForm({ systemSize: s.systemSize || "", panelCount: s.panelCount ? String(s.panelCount) : "", panelModel: s.panelModel || "", inverterModel: s.inverterModel || "", batteryModel: s.batteryModel || "", roofDirection: s.roofDirection || "", estimatedCost: s.estimatedCost || "", quotedPrice: s.quotedPrice || "", installNotes: s.installNotes || "" }); setTechEditing(true); }}>
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50 cursor-pointer hover:bg-slate-100 transition-colors" onClick={openTechEdit}>
                     <Compass className="h-4 w-4 text-slate-500 shrink-0" />
                     <div><p className="text-[10px] text-muted-foreground">ทิศทางหลังคา</p><p className="font-semibold">{s.roofDirection || <span className="text-muted-foreground">-</span>}</p></div>
                   </div>
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50">
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 cursor-pointer hover:bg-amber-100 transition-colors" onClick={openTechEdit}>
                     <Zap className="h-4 w-4 text-amber-500 shrink-0" />
                     <div><p className="text-[10px] text-muted-foreground">ค่าไฟฟ้า/เดือน</p><p className="font-semibold">{c.electricityBill ? `${Number(c.electricityBill).toLocaleString()} บาท` : <span className="text-muted-foreground">-</span>}</p></div>
                   </div>
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50">
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50 cursor-pointer hover:bg-slate-100 transition-colors" onClick={openTechEdit}>
                     <Home className="h-4 w-4 text-slate-500 shrink-0" />
                     <div><p className="text-[10px] text-muted-foreground">ประเภทหลังคา</p><p className="font-semibold">{c.roofType || <span className="text-muted-foreground">-</span>}</p></div>
                   </div>
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50">
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50 cursor-pointer hover:bg-slate-100 transition-colors" onClick={openTechEdit}>
                     <Home className="h-4 w-4 text-slate-500 shrink-0" />
                     <div><p className="text-[10px] text-muted-foreground">พื้นที่หลังคา</p><p className="font-semibold">{c.roofArea ? `${Number(c.roofArea).toLocaleString()} ตร.ม.` : <span className="text-muted-foreground">-</span>}</p></div>
                   </div>
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-50">
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-50 cursor-pointer hover:bg-blue-100 transition-colors" onClick={openTechEdit}>
                     <Gauge className="h-4 w-4 text-blue-500 shrink-0" />
                     <div><p className="text-[10px] text-muted-foreground">ระบบไฟฟ้า</p><p className="font-semibold">{c.phaseType ? (c.phaseType === "single" ? "1 เฟส" : "3 เฟส") : <span className="text-muted-foreground">-</span>}</p></div>
                   </div>
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-50">
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-50 cursor-pointer hover:bg-blue-100 transition-colors" onClick={openTechEdit}>
                     <Gauge className="h-4 w-4 text-blue-500 shrink-0" />
                     <div><p className="text-[10px] text-muted-foreground">ขนาดมิเตอร์</p><p className="font-semibold">{c.meterSize || <span className="text-muted-foreground">-</span>}</p></div>
                   </div>
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-50 cursor-pointer hover:bg-emerald-100 transition-colors" onClick={() => { setTechForm({ systemSize: s.systemSize || "", panelCount: s.panelCount ? String(s.panelCount) : "", panelModel: s.panelModel || "", inverterModel: s.inverterModel || "", batteryModel: s.batteryModel || "", roofDirection: s.roofDirection || "", estimatedCost: s.estimatedCost || "", quotedPrice: s.quotedPrice || "", installNotes: s.installNotes || "" }); setTechEditing(true); }}>
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-50 cursor-pointer hover:bg-emerald-100 transition-colors" onClick={openTechEdit}>
                     <Wrench className="h-4 w-4 text-emerald-500 shrink-0" />
                     <div><p className="text-[10px] text-muted-foreground">ราคาประเมิน</p><p className="font-semibold">{s.estimatedCost ? `${Number(s.estimatedCost).toLocaleString()} บาท` : <span className="text-muted-foreground">-</span>}</p></div>
                   </div>
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-50 cursor-pointer hover:bg-emerald-100 transition-colors" onClick={() => { setTechForm({ systemSize: s.systemSize || "", panelCount: s.panelCount ? String(s.panelCount) : "", panelModel: s.panelModel || "", inverterModel: s.inverterModel || "", batteryModel: s.batteryModel || "", roofDirection: s.roofDirection || "", estimatedCost: s.estimatedCost || "", quotedPrice: s.quotedPrice || "", installNotes: s.installNotes || "" }); setTechEditing(true); }}>
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-50 cursor-pointer hover:bg-emerald-100 transition-colors" onClick={openTechEdit}>
                     <Wrench className="h-4 w-4 text-emerald-500 shrink-0" />
                     <div><p className="text-[10px] text-muted-foreground">ราคาเสนอ</p><p className="font-semibold">{s.quotedPrice ? `${Number(s.quotedPrice).toLocaleString()} บาท` : <span className="text-muted-foreground">-</span>}</p></div>
                   </div>
                 </div>
                 {s.installNotes && (
-                  <div className="mt-3 p-2.5 rounded-lg bg-yellow-50 text-sm cursor-pointer hover:bg-yellow-100 transition-colors" onClick={() => { setTechForm({ systemSize: s.systemSize || "", panelCount: s.panelCount ? String(s.panelCount) : "", panelModel: s.panelModel || "", inverterModel: s.inverterModel || "", batteryModel: s.batteryModel || "", roofDirection: s.roofDirection || "", estimatedCost: s.estimatedCost || "", quotedPrice: s.quotedPrice || "", installNotes: s.installNotes || "" }); setTechEditing(true); }}>
+                  <div className="mt-3 p-2.5 rounded-lg bg-yellow-50 text-sm cursor-pointer hover:bg-yellow-100 transition-colors" onClick={openTechEdit}>
                     <p className="text-[10px] text-muted-foreground font-semibold mb-1">หมายเหตุสำหรับช่างติดตั้ง</p>
                     <p className="whitespace-pre-wrap">{s.installNotes}</p>
                   </div>
@@ -356,6 +404,8 @@ export default function SurveyDetail() {
             )}
           </CardContent>
         </Card>
+          );
+        })()}
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
