@@ -450,7 +450,7 @@ export default function SurveyDetail() {
       )}
 
       {/* Edit Status Dialog */}
-      <EditSurveyDialog open={showEditStatus} onOpenChange={setShowEditStatus} survey={s} users={users || []} onSubmit={(d: any) => updateSurvey.mutate({ id: surveyId, ...d })} loading={updateSurvey.isPending} />
+      <EditSurveyDialog open={showEditStatus} onOpenChange={setShowEditStatus} survey={s} customer={c} users={users || []} onSubmit={(d: any) => updateSurvey.mutate({ id: surveyId, ...d })} loading={updateSurvey.isPending} />
 
       {/* Confirm Delete Photo Dialog */}
       <Dialog open={confirmDeletePhoto !== null} onOpenChange={() => setConfirmDeletePhoto(null)}>
@@ -486,7 +486,7 @@ export default function SurveyDetail() {
   );
 }
 
-function EditSurveyDialog({ open, onOpenChange, survey, users, onSubmit, loading }: any) {
+function EditSurveyDialog({ open, onOpenChange, survey, users, onSubmit, loading, customer }: any) {
   const [form, setForm] = useState<any>({});
   const s = survey;
   if (!s) return null;
@@ -499,51 +499,90 @@ function EditSurveyDialog({ open, onOpenChange, survey, users, onSubmit, loading
       assignedTo: s.assignedTo ? String(s.assignedTo) : "",
       surveyNotes: s.surveyNotes || "",
       systemSize: s.systemSize || "",
-      panelCount: s.panelCount || "",
+      panelCount: s.panelCount ? String(s.panelCount) : "",
+      panelModel: s.panelModel || "",
       inverterModel: s.inverterModel || "",
+      batteryModel: s.batteryModel || "",
       estimatedCost: s.estimatedCost || "",
       quotedPrice: s.quotedPrice || "",
+      roofDirection: s.roofDirection || "",
+      installNotes: s.installNotes || "",
     });
   };
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (v) handleOpen(); onOpenChange(v); }}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>แก้ไขงานสำรวจ</DialogTitle>
           <DialogDescription>อัพเดทข้อมูลและสถานะงานสำรวจ</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <Label>สถานะ</Label>
-              <Select value={form.status || s.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(SURVEY_STATUS_MAP).map(([k, v]) => (
-                    <SelectItem key={k} value={k}>{v.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <div className="space-y-5">
+          {/* ข้อมูลลูกค้า (อ่านอย่างเดียว) */}
+          {customer && (
+            <div className="rounded-lg bg-muted/50 p-3 space-y-1">
+              <p className="text-xs font-semibold text-muted-foreground mb-2">ข้อมูลลูกค้า (แก้ไขที่หน้าลูกค้า)</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                {customer.electricityBill && <div className="bg-white rounded p-2"><span className="text-muted-foreground">ค่าไฟ/เดือน:</span> <span className="font-semibold">{Number(customer.electricityBill).toLocaleString()} บาท</span></div>}
+                {customer.roofType && <div className="bg-white rounded p-2"><span className="text-muted-foreground">หลังคา:</span> <span className="font-semibold">{customer.roofType}</span></div>}
+                {customer.roofArea && <div className="bg-white rounded p-2"><span className="text-muted-foreground">พื้นที่หลังคา:</span> <span className="font-semibold">{Number(customer.roofArea).toLocaleString()} ตร.ม.</span></div>}
+                {customer.phaseType && <div className="bg-white rounded p-2"><span className="text-muted-foreground">ระบบไฟ:</span> <span className="font-semibold">{customer.phaseType === "single" ? "1 เฟส" : "3 เฟส"}</span></div>}
+                {customer.meterSize && <div className="bg-white rounded p-2"><span className="text-muted-foreground">มิเตอร์:</span> <span className="font-semibold">{customer.meterSize}</span></div>}
+              </div>
             </div>
-            <div><Label>วันที่สำรวจ</Label><Input type="date" value={form.scheduledDate || ""} onChange={(e) => setForm({ ...form, scheduledDate: e.target.value })} /></div>
-            <div><Label>เวลา</Label><Input type="time" value={form.scheduledTime || ""} onChange={(e) => setForm({ ...form, scheduledTime: e.target.value })} /></div>
-            <div className="col-span-2">
-              <Label>มอบหมายให้</Label>
-              <Select value={form.assignedTo || ""} onValueChange={(v) => setForm({ ...form, assignedTo: v })}>
-                <SelectTrigger><SelectValue placeholder="เลือก" /></SelectTrigger>
-                <SelectContent>
-                  {users.map((u: any) => (<SelectItem key={u.id} value={String(u.id)}>{u.name || `User #${u.id}`}</SelectItem>))}
-                </SelectContent>
-              </Select>
+          )}
+
+          {/* สถานะและกำหนดการ */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground mb-2">สถานะและกำหนดการ</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <Label>สถานะ</Label>
+                <Select value={form.status || s.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(SURVEY_STATUS_MAP).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><Label>วันที่สำรวจ</Label><Input type="date" value={form.scheduledDate || ""} onChange={(e) => setForm({ ...form, scheduledDate: e.target.value })} /></div>
+              <div><Label>เวลา</Label><Input type="time" value={form.scheduledTime || ""} onChange={(e) => setForm({ ...form, scheduledTime: e.target.value })} /></div>
+              <div className="col-span-2">
+                <Label>มอบหมายให้</Label>
+                <Select value={form.assignedTo || ""} onValueChange={(v) => setForm({ ...form, assignedTo: v })}>
+                  <SelectTrigger><SelectValue placeholder="เลือก" /></SelectTrigger>
+                  <SelectContent>
+                    {users.map((u: any) => (<SelectItem key={u.id} value={String(u.id)}>{u.name || `User #${u.id}`}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div><Label>ขนาดระบบ (kW)</Label><Input value={form.systemSize || ""} onChange={(e) => setForm({ ...form, systemSize: e.target.value })} /></div>
-            <div><Label>จำนวนแผง</Label><Input type="number" value={form.panelCount || ""} onChange={(e) => setForm({ ...form, panelCount: e.target.value })} /></div>
-            <div><Label>รุ่นอินเวอร์เตอร์</Label><Input value={form.inverterModel || ""} onChange={(e) => setForm({ ...form, inverterModel: e.target.value })} /></div>
-            <div><Label>ราคาประเมิน</Label><Input value={form.estimatedCost || ""} onChange={(e) => setForm({ ...form, estimatedCost: e.target.value })} /></div>
-            <div className="col-span-2"><Label>ราคาเสนอ</Label><Input value={form.quotedPrice || ""} onChange={(e) => setForm({ ...form, quotedPrice: e.target.value })} /></div>
-            <div className="col-span-2"><Label>หมายเหตุ</Label><Textarea value={form.surveyNotes || ""} onChange={(e) => setForm({ ...form, surveyNotes: e.target.value })} rows={3} /></div>
           </div>
+
+          {/* ข้อมูลทางเทคนิค */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground mb-2">ข้อมูลทางเทคนิค (กรอกก่อนส่งให้ทีมช่าง)</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>ขนาดระบบ (kW)</Label><Input placeholder="เช่น 10" value={form.systemSize || ""} onChange={(e) => setForm({ ...form, systemSize: e.target.value })} /></div>
+              <div><Label>จำนวนแผง</Label><Input type="number" placeholder="เช่น 16" value={form.panelCount || ""} onChange={(e) => setForm({ ...form, panelCount: e.target.value })} /></div>
+              <div className="col-span-2"><Label>รุ่นแผงโซล่า</Label><Input placeholder="เช่น Longi/Ja/Aiko 645W MONO HF N-TYPE" value={form.panelModel || ""} onChange={(e) => setForm({ ...form, panelModel: e.target.value })} /></div>
+              <div className="col-span-2"><Label>รุ่นอินเวอร์เตอร์</Label><Input placeholder="เช่น HUAWEI SUN2000-10K-LCO" value={form.inverterModel || ""} onChange={(e) => setForm({ ...form, inverterModel: e.target.value })} /></div>
+              <div className="col-span-2"><Label>รุ่นแบตเตอรี่ (ถ้ามี)</Label><Input placeholder="เช่น Huawei LUNA2000-7-E1" value={form.batteryModel || ""} onChange={(e) => setForm({ ...form, batteryModel: e.target.value })} /></div>
+              <div><Label>ทิศทางหลังคา</Label><Input placeholder="เช่น ทิศใต้" value={form.roofDirection || ""} onChange={(e) => setForm({ ...form, roofDirection: e.target.value })} /></div>
+              <div><Label>ราคาประเมิน (บาท)</Label><Input placeholder="เช่น 348000" value={form.estimatedCost || ""} onChange={(e) => setForm({ ...form, estimatedCost: e.target.value })} /></div>
+              <div className="col-span-2"><Label>ราคาเสนอ (บาท)</Label><Input placeholder="เช่น 348000" value={form.quotedPrice || ""} onChange={(e) => setForm({ ...form, quotedPrice: e.target.value })} /></div>
+              <div className="col-span-2"><Label>หมายเหตุสำหรับช่างติดตั้ง</Label><Textarea placeholder="รายละเอียดเพิ่มเติมสำหรับทีมช่าง เช่น ต้องเดินสายผ่านท่อ, ต้องเจาะหลังคา ฯลฯ" value={form.installNotes || ""} onChange={(e) => setForm({ ...form, installNotes: e.target.value })} rows={2} /></div>
+            </div>
+          </div>
+
+          {/* หมายเหตุ */}
+          <div>
+            <Label>หมายเหตุงานสำรวจ</Label>
+            <Textarea value={form.surveyNotes || ""} onChange={(e) => setForm({ ...form, surveyNotes: e.target.value })} rows={3} />
+          </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => onOpenChange(false)}>ยกเลิก</Button>
             <Button onClick={() => {
@@ -551,12 +590,16 @@ function EditSurveyDialog({ open, onOpenChange, survey, users, onSubmit, loading
               if (form.scheduledDate) payload.scheduledDate = new Date(form.scheduledDate).getTime();
               if (form.scheduledTime) payload.scheduledTime = form.scheduledTime;
               if (form.assignedTo) payload.assignedTo = parseInt(form.assignedTo);
-              if (form.surveyNotes) payload.surveyNotes = form.surveyNotes;
+              if (form.surveyNotes !== undefined) payload.surveyNotes = form.surveyNotes;
               if (form.systemSize) payload.systemSize = form.systemSize;
               if (form.panelCount) payload.panelCount = parseInt(form.panelCount);
+              if (form.panelModel) payload.panelModel = form.panelModel;
               if (form.inverterModel) payload.inverterModel = form.inverterModel;
+              if (form.batteryModel) payload.batteryModel = form.batteryModel;
+              if (form.roofDirection) payload.roofDirection = form.roofDirection;
               if (form.estimatedCost) payload.estimatedCost = form.estimatedCost;
               if (form.quotedPrice) payload.quotedPrice = form.quotedPrice;
+              if (form.installNotes) payload.installNotes = form.installNotes;
               onSubmit(payload);
             }} disabled={loading}>{loading ? "กำลังบันทึก..." : "บันทึก"}</Button>
           </DialogFooter>

@@ -88,3 +88,9 @@
 - [x] Backend: superadmin/admin เห็นข้อมูลทุกคน
 - [x] Backend: เพิ่ม assignedTo/createdBy field สำหรับ filter ตาม user
 - [x] Frontend: filter ข้อมูลตาม role อัตโนมัติ
+
+### 4. เพิ่มช่องกรอกข้อมูลเทคนิคในหน้าแก้ไขงานสำรวจ
+- [x] ตรวจสอบว่า survey schema มี fields เทคนิคอะไรบ้าง (systemSize, panelCount, inverterModel ฯลฯ)
+- [x] เพิ่มช่องกรอกข้อมูลเทคนิคในหน้าแก้ไขงานสำรวจ (SurveyDetail edit form) + เพิ่ม panelModel, batteryModel, roofDirection, installNotes
+- [x] ตรวจสอบว่า backend update procedure รับ fields เหล่านี้
+- [x] ทดสอบว่ากรอกแล้วแสดงในหน้าแชร์ลิงก์ได้ถูกต้อง

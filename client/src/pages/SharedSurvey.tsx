@@ -157,7 +157,31 @@ export default function SharedSurvey() {
                     <div><p className="text-[10px] text-muted-foreground">อินเวอร์เตอร์</p><p className="font-semibold">{s.inverterModel}</p></div>
                   </div>
                 )}
+                {s.panelModel && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-orange-50">
+                    <Sun className="h-4 w-4 text-orange-500 shrink-0" />
+                    <div><p className="text-[10px] text-muted-foreground">รุ่นแผงโซล่า</p><p className="font-semibold">{s.panelModel}</p></div>
+                  </div>
+                )}
+                {s.batteryModel && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-purple-50">
+                    <Zap className="h-4 w-4 text-purple-500 shrink-0" />
+                    <div><p className="text-[10px] text-muted-foreground">แบตเตอรี่</p><p className="font-semibold">{s.batteryModel}</p></div>
+                  </div>
+                )}
+                {s.roofDirection && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50">
+                    <Home className="h-4 w-4 text-slate-500 shrink-0" />
+                    <div><p className="text-[10px] text-muted-foreground">ทิศทางหลังคา</p><p className="font-semibold">{s.roofDirection}</p></div>
+                  </div>
+                )}
               </div>
+              {s.installNotes && (
+                <div className="mt-3 p-2.5 rounded-lg bg-yellow-50 text-sm">
+                  <p className="text-[10px] text-muted-foreground font-semibold mb-1">หมายเหตุสำหรับช่างติดตั้ง</p>
+                  <p className="whitespace-pre-wrap">{s.installNotes}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

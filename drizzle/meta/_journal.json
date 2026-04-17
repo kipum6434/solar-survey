@@ -29,6 +29,13 @@
       "when": 1776406453793,
       "tag": "0003_sour_callisto",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1776409435168,
+      "tag": "0004_damp_gauntlet",
+      "breakpoints": true
     }
   ]
 }

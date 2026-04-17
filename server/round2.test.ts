@@ -227,3 +227,55 @@ describe("Round 2 - File Proxy URL Encoding", () => {
     expect(result).toBe(rawUrl);
   });
 });
+
+// ==================== TECHNICAL FIELDS TESTS ====================
+describe("Round 2 - Technical Fields in Survey Update", () => {
+  it("survey.update accepts new technical fields (panelModel, batteryModel, roofDirection, installNotes)", async () => {
+    const { ctx } = createSuperadminContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.survey.update({
+      id: 30001,
+      panelModel: "Longi 645W MONO HF N-TYPE",
+      batteryModel: "Huawei LUNA2000-7-E1",
+      roofDirection: "ทิศใต้",
+      installNotes: "ต้องเดินสายผ่านท่อ PVC",
+      systemSize: "10",
+      panelCount: 16,
+      inverterModel: "HUAWEI SUN2000-10K-LCO",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("survey.getById returns new technical fields after update", async () => {
+    const { ctx } = createSuperadminContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const data = await caller.survey.getById({ id: 30001 });
+    expect(data).toBeDefined();
+    expect(data!.survey.panelModel).toBe("Longi 645W MONO HF N-TYPE");
+    expect(data!.survey.batteryModel).toBe("Huawei LUNA2000-7-E1");
+    expect(data!.survey.roofDirection).toBe("ทิศใต้");
+    expect(data!.survey.installNotes).toBe("ต้องเดินสายผ่านท่อ PVC");
+  });
+
+  it("shareLink.getByToken includes new technical fields", async () => {
+    const { ctx } = createSuperadminContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const links = await caller.shareLink.list({ surveyId: 30001 });
+    if (links.length > 0 && links[0].token) {
+      const { ctx: publicCtx } = createPublicContext();
+      const publicCaller = appRouter.createCaller(publicCtx);
+
+      const result = await publicCaller.shareLink.getByToken({ token: links[0].token });
+      if (result && !("error" in result)) {
+        expect(result.survey.panelModel).toBe("Longi 645W MONO HF N-TYPE");
+        expect(result.survey.batteryModel).toBe("Huawei LUNA2000-7-E1");
+        expect(result.survey.roofDirection).toBe("ทิศใต้");
+        expect(result.survey.installNotes).toBe("ต้องเดินสายผ่านท่อ PVC");
+      }
+    }
+  });
+});

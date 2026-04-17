@@ -189,6 +189,10 @@ const surveyRouter = router({
       systemSize: z.string().optional(),
       panelCount: z.number().optional(),
       inverterModel: z.string().optional(),
+      panelModel: z.string().optional(),
+      batteryModel: z.string().optional(),
+      roofDirection: z.string().optional(),
+      installNotes: z.string().optional(),
       estimatedCost: z.string().optional(),
       quotedPrice: z.string().optional(),
     }))
