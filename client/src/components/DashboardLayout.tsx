@@ -20,7 +20,6 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
   LayoutDashboard,
@@ -32,6 +31,10 @@ import {
   PanelLeft,
   Sun,
   ChevronRight,
+  UserCog,
+  Eye,
+  EyeOff,
+  Loader2,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -39,19 +42,22 @@ import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "./ui/badge";
-
-const menuItems = [
-  { icon: LayoutDashboard, label: "แดชบอร์ด", path: "/" },
-  { icon: Users, label: "ลูกค้า", path: "/customers" },
-  { icon: ClipboardList, label: "งานสำรวจ", path: "/surveys" },
-  { icon: CalendarDays, label: "ปฏิทิน", path: "/calendar" },
-  { icon: Bell, label: "แจ้งเตือน", path: "/notifications" },
-];
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { toast } from "sonner";
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 260;
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 400;
+
+function getRoleLabel(role: string) {
+  switch (role) {
+    case "superadmin": return "Superadmin";
+    case "admin": return "ผู้ดูแลระบบ";
+    default: return "ทีมสำรวจ";
+  }
+}
 
 export default function DashboardLayout({
   children,
@@ -73,34 +79,7 @@ export default function DashboardLayout({
   }
 
   if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#1e3a5f] via-[#2d4a6f] to-[#1e3a5f]">
-        <div className="flex flex-col items-center gap-8 p-10 max-w-md w-full bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl">
-          <div className="flex flex-col items-center gap-4">
-            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg">
-              <Sun className="h-9 w-9 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#1e3a5f] text-center">
-              Solar Survey System
-            </h1>
-            <p className="text-sm text-stone-500 text-center max-w-sm leading-relaxed">
-              ระบบจัดการงานสำรวจติดตั้งโซล่าเซลล์
-              <br />
-              กรุณาเข้าสู่ระบบเพื่อดำเนินการต่อ
-            </p>
-          </div>
-          <Button
-            onClick={() => {
-              window.location.href = getLoginUrl();
-            }}
-            size="lg"
-            className="w-full bg-[#1e3a5f] hover:bg-[#2d4a6f] text-white shadow-lg hover:shadow-xl transition-all h-12 text-base font-medium"
-          >
-            เข้าสู่ระบบ
-          </Button>
-        </div>
-      </div>
-    );
+    return <LoginPage />;
   }
 
   return (
@@ -115,6 +94,101 @@ export default function DashboardLayout({
         {children}
       </DashboardLayoutContent>
     </SidebarProvider>
+  );
+}
+
+function LoginPage() {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const loginMutation = trpc.auth.login.useMutation();
+  const utils = trpc.useUtils();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username.trim() || !password.trim()) {
+      toast.error("กรุณากรอกชื่อผู้ใช้และรหัสผ่าน");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await loginMutation.mutateAsync({ username: username.trim(), password });
+      toast.success("เข้าสู่ระบบสำเร็จ");
+      await utils.auth.me.invalidate();
+      window.location.reload();
+    } catch (err: any) {
+      toast.error(err?.message || "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#1e3a5f] via-[#2d4a6f] to-[#1e3a5f]">
+      <div className="flex flex-col items-center gap-6 p-8 md:p-10 max-w-md w-full mx-4 bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg">
+            <Sun className="h-9 w-9 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-[#1e3a5f] text-center">
+            Solar Survey System
+          </h1>
+          <p className="text-sm text-stone-500 text-center max-w-sm leading-relaxed">
+            ระบบจัดการงานสำรวจติดตั้งโซล่าเซลล์
+          </p>
+        </div>
+
+        <form onSubmit={handleLogin} className="w-full space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="username" className="text-sm font-medium text-stone-700">ชื่อผู้ใช้</Label>
+            <Input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="กรอกชื่อผู้ใช้"
+              className="h-11 bg-white border-stone-200 focus:border-amber-400 focus:ring-amber-400/20"
+              autoComplete="username"
+              autoFocus
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-sm font-medium text-stone-700">รหัสผ่าน</Label>
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="กรอกรหัสผ่าน"
+                className="h-11 bg-white border-stone-200 focus:border-amber-400 focus:ring-amber-400/20 pr-10"
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 transition-colors"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+          <Button
+            type="submit"
+            disabled={isLoading}
+            size="lg"
+            className="w-full bg-[#1e3a5f] hover:bg-[#2d4a6f] text-white shadow-lg hover:shadow-xl transition-all h-12 text-base font-medium"
+          >
+            {isLoading ? (
+              <><Loader2 className="h-4 w-4 animate-spin mr-2" /> กำลังเข้าสู่ระบบ...</>
+            ) : (
+              "เข้าสู่ระบบ"
+            )}
+          </Button>
+        </form>
+      </div>
+    </div>
   );
 }
 
@@ -133,8 +207,20 @@ function DashboardLayoutContent({
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const activeMenuItem = menuItems.find((item) => item.path === location);
   const isMobile = useIsMobile();
+
+  const isAdminOrSuper = user?.role === "admin" || user?.role === "superadmin";
+
+  const menuItems = [
+    { icon: LayoutDashboard, label: "แดชบอร์ด", path: "/" },
+    { icon: Users, label: "ลูกค้า", path: "/customers" },
+    { icon: ClipboardList, label: "งานสำรวจ", path: "/surveys" },
+    { icon: CalendarDays, label: "ปฏิทิน", path: "/calendar" },
+    { icon: Bell, label: "แจ้งเตือน", path: "/notifications" },
+    ...(isAdminOrSuper ? [{ icon: UserCog, label: "จัดการผู้ใช้", path: "/users" }] : []),
+  ];
+
+  const activeMenuItem = menuItems.find((item) => item.path === location);
 
   const { data: unreadCount } = trpc.notification.unreadCount.useQuery(undefined, {
     refetchInterval: 30000,
@@ -261,7 +347,7 @@ function DashboardLayoutContent({
                       {user?.name || "User"}
                     </p>
                     <p className="text-[11px] text-sidebar-foreground/50 truncate mt-1">
-                      {user?.role === "admin" ? "ผู้ดูแลระบบ" : "ทีมสำรวจ"}
+                      {getRoleLabel(user?.role || "user")}
                     </p>
                   </div>
                 </button>
@@ -269,7 +355,7 @@ function DashboardLayoutContent({
               <DropdownMenuContent align="end" className="w-52">
                 <div className="px-3 py-2">
                   <p className="text-sm font-medium">{user?.name}</p>
-                  <p className="text-xs text-muted-foreground">{user?.email}</p>
+                  <p className="text-xs text-muted-foreground">{getRoleLabel(user?.role || "user")}</p>
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

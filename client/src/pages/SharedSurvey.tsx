@@ -42,7 +42,7 @@ export default function SharedSurvey() {
   const s = 'survey' in data ? data.survey : null;
   const c = 'customer' in data ? data.customer : null;
   const photosData = 'photos' in data ? data.photos : [];
-  const docsData = 'documents' in data ? data.documents : [];
+  const docsData = ('documents' in data ? data.documents : []).filter((d: any) => d.fileType !== 'quotation');
   if (!s || !c) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-orange-50 flex items-center justify-center p-4">
@@ -107,13 +107,57 @@ export default function SharedSurvey() {
 
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold">ข้อมูลทางเทคนิค</CardTitle></CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              {c.electricityBill && <div className="flex items-center gap-2"><Zap className="h-4 w-4 text-amber-500" />ค่าไฟ: {Number(c.electricityBill).toLocaleString()} บาท/เดือน</div>}
-              {c.roofType && <div className="flex items-center gap-2"><Home className="h-4 w-4 text-muted-foreground" />หลังคา: {c.roofType}</div>}
-              {c.phaseType && <div className="flex items-center gap-2"><Gauge className="h-4 w-4 text-muted-foreground" />ระบบไฟ: {c.phaseType === "single" ? "1 เฟส" : "3 เฟส"}</div>}
-              {s.systemSize && <div className="flex items-center gap-2"><Sun className="h-4 w-4 text-amber-500" />ขนาดระบบ: {s.systemSize} kW</div>}
-              {s.panelCount && <div className="flex items-center gap-2">จำนวนแผง: {s.panelCount} แผง</div>}
-              {s.inverterModel && <div className="flex items-center gap-2">อินเวอร์เตอร์: {s.inverterModel}</div>}
+            <CardContent className="text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {c.electricityBill && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50">
+                    <Zap className="h-4 w-4 text-amber-500 shrink-0" />
+                    <div><p className="text-[10px] text-muted-foreground">ค่าไฟฟ้า/เดือน</p><p className="font-semibold">{Number(c.electricityBill).toLocaleString()} บาท</p></div>
+                  </div>
+                )}
+                {c.roofType && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50">
+                    <Home className="h-4 w-4 text-slate-500 shrink-0" />
+                    <div><p className="text-[10px] text-muted-foreground">ประเภทหลังคา</p><p className="font-semibold">{c.roofType}</p></div>
+                  </div>
+                )}
+                {c.roofArea && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50">
+                    <Home className="h-4 w-4 text-slate-500 shrink-0" />
+                    <div><p className="text-[10px] text-muted-foreground">พื้นที่หลังคา</p><p className="font-semibold">{Number(c.roofArea).toLocaleString()} ตร.ม.</p></div>
+                  </div>
+                )}
+                {c.phaseType && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-50">
+                    <Gauge className="h-4 w-4 text-blue-500 shrink-0" />
+                    <div><p className="text-[10px] text-muted-foreground">ระบบไฟฟ้า</p><p className="font-semibold">{c.phaseType === "single" ? "1 เฟส" : "3 เฟส"}</p></div>
+                  </div>
+                )}
+                {c.meterSize && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-50">
+                    <Gauge className="h-4 w-4 text-blue-500 shrink-0" />
+                    <div><p className="text-[10px] text-muted-foreground">ขนาดมิเตอร์</p><p className="font-semibold">{c.meterSize}</p></div>
+                  </div>
+                )}
+                {s.systemSize && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50">
+                    <Sun className="h-4 w-4 text-amber-500 shrink-0" />
+                    <div><p className="text-[10px] text-muted-foreground">ขนาดระบบ</p><p className="font-semibold">{s.systemSize} kW</p></div>
+                  </div>
+                )}
+                {s.panelCount && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-orange-50">
+                    <Sun className="h-4 w-4 text-orange-500 shrink-0" />
+                    <div><p className="text-[10px] text-muted-foreground">จำนวนแผงโซล่า</p><p className="font-semibold">{s.panelCount} แผง</p></div>
+                  </div>
+                )}
+                {s.inverterModel && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-green-50">
+                    <Zap className="h-4 w-4 text-green-500 shrink-0" />
+                    <div><p className="text-[10px] text-muted-foreground">อินเวอร์เตอร์</p><p className="font-semibold">{s.inverterModel}</p></div>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -129,8 +173,8 @@ export default function SharedSurvey() {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 {photosData.map((photo: any) => (
-                  <div key={photo.id} className="relative rounded-lg overflow-hidden bg-muted aspect-square cursor-pointer group" onClick={() => setLightboxImg(photo.url)}>
-                    <img src={photo.url} alt={photo.caption || ""} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                  <div key={photo.id} className="relative rounded-lg overflow-hidden bg-muted aspect-square cursor-pointer group" onClick={() => setLightboxImg(`/api/files/download?type=photo&id=${photo.id}`)}>
+                    <img src={`/api/files/download?type=photo&id=${photo.id}`} alt={photo.caption || ""} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
                       <Badge variant="secondary" className="text-[9px] bg-white/80 text-foreground">
                         {PHOTO_CATEGORY_MAP[photo.category] || photo.category}
@@ -154,7 +198,7 @@ export default function SharedSurvey() {
             <CardContent>
               <div className="space-y-2">
                 {docsData.map((doc: any) => (
-                  <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                  <a key={doc.id} href={`/api/files/download?type=document&id=${doc.id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
                     <FileText className="h-5 w-5 text-primary" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{doc.fileName.replace(/^\d+-/, "")}</p>

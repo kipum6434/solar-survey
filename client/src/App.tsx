@@ -12,6 +12,7 @@ import SurveyDetail from "./pages/SurveyDetail";
 import CalendarPage from "./pages/CalendarPage";
 import Notifications from "./pages/Notifications";
 import SharedSurvey from "./pages/SharedSurvey";
+import UsersPage from "./pages/UsersPage";
 
 function Router() {
   return (
@@ -23,6 +24,7 @@ function Router() {
       <Route path={"/surveys/:id"} component={SurveyDetail} />
       <Route path={"/calendar"} component={CalendarPage} />
       <Route path={"/notifications"} component={Notifications} />
+      <Route path={"/users"} component={UsersPage} />
       <Route path={"/share/:token"} component={SharedSurvey} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />

@@ -224,7 +224,7 @@ export default function SurveyDetail() {
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                     {photos.map((photo: any) => (
                       <div key={photo.id} className="group relative rounded-lg overflow-hidden bg-muted aspect-square">
-                        <img src={photo.url} alt={photo.caption || photo.fileName} className="w-full h-full object-cover cursor-pointer" onClick={() => setLightboxImg(photo.url)} />
+                        <img src={`/api/files/download?type=photo&id=${photo.id}`} alt={photo.caption || photo.fileName} className="w-full h-full object-cover cursor-pointer" onClick={() => setLightboxImg(`/api/files/download?type=photo&id=${photo.id}`)} />
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-end">
                           <div className="w-full p-2 translate-y-full group-hover:translate-y-0 transition-transform">
                             <div className="flex items-center justify-between">
@@ -239,7 +239,7 @@ export default function SurveyDetail() {
                                 )}
                               </div>
                               <div className="flex gap-1">
-                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-white" onClick={() => setLightboxImg(photo.url)}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-white" onClick={() => setLightboxImg(`/api/files/download?type=photo&id=${photo.id}`)}>
                                   <Eye className="h-3 w-3" />
                                 </Button>
                                 <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-red-100" onClick={(e) => { e.stopPropagation(); setConfirmDeletePhoto(photo.id); }}>
@@ -291,7 +291,7 @@ export default function SurveyDetail() {
                           </div>
                         </div>
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => window.open(doc.url, "_blank")}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => window.open(`/api/files/download?type=document&id=${doc.id}`, "_blank")}>
                             <Download className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-red-50" onClick={() => setConfirmDeleteDoc(doc.id)}>

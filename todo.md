@@ -66,3 +66,25 @@
 - [x] Schema: เพิ่ม fileSize column ให้ survey_photos table
 - [x] Backend: บันทึก fileSize ตอนอัพโหลดรูป
 - [x] Dashboard: แสดงขนาดรวม (รูป + เอกสาร) พร้อมแปลงหน่วยอัตโนมัติ (KB/MB/GB)
+
+## User Request - Round 2
+
+### 1. ระบบ Login ด้วย Username/Password
+- [x] Schema: เพิ่ม username, passwordHash, role (superadmin/admin/sales) ใน users table
+- [x] Backend: สร้าง API login ด้วย username/password
+- [x] Backend: สร้าง API register/create user (superadmin เท่านั้น)
+- [x] Frontend: หน้า Login ด้วย username/password
+- [x] Frontend: หน้าจัดการ User สำหรับ superadmin
+- [x] Seed: สร้าง user kipum / Abcd@2026 เป็น superadmin
+
+### 2. แก้ไขหน้าแชร์ลิงก์
+- [x] Backend: ซ่อนใบเสนอราคาจากหน้าแชร์ (ช่างติดตั้งไม่ควรเห็น)
+- [x] Backend+Frontend: แก้ไฟล์ Access Denied - สร้าง proxy endpoint สำหรับดาวน์โหลดไฟล์ที่มีชื่อภาษาไทย
+- [x] Frontend: เพิ่มข้อมูลทางเทคนิคในหน้าแชร์ (ค่าไฟ, ประเภทหลังคา, ระบบไฟ)
+- [x] Frontend: filter ไม่แสดง quotation ในหน้าแชร์ (defense-in-depth)
+
+### 3. ระบบ Role แยกข้อมูล
+- [x] Backend: เซลล์เห็นเฉพาะลูกค้า/งานของตัวเอง (customer.list, survey.list filtered by createdBy)
+- [x] Backend: superadmin/admin เห็นข้อมูลทุกคน
+- [x] Backend: เพิ่ม assignedTo/createdBy field สำหรับ filter ตาม user
+- [x] Frontend: filter ข้อมูลตาม role อัตโนมัติ
