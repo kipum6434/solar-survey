@@ -187,104 +187,76 @@ export default function SurveyDetail() {
           </Card>
         )}
 
-        {/* Technical Info Card */}
-        {(s.systemSize || s.panelCount || s.inverterModel || s.panelModel || s.batteryModel || s.roofDirection || s.installNotes || c.electricityBill || c.roofType || c.roofArea || c.phaseType || c.meterSize) && (
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Zap className="h-4 w-4 text-amber-500" /> ข้อมูลทางเทคนิค
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                {s.systemSize && (
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50">
-                    <Sun className="h-4 w-4 text-amber-500 shrink-0" />
-                    <div><p className="text-[10px] text-muted-foreground">ขนาดระบบ</p><p className="font-semibold">{s.systemSize} kW</p></div>
-                  </div>
-                )}
-                {s.panelCount && (
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-orange-50">
-                    <Sun className="h-4 w-4 text-orange-500 shrink-0" />
-                    <div><p className="text-[10px] text-muted-foreground">จำนวนแผง</p><p className="font-semibold">{s.panelCount} แผง</p></div>
-                  </div>
-                )}
-                {s.panelModel && (
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-orange-50">
-                    <Sun className="h-4 w-4 text-orange-500 shrink-0" />
-                    <div><p className="text-[10px] text-muted-foreground">รุ่นแผงโซล่า</p><p className="font-semibold">{s.panelModel}</p></div>
-                  </div>
-                )}
-                {s.inverterModel && (
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-green-50">
-                    <Zap className="h-4 w-4 text-green-500 shrink-0" />
-                    <div><p className="text-[10px] text-muted-foreground">อินเวอร์เตอร์</p><p className="font-semibold">{s.inverterModel}</p></div>
-                  </div>
-                )}
-                {s.batteryModel && (
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-purple-50">
-                    <Battery className="h-4 w-4 text-purple-500 shrink-0" />
-                    <div><p className="text-[10px] text-muted-foreground">แบตเตอรี่</p><p className="font-semibold">{s.batteryModel}</p></div>
-                  </div>
-                )}
-                {s.roofDirection && (
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50">
-                    <Compass className="h-4 w-4 text-slate-500 shrink-0" />
-                    <div><p className="text-[10px] text-muted-foreground">ทิศทางหลังคา</p><p className="font-semibold">{s.roofDirection}</p></div>
-                  </div>
-                )}
-                {c.electricityBill && (
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50">
-                    <Zap className="h-4 w-4 text-amber-500 shrink-0" />
-                    <div><p className="text-[10px] text-muted-foreground">ค่าไฟฟ้า/เดือน</p><p className="font-semibold">{Number(c.electricityBill).toLocaleString()} บาท</p></div>
-                  </div>
-                )}
-                {c.roofType && (
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50">
-                    <Home className="h-4 w-4 text-slate-500 shrink-0" />
-                    <div><p className="text-[10px] text-muted-foreground">ประเภทหลังคา</p><p className="font-semibold">{c.roofType}</p></div>
-                  </div>
-                )}
-                {c.roofArea && (
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50">
-                    <Home className="h-4 w-4 text-slate-500 shrink-0" />
-                    <div><p className="text-[10px] text-muted-foreground">พื้นที่หลังคา</p><p className="font-semibold">{Number(c.roofArea).toLocaleString()} ตร.ม.</p></div>
-                  </div>
-                )}
-                {c.phaseType && (
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-50">
-                    <Gauge className="h-4 w-4 text-blue-500 shrink-0" />
-                    <div><p className="text-[10px] text-muted-foreground">ระบบไฟฟ้า</p><p className="font-semibold">{c.phaseType === "single" ? "1 เฟส" : "3 เฟส"}</p></div>
-                  </div>
-                )}
-                {c.meterSize && (
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-50">
-                    <Gauge className="h-4 w-4 text-blue-500 shrink-0" />
-                    <div><p className="text-[10px] text-muted-foreground">ขนาดมิเตอร์</p><p className="font-semibold">{c.meterSize}</p></div>
-                  </div>
-                )}
-                {s.estimatedCost && (
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-50">
-                    <Wrench className="h-4 w-4 text-emerald-500 shrink-0" />
-                    <div><p className="text-[10px] text-muted-foreground">ราคาประเมิน</p><p className="font-semibold">{Number(s.estimatedCost).toLocaleString()} บาท</p></div>
-                  </div>
-                )}
-                {s.quotedPrice && (
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-50">
-                    <Wrench className="h-4 w-4 text-emerald-500 shrink-0" />
-                    <div><p className="text-[10px] text-muted-foreground">ราคาเสนอ</p><p className="font-semibold">{Number(s.quotedPrice).toLocaleString()} บาท</p></div>
-                  </div>
-                )}
+        {/* Technical Info Card - always visible */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Zap className="h-4 w-4 text-amber-500" /> ข้อมูลทางเทคนิค
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50">
+                <Sun className="h-4 w-4 text-amber-500 shrink-0" />
+                <div><p className="text-[10px] text-muted-foreground">ขนาดระบบ</p><p className="font-semibold">{s.systemSize ? `${s.systemSize} kW` : <span className="text-muted-foreground">-</span>}</p></div>
               </div>
-              {s.installNotes && (
-                <div className="mt-3 p-2.5 rounded-lg bg-yellow-50 text-sm">
-                  <p className="text-[10px] text-muted-foreground font-semibold mb-1">หมายเหตุสำหรับช่างติดตั้ง</p>
-                  <p className="whitespace-pre-wrap">{s.installNotes}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-orange-50">
+                <Sun className="h-4 w-4 text-orange-500 shrink-0" />
+                <div><p className="text-[10px] text-muted-foreground">จำนวนแผง</p><p className="font-semibold">{s.panelCount ? `${s.panelCount} แผง` : <span className="text-muted-foreground">-</span>}</p></div>
+              </div>
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-orange-50">
+                <Sun className="h-4 w-4 text-orange-500 shrink-0" />
+                <div><p className="text-[10px] text-muted-foreground">รุ่นแผงโซล่า</p><p className="font-semibold">{s.panelModel || <span className="text-muted-foreground">-</span>}</p></div>
+              </div>
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-green-50">
+                <Zap className="h-4 w-4 text-green-500 shrink-0" />
+                <div><p className="text-[10px] text-muted-foreground">อินเวอร์เตอร์</p><p className="font-semibold">{s.inverterModel || <span className="text-muted-foreground">-</span>}</p></div>
+              </div>
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-purple-50">
+                <Battery className="h-4 w-4 text-purple-500 shrink-0" />
+                <div><p className="text-[10px] text-muted-foreground">แบตเตอรี่</p><p className="font-semibold">{s.batteryModel || <span className="text-muted-foreground">-</span>}</p></div>
+              </div>
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50">
+                <Compass className="h-4 w-4 text-slate-500 shrink-0" />
+                <div><p className="text-[10px] text-muted-foreground">ทิศทางหลังคา</p><p className="font-semibold">{s.roofDirection || <span className="text-muted-foreground">-</span>}</p></div>
+              </div>
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50">
+                <Zap className="h-4 w-4 text-amber-500 shrink-0" />
+                <div><p className="text-[10px] text-muted-foreground">ค่าไฟฟ้า/เดือน</p><p className="font-semibold">{c.electricityBill ? `${Number(c.electricityBill).toLocaleString()} บาท` : <span className="text-muted-foreground">-</span>}</p></div>
+              </div>
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50">
+                <Home className="h-4 w-4 text-slate-500 shrink-0" />
+                <div><p className="text-[10px] text-muted-foreground">ประเภทหลังคา</p><p className="font-semibold">{c.roofType || <span className="text-muted-foreground">-</span>}</p></div>
+              </div>
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50">
+                <Home className="h-4 w-4 text-slate-500 shrink-0" />
+                <div><p className="text-[10px] text-muted-foreground">พื้นที่หลังคา</p><p className="font-semibold">{c.roofArea ? `${Number(c.roofArea).toLocaleString()} ตร.ม.` : <span className="text-muted-foreground">-</span>}</p></div>
+              </div>
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-50">
+                <Gauge className="h-4 w-4 text-blue-500 shrink-0" />
+                <div><p className="text-[10px] text-muted-foreground">ระบบไฟฟ้า</p><p className="font-semibold">{c.phaseType ? (c.phaseType === "single" ? "1 เฟส" : "3 เฟส") : <span className="text-muted-foreground">-</span>}</p></div>
+              </div>
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-50">
+                <Gauge className="h-4 w-4 text-blue-500 shrink-0" />
+                <div><p className="text-[10px] text-muted-foreground">ขนาดมิเตอร์</p><p className="font-semibold">{c.meterSize || <span className="text-muted-foreground">-</span>}</p></div>
+              </div>
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-50">
+                <Wrench className="h-4 w-4 text-emerald-500 shrink-0" />
+                <div><p className="text-[10px] text-muted-foreground">ราคาประเมิน</p><p className="font-semibold">{s.estimatedCost ? `${Number(s.estimatedCost).toLocaleString()} บาท` : <span className="text-muted-foreground">-</span>}</p></div>
+              </div>
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-50">
+                <Wrench className="h-4 w-4 text-emerald-500 shrink-0" />
+                <div><p className="text-[10px] text-muted-foreground">ราคาเสนอ</p><p className="font-semibold">{s.quotedPrice ? `${Number(s.quotedPrice).toLocaleString()} บาท` : <span className="text-muted-foreground">-</span>}</p></div>
+              </div>
+            </div>
+            {s.installNotes && (
+              <div className="mt-3 p-2.5 rounded-lg bg-yellow-50 text-sm">
+                <p className="text-[10px] text-muted-foreground font-semibold mb-1">หมายเหตุสำหรับช่างติดตั้ง</p>
+                <p className="whitespace-pre-wrap">{s.installNotes}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
