@@ -115,3 +115,27 @@
 
 - [x] ข้อมูลทางเทคนิคหายไปจากหน้า SurveyDetail (การ์ดเทคนิค + ข้อมูลลูกค้า)
 - [x] แก้ import error: UsersPage ไม่พบใน App.tsx (เป็น stale Vite cache - restart แก้แล้ว)
+
+## User Request - Round 4: ปรับปรุงแหล่งที่มา + มอบหมายหลายคน + Workflow
+
+### 13. แหล่งที่มา (Source) - Free Text + Auto-suggest
+- [x] Schema: สร้างตาราง sources (id, name, createdAt) เก็บค่าที่เคยใช้
+- [x] Schema: เปลี่ยน customers.source จาก enum เป็น text
+- [x] Backend: API sources.list (ดึงรายการแหล่งที่มาทั้งหมด)
+- [x] Backend: สร้าง source ใหม่อัตโนมัติเมื่อพิมพ์ค่าใหม่
+- [x] Frontend: เปลี่ยน Source dropdown เป็น Combobox (พิมพ์เอง + auto-suggest)
+- [x] Frontend: เพิ่ม filter ตามแหล่งที่มาในหน้างานสำรวจและลูกค้า
+
+### 14. มอบหมายหลายคน (Multi-assign)
+- [x] Schema: สร้างตาราง survey_assignments (id, surveyId, userId, role, createdAt)
+- [x] Schema: role enum: admin_sender, surveyor, closer
+- [x] Backend: survey.create/update รองรับ assignments (setSurveyAssignments/getSurveyAssignments)
+- [x] Backend: survey.getById ส่ง assignments กลับมาพร้อมข้อมูล survey
+- [x] Frontend: เปลี่ยน assignedTo dropdown เป็น multi-select ตาม role
+
+### 15. Workflow 3 บทบาท + Timeline
+- [x] Schema: เพิ่ม adminSenderId ใน surveys (แอดมินผู้ส่งงาน)
+- [x] Frontend: ฟอร์มสร้างงาน - เลือกแอดมินผู้ส่งงาน
+- [x] Frontend: ฟอร์มแก้ไขงาน - เลือกทีมสำรวจ (หลายคน)
+- [x] Frontend: เมื่อเปลี่ยนสถานะเป็น "ปิดการขาย" - เลือกผู้ปิดการขาย
+- [x] Frontend: แสดง Workflow Card (ทีมงาน 3 บทบาท) ในหน้า SurveyDetail

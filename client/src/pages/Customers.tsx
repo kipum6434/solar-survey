@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
-import { SOURCE_MAP } from "@/lib/constants";
+import { SourceCombobox } from "@/components/SourceCombobox";
 import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import {
@@ -288,7 +288,7 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete }: { data: any[]
                 <td className="px-3 py-2.5 whitespace-nowrap hidden md:table-cell">
                   {c.source ? (
                     <Badge variant="secondary" className="text-[10px] font-normal">
-                      {SOURCE_MAP[c.source] || c.source}
+                      {c.source || "-"}
                     </Badge>
                   ) : "-"}
                 </td>
@@ -359,7 +359,7 @@ function CustomerGridView({ data, onRowClick, onEdit, onDelete }: { data: any[];
                   <p className="font-semibold text-sm truncate">{customer.name}</p>
                   {customer.source && (
                     <Badge variant="secondary" className="text-[10px] mt-1 font-normal">
-                      {SOURCE_MAP[customer.source] || customer.source}
+                      {customer.source || "-"}
                     </Badge>
                   )}
                 </div>
@@ -447,14 +447,7 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
             </div>
             <div>
               <Label>แหล่งที่มา</Label>
-              <Select value={form.source} onValueChange={(v) => setForm({ ...form, source: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(SOURCE_MAP).map(([k, v]) => (
-                    <SelectItem key={k} value={k}>{v}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SourceCombobox value={form.source} onChange={(v) => setForm({ ...form, source: v })} />
             </div>
             <div>
               <Label>ค่าไฟ/เดือน (บาท)</Label>

@@ -293,3 +293,86 @@ describe("Solar Survey - Month/Year Filter", () => {
     expect(result.total).toBe(0);
   });
 });
+
+describe("Solar Survey - Source Management", () => {
+  it("source.list returns array of sources", async () => {
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.source.list();
+    expect(Array.isArray(result)).toBe(true);
+  });
+
+  it("source.create creates a new source", async () => {
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.source.create({ name: "FB เพจ TCS Test" });
+    expect(result).toBeDefined();
+    expect(result.id).toBeGreaterThan(0);
+  });
+
+  it("source.create returns existing source if name already exists", async () => {
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+    const first = await caller.source.create({ name: "FB เพจ Duplicate Test" });
+    const second = await caller.source.create({ name: "FB เพจ Duplicate Test" });
+    expect(first.id).toBe(second.id);
+  });
+
+  it("survey.list accepts source filter parameter", async () => {
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.survey.list({ page: 1, limit: 10, source: "website" });
+    expect(result).toBeDefined();
+    expect(Array.isArray(result.data)).toBe(true);
+    expect(typeof result.total).toBe("number");
+  });
+
+  it("survey.list with non-existent source returns empty", async () => {
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.survey.list({ page: 1, limit: 10, source: "nonexistent_source_xyz" });
+    expect(result).toBeDefined();
+    expect(result.data.length).toBe(0);
+  });
+});
+
+describe("Solar Survey - Survey Assignments", () => {
+  it("survey.getById returns assignments array", async () => {
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+    // Get first survey from list
+    const list = await caller.survey.list({ page: 1, limit: 1 });
+    if (list.data.length > 0) {
+      const surveyId = list.data[0].survey.id;
+      const detail = await caller.survey.getById({ id: surveyId });
+      expect(detail).toBeDefined();
+      expect(Array.isArray((detail as any).assignments)).toBe(true);
+    }
+  });
+
+  it("survey.update with assignment fields works", async () => {
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+    const list = await caller.survey.list({ page: 1, limit: 1 });
+    if (list.data.length > 0) {
+      const surveyId = list.data[0].survey.id;
+      // Update with admin sender and surveyor
+      await expect(
+        caller.survey.update({
+          id: surveyId,
+          status: "scheduled",
+          adminSenderId: 1,
+          surveyorIds: [1],
+        })
+      ).resolves.toBeDefined();
+
+      // Verify assignments were saved
+      const detail = await caller.survey.getById({ id: surveyId });
+      const assignments = (detail as any).assignments || [];
+      const adminSender = assignments.find((a: any) => a.assignment.role === "admin_sender");
+      const surveyors = assignments.filter((a: any) => a.assignment.role === "surveyor");
+      expect(adminSender).toBeDefined();
+      expect(surveyors.length).toBeGreaterThan(0);
+    }
+  });
+});

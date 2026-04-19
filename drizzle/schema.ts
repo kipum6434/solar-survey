@@ -38,7 +38,7 @@ export const customers = mysqlTable("customers", {
   postalCode: varchar("postalCode", { length: 10 }),
   latitude: decimal("latitude", { precision: 10, scale: 7 }),
   longitude: decimal("longitude", { precision: 10, scale: 7 }),
-  source: mysqlEnum("source", ["walk_in", "telesale", "facebook", "line", "website", "referral", "other"]).default("other"),
+  source: varchar("source", { length: 255 }).default("other"),
   electricityBill: decimal("electricityBill", { precision: 10, scale: 2 }),
   roofType: varchar("roofType", { length: 100 }),
   roofArea: decimal("roofArea", { precision: 10, scale: 2 }),
@@ -71,6 +71,8 @@ export const surveys = mysqlTable("surveys", {
   scheduledDate: bigint("scheduledDate", { mode: "number" }),
   scheduledTime: varchar("scheduledTime", { length: 10 }),
   assignedTo: int("assignedTo"),
+  adminSenderId: int("adminSenderId"),
+  closerId: int("closerId"),
   surveyNotes: text("surveyNotes"),
   systemSize: decimal("systemSize", { precision: 10, scale: 2 }),
   panelCount: int("panelCount"),
@@ -85,6 +87,30 @@ export const surveys = mysqlTable("surveys", {
 
 export type Survey = typeof surveys.$inferSelect;
 export type InsertSurvey = typeof surveys.$inferInsert;
+
+// ==================== SOURCES (Auto-suggest) ====================
+export const sources = mysqlTable("sources", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull().unique(),
+  category: varchar("category", { length: 100 }),
+  usageCount: int("usageCount").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Source = typeof sources.$inferSelect;
+export type InsertSource = typeof sources.$inferInsert;
+
+// ==================== SURVEY ASSIGNMENTS (Multi-assign) ====================
+export const surveyAssignments = mysqlTable("survey_assignments", {
+  id: int("id").autoincrement().primaryKey(),
+  surveyId: int("surveyId").notNull(),
+  userId: int("userId").notNull(),
+  role: mysqlEnum("role", ["admin_sender", "surveyor", "closer"]).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SurveyAssignment = typeof surveyAssignments.$inferSelect;
+export type InsertSurveyAssignment = typeof surveyAssignments.$inferInsert;
 
 // ==================== SURVEY PHOTOS ====================
 export const surveyPhotos = mysqlTable("survey_photos", {

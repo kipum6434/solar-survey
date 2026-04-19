@@ -17,8 +17,9 @@ import { toast } from "sonner";
 import {
   ArrowLeft, Camera, FileText, PhoneCall, Share2, MapPin, Calendar, User, Pencil,
   Upload, Trash2, Download, Link2, Copy, X, Image, Eye, CheckCircle2, Clock,
-  Zap, Sun, Home, Gauge, Receipt, Settings2,
+  Zap, Sun, Home, Gauge, Receipt, Settings2, Users,
 } from "lucide-react";
+import { MultiUserSelect } from "@/components/MultiUserSelect";
 
 export default function SurveyDetail() {
   const params = useParams<{ id: string }>();
@@ -251,7 +252,7 @@ export default function SurveyDetail() {
               </div>
               <div className="space-y-1">
                 <p className="text-muted-foreground text-xs">ช่องทาง</p>
-                <p className="font-medium">{c.source ? ({walk_in:"Walk-in",telesale:"Telesale",facebook:"Facebook",line:"LINE",website:"Website",referral:"แนะนำ",other:"อื่นๆ"} as Record<string,string>)[c.source] || c.source : "-"}</p>
+                <p className="font-medium">{c.source || "-"}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-muted-foreground text-xs">ที่อยู่</p>
@@ -261,6 +262,45 @@ export default function SurveyDetail() {
                 <p className="text-muted-foreground text-xs">หมายเหตุลูกค้า</p>
                 <p className="font-medium">{c.notes || "-"}</p>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Workflow / Team Card */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> ทีมงาน</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              {(() => {
+                const assignments = (data as any)?.assignments || [];
+                const adminSender = assignments.find((a: any) => a.assignment.role === "admin_sender");
+                const surveyors = assignments.filter((a: any) => a.assignment.role === "surveyor");
+                const closer = assignments.find((a: any) => a.assignment.role === "closer");
+                return (
+                  <>
+                    <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30">
+                      <p className="text-xs text-muted-foreground mb-1">แอดมินผู้ส่งงาน</p>
+                      <p className="font-medium">{adminSender?.user?.name || "-"}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30">
+                      <p className="text-xs text-muted-foreground mb-1">ทีมสำรวจ</p>
+                      {surveyors.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {surveyors.map((a: any) => (
+                            <Badge key={a.assignment.id} variant="secondary" className="text-xs">{a.user?.name || "-"}</Badge>
+                          ))}
+                        </div>
+                      ) : <p className="font-medium">-</p>}
+                    </div>
+                    <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/30">
+                      <p className="text-xs text-muted-foreground mb-1">ผู้ปิดการขาย</p>
+                      <p className="font-medium">{closer?.user?.name || "-"}</p>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </CardContent>
         </Card>
@@ -529,7 +569,7 @@ export default function SurveyDetail() {
       )}
 
       {/* Edit Status Dialog */}
-      <EditSurveyDialog open={showEditStatus} onOpenChange={setShowEditStatus} survey={s} users={users || []} onSubmit={(d: any) => updateSurvey.mutate({ id: surveyId, ...d })} loading={updateSurvey.isPending} />
+      <EditSurveyDialog open={showEditStatus} onOpenChange={setShowEditStatus} survey={s} users={users || []} assignments={(data as any)?.assignments || []} onSubmit={(d: any) => updateSurvey.mutate({ id: surveyId, ...d })} loading={updateSurvey.isPending} />
 
       {/* Confirm Delete Photo Dialog */}
       <Dialog open={confirmDeletePhoto !== null} onOpenChange={() => setConfirmDeletePhoto(null)}>
@@ -565,17 +605,23 @@ export default function SurveyDetail() {
   );
 }
 
-function EditSurveyDialog({ open, onOpenChange, survey, users, onSubmit, loading }: any) {
+function EditSurveyDialog({ open, onOpenChange, survey, users, onSubmit, loading, assignments }: any) {
   const [form, setForm] = useState<any>({});
   const s = survey;
   if (!s) return null;
 
   const handleOpen = () => {
+    const currentAssignments = assignments || [];
+    const adminSender = currentAssignments.find((a: any) => a.assignment.role === "admin_sender");
+    const surveyors = currentAssignments.filter((a: any) => a.assignment.role === "surveyor");
+    const closer = currentAssignments.find((a: any) => a.assignment.role === "closer");
     setForm({
       status: s.status,
       scheduledDate: s.scheduledDate ? new Date(s.scheduledDate).toISOString().split("T")[0] : "",
       scheduledTime: s.scheduledTime || "",
-      assignedTo: s.assignedTo ? String(s.assignedTo) : "",
+      adminSenderId: adminSender?.assignment?.userId ? String(adminSender.assignment.userId) : "",
+      surveyorIds: surveyors.map((a: any) => a.assignment.userId),
+      closerId: closer?.assignment?.userId ? String(closer.assignment.userId) : "",
       surveyNotes: s.surveyNotes || "",
       systemSize: s.systemSize || "",
       panelCount: s.panelCount || "",
@@ -584,6 +630,8 @@ function EditSurveyDialog({ open, onOpenChange, survey, users, onSubmit, loading
       quotedPrice: s.quotedPrice || "",
     });
   };
+
+  const userOptions = (users || []).map((u: any) => ({ id: u.id, name: u.name || `User #${u.id}`, role: u.role }));
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (v) handleOpen(); onOpenChange(v); }}>
@@ -607,15 +655,45 @@ function EditSurveyDialog({ open, onOpenChange, survey, users, onSubmit, loading
             </div>
             <div><Label>วันที่สำรวจ</Label><Input type="date" value={form.scheduledDate || ""} onChange={(e) => setForm({ ...form, scheduledDate: e.target.value })} /></div>
             <div><Label>เวลา</Label><Input type="time" value={form.scheduledTime || ""} onChange={(e) => setForm({ ...form, scheduledTime: e.target.value })} /></div>
-            <div className="col-span-2">
-              <Label>มอบหมายให้</Label>
-              <Select value={form.assignedTo || ""} onValueChange={(v) => setForm({ ...form, assignedTo: v })}>
-                <SelectTrigger><SelectValue placeholder="เลือก" /></SelectTrigger>
+          </div>
+
+          {/* Workflow: 3 Roles */}
+          <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+            <p className="text-sm font-semibold flex items-center gap-1.5"><Users className="h-4 w-4" /> ทีมงาน</p>
+            <div>
+              <Label>แอดมินผู้ส่งงาน</Label>
+              <p className="text-xs text-muted-foreground mb-1">คนที่ตอบลูกค้าแล้วส่งรายชื่อมาให้สำรวจ</p>
+              <Select value={form.adminSenderId || ""} onValueChange={(v) => setForm({ ...form, adminSenderId: v })}>
+                <SelectTrigger><SelectValue placeholder="เลือกแอดมิน..." /></SelectTrigger>
                 <SelectContent>
                   {users.map((u: any) => (<SelectItem key={u.id} value={String(u.id)}>{u.name || `User #${u.id}`}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>ทีมสำรวจ</Label>
+              <p className="text-xs text-muted-foreground mb-1">เซลล์ที่ไปสำรวจ (เลือกได้หลายคน)</p>
+              <MultiUserSelect
+                users={userOptions}
+                selectedIds={form.surveyorIds || []}
+                onChange={(ids) => setForm({ ...form, surveyorIds: ids })}
+                placeholder="เลือกทีมสำรวจ..."
+              />
+            </div>
+            <div>
+              <Label>ผู้ปิดการขาย</Label>
+              <p className="text-xs text-muted-foreground mb-1">คนที่ปิดงานสุดท้าย (อาจไม่ใช่เซลล์)</p>
+              <Select value={form.closerId || ""} onValueChange={(v) => setForm({ ...form, closerId: v })}>
+                <SelectTrigger><SelectValue placeholder="เลือกผู้ปิดการขาย..." /></SelectTrigger>
+                <SelectContent>
+                  {users.map((u: any) => (<SelectItem key={u.id} value={String(u.id)}>{u.name || `User #${u.id}`}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Technical Info */}
+          <div className="grid grid-cols-2 gap-4">
             <div><Label>ขนาดระบบ (kW)</Label><Input value={form.systemSize || ""} onChange={(e) => setForm({ ...form, systemSize: e.target.value })} /></div>
             <div><Label>จำนวนแผง</Label><Input type="number" value={form.panelCount || ""} onChange={(e) => setForm({ ...form, panelCount: e.target.value })} /></div>
             <div><Label>รุ่นอินเวอร์เตอร์</Label><Input value={form.inverterModel || ""} onChange={(e) => setForm({ ...form, inverterModel: e.target.value })} /></div>
@@ -629,13 +707,16 @@ function EditSurveyDialog({ open, onOpenChange, survey, users, onSubmit, loading
               const payload: any = { status: form.status };
               if (form.scheduledDate) payload.scheduledDate = new Date(form.scheduledDate).getTime();
               if (form.scheduledTime) payload.scheduledTime = form.scheduledTime;
-              if (form.assignedTo) payload.assignedTo = parseInt(form.assignedTo);
               if (form.surveyNotes) payload.surveyNotes = form.surveyNotes;
               if (form.systemSize) payload.systemSize = form.systemSize;
               if (form.panelCount) payload.panelCount = parseInt(form.panelCount);
               if (form.inverterModel) payload.inverterModel = form.inverterModel;
               if (form.estimatedCost) payload.estimatedCost = form.estimatedCost;
               if (form.quotedPrice) payload.quotedPrice = form.quotedPrice;
+              // Workflow assignments
+              if (form.adminSenderId) payload.adminSenderId = parseInt(form.adminSenderId);
+              if (form.surveyorIds && form.surveyorIds.length > 0) payload.surveyorIds = form.surveyorIds;
+              if (form.closerId) payload.closerId = parseInt(form.closerId);
               onSubmit(payload);
             }} disabled={loading}>{loading ? "กำลังบันทึก..." : "บันทึก"}</Button>
           </DialogFooter>

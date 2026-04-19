@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
-import { SURVEY_STATUS_MAP, SOURCE_MAP } from "@/lib/constants";
+import { SURVEY_STATUS_MAP } from "@/lib/constants";
 import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import {
@@ -28,6 +28,7 @@ export default function Surveys() {
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("");
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<"list" | "table">("table");
 
@@ -37,14 +38,18 @@ export default function Surveys() {
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [filterByMonth, setFilterByMonth] = useState(false);
 
+  // Fetch sources for filter dropdown
+  const { data: sourcesData } = trpc.source.list.useQuery();
+
   const queryInput = useMemo(() => ({
     search,
     status: statusFilter === "all" ? undefined : statusFilter,
+    source: sourceFilter || undefined,
     page,
     limit: 50,
     month: filterByMonth ? selectedMonth : undefined,
     year: filterByMonth ? selectedYear : undefined,
-  }), [search, statusFilter, page, filterByMonth, selectedMonth, selectedYear]);
+  }), [search, statusFilter, sourceFilter, page, filterByMonth, selectedMonth, selectedYear]);
 
   const { data, isLoading } = trpc.survey.list.useQuery(queryInput);
   const totalPages = Math.ceil((data?.total ?? 0) / 50);
@@ -137,6 +142,17 @@ export default function Surveys() {
               <SelectItem value="all">ทั้งหมด</SelectItem>
               {Object.entries(SURVEY_STATUS_MAP).map(([key, val]) => (
                 <SelectItem key={key} value={key}>{val.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v === "_all" ? "" : v); setPage(1); }}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="แหล่งที่มา" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">ทุกแหล่งที่มา</SelectItem>
+              {(sourcesData || []).map((s: any) => (
+                <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -252,7 +268,7 @@ function SurveyTableView({ data, onRowClick }: { data: any[]; onRowClick: (id: n
                   <td className="px-3 py-2.5 whitespace-nowrap hidden md:table-cell">
                     {c.source ? (
                       <Badge variant="secondary" className="text-[10px] font-normal">
-                        {SOURCE_MAP[c.source] || c.source}
+                        {c.source || "-"}
                       </Badge>
                     ) : "-"}
                   </td>

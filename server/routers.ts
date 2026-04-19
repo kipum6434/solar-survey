@@ -35,7 +35,7 @@ const customerRouter = router({
       postalCode: z.string().optional(),
       latitude: z.string().optional(),
       longitude: z.string().optional(),
-      source: z.enum(["walk_in", "telesale", "facebook", "line", "website", "referral", "other"]).optional(),
+      source: z.string().optional(),
       electricityBill: z.string().optional(),
       roofType: z.string().optional(),
       roofArea: z.string().optional(),
@@ -44,6 +44,7 @@ const customerRouter = router({
       notes: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
+      if (input.source) await db.getOrCreateSource(input.source);
       const id = await db.createCustomer({ ...input, createdBy: ctx.user.id });
       await db.logActivity({ userId: ctx.user.id, action: "create", entityType: "customer", entityId: id, details: `สร้างลูกค้า: ${input.name}` });
       return { id };
@@ -62,7 +63,7 @@ const customerRouter = router({
       postalCode: z.string().optional(),
       latitude: z.string().optional(),
       longitude: z.string().optional(),
-      source: z.enum(["walk_in", "telesale", "facebook", "line", "website", "referral", "other"]).optional(),
+      source: z.string().optional(),
       electricityBill: z.string().optional(),
       roofType: z.string().optional(),
       roofArea: z.string().optional(),
@@ -72,6 +73,7 @@ const customerRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const { id, ...data } = input;
+      if (data.source) await db.getOrCreateSource(data.source);
       await db.updateCustomer(id, data);
       await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "customer", entityId: id, details: `แก้ไขลูกค้า ID: ${id}` });
       return { success: true };
@@ -97,6 +99,7 @@ const surveyRouter = router({
       search: z.string().optional(),
       month: z.number().min(1).max(12).optional(),
       year: z.number().optional(),
+      source: z.string().optional(),
     }))
     .query(({ input }) => db.getSurveysWithCustomer(input)),
 
@@ -116,20 +119,36 @@ const surveyRouter = router({
       assignedTo: z.number().optional(),
       surveyNotes: z.string().optional(),
       status: z.enum(["pending", "scheduled", "in_progress", "surveyed", "quoted", "negotiating", "won", "lost", "cancelled"]).optional(),
+      adminSenderId: z.number().optional(),
+      surveyorIds: z.array(z.number()).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const status = input.scheduledDate ? "scheduled" : (input.status || "pending");
-      const id = await db.createSurvey({ ...input, status, createdBy: ctx.user.id });
+      const { surveyorIds, ...surveyData } = input;
+      const status = surveyData.scheduledDate ? "scheduled" : (surveyData.status || "pending");
+      const id = await db.createSurvey({ ...surveyData, status, createdBy: ctx.user.id, adminSenderId: surveyData.adminSenderId || ctx.user.id });
+      // Save assignments
+      const assignments: { userId: number; role: "admin_sender" | "surveyor" | "closer" }[] = [];
+      assignments.push({ userId: surveyData.adminSenderId || ctx.user.id, role: "admin_sender" });
+      if (surveyorIds && surveyorIds.length > 0) {
+        surveyorIds.forEach(uid => assignments.push({ userId: uid, role: "surveyor" }));
+      } else if (surveyData.assignedTo) {
+        assignments.push({ userId: surveyData.assignedTo, role: "surveyor" });
+      }
+      await db.setSurveyAssignments(id, assignments);
       await db.logActivity({ userId: ctx.user.id, action: "create", entityType: "survey", entityId: id, details: `สร้างงานสำรวจ ID: ${id}` });
-      if (input.assignedTo && input.assignedTo !== ctx.user.id) {
-        await db.createNotification({
-          userId: input.assignedTo,
-          type: "new_assignment",
-          title: "งานสำรวจใหม่",
-          message: `คุณได้รับมอบหมายงานสำรวจใหม่ #${id}`,
-          relatedSurveyId: id,
-          relatedCustomerId: input.customerId,
-        });
+      // Notify surveyors
+      const notifyIds = surveyorIds || (surveyData.assignedTo ? [surveyData.assignedTo] : []);
+      for (const uid of notifyIds) {
+        if (uid !== ctx.user.id) {
+          await db.createNotification({
+            userId: uid,
+            type: "new_assignment",
+            title: "งานสำรวจใหม่",
+            message: `คุณได้รับมอบหมายงานสำรวจใหม่ #${id}`,
+            relatedSurveyId: id,
+            relatedCustomerId: input.customerId,
+          });
+        }
       }
       return { id };
     }),
@@ -147,14 +166,36 @@ const surveyRouter = router({
       inverterModel: z.string().optional(),
       estimatedCost: z.string().optional(),
       quotedPrice: z.string().optional(),
+      adminSenderId: z.number().optional(),
+      surveyorIds: z.array(z.number()).optional(),
+      closerId: z.number().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const { id, ...data } = input;
+      const { id, surveyorIds, ...data } = input;
       const oldSurvey = await db.getSurveyById(id);
       if (data.status === "surveyed" || data.status === "won") {
         (data as any).completedAt = Date.now();
       }
       await db.updateSurvey(id, data);
+      // Update assignments if surveyorIds provided
+      if (surveyorIds !== undefined || data.adminSenderId !== undefined || data.closerId !== undefined) {
+        const currentAssignments = await db.getSurveyAssignments(id);
+        const assignments: { userId: number; role: "admin_sender" | "surveyor" | "closer" }[] = [];
+        // Admin sender
+        const adminId = data.adminSenderId || oldSurvey?.adminSenderId || currentAssignments.find(a => a.assignment.role === "admin_sender")?.assignment.userId;
+        if (adminId) assignments.push({ userId: adminId, role: "admin_sender" });
+        // Surveyors
+        if (surveyorIds && surveyorIds.length > 0) {
+          surveyorIds.forEach(uid => assignments.push({ userId: uid, role: "surveyor" }));
+        } else {
+          const existingSurveyors = currentAssignments.filter(a => a.assignment.role === "surveyor");
+          existingSurveyors.forEach(a => assignments.push({ userId: a.assignment.userId, role: "surveyor" }));
+        }
+        // Closer
+        const closerIdVal = data.closerId || oldSurvey?.closerId || currentAssignments.find(a => a.assignment.role === "closer")?.assignment.userId;
+        if (closerIdVal) assignments.push({ userId: closerIdVal, role: "closer" });
+        await db.setSurveyAssignments(id, assignments);
+      }
       if (data.status && oldSurvey && data.status !== oldSurvey.status) {
         if (oldSurvey.assignedTo && oldSurvey.assignedTo !== ctx.user.id) {
           await db.createNotification({
@@ -431,6 +472,24 @@ const storageRouter = router({
   stats: protectedProcedure.query(() => db.getStorageStats()),
 });
 
+// ==================== SOURCES ROUTER ====================
+const sourceRouter = router({
+  list: protectedProcedure.query(() => db.getSources()),
+  create: protectedProcedure
+    .input(z.object({ name: z.string().min(1), category: z.string().optional() }))
+    .mutation(async ({ input }) => {
+      const source = await db.getOrCreateSource(input.name, input.category);
+      return source;
+    }),
+});
+
+// ==================== SURVEY ASSIGNMENTS ROUTER ====================
+const assignmentRouter = router({
+  getBySurvey: protectedProcedure
+    .input(z.object({ surveyId: z.number() }))
+    .query(({ input }) => db.getSurveyAssignments(input.surveyId)),
+});
+
 // ==================== USERS ROUTER ====================
 const usersRouter = router({
   list: protectedProcedure.query(() => db.getAllUsers()),
@@ -458,6 +517,8 @@ export const appRouter = router({
   calendar: calendarRouter,
   users: usersRouter,
   storage: storageRouter,
+  source: sourceRouter,
+  assignment: assignmentRouter,
 });
 
 export type AppRouter = typeof appRouter;

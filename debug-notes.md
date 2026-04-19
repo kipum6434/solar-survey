@@ -1,6 +1,20 @@
-# Debug Notes - RESOLVED
+# Debug Notes - Round 4
 
-## ปัญหา: ข้อมูลทางเทคนิคหายไป
-- สาเหตุ: ตอนเขียน SurveyDetail.tsx ใหม่ในรอบก่อน ส่วนการ์ดข้อมูลทางเทคนิคและข้อมูลลูกค้าไม่ได้ถูกรวมไว้
-- แก้ไข: เพิ่มการ์ด "ข้อมูลทางเทคนิค" และ "ข้อมูลจากลูกค้า" กลับเข้าไประหว่าง Location link กับ Tabs
-- ผลลัพธ์: แสดงครบทั้ง 2 การ์ดแล้ว
+## Surveys Page Check
+- Table view: วันที่, เวลา, ชื่อลูกค้า, เบอร์โทร, ช่องทาง, เขต/จังหวัด, เจ้าหน้าที่, สถานะ, หมายเหตุ ✅
+- Month tabs: ทั้งหมด, ม.ค.-ธ.ค. ✅
+- Year selector: 2569 ✅
+- Status filter: ทั้งหมด ✅
+- Source filter: แหล่งที่มา ✅ (new)
+- View toggle: List/Table ✅
+
+## SurveyDetail Page Check
+- ข้อมูลทางเทคนิค card ✅
+- ข้อมูลจากลูกค้า card ✅
+- ทีมงาน card ✅ (แอดมินผู้ส่งงาน, ทีมสำรวจ, ผู้ปิดการขาย)
+- Edit Dialog: needs verification with new workflow fields
+
+## Status: All UI elements showing correctly
+- Source column shows "website" as free text ✅
+- Source filter dropdown present ✅
+- Team card shows 3 roles ✅

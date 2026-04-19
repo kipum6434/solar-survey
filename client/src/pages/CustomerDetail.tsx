@@ -9,7 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
-import { SOURCE_MAP, SURVEY_STATUS_MAP } from "@/lib/constants";
+import { SURVEY_STATUS_MAP } from "@/lib/constants";
+import { SourceCombobox } from "@/components/SourceCombobox";
+import { MultiUserSelect } from "@/components/MultiUserSelect";
 import { useLocation, useParams } from "wouter";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -83,7 +85,7 @@ export default function CustomerDetail() {
           <div className="flex-1">
             <h1 className="text-2xl font-bold tracking-tight">{customer.name}</h1>
             <div className="flex items-center gap-2 mt-1">
-              {customer.source && <Badge variant="secondary" className="text-xs">{SOURCE_MAP[customer.source] || customer.source}</Badge>}
+              {customer.source && <Badge variant="secondary" className="text-xs">{customer.source}</Badge>}
               <span className="text-xs text-muted-foreground">เพิ่มเมื่อ {new Date(customer.createdAt).toLocaleDateString("th-TH")}</span>
             </div>
           </div>
@@ -269,10 +271,7 @@ export default function CustomerDetail() {
                 <div><Label>จังหวัด</Label><Input value={editForm.province || ""} onChange={(e) => setEditForm({ ...editForm, province: e.target.value })} /></div>
                 <div>
                   <Label>แหล่งที่มา</Label>
-                  <Select value={editForm.source || "other"} onValueChange={(v) => setEditForm({ ...editForm, source: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{Object.entries(SOURCE_MAP).map(([k, v]) => (<SelectItem key={k} value={k}>{v}</SelectItem>))}</SelectContent>
-                  </Select>
+                  <SourceCombobox value={editForm.source || ""} onChange={(v) => setEditForm({ ...editForm, source: v })} />
                 </div>
                 <div><Label>ค่าไฟ/เดือน</Label><Input value={editForm.electricityBill || ""} onChange={(e) => setEditForm({ ...editForm, electricityBill: e.target.value })} type="number" /></div>
                 <div><Label>ประเภทหลังคา</Label><Input value={editForm.roofType || ""} onChange={(e) => setEditForm({ ...editForm, roofType: e.target.value })} /></div>
@@ -314,22 +313,31 @@ export default function CustomerDetail() {
 }
 
 function AddSurveyDialog({ open, onOpenChange, customerId, users, onSubmit, loading }: any) {
-  const [form, setForm] = useState({ scheduledDate: "", scheduledTime: "", assignedTo: "", surveyNotes: "" });
+  const [form, setForm] = useState({
+    scheduledDate: "",
+    scheduledTime: "",
+    adminSenderId: "",
+    surveyorIds: [] as number[],
+    surveyNotes: "",
+  });
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
       customerId,
       scheduledDate: form.scheduledDate ? new Date(form.scheduledDate).getTime() : undefined,
       scheduledTime: form.scheduledTime || undefined,
-      assignedTo: form.assignedTo ? parseInt(form.assignedTo) : undefined,
+      adminSenderId: form.adminSenderId ? parseInt(form.adminSenderId) : undefined,
+      surveyorIds: form.surveyorIds.length > 0 ? form.surveyorIds : undefined,
       surveyNotes: form.surveyNotes || undefined,
     });
-    setForm({ scheduledDate: "", scheduledTime: "", assignedTo: "", surveyNotes: "" });
+    setForm({ scheduledDate: "", scheduledTime: "", adminSenderId: "", surveyorIds: [], surveyNotes: "" });
   };
+
+  const userOptions = (users || []).map((u: any) => ({ id: u.id, name: u.name || `User #${u.id}`, role: u.role }));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>สร้างงานสำรวจ</DialogTitle>
           <DialogDescription>กำหนดรายละเอียดงานสำรวจสำหรับลูกค้ารายนี้</DialogDescription>
@@ -344,22 +352,37 @@ function AddSurveyDialog({ open, onOpenChange, customerId, users, onSubmit, load
               <Label>เวลา</Label>
               <Input type="time" value={form.scheduledTime} onChange={(e) => setForm({ ...form, scheduledTime: e.target.value })} />
             </div>
-            <div className="col-span-2">
-              <Label>มอบหมายให้</Label>
-              <Select value={form.assignedTo} onValueChange={(v) => setForm({ ...form, assignedTo: v })}>
-                <SelectTrigger><SelectValue placeholder="เลือกผู้รับผิดชอบ" /></SelectTrigger>
-                <SelectContent>
-                  {users.map((u: any) => (
-                    <SelectItem key={u.id} value={String(u.id)}>{u.name || u.email || `User #${u.id}`}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="col-span-2">
-              <Label>หมายเหตุ</Label>
-              <Textarea value={form.surveyNotes} onChange={(e) => setForm({ ...form, surveyNotes: e.target.value })} rows={3} placeholder="รายละเอียดเพิ่มเติม" />
-            </div>
           </div>
+
+          <div className="space-y-1">
+            <Label>แอดมินผู้ส่งงาน</Label>
+            <p className="text-xs text-muted-foreground">คนที่ตอบลูกค้าและส่งรายชื่อสำรวจมา</p>
+            <Select value={form.adminSenderId} onValueChange={(v) => setForm({ ...form, adminSenderId: v })}>
+              <SelectTrigger><SelectValue placeholder="เลือกแอดมิน" /></SelectTrigger>
+              <SelectContent>
+                {users.map((u: any) => (
+                  <SelectItem key={u.id} value={String(u.id)}>{u.name || `User #${u.id}`}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label>ทีมสำรวจ</Label>
+            <p className="text-xs text-muted-foreground">เซลล์ที่ไปสำรวจ (เลือกได้หลายคน)</p>
+            <MultiUserSelect
+              users={userOptions}
+              selectedIds={form.surveyorIds}
+              onChange={(ids) => setForm({ ...form, surveyorIds: ids })}
+              placeholder="เลือกทีมสำรวจ..."
+            />
+          </div>
+
+          <div>
+            <Label>หมายเหตุ</Label>
+            <Textarea value={form.surveyNotes} onChange={(e) => setForm({ ...form, surveyNotes: e.target.value })} rows={3} placeholder="รายละเอียดเพิ่มเติม" />
+          </div>
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>ยกเลิก</Button>
             <Button type="submit" disabled={loading}>{loading ? "กำลังสร้าง..." : "สร้างงานสำรวจ"}</Button>

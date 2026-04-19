@@ -1,6 +1,6 @@
 import { eq, and, or, like, desc, gte, lte, sql, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog } from "../drizzle/schema";
+import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -180,7 +180,16 @@ export async function getSurveyWithCustomer(id: number) {
     .innerJoin(customers, eq(surveys.customerId, customers.id))
     .where(eq(surveys.id, id))
     .limit(1);
-  return result[0];
+  if (!result[0]) return undefined;
+  // Fetch assignments with user info
+  const assignmentRows = await db.select({
+    assignment: surveyAssignments,
+    user: { id: users.id, name: users.name, role: users.role },
+  }).from(surveyAssignments)
+    .leftJoin(users, eq(surveyAssignments.userId, users.id))
+    .where(eq(surveyAssignments.surveyId, id))
+    .orderBy(surveyAssignments.createdAt);
+  return { ...result[0], assignments: assignmentRows };
 }
 
 export async function createSurvey(data: InsertSurvey) {
@@ -438,10 +447,64 @@ export async function getAllUsers() {
   return db.select({ id: users.id, name: users.name, email: users.email, role: users.role }).from(users);
 }
 
-export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; page?: number; limit?: number; search?: string; month?: number; year?: number }) {
+// ==================== SOURCES QUERIES ====================
+export async function getSources() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(sources).orderBy(desc(sources.usageCount));
+}
+
+export async function getOrCreateSource(name: string, category?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const trimmed = name.trim();
+  if (!trimmed) return null;
+  const existing = await db.select().from(sources).where(eq(sources.name, trimmed)).limit(1);
+  if (existing.length > 0) {
+    await db.update(sources).set({ usageCount: sql`${sources.usageCount} + 1` }).where(eq(sources.id, existing[0].id));
+    return existing[0];
+  }
+  const result = await db.insert(sources).values({ name: trimmed, category: category || null });
+  return { id: result[0].insertId, name: trimmed, category, usageCount: 1 };
+}
+
+// ==================== SURVEY ASSIGNMENTS QUERIES ====================
+export async function getSurveyAssignments(surveyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    assignment: surveyAssignments,
+    user: { id: users.id, name: users.name, role: users.role },
+  }).from(surveyAssignments)
+    .leftJoin(users, eq(surveyAssignments.userId, users.id))
+    .where(eq(surveyAssignments.surveyId, surveyId))
+    .orderBy(surveyAssignments.createdAt);
+}
+
+export async function setSurveyAssignments(surveyId: number, assignments: { userId: number; role: "admin_sender" | "surveyor" | "closer" }[]) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  // Delete existing assignments for this survey
+  await db.delete(surveyAssignments).where(eq(surveyAssignments.surveyId, surveyId));
+  // Insert new assignments
+  if (assignments.length > 0) {
+    await db.insert(surveyAssignments).values(
+      assignments.map(a => ({ surveyId, userId: a.userId, role: a.role }))
+    );
+  }
+}
+
+export async function addSurveyAssignment(data: InsertSurveyAssignment) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(surveyAssignments).values(data);
+  return result[0].insertId;
+}
+
+export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; page?: number; limit?: number; search?: string; month?: number; year?: number; source?: string }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { status, assignedTo, page = 1, limit = 20, search, month, year } = opts;
+  const { status, assignedTo, page = 1, limit = 20, search, month, year, source } = opts;
   const offset = (page - 1) * limit;
   const conditions: any[] = [];
   if (status) conditions.push(eq(surveys.status, status as any));
@@ -452,6 +515,7 @@ export async function getSurveysWithCustomer(opts: { status?: string; assignedTo
       like(customers.phone, `%${search}%`)
     ));
   }
+  if (source) conditions.push(eq(customers.source, source));
   if (month && year) {
     conditions.push(sql`MONTH(${surveys.createdAt}) = ${month}`);
     conditions.push(sql`YEAR(${surveys.createdAt}) = ${year}`);
