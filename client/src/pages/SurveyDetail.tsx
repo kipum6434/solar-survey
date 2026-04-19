@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import {
   ArrowLeft, Camera, FileText, PhoneCall, Share2, MapPin, Calendar, User, Pencil,
   Upload, Trash2, Download, Link2, Copy, X, Image, Eye, CheckCircle2, Clock,
+  Zap, Sun, Home, Gauge, Receipt, Settings2,
 } from "lucide-react";
 
 export default function SurveyDetail() {
@@ -185,6 +186,84 @@ export default function SurveyDetail() {
             </CardContent>
           </Card>
         )}
+
+        {/* Technical Info Card */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2"><Settings2 className="h-4 w-4 text-primary" /> ข้อมูลทางเทคนิค</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="space-y-1">
+                <p className="text-muted-foreground text-xs">ขนาดระบบ</p>
+                <p className="font-medium flex items-center gap-1"><Zap className="h-3.5 w-3.5 text-amber-500" />{s.systemSize ? `${s.systemSize} kW` : "-"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-muted-foreground text-xs">จำนวนแผง</p>
+                <p className="font-medium flex items-center gap-1"><Sun className="h-3.5 w-3.5 text-amber-500" />{s.panelCount ? `${s.panelCount} แผง` : "-"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-muted-foreground text-xs">รุ่นอินเวอร์เตอร์</p>
+                <p className="font-medium">{s.inverterModel || "-"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-muted-foreground text-xs">ราคาประเมิน</p>
+                <p className="font-medium">{s.estimatedCost ? `${Number(s.estimatedCost).toLocaleString()} บาท` : "-"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-muted-foreground text-xs">ราคาเสนอ</p>
+                <p className="font-medium">{s.quotedPrice ? `${Number(s.quotedPrice).toLocaleString()} บาท` : "-"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-muted-foreground text-xs">หมายเหตุ</p>
+                <p className="font-medium">{s.surveyNotes || "-"}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Customer Info Card */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2"><User className="h-4 w-4 text-primary" /> ข้อมูลจากลูกค้า</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="space-y-1">
+                <p className="text-muted-foreground text-xs">ค่าไฟ/เดือน</p>
+                <p className="font-medium flex items-center gap-1"><Receipt className="h-3.5 w-3.5 text-green-500" />{c.electricityBill ? `${Number(c.electricityBill).toLocaleString()} บาท` : "-"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-muted-foreground text-xs">ประเภทหลังคา</p>
+                <p className="font-medium flex items-center gap-1"><Home className="h-3.5 w-3.5 text-orange-500" />{c.roofType || "-"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-muted-foreground text-xs">พื้นที่หลังคา</p>
+                <p className="font-medium">{c.roofArea ? `${c.roofArea} ตร.ม.` : "-"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-muted-foreground text-xs">ระบบไฟฟ้า</p>
+                <p className="font-medium flex items-center gap-1"><Gauge className="h-3.5 w-3.5 text-blue-500" />{c.phaseType === "single" ? "1 เฟส" : c.phaseType === "three" ? "3 เฟส" : "-"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-muted-foreground text-xs">ขนาดมิเตอร์</p>
+                <p className="font-medium">{c.meterSize || "-"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-muted-foreground text-xs">ช่องทาง</p>
+                <p className="font-medium">{c.source ? ({walk_in:"Walk-in",telesale:"Telesale",facebook:"Facebook",line:"LINE",website:"Website",referral:"แนะนำ",other:"อื่นๆ"} as Record<string,string>)[c.source] || c.source : "-"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-muted-foreground text-xs">ที่อยู่</p>
+                <p className="font-medium">{[c.address, c.district, c.province].filter(Boolean).join(", ") || "-"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-muted-foreground text-xs">หมายเหตุลูกค้า</p>
+                <p className="font-medium">{c.notes || "-"}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
