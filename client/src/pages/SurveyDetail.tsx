@@ -20,6 +20,7 @@ import {
   Zap, Sun, Home, Gauge, Receipt, Settings2, Users,
 } from "lucide-react";
 import { MultiUserSelect } from "@/components/MultiUserSelect";
+import { SourceCombobox } from "@/components/SourceCombobox";
 
 export default function SurveyDetail() {
   const params = useParams<{ id: string }>();
@@ -40,8 +41,20 @@ export default function SurveyDetail() {
   const { data: shareLinks, refetch: refetchLinks } = trpc.shareLink.list.useQuery({ surveyId });
   const { data: users } = trpc.users.list.useQuery();
 
+  // Inline edit state for tech card
+  const [editingTech, setEditingTech] = useState(false);
+  const [techForm, setTechForm] = useState<any>({});
+  // Inline edit state for customer card
+  const [editingCustomer, setEditingCustomer] = useState(false);
+  const [customerForm, setCustomerForm] = useState<any>({});
+
   const updateSurvey = trpc.survey.update.useMutation({
-    onSuccess: () => { toast.success("อัพเดทสำเร็จ"); setShowEditStatus(false); refetch(); },
+    onSuccess: () => { toast.success("อัพเดทสำเร็จ"); setShowEditStatus(false); setEditingTech(false); refetch(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const updateCustomer = trpc.customer.update.useMutation({
+    onSuccess: () => { toast.success("บันทึกข้อมูลลูกค้าสำเร็จ"); setEditingCustomer(false); refetch(); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -188,81 +201,183 @@ export default function SurveyDetail() {
           </Card>
         )}
 
-        {/* Technical Info Card */}
+        {/* Technical Info Card - Inline Edit */}
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2"><Settings2 className="h-4 w-4 text-primary" /> ข้อมูลทางเทคนิค</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2"><Settings2 className="h-4 w-4 text-primary" /> ข้อมูลทางเทคนิค</CardTitle>
+              {!editingTech && (
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                  setTechForm({
+                    systemSize: s.systemSize || "",
+                    panelCount: s.panelCount ? String(s.panelCount) : "",
+                    inverterModel: s.inverterModel || "",
+                    estimatedCost: s.estimatedCost || "",
+                    quotedPrice: s.quotedPrice || "",
+                    surveyNotes: s.surveyNotes || "",
+                  });
+                  setEditingTech(true);
+                }}>
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">ขนาดระบบ</p>
-                <p className="font-medium flex items-center gap-1"><Zap className="h-3.5 w-3.5 text-amber-500" />{s.systemSize ? `${s.systemSize} kW` : "-"}</p>
+            {editingTech ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div><Label className="text-xs">ขนาดระบบ (kW)</Label><Input value={techForm.systemSize} onChange={(e) => setTechForm({ ...techForm, systemSize: e.target.value })} placeholder="เช่น 5.5" className="h-9" /></div>
+                  <div><Label className="text-xs">จำนวนแผง</Label><Input type="number" value={techForm.panelCount} onChange={(e) => setTechForm({ ...techForm, panelCount: e.target.value })} placeholder="เช่น 12" className="h-9" /></div>
+                  <div><Label className="text-xs">รุ่นอินเวอร์เตอร์</Label><Input value={techForm.inverterModel} onChange={(e) => setTechForm({ ...techForm, inverterModel: e.target.value })} placeholder="เช่น Huawei SUN2000" className="h-9" /></div>
+                  <div><Label className="text-xs">ราคาประเมิน (บาท)</Label><Input value={techForm.estimatedCost} onChange={(e) => setTechForm({ ...techForm, estimatedCost: e.target.value })} placeholder="เช่น 250000" className="h-9" /></div>
+                  <div><Label className="text-xs">ราคาเสนอ (บาท)</Label><Input value={techForm.quotedPrice} onChange={(e) => setTechForm({ ...techForm, quotedPrice: e.target.value })} placeholder="เช่น 280000" className="h-9" /></div>
+                </div>
+                <div><Label className="text-xs">หมายเหตุ</Label><Textarea value={techForm.surveyNotes} onChange={(e) => setTechForm({ ...techForm, surveyNotes: e.target.value })} rows={2} placeholder="หมายเหตุเพิ่มเติม..." /></div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setEditingTech(false)}>ยกเลิก</Button>
+                  <Button size="sm" onClick={() => {
+                    const payload: any = { id: surveyId };
+                    payload.systemSize = techForm.systemSize || undefined;
+                    payload.panelCount = techForm.panelCount ? parseInt(techForm.panelCount) : undefined;
+                    payload.inverterModel = techForm.inverterModel || undefined;
+                    payload.estimatedCost = techForm.estimatedCost || undefined;
+                    payload.quotedPrice = techForm.quotedPrice || undefined;
+                    payload.surveyNotes = techForm.surveyNotes || undefined;
+                    updateSurvey.mutate(payload);
+                  }} disabled={updateSurvey.isPending} className="gap-1.5">
+                    {updateSurvey.isPending ? "กำลังบันทึก..." : "บันทึก"}
+                  </Button>
+                </div>
               </div>
-              <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">จำนวนแผง</p>
-                <p className="font-medium flex items-center gap-1"><Sun className="h-3.5 w-3.5 text-amber-500" />{s.panelCount ? `${s.panelCount} แผง` : "-"}</p>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-xs">ขนาดระบบ</p>
+                  <p className="font-medium flex items-center gap-1"><Zap className="h-3.5 w-3.5 text-amber-500" />{s.systemSize ? `${s.systemSize} kW` : "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-xs">จำนวนแผง</p>
+                  <p className="font-medium flex items-center gap-1"><Sun className="h-3.5 w-3.5 text-amber-500" />{s.panelCount ? `${s.panelCount} แผง` : "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-xs">รุ่นอินเวอร์เตอร์</p>
+                  <p className="font-medium">{s.inverterModel || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-xs">ราคาประเมิน</p>
+                  <p className="font-medium">{s.estimatedCost ? `${Number(s.estimatedCost).toLocaleString()} บาท` : "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-xs">ราคาเสนอ</p>
+                  <p className="font-medium">{s.quotedPrice ? `${Number(s.quotedPrice).toLocaleString()} บาท` : "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-xs">หมายเหตุ</p>
+                  <p className="font-medium">{s.surveyNotes || "-"}</p>
+                </div>
               </div>
-              <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">รุ่นอินเวอร์เตอร์</p>
-                <p className="font-medium">{s.inverterModel || "-"}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">ราคาประเมิน</p>
-                <p className="font-medium">{s.estimatedCost ? `${Number(s.estimatedCost).toLocaleString()} บาท` : "-"}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">ราคาเสนอ</p>
-                <p className="font-medium">{s.quotedPrice ? `${Number(s.quotedPrice).toLocaleString()} บาท` : "-"}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">หมายเหตุ</p>
-                <p className="font-medium">{s.surveyNotes || "-"}</p>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Customer Info Card */}
+        {/* Customer Info Card - Inline Edit */}
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2"><User className="h-4 w-4 text-primary" /> ข้อมูลจากลูกค้า</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2"><User className="h-4 w-4 text-primary" /> ข้อมูลจากลูกค้า</CardTitle>
+              {!editingCustomer && (
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                  setCustomerForm({
+                    electricityBill: c.electricityBill || "",
+                    roofType: c.roofType || "",
+                    roofArea: c.roofArea || "",
+                    phaseType: c.phaseType || "",
+                    meterSize: c.meterSize || "",
+                    source: c.source || "",
+                    notes: c.notes || "",
+                  });
+                  setEditingCustomer(true);
+                }}>
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">ค่าไฟ/เดือน</p>
-                <p className="font-medium flex items-center gap-1"><Receipt className="h-3.5 w-3.5 text-green-500" />{c.electricityBill ? `${Number(c.electricityBill).toLocaleString()} บาท` : "-"}</p>
+            {editingCustomer ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div><Label className="text-xs">ค่าไฟ/เดือน (บาท)</Label><Input value={customerForm.electricityBill} onChange={(e) => setCustomerForm({ ...customerForm, electricityBill: e.target.value })} placeholder="เช่น 3500" className="h-9" /></div>
+                  <div><Label className="text-xs">ประเภทหลังคา</Label><Input value={customerForm.roofType} onChange={(e) => setCustomerForm({ ...customerForm, roofType: e.target.value })} placeholder="เช่น หลังคาเมทัลชีท" className="h-9" /></div>
+                  <div><Label className="text-xs">พื้นที่หลังคา (ตร.ม.)</Label><Input value={customerForm.roofArea} onChange={(e) => setCustomerForm({ ...customerForm, roofArea: e.target.value })} placeholder="เช่น 50" className="h-9" /></div>
+                  <div>
+                    <Label className="text-xs">ระบบไฟฟ้า</Label>
+                    <Select value={customerForm.phaseType || "placeholder"} onValueChange={(v) => setCustomerForm({ ...customerForm, phaseType: v === "placeholder" ? "" : v })}>
+                      <SelectTrigger className="h-9"><SelectValue placeholder="เลือก" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="single">1 เฟส</SelectItem>
+                        <SelectItem value="three">3 เฟส</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label className="text-xs">ขนาดมิเตอร์</Label><Input value={customerForm.meterSize} onChange={(e) => setCustomerForm({ ...customerForm, meterSize: e.target.value })} placeholder="เช่น 15(45)A" className="h-9" /></div>
+                  <div><Label className="text-xs">ช่องทาง</Label><SourceCombobox value={customerForm.source} onChange={(v) => setCustomerForm({ ...customerForm, source: v })} /></div>
+                </div>
+                <div><Label className="text-xs">หมายเหตุลูกค้า</Label><Textarea value={customerForm.notes} onChange={(e) => setCustomerForm({ ...customerForm, notes: e.target.value })} rows={2} placeholder="หมายเหตุเพิ่มเติม..." /></div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setEditingCustomer(false)}>ยกเลิก</Button>
+                  <Button size="sm" onClick={() => {
+                    const payload: any = { id: c.id };
+                    payload.electricityBill = customerForm.electricityBill || undefined;
+                    payload.roofType = customerForm.roofType || undefined;
+                    payload.roofArea = customerForm.roofArea || undefined;
+                    if (customerForm.phaseType) payload.phaseType = customerForm.phaseType;
+                    payload.meterSize = customerForm.meterSize || undefined;
+                    payload.source = customerForm.source || undefined;
+                    payload.notes = customerForm.notes || undefined;
+                    updateCustomer.mutate(payload);
+                  }} disabled={updateCustomer.isPending} className="gap-1.5">
+                    {updateCustomer.isPending ? "กำลังบันทึก..." : "บันทึก"}
+                  </Button>
+                </div>
               </div>
-              <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">ประเภทหลังคา</p>
-                <p className="font-medium flex items-center gap-1"><Home className="h-3.5 w-3.5 text-orange-500" />{c.roofType || "-"}</p>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-xs">ค่าไฟ/เดือน</p>
+                  <p className="font-medium flex items-center gap-1"><Receipt className="h-3.5 w-3.5 text-green-500" />{c.electricityBill ? `${Number(c.electricityBill).toLocaleString()} บาท` : "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-xs">ประเภทหลังคา</p>
+                  <p className="font-medium flex items-center gap-1"><Home className="h-3.5 w-3.5 text-orange-500" />{c.roofType || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-xs">พื้นที่หลังคา</p>
+                  <p className="font-medium">{c.roofArea ? `${c.roofArea} ตร.ม.` : "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-xs">ระบบไฟฟ้า</p>
+                  <p className="font-medium flex items-center gap-1"><Gauge className="h-3.5 w-3.5 text-blue-500" />{c.phaseType === "single" ? "1 เฟส" : c.phaseType === "three" ? "3 เฟส" : "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-xs">ขนาดมิเตอร์</p>
+                  <p className="font-medium">{c.meterSize || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-xs">ช่องทาง</p>
+                  <p className="font-medium">{c.source || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-xs">ที่อยู่</p>
+                  <p className="font-medium">{[c.address, c.district, c.province].filter(Boolean).join(", ") || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-xs">หมายเหตุลูกค้า</p>
+                  <p className="font-medium">{c.notes || "-"}</p>
+                </div>
               </div>
-              <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">พื้นที่หลังคา</p>
-                <p className="font-medium">{c.roofArea ? `${c.roofArea} ตร.ม.` : "-"}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">ระบบไฟฟ้า</p>
-                <p className="font-medium flex items-center gap-1"><Gauge className="h-3.5 w-3.5 text-blue-500" />{c.phaseType === "single" ? "1 เฟส" : c.phaseType === "three" ? "3 เฟส" : "-"}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">ขนาดมิเตอร์</p>
-                <p className="font-medium">{c.meterSize || "-"}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">ช่องทาง</p>
-                <p className="font-medium">{c.source || "-"}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">ที่อยู่</p>
-                <p className="font-medium">{[c.address, c.district, c.province].filter(Boolean).join(", ") || "-"}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">หมายเหตุลูกค้า</p>
-                <p className="font-medium">{c.notes || "-"}</p>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
