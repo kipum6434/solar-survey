@@ -7,11 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
 import { SURVEY_STATUS_MAP } from "@/lib/constants";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
 import {
   Search, ClipboardList, Calendar, User, ChevronLeft, ChevronRight, Filter,
-  LayoutList, Table2, Phone, MapPin,
+  LayoutList, Table2, Phone, MapPin, Download,
 } from "lucide-react";
 
 const THAI_MONTHS = [
@@ -24,11 +25,26 @@ const THAI_MONTHS_SHORT = [
   "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค.",
 ];
 
+const SYSTEM_TYPE_MAP: Record<string, string> = {
+  string: "String Inverter",
+  micro: "Micro Inverter",
+  both: "ทั้งสอง",
+};
+
+const BATTERY_MAP: Record<string, string> = {
+  yes: "ต้องการ",
+  no: "ไม่ต้องการ",
+  undecided: "ยังไม่ตัดสินใจ",
+};
+
 export default function Surveys() {
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("");
+  const [surveyorFilter, setSurveyorFilter] = useState("");
+  const [adminSenderFilter, setAdminSenderFilter] = useState("");
+  const [closerFilter, setCloserFilter] = useState("");
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<"list" | "table">("table");
 
@@ -38,21 +54,98 @@ export default function Surveys() {
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [filterByMonth, setFilterByMonth] = useState(false);
 
-  // Fetch sources for filter dropdown
+  // Fetch sources and users for filter dropdowns
   const { data: sourcesData } = trpc.source.list.useQuery();
+  const { data: usersData } = trpc.users.list.useQuery();
 
   const queryInput = useMemo(() => ({
     search,
     status: statusFilter === "all" ? undefined : statusFilter,
     source: sourceFilter || undefined,
+    assignedTo: surveyorFilter ? Number(surveyorFilter) : undefined,
+    adminSenderId: adminSenderFilter ? Number(adminSenderFilter) : undefined,
+    closerId: closerFilter ? Number(closerFilter) : undefined,
     page,
     limit: 50,
     month: filterByMonth ? selectedMonth : undefined,
     year: filterByMonth ? selectedYear : undefined,
-  }), [search, statusFilter, sourceFilter, page, filterByMonth, selectedMonth, selectedYear]);
+  }), [search, statusFilter, sourceFilter, surveyorFilter, adminSenderFilter, closerFilter, page, filterByMonth, selectedMonth, selectedYear]);
 
   const { data, isLoading } = trpc.survey.list.useQuery(queryInput);
   const totalPages = Math.ceil((data?.total ?? 0) / 50);
+
+  // Export Excel query
+  const exportInput = useMemo(() => ({
+    status: statusFilter === "all" ? undefined : statusFilter,
+    source: sourceFilter || undefined,
+    month: filterByMonth ? selectedMonth : undefined,
+    year: filterByMonth ? selectedYear : undefined,
+  }), [statusFilter, sourceFilter, filterByMonth, selectedMonth, selectedYear]);
+
+  const { data: exportData, refetch: refetchExport } = trpc.survey.exportExcel.useQuery(exportInput, { enabled: false });
+
+  const handleExport = useCallback(async () => {
+    toast.info("กำลังเตรียมข้อมูล...");
+    const result = await refetchExport();
+    const rows = result.data;
+    if (!rows || rows.length === 0) {
+      toast.error("ไม่พบข้อมูลสำหรับ Export");
+      return;
+    }
+    // Build XLSX with xlsx library
+    const XLSX = await import("xlsx");
+    const headers = [
+      "ID", "วันที่นัด", "เวลา", "ชื่อลูกค้า", "เบอร์โทร", "อีเมล", "ที่อยู่", "เขต/อำเภอ", "จังหวัด",
+      "ช่องทาง", "ค่าไฟ/เดือน", "ประเภทหลังคา", "ระบบไฟฟ้า", "ขนาดระบบ (kW)", "จำนวนแผง",
+      "ยี่ห้อแผง", "รุ่นอินเวอร์เตอร์", "ประเภทระบบ", "แบตเตอรี่", "Optimizer",
+      "ราคาประเมิน", "ราคาเสนอ", "เซลล์", "คนส่งสำรวจ", "คนปิดการขาย", "สถานะ", "หมายเหตุ",
+    ];
+    const xlsxRows = rows.map((item: any) => {
+      const s = item.survey;
+      const c = item.customer;
+      const assigns = item.assignments || [];
+      const surveyors = assigns.filter((a: any) => a.role === "surveyor").map((a: any) => a.userName).join(", ");
+      const senders = assigns.filter((a: any) => a.role === "admin_sender").map((a: any) => a.userName).join(", ");
+      const closers = assigns.filter((a: any) => a.role === "closer").map((a: any) => a.userName).join(", ");
+      const statusLabel = (SURVEY_STATUS_MAP as any)[s.status]?.label || s.status;
+      return {
+        "ID": s.id,
+        "วันที่นัด": s.scheduledDate ? new Date(s.scheduledDate).toLocaleDateString("th-TH") : "",
+        "เวลา": s.scheduledTime || "",
+        "ชื่อลูกค้า": c.name,
+        "เบอร์โทร": c.phone || "",
+        "อีเมล": c.email || "",
+        "ที่อยู่": c.address || "",
+        "เขต/อำเภอ": c.district || "",
+        "จังหวัด": c.province || "",
+        "ช่องทาง": c.source || "",
+        "ค่าไฟ/เดือน": c.electricityBill || "",
+        "ประเภทหลังคา": c.roofType || "",
+        "ระบบไฟฟ้า": c.phaseType === "single" ? "1 เฟส" : c.phaseType === "three" ? "3 เฟส" : "",
+        "ขนาดระบบ (kW)": s.systemSize || "",
+        "จำนวนแผง": s.panelCount || "",
+        "ยี่ห้อแผง": s.panelBrand || "",
+        "รุ่นอินเวอร์เตอร์": s.inverterModel || "",
+        "ประเภทระบบ": s.systemType ? (SYSTEM_TYPE_MAP as any)[s.systemType] || s.systemType : "",
+        "แบตเตอรี่": s.needBattery ? (BATTERY_MAP as any)[s.needBattery] || s.needBattery : "",
+        "Optimizer": s.needOptimizer ? (BATTERY_MAP as any)[s.needOptimizer] || s.needOptimizer : "",
+        "ราคาประเมิน": s.estimatedCost || "",
+        "ราคาเสนอ": s.quotedPrice || "",
+        "เซลล์": surveyors,
+        "คนส่งสำรวจ": senders,
+        "คนปิดการขาย": closers,
+        "สถานะ": statusLabel,
+        "หมายเหตุ": s.surveyNotes || "",
+      };
+    });
+    const ws = XLSX.utils.json_to_sheet(xlsxRows, { header: headers });
+    // Set column widths
+    ws["!cols"] = headers.map((h) => ({ wch: Math.max(h.length * 2, 12) }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "รายงานสำรวจ");
+    XLSX.writeFile(wb, `survey-report-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast.success(`Export สำเร็จ ${rows.length} รายการ`);
+  }, [refetchExport, toast]);
 
   // Generate year options (current year +/- 3)
   const yearOptions = useMemo(() => {
@@ -77,9 +170,15 @@ export default function Surveys() {
   return (
     <DashboardLayout>
       <div className="space-y-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">งานสำรวจ</h1>
-          <p className="text-sm text-muted-foreground mt-1">จัดการงานสำรวจทั้งหมด</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">งานสำรวจ</h1>
+            <p className="text-sm text-muted-foreground mt-1">จัดการงานสำรวจทั้งหมด</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Export Excel</span>
+          </Button>
         </div>
 
         {/* Month Navigation Bar - like Excel tabs */}
@@ -134,7 +233,7 @@ export default function Surveys() {
             />
           </div>
           <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[140px]">
               <Filter className="h-4 w-4 mr-2" />
               <SelectValue placeholder="สถานะ" />
             </SelectTrigger>
@@ -146,13 +245,47 @@ export default function Surveys() {
             </SelectContent>
           </Select>
           <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v === "_all" ? "" : v); setPage(1); }}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="แหล่งที่มา" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="_all">ทุกแหล่งที่มา</SelectItem>
               {(sourcesData || []).map((s: any) => (
                 <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {/* Role filters */}
+          <Select value={surveyorFilter} onValueChange={(v) => { setSurveyorFilter(v === "_all" ? "" : v); setPage(1); }}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="เซลล์" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">เซลล์ทั้งหมด</SelectItem>
+              {(usersData || []).map((u: any) => (
+                <SelectItem key={u.id} value={String(u.id)}>{u.name || `User #${u.id}`}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={adminSenderFilter} onValueChange={(v) => { setAdminSenderFilter(v === "_all" ? "" : v); setPage(1); }}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="คนส่งสำรวจ" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">คนส่งทั้งหมด</SelectItem>
+              {(usersData || []).map((u: any) => (
+                <SelectItem key={u.id} value={String(u.id)}>{u.name || `User #${u.id}`}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={closerFilter} onValueChange={(v) => { setCloserFilter(v === "_all" ? "" : v); setPage(1); }}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="คนปิดการขาย" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">คนปิดทั้งหมด</SelectItem>
+              {(usersData || []).map((u: any) => (
+                <SelectItem key={u.id} value={String(u.id)}>{u.name || `User #${u.id}`}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -234,7 +367,9 @@ function SurveyTableView({ data, onRowClick }: { data: any[]; onRowClick: (id: n
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">เบอร์โทร</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell">ช่องทาง</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">เขต/จังหวัด</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">เจ้าหน้าที่</th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">เซลล์</th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">คนส่งสำรวจ</th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">คนปิดการขาย</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">สถานะ</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">หมายเหตุ</th>
             </tr>
@@ -243,7 +378,11 @@ function SurveyTableView({ data, onRowClick }: { data: any[]; onRowClick: (id: n
             {data.map((item: any) => {
               const s = item.survey;
               const c = item.customer;
+              const assigns = item.assignments || [];
               const statusInfo = SURVEY_STATUS_MAP[s.status] || SURVEY_STATUS_MAP.pending;
+              const surveyors = assigns.filter((a: any) => a.role === "surveyor").map((a: any) => a.userName).filter(Boolean).join(", ");
+              const senders = assigns.filter((a: any) => a.role === "admin_sender").map((a: any) => a.userName).filter(Boolean).join(", ");
+              const closers = assigns.filter((a: any) => a.role === "closer").map((a: any) => a.userName).filter(Boolean).join(", ");
               return (
                 <tr
                   key={s.id}
@@ -268,7 +407,7 @@ function SurveyTableView({ data, onRowClick }: { data: any[]; onRowClick: (id: n
                   <td className="px-3 py-2.5 whitespace-nowrap hidden md:table-cell">
                     {c.source ? (
                       <Badge variant="secondary" className="text-[10px] font-normal">
-                        {c.source || "-"}
+                        {c.source}
                       </Badge>
                     ) : "-"}
                   </td>
@@ -276,7 +415,13 @@ function SurveyTableView({ data, onRowClick }: { data: any[]; onRowClick: (id: n
                     {[c.district, c.province].filter(Boolean).join(", ") || "-"}
                   </td>
                   <td className="px-3 py-2.5 whitespace-nowrap hidden lg:table-cell text-muted-foreground text-xs">
-                    {item.assignedUser?.name || "-"}
+                    {surveyors || item.assignedUser?.name || "-"}
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap hidden lg:table-cell text-muted-foreground text-xs">
+                    {senders || "-"}
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap hidden xl:table-cell text-muted-foreground text-xs">
+                    {closers || "-"}
                   </td>
                   <td className="px-3 py-2.5 whitespace-nowrap">
                     <Badge variant="secondary" className={`${statusInfo.bg} ${statusInfo.color} text-[10px] font-medium border-0`}>

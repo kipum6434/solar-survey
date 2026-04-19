@@ -501,14 +501,22 @@ export async function addSurveyAssignment(data: InsertSurveyAssignment) {
   return result[0].insertId;
 }
 
-export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; page?: number; limit?: number; search?: string; month?: number; year?: number; source?: string }) {
+export async function deleteSource(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(sources).where(eq(sources.id, id));
+}
+
+export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; adminSenderId?: number; closerId?: number; page?: number; limit?: number; search?: string; month?: number; year?: number; source?: string }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { status, assignedTo, page = 1, limit = 20, search, month, year, source } = opts;
+  const { status, assignedTo, adminSenderId, closerId, page = 1, limit = 20, search, month, year, source } = opts;
   const offset = (page - 1) * limit;
   const conditions: any[] = [];
   if (status) conditions.push(eq(surveys.status, status as any));
   if (assignedTo) conditions.push(eq(surveys.assignedTo, assignedTo));
+  if (adminSenderId) conditions.push(eq(surveys.adminSenderId, adminSenderId));
+  if (closerId) conditions.push(eq(surveys.closerId, closerId));
   if (search) {
     conditions.push(or(
       like(customers.name, `%${search}%`),
@@ -534,8 +542,24 @@ export async function getSurveysWithCustomer(opts: { status?: string; assignedTo
     .orderBy(desc(surveys.createdAt))
     .limit(limit)
     .offset(offset);
+  // Fetch assignments for all surveys in result
+  const surveyIds = data.map(d => d.survey.id);
+  let assignmentsMap: Record<number, { role: string; userName: string | null }[]> = {};
+  if (surveyIds.length > 0) {
+    const allAssignments = await db.select({
+      surveyId: surveyAssignments.surveyId,
+      role: surveyAssignments.role,
+      userName: users.name,
+    }).from(surveyAssignments)
+      .leftJoin(users, eq(surveyAssignments.userId, users.id))
+      .where(inArray(surveyAssignments.surveyId, surveyIds));
+    for (const a of allAssignments) {
+      if (!assignmentsMap[a.surveyId]) assignmentsMap[a.surveyId] = [];
+      assignmentsMap[a.surveyId].push({ role: a.role, userName: a.userName });
+    }
+  }
   const countQ = whereClause
     ? await db.select({ count: sql<number>`count(*)` }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(whereClause)
     : await db.select({ count: sql<number>`count(*)` }).from(surveys);
-  return { data, total: countQ[0]?.count ?? 0 };
+  return { data: data.map(d => ({ ...d, assignments: assignmentsMap[d.survey.id] || [] })), total: countQ[0]?.count ?? 0 };
 }

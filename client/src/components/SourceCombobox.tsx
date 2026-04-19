@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Check, ChevronsUpDown, Plus } from "lucide-react";
+import { Check, ChevronsUpDown, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 interface SourceComboboxProps {
   value: string;
@@ -15,8 +16,12 @@ interface SourceComboboxProps {
 export function SourceCombobox({ value, onChange, placeholder = "เลือกหรือพิมพ์แหล่งที่มา..." }: SourceComboboxProps) {
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
-  const { data: sources } = trpc.source.list.useQuery();
+  const { data: sources, refetch } = trpc.source.list.useQuery();
   const createMutation = trpc.source.create.useMutation();
+  const deleteMutation = trpc.source.delete.useMutation({
+    onSuccess: () => { toast.success("ลบแหล่งที่มาสำเร็จ"); refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
 
   const sourceList = sources || [];
   const filtered = inputValue
@@ -38,6 +43,16 @@ export function SourceCombobox({ value, onChange, placeholder = "เลือก
     onChange(name);
     setOpen(false);
     setInputValue("");
+    refetch();
+  };
+
+  const handleDelete = (e: React.MouseEvent, sourceId: number, sourceName: string) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (value === sourceName) {
+      onChange("");
+    }
+    deleteMutation.mutate({ id: sourceId });
   };
 
   return (
@@ -82,12 +97,21 @@ export function SourceCombobox({ value, onChange, placeholder = "เลือก
                   key={s.id}
                   value={s.name}
                   onSelect={() => handleSelect(s.name)}
+                  className="group"
                 >
-                  <Check className={cn("mr-2 h-4 w-4", value === s.name ? "opacity-100" : "opacity-0")} />
-                  <span>{s.name}</span>
+                  <Check className={cn("mr-2 h-4 w-4 shrink-0", value === s.name ? "opacity-100" : "opacity-0")} />
+                  <span className="flex-1 truncate">{s.name}</span>
                   {s.usageCount > 0 && (
-                    <span className="ml-auto text-xs text-muted-foreground">{s.usageCount}</span>
+                    <span className="text-xs text-muted-foreground mr-1">{s.usageCount}</span>
                   )}
+                  <button
+                    className="ml-1 p-0.5 rounded hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                    onClick={(e) => handleDelete(e, s.id, s.name)}
+                    title="ลบแหล่งที่มา"
+                    type="button"
+                  >
+                    <X className="h-3.5 w-3.5 text-destructive" />
+                  </button>
                 </CommandItem>
               ))}
               {showAddNew && filtered.length > 0 && (

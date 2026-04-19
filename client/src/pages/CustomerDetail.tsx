@@ -269,6 +269,7 @@ export default function CustomerDetail() {
                 <div><Label>อีเมล</Label><Input value={editForm.email || ""} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} /></div>
                 <div className="col-span-2"><Label>ที่อยู่</Label><Textarea value={editForm.address || ""} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} rows={2} /></div>
                 <div><Label>จังหวัด</Label><Input value={editForm.province || ""} onChange={(e) => setEditForm({ ...editForm, province: e.target.value })} /></div>
+                <div><Label>เขต/อำเภอ</Label><Input value={editForm.district || ""} onChange={(e) => setEditForm({ ...editForm, district: e.target.value })} placeholder="เขต/อำเภอ" /></div>
                 <div>
                   <Label>แหล่งที่มา</Label>
                   <SourceCombobox value={editForm.source || ""} onChange={(v) => setEditForm({ ...editForm, source: v })} />

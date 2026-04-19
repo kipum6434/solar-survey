@@ -201,224 +201,14 @@ export default function SurveyDetail() {
           </Card>
         )}
 
-        {/* Technical Info Card - Inline Edit */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2"><Settings2 className="h-4 w-4 text-primary" /> ข้อมูลทางเทคนิค</CardTitle>
-              {!editingTech && (
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-                  setTechForm({
-                    systemSize: s.systemSize || "",
-                    panelCount: s.panelCount ? String(s.panelCount) : "",
-                    inverterModel: s.inverterModel || "",
-                    estimatedCost: s.estimatedCost || "",
-                    quotedPrice: s.quotedPrice || "",
-                    surveyNotes: s.surveyNotes || "",
-                  });
-                  setEditingTech(true);
-                }}>
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            {editingTech ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  <div><Label className="text-xs">ขนาดระบบ (kW)</Label><Input value={techForm.systemSize} onChange={(e) => setTechForm({ ...techForm, systemSize: e.target.value })} placeholder="เช่น 5.5" className="h-9" /></div>
-                  <div><Label className="text-xs">จำนวนแผง</Label><Input type="number" value={techForm.panelCount} onChange={(e) => setTechForm({ ...techForm, panelCount: e.target.value })} placeholder="เช่น 12" className="h-9" /></div>
-                  <div><Label className="text-xs">รุ่นอินเวอร์เตอร์</Label><Input value={techForm.inverterModel} onChange={(e) => setTechForm({ ...techForm, inverterModel: e.target.value })} placeholder="เช่น Huawei SUN2000" className="h-9" /></div>
-                  <div><Label className="text-xs">ราคาประเมิน (บาท)</Label><Input value={techForm.estimatedCost} onChange={(e) => setTechForm({ ...techForm, estimatedCost: e.target.value })} placeholder="เช่น 250000" className="h-9" /></div>
-                  <div><Label className="text-xs">ราคาเสนอ (บาท)</Label><Input value={techForm.quotedPrice} onChange={(e) => setTechForm({ ...techForm, quotedPrice: e.target.value })} placeholder="เช่น 280000" className="h-9" /></div>
-                </div>
-                <div><Label className="text-xs">หมายเหตุ</Label><Textarea value={techForm.surveyNotes} onChange={(e) => setTechForm({ ...techForm, surveyNotes: e.target.value })} rows={2} placeholder="หมายเหตุเพิ่มเติม..." /></div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setEditingTech(false)}>ยกเลิก</Button>
-                  <Button size="sm" onClick={() => {
-                    const payload: any = { id: surveyId };
-                    payload.systemSize = techForm.systemSize || undefined;
-                    payload.panelCount = techForm.panelCount ? parseInt(techForm.panelCount) : undefined;
-                    payload.inverterModel = techForm.inverterModel || undefined;
-                    payload.estimatedCost = techForm.estimatedCost || undefined;
-                    payload.quotedPrice = techForm.quotedPrice || undefined;
-                    payload.surveyNotes = techForm.surveyNotes || undefined;
-                    updateSurvey.mutate(payload);
-                  }} disabled={updateSurvey.isPending} className="gap-1.5">
-                    {updateSurvey.isPending ? "กำลังบันทึก..." : "บันทึก"}
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-xs">ขนาดระบบ</p>
-                  <p className="font-medium flex items-center gap-1"><Zap className="h-3.5 w-3.5 text-amber-500" />{s.systemSize ? `${s.systemSize} kW` : "-"}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-xs">จำนวนแผง</p>
-                  <p className="font-medium flex items-center gap-1"><Sun className="h-3.5 w-3.5 text-amber-500" />{s.panelCount ? `${s.panelCount} แผง` : "-"}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-xs">รุ่นอินเวอร์เตอร์</p>
-                  <p className="font-medium">{s.inverterModel || "-"}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-xs">ราคาประเมิน</p>
-                  <p className="font-medium">{s.estimatedCost ? `${Number(s.estimatedCost).toLocaleString()} บาท` : "-"}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-xs">ราคาเสนอ</p>
-                  <p className="font-medium">{s.quotedPrice ? `${Number(s.quotedPrice).toLocaleString()} บาท` : "-"}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-xs">หมายเหตุ</p>
-                  <p className="font-medium">{s.surveyNotes || "-"}</p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Technical Info Card - Always Editable (click to edit each field) */}
+        <TechInfoCard survey={s} surveyId={surveyId} updateSurvey={updateSurvey} />
 
-        {/* Customer Info Card - Inline Edit */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2"><User className="h-4 w-4 text-primary" /> ข้อมูลจากลูกค้า</CardTitle>
-              {!editingCustomer && (
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-                  setCustomerForm({
-                    electricityBill: c.electricityBill || "",
-                    roofType: c.roofType || "",
-                    roofArea: c.roofArea || "",
-                    phaseType: c.phaseType || "",
-                    meterSize: c.meterSize || "",
-                    source: c.source || "",
-                    notes: c.notes || "",
-                  });
-                  setEditingCustomer(true);
-                }}>
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            {editingCustomer ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  <div><Label className="text-xs">ค่าไฟ/เดือน (บาท)</Label><Input value={customerForm.electricityBill} onChange={(e) => setCustomerForm({ ...customerForm, electricityBill: e.target.value })} placeholder="เช่น 3500" className="h-9" /></div>
-                  <div><Label className="text-xs">ประเภทหลังคา</Label><Input value={customerForm.roofType} onChange={(e) => setCustomerForm({ ...customerForm, roofType: e.target.value })} placeholder="เช่น หลังคาเมทัลชีท" className="h-9" /></div>
-                  <div><Label className="text-xs">พื้นที่หลังคา (ตร.ม.)</Label><Input value={customerForm.roofArea} onChange={(e) => setCustomerForm({ ...customerForm, roofArea: e.target.value })} placeholder="เช่น 50" className="h-9" /></div>
-                  <div>
-                    <Label className="text-xs">ระบบไฟฟ้า</Label>
-                    <Select value={customerForm.phaseType || "placeholder"} onValueChange={(v) => setCustomerForm({ ...customerForm, phaseType: v === "placeholder" ? "" : v })}>
-                      <SelectTrigger className="h-9"><SelectValue placeholder="เลือก" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="single">1 เฟส</SelectItem>
-                        <SelectItem value="three">3 เฟส</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div><Label className="text-xs">ขนาดมิเตอร์</Label><Input value={customerForm.meterSize} onChange={(e) => setCustomerForm({ ...customerForm, meterSize: e.target.value })} placeholder="เช่น 15(45)A" className="h-9" /></div>
-                  <div><Label className="text-xs">ช่องทาง</Label><SourceCombobox value={customerForm.source} onChange={(v) => setCustomerForm({ ...customerForm, source: v })} /></div>
-                </div>
-                <div><Label className="text-xs">หมายเหตุลูกค้า</Label><Textarea value={customerForm.notes} onChange={(e) => setCustomerForm({ ...customerForm, notes: e.target.value })} rows={2} placeholder="หมายเหตุเพิ่มเติม..." /></div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setEditingCustomer(false)}>ยกเลิก</Button>
-                  <Button size="sm" onClick={() => {
-                    const payload: any = { id: c.id };
-                    payload.electricityBill = customerForm.electricityBill || undefined;
-                    payload.roofType = customerForm.roofType || undefined;
-                    payload.roofArea = customerForm.roofArea || undefined;
-                    if (customerForm.phaseType) payload.phaseType = customerForm.phaseType;
-                    payload.meterSize = customerForm.meterSize || undefined;
-                    payload.source = customerForm.source || undefined;
-                    payload.notes = customerForm.notes || undefined;
-                    updateCustomer.mutate(payload);
-                  }} disabled={updateCustomer.isPending} className="gap-1.5">
-                    {updateCustomer.isPending ? "กำลังบันทึก..." : "บันทึก"}
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-xs">ค่าไฟ/เดือน</p>
-                  <p className="font-medium flex items-center gap-1"><Receipt className="h-3.5 w-3.5 text-green-500" />{c.electricityBill ? `${Number(c.electricityBill).toLocaleString()} บาท` : "-"}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-xs">ประเภทหลังคา</p>
-                  <p className="font-medium flex items-center gap-1"><Home className="h-3.5 w-3.5 text-orange-500" />{c.roofType || "-"}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-xs">พื้นที่หลังคา</p>
-                  <p className="font-medium">{c.roofArea ? `${c.roofArea} ตร.ม.` : "-"}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-xs">ระบบไฟฟ้า</p>
-                  <p className="font-medium flex items-center gap-1"><Gauge className="h-3.5 w-3.5 text-blue-500" />{c.phaseType === "single" ? "1 เฟส" : c.phaseType === "three" ? "3 เฟส" : "-"}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-xs">ขนาดมิเตอร์</p>
-                  <p className="font-medium">{c.meterSize || "-"}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-xs">ช่องทาง</p>
-                  <p className="font-medium">{c.source || "-"}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-xs">ที่อยู่</p>
-                  <p className="font-medium">{[c.address, c.district, c.province].filter(Boolean).join(", ") || "-"}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-xs">หมายเหตุลูกค้า</p>
-                  <p className="font-medium">{c.notes || "-"}</p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Customer Info Card - Always Editable */}
+        <CustomerInfoCard customer={c} updateCustomer={updateCustomer} />
 
-        {/* Workflow / Team Card */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> ทีมงาน</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              {(() => {
-                const assignments = (data as any)?.assignments || [];
-                const adminSender = assignments.find((a: any) => a.assignment.role === "admin_sender");
-                const surveyors = assignments.filter((a: any) => a.assignment.role === "surveyor");
-                const closer = assignments.find((a: any) => a.assignment.role === "closer");
-                return (
-                  <>
-                    <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30">
-                      <p className="text-xs text-muted-foreground mb-1">แอดมินผู้ส่งงาน</p>
-                      <p className="font-medium">{adminSender?.user?.name || "-"}</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30">
-                      <p className="text-xs text-muted-foreground mb-1">ทีมสำรวจ</p>
-                      {surveyors.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {surveyors.map((a: any) => (
-                            <Badge key={a.assignment.id} variant="secondary" className="text-xs">{a.user?.name || "-"}</Badge>
-                          ))}
-                        </div>
-                      ) : <p className="font-medium">-</p>}
-                    </div>
-                    <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/30">
-                      <p className="text-xs text-muted-foreground mb-1">ผู้ปิดการขาย</p>
-                      <p className="font-medium">{closer?.user?.name || "-"}</p>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Workflow / Team Card - Editable */}
+        <TeamCard data={data} surveyId={surveyId} users={users} refetch={refetch} />
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -894,5 +684,406 @@ function AddFollowUpDialog({ open, onOpenChange, surveyId, customerId, users, on
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/* ==================== TECH INFO CARD - Always Editable ==================== */
+function TechInfoCard({ survey: s, surveyId, updateSurvey }: { survey: any; surveyId: number; updateSurvey: any }) {
+  const [form, setForm] = useState<any>(null);
+  const [dirty, setDirty] = useState(false);
+
+  // Initialize form from survey data
+  const initForm = () => ({
+    systemSize: s.systemSize || "",
+    panelCount: s.panelCount ? String(s.panelCount) : "",
+    inverterModel: s.inverterModel || "",
+    panelBrand: s.panelBrand || "",
+    estimatedCost: s.estimatedCost || "",
+    quotedPrice: s.quotedPrice || "",
+    needBattery: s.needBattery || "",
+    needOptimizer: s.needOptimizer || "",
+    systemType: s.systemType || "",
+    surveyNotes: s.surveyNotes || "",
+  });
+
+  // Auto-init form when survey data loads
+  if (!form && s) {
+    setForm(initForm());
+  }
+
+  // Sync form when survey data changes (after save)
+  const surveyKey = `${s.systemSize}|${s.panelCount}|${s.inverterModel}|${s.panelBrand}|${s.estimatedCost}|${s.quotedPrice}|${s.needBattery}|${s.needOptimizer}|${s.systemType}|${s.surveyNotes}`;
+
+  const updateField = (key: string, val: string) => {
+    setForm((prev: any) => ({ ...prev, [key]: val }));
+    setDirty(true);
+  };
+
+  const handleSave = () => {
+    if (!form) return;
+    const payload: any = { id: surveyId };
+    payload.systemSize = form.systemSize || undefined;
+    payload.panelCount = form.panelCount ? parseInt(form.panelCount) : undefined;
+    payload.inverterModel = form.inverterModel || undefined;
+    payload.panelBrand = form.panelBrand || undefined;
+    payload.estimatedCost = form.estimatedCost || undefined;
+    payload.quotedPrice = form.quotedPrice || undefined;
+    payload.needBattery = form.needBattery || undefined;
+    payload.needOptimizer = form.needOptimizer || undefined;
+    payload.systemType = form.systemType || undefined;
+    payload.surveyNotes = form.surveyNotes || undefined;
+    updateSurvey.mutate(payload, {
+      onSuccess: () => { setDirty(false); }
+    });
+  };
+
+  const handleCancel = () => {
+    setForm(initForm());
+    setDirty(false);
+  };
+
+  if (!form) return null;
+
+  const BATTERY_OPTIONS = [
+    { value: "yes", label: "ต้องการ" },
+    { value: "no", label: "ไม่ต้องการ" },
+    { value: "undecided", label: "ยังไม่แน่ใจ" },
+  ];
+  const OPTIMIZER_OPTIONS = [
+    { value: "yes", label: "ต้องการ" },
+    { value: "no", label: "ไม่ต้องการ" },
+    { value: "undecided", label: "ยังไม่แน่ใจ" },
+  ];
+  const SYSTEM_TYPE_OPTIONS = [
+    { value: "string", label: "String Inverter" },
+    { value: "micro", label: "Micro Inverter" },
+    { value: "both", label: "ทั้ง 2 แบบ" },
+  ];
+
+  return (
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2"><Settings2 className="h-4 w-4 text-primary" /> ข้อมูลทางเทคนิค</CardTitle>
+          {dirty && (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleCancel}>ยกเลิก</Button>
+              <Button size="sm" className="h-7 text-xs" onClick={handleSave} disabled={updateSurvey.isPending}>
+                {updateSurvey.isPending ? "กำลังบันทึก..." : "บันทึก"}
+              </Button>
+            </div>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-3">
+          <EditableField label="ขนาดระบบ (kW)" value={form.systemSize} onChange={(v) => updateField("systemSize", v)} placeholder="เช่น 5.5" icon={<Zap className="h-3.5 w-3.5 text-amber-500" />} suffix="kW" />
+          <EditableField label="จำนวนแผง" value={form.panelCount} onChange={(v) => updateField("panelCount", v)} placeholder="เช่น 12" type="number" icon={<Sun className="h-3.5 w-3.5 text-amber-500" />} suffix="แผง" />
+          <EditableField label="ยี่ห้อแผง" value={form.panelBrand} onChange={(v) => updateField("panelBrand", v)} placeholder="เช่น JA Solar, Longi" />
+          <EditableField label="รุ่นอินเวอร์เตอร์" value={form.inverterModel} onChange={(v) => updateField("inverterModel", v)} placeholder="เช่น Huawei SUN2000" />
+          <EditableField label="ราคาประเมิน (บาท)" value={form.estimatedCost} onChange={(v) => updateField("estimatedCost", v)} placeholder="เช่น 250000" suffix="บาท" />
+          <EditableField label="ราคาเสนอ (บาท)" value={form.quotedPrice} onChange={(v) => updateField("quotedPrice", v)} placeholder="เช่น 280000" suffix="บาท" />
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">ต้องการแบตเตอรี่?</label>
+            <Select value={form.needBattery || "placeholder"} onValueChange={(v) => updateField("needBattery", v === "placeholder" ? "" : v)}>
+              <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="เลือก" /></SelectTrigger>
+              <SelectContent>
+                {BATTERY_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">ต้องการ Optimizer?</label>
+            <Select value={form.needOptimizer || "placeholder"} onValueChange={(v) => updateField("needOptimizer", v === "placeholder" ? "" : v)}>
+              <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="เลือก" /></SelectTrigger>
+              <SelectContent>
+                {OPTIMIZER_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1 col-span-2 md:col-span-1">
+            <label className="text-xs text-muted-foreground">ประเภทระบบ</label>
+            <Select value={form.systemType || "placeholder"} onValueChange={(v) => updateField("systemType", v === "placeholder" ? "" : v)}>
+              <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="เลือก" /></SelectTrigger>
+              <SelectContent>
+                {SYSTEM_TYPE_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="mt-3">
+          <EditableField label="หมายเหตุ" value={form.surveyNotes} onChange={(v) => updateField("surveyNotes", v)} placeholder="หมายเหตุเพิ่มเติม..." multiline />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ==================== EDITABLE FIELD ==================== */
+function EditableField({ label, value, onChange, placeholder, type, icon, suffix, multiline }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; icon?: React.ReactNode; suffix?: string; multiline?: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+
+  if (editing || !value) {
+    // Show input
+    return (
+      <div className="space-y-1">
+        <label className="text-xs text-muted-foreground">{label}</label>
+        {multiline ? (
+          <Textarea
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            rows={2}
+            className="text-sm"
+            onBlur={() => setEditing(false)}
+            autoFocus={editing}
+          />
+        ) : (
+          <Input
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            type={type}
+            className="h-8 text-sm"
+            onBlur={() => { if (value) setEditing(false); }}
+            autoFocus={editing}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // Show display value - clickable to edit
+  return (
+    <div className="space-y-1 cursor-pointer group" onClick={() => setEditing(true)}>
+      <label className="text-xs text-muted-foreground">{label}</label>
+      <p className="font-medium text-sm flex items-center gap-1 group-hover:text-primary transition-colors min-h-[32px] items-center border border-transparent group-hover:border-border rounded px-2 py-1 -mx-2">
+        {icon}{value}{suffix ? ` ${suffix}` : ""}
+        <Pencil className="h-3 w-3 ml-1 opacity-0 group-hover:opacity-50 transition-opacity" />
+      </p>
+    </div>
+  );
+}
+
+/* ==================== CUSTOMER INFO CARD - Always Editable ==================== */
+function CustomerInfoCard({ customer: c, updateCustomer }: { customer: any; updateCustomer: any }) {
+  const [form, setForm] = useState<any>(null);
+  const [dirty, setDirty] = useState(false);
+
+  const initForm = () => ({
+    electricityBill: c.electricityBill || "",
+    roofType: c.roofType || "",
+    roofArea: c.roofArea || "",
+    phaseType: c.phaseType || "",
+    meterSize: c.meterSize || "",
+    source: c.source || "",
+    notes: c.notes || "",
+  });
+
+  if (!form && c) setForm(initForm());
+
+  const updateField = (key: string, val: string) => {
+    setForm((prev: any) => ({ ...prev, [key]: val }));
+    setDirty(true);
+  };
+
+  const handleSave = () => {
+    if (!form) return;
+    const payload: any = { id: c.id };
+    payload.electricityBill = form.electricityBill || undefined;
+    payload.roofType = form.roofType || undefined;
+    payload.roofArea = form.roofArea || undefined;
+    if (form.phaseType) payload.phaseType = form.phaseType;
+    payload.meterSize = form.meterSize || undefined;
+    payload.source = form.source || undefined;
+    payload.notes = form.notes || undefined;
+    updateCustomer.mutate(payload, {
+      onSuccess: () => { setDirty(false); }
+    });
+  };
+
+  const handleCancel = () => {
+    setForm(initForm());
+    setDirty(false);
+  };
+
+  if (!form) return null;
+
+  return (
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2"><User className="h-4 w-4 text-primary" /> ข้อมูลจากลูกค้า</CardTitle>
+          {dirty && (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleCancel}>ยกเลิก</Button>
+              <Button size="sm" className="h-7 text-xs" onClick={handleSave} disabled={updateCustomer.isPending}>
+                {updateCustomer.isPending ? "กำลังบันทึก..." : "บันทึก"}
+              </Button>
+            </div>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-3">
+          <EditableField label="ค่าไฟ/เดือน (บาท)" value={form.electricityBill} onChange={(v) => updateField("electricityBill", v)} placeholder="เช่น 3500" icon={<Receipt className="h-3.5 w-3.5 text-green-500" />} suffix="บาท" />
+          <EditableField label="ประเภทหลังคา" value={form.roofType} onChange={(v) => updateField("roofType", v)} placeholder="เช่น เมทัลชีท" icon={<Home className="h-3.5 w-3.5 text-orange-500" />} />
+          <EditableField label="พื้นที่หลังคา (ตร.ม.)" value={form.roofArea} onChange={(v) => updateField("roofArea", v)} placeholder="เช่น 50" suffix="ตร.ม." />
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">ระบบไฟฟ้า</label>
+            <Select value={form.phaseType || "placeholder"} onValueChange={(v) => updateField("phaseType", v === "placeholder" ? "" : v)}>
+              <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="เลือก" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="single">1 เฟส</SelectItem>
+                <SelectItem value="three">3 เฟส</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <EditableField label="ขนาดมิเตอร์" value={form.meterSize} onChange={(v) => updateField("meterSize", v)} placeholder="เช่น 15(45)A" icon={<Gauge className="h-3.5 w-3.5 text-blue-500" />} />
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">ช่องทาง</label>
+            <SourceCombobox value={form.source} onChange={(v) => { updateField("source", v); }} />
+          </div>
+          <div className="space-y-1 col-span-2">
+            <label className="text-xs text-muted-foreground">ที่อยู่</label>
+            <p className="text-sm font-medium min-h-[32px] flex items-center">{[c.address, c.district, c.province].filter(Boolean).join(", ") || "-"}</p>
+          </div>
+        </div>
+        <div className="mt-3">
+          <EditableField label="หมายเหตุลูกค้า" value={form.notes} onChange={(v) => updateField("notes", v)} placeholder="หมายเหตุเพิ่มเติม..." multiline />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ==================== TEAM CARD - Editable ==================== */
+function TeamCard({ data, surveyId, users, refetch }: { data: any; surveyId: number; users: any; refetch: () => void }) {
+  const assignments = data?.assignments || [];
+  const adminSender = assignments.find((a: any) => a.assignment.role === "admin_sender");
+  const surveyors = assignments.filter((a: any) => a.assignment.role === "surveyor");
+  const closer = assignments.find((a: any) => a.assignment.role === "closer");
+
+  const [editingTeam, setEditingTeam] = useState(false);
+  const [teamForm, setTeamForm] = useState({
+    adminSenderId: "",
+    surveyorIds: [] as string[],
+    closerId: "",
+  });
+
+  const updateSurvey = trpc.survey.update.useMutation({
+    onSuccess: () => { toast.success("อัพเดททีมงานสำเร็จ"); setEditingTeam(false); refetch(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const startEdit = () => {
+    setTeamForm({
+      adminSenderId: adminSender?.user?.id ? String(adminSender.user.id) : "",
+      surveyorIds: surveyors.map((a: any) => String(a.user?.id || "")),
+      closerId: closer?.user?.id ? String(closer.user.id) : "",
+    });
+    setEditingTeam(true);
+  };
+
+  const handleSave = () => {
+    const payload: any = { id: surveyId };
+    // Send null to explicitly remove, number to set, omit to keep
+    payload.adminSenderId = teamForm.adminSenderId ? parseInt(teamForm.adminSenderId) : null;
+    payload.surveyorIds = teamForm.surveyorIds.filter(Boolean).map(Number);
+    payload.closerId = teamForm.closerId ? parseInt(teamForm.closerId) : null;
+    updateSurvey.mutate(payload);
+  };
+
+  const userOptions = users || [];
+
+  return (
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> ทีมงาน</CardTitle>
+          {!editingTeam ? (
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={startEdit}>
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          ) : (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setEditingTeam(false)}>ยกเลิก</Button>
+              <Button size="sm" className="h-7 text-xs" onClick={handleSave} disabled={updateSurvey.isPending}>
+                {updateSurvey.isPending ? "กำลังบันทึก..." : "บันทึก"}
+              </Button>
+            </div>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {editingTeam ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label className="text-xs">แอดมินผู้ส่งงาน</Label>
+              <div className="flex gap-1">
+                <Select value={teamForm.adminSenderId || "placeholder"} onValueChange={(v) => setTeamForm({ ...teamForm, adminSenderId: v === "placeholder" ? "" : v })}>
+                  <SelectTrigger className="h-9 flex-1"><SelectValue placeholder="เลือก" /></SelectTrigger>
+                  <SelectContent>
+                    {userOptions.map((u: any) => <SelectItem key={u.id} value={String(u.id)}>{u.name || `User #${u.id}`}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {teamForm.adminSenderId && (
+                  <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-destructive hover:text-destructive" onClick={() => setTeamForm({ ...teamForm, adminSenderId: "" })} title="ลบ">
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">ทีมสำรวจ (เลือกได้หลายคน)</Label>
+              <MultiUserSelect
+                users={userOptions}
+                selectedIds={teamForm.surveyorIds.filter(Boolean).map(Number)}
+                onChange={(ids) => setTeamForm({ ...teamForm, surveyorIds: ids.map(String) })}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">ผู้ปิดการขาย</Label>
+              <div className="flex gap-1">
+                <Select value={teamForm.closerId || "placeholder"} onValueChange={(v) => setTeamForm({ ...teamForm, closerId: v === "placeholder" ? "" : v })}>
+                  <SelectTrigger className="h-9 flex-1"><SelectValue placeholder="เลือก" /></SelectTrigger>
+                  <SelectContent>
+                    {userOptions.map((u: any) => <SelectItem key={u.id} value={String(u.id)}>{u.name || `User #${u.id}`}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {teamForm.closerId && (
+                  <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-destructive hover:text-destructive" onClick={() => setTeamForm({ ...teamForm, closerId: "" })} title="ลบ">
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30">
+              <p className="text-xs text-muted-foreground mb-1">แอดมินผู้ส่งงาน</p>
+              <p className="font-medium">{adminSender?.user?.name || "-"}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30">
+              <p className="text-xs text-muted-foreground mb-1">ทีมสำรวจ</p>
+              {surveyors.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {surveyors.map((a: any) => (
+                    <Badge key={a.assignment.id} variant="secondary" className="text-xs">{a.user?.name || "-"}</Badge>
+                  ))}
+                </div>
+              ) : <p className="font-medium">-</p>}
+            </div>
+            <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/30">
+              <p className="text-xs text-muted-foreground mb-1">ผู้ปิดการขาย</p>
+              <p className="font-medium">{closer?.user?.name || "-"}</p>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

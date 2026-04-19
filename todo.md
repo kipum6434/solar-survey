@@ -143,3 +143,42 @@
 ## Bug Fixes - Round 4.1
 
 - [x] การ์ดข้อมูลทางเทคนิค+ข้อมูลลูกค้า ใน SurveyDetail หายปุ่ม "แก้ไข" และ inline edit (ต้องกลับมาเหมือนเวอร์ชันเก่าที่มีปุ่มดินสอ กดแล้วแก้ค่าได้เลยในการ์ด)
+
+## User Request - Round 5: ปรับปรุง UI + เพิ่มฟิลด์ + Export + จัดการทีม
+
+### 16. หน้างานสำรวจ - เปลี่ยนชื่อคอลัมน์ + เพิ่มคอลัมน์
+- [x] เปลี่ยน "เจ้าหน้าที่" เป็น "เซลล์" ในตารางงานสำรวจ
+- [x] เพิ่มคอลัมน์ "คนส่งสำรวจ" (แอดมินผู้ส่งงาน) ในตารางงานสำรวจ
+- [x] เพิ่มคอลัมน์ "คนปิดการขาย" ในตารางงานสำรวจ
+
+### 17. หน้างานสำรวจ - เพิ่ม filter ตาม role
+- [x] เพิ่ม filter เซลล์ (surveyor) ในหน้างานสำรวจ
+- [x] เพิ่ม filter คนส่งสำรวจ (admin_sender) ในหน้างานสำรวจ
+- [x] เพิ่ม filter คนปิดการขาย (closer) ในหน้างานสำรวจ
+
+### 18. ฟอร์มเพิ่มลูกค้า + หน้าลูกค้า - เพิ่มอำเภอ/เขต
+- [x] Schema: เพิ่ม district column ใน customers table
+- [x] Backend: รองรับ district ใน customer.create/update
+- [x] Frontend: เพิ่มช่อง "อำเภอ/เขต" ในฟอร์มเพิ่ม/แก้ไขลูกค้า
+- [x] Frontend: แสดง "เขต/อำเภอ" ในตารางหน้าลูกค้า
+- [x] Frontend: แสดง "ขนาด kW" และ "Inverter" ในตารางหน้าลูกค้า
+
+### 19. SurveyDetail - เพิ่มฟิลด์เทคนิคใหม่
+- [x] Schema: เพิ่ม panelBrand, needBattery, needOptimizer, systemType ใน surveys table
+- [x] Backend: รองรับฟิลด์ใหม่ใน survey.create/update/getById
+- [x] Frontend: เพิ่มช่อง "ยี่ห้อแผง", "ต้องการแบตเตอรี่?", "ต้องการ Optimizer?", "ประเภทระบบ (String/Micro/ทั้งสอง)" ในการ์ดข้อมูลทางเทคนิค
+
+### 20. SurveyDetail - Inline edit แบบไม่ต้องกดดินสอ
+- [x] เปลี่ยน inline edit ให้กดที่ช่องว่างหรือค่าแล้วแก้ไขได้เลย ไม่ต้องกดปุ่มดินสอก่อน (click-to-edit)
+
+### 21. ทีมงาน - เพิ่ม/ลบสมาชิกได้
+- [x] Frontend: ทีมงานการ์ด - เพิ่มปุ่มเพิ่ม/ลบ แอดมินผู้ส่งงาน, ทีมเซลล์, ทีมปิดการขาย
+- [x] Backend: รองรับ update assignments (เพิ่ม/ลบ)
+
+### 22. แหล่งที่มา (Source) - ลบได้
+- [x] Backend: เพิ่ม API sources.delete
+- [x] Frontend: เพิ่มปุ่มลบแหล่งที่มาใน SourceCombobox หรือหน้าจัดการ
+
+### 23. Export Excel
+- [x] Backend: สร้าง API export รายงานสำรวจทั้งหมดเป็น Excel (.xlsx)
+- [x] Frontend: เพิ่มปุ่ม Export Excel ในหน้างานสำรวจ

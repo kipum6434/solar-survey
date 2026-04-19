@@ -94,6 +94,8 @@ const surveyRouter = router({
     .input(z.object({
       status: z.string().optional(),
       assignedTo: z.number().optional(),
+      adminSenderId: z.number().optional(),
+      closerId: z.number().optional(),
       page: z.number().default(1),
       limit: z.number().default(20),
       search: z.string().optional(),
@@ -102,6 +104,18 @@ const surveyRouter = router({
       source: z.string().optional(),
     }))
     .query(({ input }) => db.getSurveysWithCustomer(input)),
+
+  exportExcel: protectedProcedure
+    .input(z.object({
+      status: z.string().optional(),
+      month: z.number().min(1).max(12).optional(),
+      year: z.number().optional(),
+      source: z.string().optional(),
+    }))
+    .query(async ({ input }) => {
+      const result = await db.getSurveysWithCustomer({ ...input, page: 1, limit: 10000 });
+      return result.data;
+    }),
 
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))
@@ -121,6 +135,10 @@ const surveyRouter = router({
       status: z.enum(["pending", "scheduled", "in_progress", "surveyed", "quoted", "negotiating", "won", "lost", "cancelled"]).optional(),
       adminSenderId: z.number().optional(),
       surveyorIds: z.array(z.number()).optional(),
+      panelBrand: z.string().optional(),
+      needBattery: z.enum(["yes", "no", "undecided"]).optional(),
+      needOptimizer: z.enum(["yes", "no", "undecided"]).optional(),
+      systemType: z.enum(["string", "micro", "both"]).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const { surveyorIds, ...surveyData } = input;
@@ -166,9 +184,13 @@ const surveyRouter = router({
       inverterModel: z.string().optional(),
       estimatedCost: z.string().optional(),
       quotedPrice: z.string().optional(),
-      adminSenderId: z.number().optional(),
+      panelBrand: z.string().optional(),
+      needBattery: z.enum(["yes", "no", "undecided"]).optional(),
+      needOptimizer: z.enum(["yes", "no", "undecided"]).optional(),
+      systemType: z.enum(["string", "micro", "both"]).optional(),
+      adminSenderId: z.number().nullable().optional(),
       surveyorIds: z.array(z.number()).optional(),
-      closerId: z.number().optional(),
+      closerId: z.number().nullable().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const { id, surveyorIds, ...data } = input;
@@ -181,19 +203,27 @@ const surveyRouter = router({
       if (surveyorIds !== undefined || data.adminSenderId !== undefined || data.closerId !== undefined) {
         const currentAssignments = await db.getSurveyAssignments(id);
         const assignments: { userId: number; role: "admin_sender" | "surveyor" | "closer" }[] = [];
-        // Admin sender
-        const adminId = data.adminSenderId || oldSurvey?.adminSenderId || currentAssignments.find(a => a.assignment.role === "admin_sender")?.assignment.userId;
-        if (adminId) assignments.push({ userId: adminId, role: "admin_sender" });
-        // Surveyors
-        if (surveyorIds && surveyorIds.length > 0) {
+        // Admin sender - null means remove, undefined means keep existing
+        if (data.adminSenderId === null) {
+          // explicitly removed
+        } else {
+          const adminId = data.adminSenderId || currentAssignments.find(a => a.assignment.role === "admin_sender")?.assignment.userId;
+          if (adminId) assignments.push({ userId: adminId, role: "admin_sender" });
+        }
+        // Surveyors - empty array means remove all
+        if (surveyorIds !== undefined) {
           surveyorIds.forEach(uid => assignments.push({ userId: uid, role: "surveyor" }));
         } else {
           const existingSurveyors = currentAssignments.filter(a => a.assignment.role === "surveyor");
           existingSurveyors.forEach(a => assignments.push({ userId: a.assignment.userId, role: "surveyor" }));
         }
-        // Closer
-        const closerIdVal = data.closerId || oldSurvey?.closerId || currentAssignments.find(a => a.assignment.role === "closer")?.assignment.userId;
-        if (closerIdVal) assignments.push({ userId: closerIdVal, role: "closer" });
+        // Closer - null means remove, undefined means keep existing
+        if (data.closerId === null) {
+          // explicitly removed
+        } else {
+          const closerIdVal = data.closerId || currentAssignments.find(a => a.assignment.role === "closer")?.assignment.userId;
+          if (closerIdVal) assignments.push({ userId: closerIdVal, role: "closer" });
+        }
         await db.setSurveyAssignments(id, assignments);
       }
       if (data.status && oldSurvey && data.status !== oldSurvey.status) {
@@ -480,6 +510,12 @@ const sourceRouter = router({
     .mutation(async ({ input }) => {
       const source = await db.getOrCreateSource(input.name, input.category);
       return source;
+    }),
+  delete: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await db.deleteSource(input.id);
+      return { success: true };
     }),
 });
 

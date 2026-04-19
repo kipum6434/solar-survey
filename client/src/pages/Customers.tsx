@@ -262,6 +262,7 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete }: { data: any[]
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">เบอร์โทร</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell">อีเมล</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell">ช่องทาง</th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">เขต/อำเภอ</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">จังหวัด</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">ค่าไฟ/เดือน</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">ระบบไฟ</th>
@@ -291,6 +292,9 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete }: { data: any[]
                       {c.source || "-"}
                     </Badge>
                   ) : "-"}
+                </td>
+                <td className="px-3 py-2.5 whitespace-nowrap hidden lg:table-cell text-muted-foreground">
+                  {c.district || "-"}
                 </td>
                 <td className="px-3 py-2.5 whitespace-nowrap hidden lg:table-cell text-muted-foreground">
                   {c.province || "-"}
@@ -403,7 +407,7 @@ function CustomerGridView({ data, onRowClick, onEdit, onDelete }: { data: any[];
 
 /* ==================== ADD CUSTOMER DIALOG ==================== */
 function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: boolean; onOpenChange: (v: boolean) => void; onSubmit: (d: any) => void; loading: boolean }) {
-  const [form, setForm] = useState({ name: "", phone: "", email: "", address: "", province: "", source: "other" as string, notes: "", electricityBill: "", roofType: "", phaseType: "" as string });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", address: "", district: "", province: "", source: "other" as string, notes: "", electricityBill: "", roofType: "", phaseType: "" as string });
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) { toast.error("กรุณาระบุชื่อลูกค้า"); return; }
@@ -413,7 +417,7 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
       phaseType: form.phaseType || undefined,
       source: form.source as any,
     });
-    setForm({ name: "", phone: "", email: "", address: "", province: "", source: "other", notes: "", electricityBill: "", roofType: "", phaseType: "" });
+    setForm({ name: "", phone: "", email: "", address: "", district: "", province: "", source: "other", notes: "", electricityBill: "", roofType: "", phaseType: "" });
   };
 
   return (
@@ -440,6 +444,10 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
             <div className="col-span-2">
               <Label>ที่อยู่</Label>
               <Textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="ที่อยู่ลูกค้า" rows={2} />
+            </div>
+            <div>
+              <Label>เขต/อำเภอ</Label>
+              <Input value={form.district} onChange={(e) => setForm({ ...form, district: e.target.value })} placeholder="เขต/อำเภอ" />
             </div>
             <div>
               <Label>จังหวัด</Label>
