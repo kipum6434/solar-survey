@@ -1,50 +1,11 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, protectedProcedure, adminProcedure, superadminProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { nanoid } from "nanoid";
-import { storagePut, storageDelete, storageGet } from "./storage";
-import { SignJWT } from "jose";
-import { ENV } from "./_core/env";
+import { storagePut, storageDelete } from "./storage";
 import * as db from "./db";
-
-const LOCAL_SESSION_COOKIE = "local_session";
-
-async function createLocalSessionToken(userId: number): Promise<string> {
-  const secret = new TextEncoder().encode(ENV.cookieSecret);
-  return new SignJWT({ userId })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime("30d")
-    .sign(secret);
-}
-
-// Helper to refresh photo URLs with presigned URLs
-async function refreshPhotoUrls(photos: any[]) {
-  return Promise.all(photos.map(async (p: any) => {
-    if (p.fileKey) {
-      try {
-        const { url } = await storageGet(p.fileKey);
-        return { ...p, url };
-      } catch { return p; }
-    }
-    return p;
-  }));
-}
-
-// Helper to refresh document URLs with presigned URLs
-async function refreshDocUrls(docs: any[]) {
-  return Promise.all(docs.map(async (d: any) => {
-    if (d.fileKey) {
-      try {
-        const { url } = await storageGet(d.fileKey);
-        return { ...d, url };
-      } catch { return d; }
-    }
-    return d;
-  }));
-}
 
 // ==================== CUSTOMER ROUTER ====================
 const customerRouter = router({
@@ -53,12 +14,10 @@ const customerRouter = router({
       search: z.string().optional(),
       page: z.number().default(1),
       limit: z.number().default(20),
+      month: z.number().min(1).max(12).optional(),
+      year: z.number().optional(),
     }))
-    .query(({ input, ctx }) => {
-      // Role-based: normal users see only their own customers
-      const userId = (ctx.user.role === 'admin' || ctx.user.role === 'superadmin') ? undefined : ctx.user.id;
-      return db.getCustomers({ ...input, createdBy: userId });
-    }),
+    .query(({ input }) => db.getCustomers(input)),
 
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))
@@ -136,13 +95,10 @@ const surveyRouter = router({
       page: z.number().default(1),
       limit: z.number().default(20),
       search: z.string().optional(),
+      month: z.number().min(1).max(12).optional(),
+      year: z.number().optional(),
     }))
-    .query(({ input, ctx }) => {
-      // Role-based: normal users see only surveys assigned to them or created by them
-      const isAdminOrSuper = ctx.user.role === 'admin' || ctx.user.role === 'superadmin';
-      const scopedInput = isAdminOrSuper ? input : { ...input, userScope: ctx.user.id };
-      return db.getSurveysWithCustomer(scopedInput);
-    }),
+    .query(({ input }) => db.getSurveysWithCustomer(input)),
 
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))
@@ -189,10 +145,6 @@ const surveyRouter = router({
       systemSize: z.string().optional(),
       panelCount: z.number().optional(),
       inverterModel: z.string().optional(),
-      panelModel: z.string().optional(),
-      batteryModel: z.string().optional(),
-      roofDirection: z.string().optional(),
-      installNotes: z.string().optional(),
       estimatedCost: z.string().optional(),
       quotedPrice: z.string().optional(),
     }))
@@ -232,10 +184,7 @@ const surveyRouter = router({
 const photoRouter = router({
   list: protectedProcedure
     .input(z.object({ surveyId: z.number() }))
-    .query(async ({ input }) => {
-      const photos = await db.getSurveyPhotos(input.surveyId);
-      return refreshPhotoUrls(photos);
-    }),
+    .query(({ input }) => db.getSurveyPhotos(input.surveyId)),
 
   upload: protectedProcedure
     .input(z.object({
@@ -283,10 +232,7 @@ const photoRouter = router({
 const documentRouter = router({
   list: protectedProcedure
     .input(z.object({ surveyId: z.number() }))
-    .query(async ({ input }) => {
-      const docs = await db.getSurveyDocuments(input.surveyId);
-      return refreshDocUrls(docs);
-    }),
+    .query(({ input }) => db.getSurveyDocuments(input.surveyId)),
 
   upload: protectedProcedure
     .input(z.object({
@@ -403,7 +349,7 @@ const shareLinkRouter = router({
       surveyId: z.number(),
       expiresInDays: z.number().default(7),
       allowPhotos: z.boolean().default(true),
-      allowDocuments: z.boolean().default(false),
+      allowDocuments: z.boolean().default(true),
     }))
     .mutation(async ({ input, ctx }) => {
       const token = nanoid(32);
@@ -436,23 +382,8 @@ const shareLinkRouter = router({
       await db.incrementShareLinkView(input.token);
       const surveyData = await db.getSurveyWithCustomer(link.surveyId);
       if (!surveyData) return { error: "ไม่พบข้อมูลงานสำรวจ" };
-
-      // Photos: refresh URLs with presigned URLs
-      let photos: any[] = [];
-      if (link.allowPhotos) {
-        const rawPhotos = await db.getSurveyPhotos(link.surveyId);
-        photos = await refreshPhotoUrls(rawPhotos);
-      }
-
-      // Documents: only simulation docs (NEVER quotation), refresh URLs
-      let documents: any[] = [];
-      if (link.allowDocuments) {
-        const rawDocs = await db.getSurveyDocuments(link.surveyId);
-        // Filter out quotation documents - installers should NOT see pricing
-        const filteredDocs = rawDocs.filter((d: any) => d.fileType !== 'quotation');
-        documents = await refreshDocUrls(filteredDocs);
-      }
-
+      const photos = link.allowPhotos ? await db.getSurveyPhotos(link.surveyId) : [];
+      const documents = link.allowDocuments ? await db.getSurveyDocuments(link.surveyId) : [];
       return { survey: surveyData.survey, customer: surveyData.customer, photos, documents };
     }),
 });
@@ -479,10 +410,7 @@ const notificationRouter = router({
 
 // ==================== DASHBOARD ROUTER ====================
 const dashboardRouter = router({
-  stats: protectedProcedure.query(({ ctx }) => {
-    const isAdminOrSuper = ctx.user.role === 'admin' || ctx.user.role === 'superadmin';
-    return db.getDashboardStats(isAdminOrSuper ? undefined : ctx.user.id);
-  }),
+  stats: protectedProcedure.query(() => db.getDashboardStats()),
   recentActivities: protectedProcedure
     .input(z.object({ limit: z.number().default(20) }).optional())
     .query(({ input }) => db.getRecentActivities(input?.limit)),
@@ -495,10 +423,7 @@ const calendarRouter = router({
       startDate: z.number(),
       endDate: z.number(),
     }))
-    .query(({ input, ctx }) => {
-      const isAdminOrSuper = ctx.user.role === 'admin' || ctx.user.role === 'superadmin';
-      return db.getCalendarEvents(input.startDate, input.endDate, isAdminOrSuper ? undefined : ctx.user.id);
-    }),
+    .query(({ input }) => db.getCalendarEvents(input.startDate, input.endDate)),
 });
 
 // ==================== STORAGE ROUTER ====================
@@ -508,66 +433,7 @@ const storageRouter = router({
 
 // ==================== USERS ROUTER ====================
 const usersRouter = router({
-  list: adminProcedure.query(() => db.getAllUsers()),
-
-  create: adminProcedure
-    .input(z.object({
-      username: z.string().min(3),
-      password: z.string().min(6),
-      name: z.string().min(1),
-      role: z.enum(["user", "admin", "superadmin"]).default("user"),
-    }))
-    .mutation(async ({ input, ctx }) => {
-      // Only superadmin can create admin/superadmin users
-      if ((input.role === 'admin' || input.role === 'superadmin') && ctx.user.role !== 'superadmin') {
-        throw new Error("เฉพาะ Superadmin เท่านั้นที่สร้าง Admin/Superadmin ได้");
-      }
-      const existing = await db.getUserByUsername(input.username);
-      if (existing) throw new Error("Username นี้ถูกใช้แล้ว");
-      const bcrypt = await import("bcryptjs");
-      const passwordHash = await bcrypt.hash(input.password, 10);
-      const id = await db.createLocalUser({
-        username: input.username,
-        passwordHash,
-        name: input.name,
-        role: input.role,
-      });
-      await db.logActivity({ userId: ctx.user.id, action: "create_user", entityType: "user", entityId: id, details: `สร้างผู้ใช้: ${input.name} (${input.username})` });
-      return { id };
-    }),
-
-  updateRole: adminProcedure
-    .input(z.object({
-      userId: z.number(),
-      role: z.enum(["user", "admin", "superadmin"]),
-    }))
-    .mutation(async ({ input, ctx }) => {
-      if ((input.role === 'superadmin') && ctx.user.role !== 'superadmin') {
-        throw new Error("เฉพาะ Superadmin เท่านั้นที่เปลี่ยน role เป็น Superadmin ได้");
-      }
-      await db.updateUserRole(input.userId, input.role);
-      return { success: true };
-    }),
-
-  resetPassword: adminProcedure
-    .input(z.object({
-      userId: z.number(),
-      newPassword: z.string().min(6),
-    }))
-    .mutation(async ({ input }) => {
-      const bcrypt = await import("bcryptjs");
-      const passwordHash = await bcrypt.hash(input.newPassword, 10);
-      await db.updateUserPassword(input.userId, passwordHash);
-      return { success: true };
-    }),
-
-  delete: superadminProcedure
-    .input(z.object({ userId: z.number() }))
-    .mutation(async ({ input, ctx }) => {
-      if (input.userId === ctx.user.id) throw new Error("ไม่สามารถลบตัวเองได้");
-      await db.deleteUser(input.userId);
-      return { success: true };
-    }),
+  list: protectedProcedure.query(() => db.getAllUsers()),
 });
 
 // ==================== APP ROUTER ====================
@@ -575,41 +441,9 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
-    login: publicProcedure
-      .input(z.object({
-        username: z.string(),
-        password: z.string(),
-      }))
-      .mutation(async ({ input, ctx }) => {
-        const user = await db.getUserByUsername(input.username);
-        if (!user || !user.passwordHash) {
-          throw new Error("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
-        }
-        const bcrypt = await import("bcryptjs");
-        const valid = await bcrypt.compare(input.password, user.passwordHash);
-        if (!valid) {
-          throw new Error("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
-        }
-        // Update last signed in
-        const dbInstance = await db.getDb();
-        if (dbInstance) {
-          const { users } = await import("../drizzle/schema");
-          const { eq } = await import("drizzle-orm");
-          await dbInstance.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
-        }
-        // Create local session token
-        const token = await createLocalSessionToken(user.id);
-        const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(LOCAL_SESSION_COOKIE, token, {
-          ...cookieOptions,
-          maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-        });
-        return { success: true, user: { id: user.id, name: user.name, role: user.role } };
-      }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      ctx.res.clearCookie(LOCAL_SESSION_COOKIE, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
   }),

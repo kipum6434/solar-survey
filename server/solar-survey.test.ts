@@ -240,3 +240,56 @@ describe("Solar Survey - Document Delete", () => {
     await expect(caller.document.delete({ id: 999 })).rejects.toThrow();
   });
 });
+
+describe("Solar Survey - Month/Year Filter", () => {
+  it("customer.list accepts month and year parameters", async () => {
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.customer.list({ page: 1, limit: 10, month: 4, year: 2026 });
+    expect(result).toBeDefined();
+    expect(Array.isArray(result.data)).toBe(true);
+    expect(typeof result.total).toBe("number");
+  });
+
+  it("customer.list with year-only filter works", async () => {
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.customer.list({ page: 1, limit: 10, year: 2026 });
+    expect(result).toBeDefined();
+    expect(Array.isArray(result.data)).toBe(true);
+  });
+
+  it("customer.list without month/year returns all", async () => {
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.customer.list({ page: 1, limit: 10 });
+    expect(result).toBeDefined();
+    expect(result.total).toBeGreaterThanOrEqual(0);
+  });
+
+  it("survey.list accepts month and year parameters", async () => {
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.survey.list({ page: 1, limit: 10, month: 4, year: 2026 });
+    expect(result).toBeDefined();
+    expect(Array.isArray(result.data)).toBe(true);
+    expect(typeof result.total).toBe("number");
+  });
+
+  it("survey.list with year-only filter works", async () => {
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.survey.list({ page: 1, limit: 10, year: 2026 });
+    expect(result).toBeDefined();
+    expect(Array.isArray(result.data)).toBe(true);
+  });
+
+  it("customer.list with future month returns empty", async () => {
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.customer.list({ page: 1, limit: 10, month: 12, year: 2030 });
+    expect(result).toBeDefined();
+    expect(result.data.length).toBe(0);
+    expect(result.total).toBe(0);
+  });
+});

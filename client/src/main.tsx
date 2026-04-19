@@ -18,13 +18,7 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   if (!isUnauthorized) return;
 
-  // Don't redirect to OAuth - let DashboardLayout show local login form
-  // Only reload if not already on a public page
-  const publicPaths = ['/share/'];
-  const isPublicPage = publicPaths.some(p => window.location.pathname.startsWith(p));
-  if (!isPublicPage) {
-    window.location.href = '/';
-  }
+  window.location.href = getLoginUrl();
 };
 
 queryClient.getQueryCache().subscribe(event => {

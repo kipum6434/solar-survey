@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import { SOURCE_MAP } from "@/lib/constants";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import {
   Users, Plus, Search, Phone, Mail, MapPin, ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Trash2, Eye,
+  LayoutList, Table2, Zap,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,14 +25,39 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
+const THAI_MONTHS_SHORT = [
+  "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
+  "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค.",
+];
+
+const THAI_MONTHS = [
+  "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+  "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
+];
+
 export default function Customers() {
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [showAdd, setShowAdd] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<"grid" | "table">("table");
 
-  const { data, isLoading, refetch } = trpc.customer.list.useQuery({ search, page, limit: 15 });
+  // Month/Year filter
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [filterByMonth, setFilterByMonth] = useState(false);
+
+  const queryInput = useMemo(() => ({
+    search,
+    page,
+    limit: 30,
+    month: filterByMonth ? selectedMonth : undefined,
+    year: filterByMonth ? selectedYear : undefined,
+  }), [search, page, filterByMonth, selectedMonth, selectedYear]);
+
+  const { data, isLoading, refetch } = trpc.customer.list.useQuery(queryInput);
   const createMutation = trpc.customer.create.useMutation({
     onSuccess: () => { toast.success("เพิ่มลูกค้าสำเร็จ"); setShowAdd(false); refetch(); },
     onError: (e) => toast.error(e.message),
@@ -41,11 +67,30 @@ export default function Customers() {
     onError: (e) => toast.error(e.message),
   });
 
-  const totalPages = Math.ceil((data?.total ?? 0) / 15);
+  const totalPages = Math.ceil((data?.total ?? 0) / 30);
+
+  const yearOptions = useMemo(() => {
+    const years = [];
+    for (let y = now.getFullYear() + 1; y >= now.getFullYear() - 5; y--) {
+      years.push(y);
+    }
+    return years;
+  }, []);
+
+  const handleMonthNav = (dir: -1 | 1) => {
+    let m = selectedMonth + dir;
+    let y = selectedYear;
+    if (m < 1) { m = 12; y--; }
+    if (m > 12) { m = 1; y++; }
+    setSelectedMonth(m);
+    setSelectedYear(y);
+    setFilterByMonth(true);
+    setPage(1);
+  };
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">ลูกค้า</h1>
@@ -56,80 +101,108 @@ export default function Customers() {
           </Button>
         </div>
 
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="ค้นหาชื่อ, เบอร์โทร, อีเมล..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="pl-10"
-          />
+        {/* Month Navigation Bar */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <Button
+            variant={!filterByMonth ? "default" : "outline"}
+            size="sm"
+            onClick={() => { setFilterByMonth(false); setPage(1); }}
+            className="shrink-0"
+          >
+            ทั้งหมด
+          </Button>
+          <div className="h-6 w-px bg-border shrink-0" />
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => handleMonthNav(-1)}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          {THAI_MONTHS_SHORT.map((m, i) => (
+            <Button
+              key={i}
+              variant={filterByMonth && selectedMonth === i + 1 ? "default" : "outline"}
+              size="sm"
+              onClick={() => { setSelectedMonth(i + 1); setFilterByMonth(true); setPage(1); }}
+              className="shrink-0 text-xs px-2.5"
+            >
+              {m}
+            </Button>
+          ))}
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => handleMonthNav(1)}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Select value={String(selectedYear)} onValueChange={(v) => { setSelectedYear(Number(v)); if (filterByMonth) setPage(1); }}>
+            <SelectTrigger className="w-[100px] h-8 text-xs shrink-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {yearOptions.map((y) => (
+                <SelectItem key={y} value={String(y)}>{y + 543}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
+        {/* Search + View Toggle */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative flex-1 min-w-[200px] max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="ค้นหาชื่อ, เบอร์โทร, อีเมล..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              className="pl-10"
+            />
+          </div>
+          <div className="flex items-center border rounded-md">
+            <Button
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              size="icon"
+              className="h-9 w-9 rounded-r-none"
+              onClick={() => setViewMode("grid")}
+            >
+              <LayoutList className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "table" ? "default" : "ghost"}
+              size="icon"
+              className="h-9 w-9 rounded-l-none"
+              onClick={() => setViewMode("table")}
+            >
+              <Table2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Filter info */}
+        {filterByMonth && (
+          <div className="text-sm text-muted-foreground">
+            แสดงลูกค้าที่สร้างในเดือน <span className="font-semibold text-foreground">{THAI_MONTHS[selectedMonth - 1]} {selectedYear + 543}</span>
+            {data && <span className="ml-2">({data.total} ราย)</span>}
+          </div>
+        )}
+
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Card key={i} className="border-0 shadow-sm"><CardContent className="p-5"><Skeleton className="h-24 w-full" /></CardContent></Card>
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full rounded-lg" />
             ))}
           </div>
         ) : data?.data && data.data.length > 0 ? (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {data.data.map((customer: any) => (
-                <Card
-                  key={customer.id}
-                  className="border-0 shadow-sm hover:shadow-md transition-all cursor-pointer group"
-                  onClick={() => setLocation(`/customers/${customer.id}`)}
-                >
-                  <CardContent className="p-5">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                          <Users className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-semibold text-sm truncate">{customer.name}</p>
-                          {customer.source && (
-                            <Badge variant="secondary" className="text-[10px] mt-1 font-normal">
-                              {SOURCE_MAP[customer.source] || customer.source}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setLocation(`/customers/${customer.id}`); }}>
-                            <Eye className="h-4 w-4 mr-2" /> ดูรายละเอียด
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setLocation(`/customers/${customer.id}?edit=true`); }}>
-                            <Pencil className="h-4 w-4 mr-2" /> แก้ไข
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteId(customer.id); }}>
-                            <Trash2 className="h-4 w-4 mr-2" /> ลบ
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                    <div className="space-y-1.5 text-xs text-muted-foreground">
-                      {customer.phone && (
-                        <div className="flex items-center gap-2"><Phone className="h-3 w-3" />{customer.phone}</div>
-                      )}
-                      {customer.email && (
-                        <div className="flex items-center gap-2"><Mail className="h-3 w-3" /><span className="truncate">{customer.email}</span></div>
-                      )}
-                      {customer.address && (
-                        <div className="flex items-center gap-2"><MapPin className="h-3 w-3 shrink-0" /><span className="truncate">{customer.address}</span></div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            {viewMode === "table" ? (
+              <CustomerTableView
+                data={data.data}
+                onRowClick={(id) => setLocation(`/customers/${id}`)}
+                onEdit={(id) => setLocation(`/customers/${id}?edit=true`)}
+                onDelete={(id) => setDeleteId(id)}
+              />
+            ) : (
+              <CustomerGridView
+                data={data.data}
+                onRowClick={(id) => setLocation(`/customers/${id}`)}
+                onEdit={(id) => setLocation(`/customers/${id}?edit=true`)}
+                onDelete={(id) => setDeleteId(id)}
+              />
+            )}
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-2 pt-4">
                 <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
@@ -145,8 +218,8 @@ export default function Customers() {
         ) : (
           <div className="text-center py-16">
             <Users className="h-12 w-12 mx-auto mb-3 text-muted-foreground/30" />
-            <p className="text-muted-foreground">{search ? "ไม่พบลูกค้าที่ค้นหา" : "ยังไม่มีข้อมูลลูกค้า"}</p>
-            {!search && (
+            <p className="text-muted-foreground">{search || filterByMonth ? "ไม่พบลูกค้าที่ค้นหา" : "ยังไม่มีข้อมูลลูกค้า"}</p>
+            {!search && !filterByMonth && (
               <Button onClick={() => setShowAdd(true)} variant="outline" className="mt-4 gap-2">
                 <Plus className="h-4 w-4" /> เพิ่มลูกค้าคนแรก
               </Button>
@@ -177,6 +250,158 @@ export default function Customers() {
   );
 }
 
+/* ==================== TABLE VIEW ==================== */
+function CustomerTableView({ data, onRowClick, onEdit, onDelete }: { data: any[]; onRowClick: (id: number) => void; onEdit: (id: number) => void; onDelete: (id: number) => void }) {
+  return (
+    <div className="border rounded-lg overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-muted/50 border-b">
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">ชื่อลูกค้า</th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">เบอร์โทร</th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell">อีเมล</th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell">ช่องทาง</th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">จังหวัด</th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">ค่าไฟ/เดือน</th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">ระบบไฟ</th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">วันที่สร้าง</th>
+              <th className="text-right px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap w-10"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((c: any) => (
+              <tr
+                key={c.id}
+                className="border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
+                onClick={() => onRowClick(c.id)}
+              >
+                <td className="px-3 py-2.5 font-medium max-w-[200px] truncate">
+                  {c.name}
+                </td>
+                <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
+                  {c.phone || "-"}
+                </td>
+                <td className="px-3 py-2.5 max-w-[180px] truncate hidden md:table-cell text-muted-foreground">
+                  {c.email || "-"}
+                </td>
+                <td className="px-3 py-2.5 whitespace-nowrap hidden md:table-cell">
+                  {c.source ? (
+                    <Badge variant="secondary" className="text-[10px] font-normal">
+                      {SOURCE_MAP[c.source] || c.source}
+                    </Badge>
+                  ) : "-"}
+                </td>
+                <td className="px-3 py-2.5 whitespace-nowrap hidden lg:table-cell text-muted-foreground">
+                  {c.province || "-"}
+                </td>
+                <td className="px-3 py-2.5 whitespace-nowrap hidden lg:table-cell">
+                  {c.electricityBill ? (
+                    <span className="flex items-center gap-1 text-amber-600">
+                      <Zap className="h-3 w-3" />
+                      {Number(c.electricityBill).toLocaleString()} ฿
+                    </span>
+                  ) : <span className="text-muted-foreground">-</span>}
+                </td>
+                <td className="px-3 py-2.5 whitespace-nowrap hidden xl:table-cell text-muted-foreground text-xs">
+                  {c.phaseType === "single" ? "1 เฟส" : c.phaseType === "three" ? "3 เฟส" : "-"}
+                </td>
+                <td className="px-3 py-2.5 whitespace-nowrap hidden xl:table-cell text-muted-foreground text-xs">
+                  {new Date(c.createdAt).toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "2-digit" })}
+                </td>
+                <td className="px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-7 w-7">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => onRowClick(c.id)}>
+                        <Eye className="h-4 w-4 mr-2" /> ดูรายละเอียด
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onEdit(c.id)}>
+                        <Pencil className="h-4 w-4 mr-2" /> แก้ไข
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive" onClick={() => onDelete(c.id)}>
+                        <Trash2 className="h-4 w-4 mr-2" /> ลบ
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ==================== GRID VIEW (original card layout) ==================== */
+function CustomerGridView({ data, onRowClick, onEdit, onDelete }: { data: any[]; onRowClick: (id: number) => void; onEdit: (id: number) => void; onDelete: (id: number) => void }) {
+  const [, setLocation] = useLocation();
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {data.map((customer: any) => (
+        <Card
+          key={customer.id}
+          className="border-0 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+          onClick={() => onRowClick(customer.id)}
+        >
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Users className="h-5 w-5 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm truncate">{customer.name}</p>
+                  {customer.source && (
+                    <Badge variant="secondary" className="text-[10px] mt-1 font-normal">
+                      {SOURCE_MAP[customer.source] || customer.source}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onRowClick(customer.id); }}>
+                    <Eye className="h-4 w-4 mr-2" /> ดูรายละเอียด
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(customer.id); }}>
+                    <Pencil className="h-4 w-4 mr-2" /> แก้ไข
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(customer.id); }}>
+                    <Trash2 className="h-4 w-4 mr-2" /> ลบ
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <div className="space-y-1.5 text-xs text-muted-foreground">
+              {customer.phone && (
+                <div className="flex items-center gap-2"><Phone className="h-3 w-3" />{customer.phone}</div>
+              )}
+              {customer.email && (
+                <div className="flex items-center gap-2"><Mail className="h-3 w-3" /><span className="truncate">{customer.email}</span></div>
+              )}
+              {customer.address && (
+                <div className="flex items-center gap-2"><MapPin className="h-3 w-3 shrink-0" /><span className="truncate">{customer.address}</span></div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+/* ==================== ADD CUSTOMER DIALOG ==================== */
 function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: boolean; onOpenChange: (v: boolean) => void; onSubmit: (d: any) => void; loading: boolean }) {
   const [form, setForm] = useState({ name: "", phone: "", email: "", address: "", province: "", source: "other" as string, notes: "", electricityBill: "", roofType: "", phaseType: "" as string });
   const handleSubmit = (e: React.FormEvent) => {

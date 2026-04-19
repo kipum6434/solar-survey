@@ -89,67 +89,25 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function getUserByUsername(username: string) {
-  const db = await getDb();
-  if (!db) return undefined;
-  const result = await db.select().from(users).where(eq(users.username, username)).limit(1);
-  return result[0];
-}
-
-export async function getUserById(id: number) {
-  const db = await getDb();
-  if (!db) return undefined;
-  const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
-  return result[0];
-}
-
-export async function createLocalUser(data: { username: string; passwordHash: string; name: string; role: 'user' | 'admin' | 'superadmin' }) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  const openId = `local_${data.username}_${Date.now()}`;
-  const result = await db.insert(users).values({
-    openId,
-    username: data.username,
-    passwordHash: data.passwordHash,
-    name: data.name,
-    role: data.role,
-    loginMethod: 'local',
-  });
-  return result[0].insertId;
-}
-
-export async function updateUserPassword(userId: number, passwordHash: string) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
-}
-
-export async function updateUserRole(userId: number, role: 'user' | 'admin' | 'superadmin') {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  await db.update(users).set({ role }).where(eq(users.id, userId));
-}
-
-export async function deleteUser(userId: number) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  await db.delete(users).where(eq(users.id, userId));
-}
-
 // ==================== CUSTOMER QUERIES ====================
-export async function getCustomers(opts: { search?: string; page?: number; limit?: number; createdBy?: number }) {
+export async function getCustomers(opts: { search?: string; page?: number; limit?: number; month?: number; year?: number }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { search, page = 1, limit = 20, createdBy } = opts;
+  const { search, page = 1, limit = 20, month, year } = opts;
   const offset = (page - 1) * limit;
   const conditions: any[] = [];
-  if (createdBy) conditions.push(eq(customers.createdBy, createdBy));
   if (search) {
     conditions.push(or(
       like(customers.name, `%${search}%`),
       like(customers.phone, `%${search}%`),
       like(customers.email, `%${search}%`)
     ));
+  }
+  if (month && year) {
+    conditions.push(sql`MONTH(${customers.createdAt}) = ${month}`);
+    conditions.push(sql`YEAR(${customers.createdAt}) = ${year}`);
+  } else if (year) {
+    conditions.push(sql`YEAR(${customers.createdAt}) = ${year}`);
   }
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
   const data = await db.select().from(customers).where(whereClause).orderBy(desc(customers.createdAt)).limit(limit).offset(offset);
@@ -393,16 +351,14 @@ export async function getRecentActivities(limit = 20) {
 }
 
 // ==================== DASHBOARD STATS ====================
-export async function getDashboardStats(userId?: number) {
+export async function getDashboardStats() {
   const db = await getDb();
   if (!db) return { totalCustomers: 0, totalSurveys: 0, pendingSurveys: 0, completedSurveys: 0, wonDeals: 0, pendingFollowUps: 0 };
-  const custWhere = userId ? eq(customers.createdBy, userId) : undefined;
-  const survWhere = userId ? or(eq(surveys.assignedTo, userId), eq(surveys.createdBy, userId)) : undefined;
-  const [custCount] = custWhere ? await db.select({ count: sql<number>`count(*)` }).from(customers).where(custWhere) : await db.select({ count: sql<number>`count(*)` }).from(customers);
-  const [survCount] = survWhere ? await db.select({ count: sql<number>`count(*)` }).from(surveys).where(survWhere) : await db.select({ count: sql<number>`count(*)` }).from(surveys);
-  const [pendCount] = survWhere ? await db.select({ count: sql<number>`count(*)` }).from(surveys).where(and(survWhere, inArray(surveys.status, ["pending", "scheduled"]))) : await db.select({ count: sql<number>`count(*)` }).from(surveys).where(inArray(surveys.status, ["pending", "scheduled"]));
-  const [compCount] = survWhere ? await db.select({ count: sql<number>`count(*)` }).from(surveys).where(and(survWhere, eq(surveys.status, "surveyed"))) : await db.select({ count: sql<number>`count(*)` }).from(surveys).where(eq(surveys.status, "surveyed"));
-  const [wonCount] = survWhere ? await db.select({ count: sql<number>`count(*)` }).from(surveys).where(and(survWhere, eq(surveys.status, "won"))) : await db.select({ count: sql<number>`count(*)` }).from(surveys).where(eq(surveys.status, "won"));
+  const [custCount] = await db.select({ count: sql<number>`count(*)` }).from(customers);
+  const [survCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys);
+  const [pendCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).where(inArray(surveys.status, ["pending", "scheduled"]));
+  const [compCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).where(eq(surveys.status, "surveyed"));
+  const [wonCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).where(eq(surveys.status, "won"));
   const [fuCount] = await db.select({ count: sql<number>`count(*)` }).from(followUps).where(eq(followUps.status, "pending"));
   return {
     totalCustomers: custCount?.count ?? 0,
@@ -415,20 +371,18 @@ export async function getDashboardStats(userId?: number) {
 }
 
 // ==================== CALENDAR QUERIES ====================
-export async function getCalendarEvents(startDate: number, endDate: number, userId?: number) {
+export async function getCalendarEvents(startDate: number, endDate: number) {
   const db = await getDb();
   if (!db) return { surveys: [], followUps: [] };
-  const surveyConditions: any[] = [
-    gte(surveys.scheduledDate, startDate),
-    lte(surveys.scheduledDate, endDate)
-  ];
-  if (userId) surveyConditions.push(or(eq(surveys.assignedTo, userId), eq(surveys.createdBy, userId)));
   const surveyEvents = await db.select({
     survey: surveys,
     customer: customers,
   }).from(surveys)
     .innerJoin(customers, eq(surveys.customerId, customers.id))
-    .where(and(...surveyConditions))
+    .where(and(
+      gte(surveys.scheduledDate, startDate),
+      lte(surveys.scheduledDate, endDate)
+    ))
     .orderBy(surveys.scheduledDate);
   const followUpEvents = await db.select({
     followUp: followUps,
@@ -481,30 +435,37 @@ export async function getSurveyDocumentById(id: number) {
 export async function getAllUsers() {
   const db = await getDb();
   if (!db) return [];
-  return db.select({ id: users.id, name: users.name, email: users.email, username: users.username, role: users.role, lastSignedIn: users.lastSignedIn, openId: users.openId }).from(users);
+  return db.select({ id: users.id, name: users.name, email: users.email, role: users.role }).from(users);
 }
 
-export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; page?: number; limit?: number; search?: string; userScope?: number }) {
+export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; page?: number; limit?: number; search?: string; month?: number; year?: number }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { status, assignedTo, page = 1, limit = 20, search, userScope } = opts;
+  const { status, assignedTo, page = 1, limit = 20, search, month, year } = opts;
   const offset = (page - 1) * limit;
   const conditions: any[] = [];
   if (status) conditions.push(eq(surveys.status, status as any));
   if (assignedTo) conditions.push(eq(surveys.assignedTo, assignedTo));
-  if (userScope) conditions.push(or(eq(surveys.assignedTo, userScope), eq(surveys.createdBy, userScope)));
   if (search) {
     conditions.push(or(
       like(customers.name, `%${search}%`),
       like(customers.phone, `%${search}%`)
     ));
   }
+  if (month && year) {
+    conditions.push(sql`MONTH(${surveys.createdAt}) = ${month}`);
+    conditions.push(sql`YEAR(${surveys.createdAt}) = ${year}`);
+  } else if (year) {
+    conditions.push(sql`YEAR(${surveys.createdAt}) = ${year}`);
+  }
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
   const data = await db.select({
     survey: surveys,
     customer: customers,
+    assignedUser: { id: users.id, name: users.name },
   }).from(surveys)
     .innerJoin(customers, eq(surveys.customerId, customers.id))
+    .leftJoin(users, eq(surveys.assignedTo, users.id))
     .where(whereClause)
     .orderBy(desc(surveys.createdAt))
     .limit(limit)
