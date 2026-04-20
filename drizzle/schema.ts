@@ -46,6 +46,7 @@ export const customers = mysqlTable("customers", {
   roofArea: decimal("roofArea", { precision: 10, scale: 2 }),
   phaseType: mysqlEnum("phaseType", ["single", "three"]),
   meterSize: varchar("meterSize", { length: 50 }),
+  fullAddress: text("fullAddress"),
   notes: text("notes"),
   createdBy: int("createdBy"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

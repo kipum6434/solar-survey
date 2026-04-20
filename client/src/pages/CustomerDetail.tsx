@@ -117,10 +117,14 @@ export default function CustomerDetail() {
                     <span>{customer.email}</span>
                   </div>
                 )}
-                {customer.address && (
+                {(customer.fullAddress || customer.address) && (
                   <div className="flex items-start gap-3">
                     <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                    <span>{[customer.address, customer.subDistrict, customer.district, customer.province, customer.postalCode].filter(Boolean).join(", ")}</span>
+                    <div className="flex flex-col">
+                      {customer.fullAddress && <span>{customer.fullAddress}</span>}
+                      {customer.address && <span className="text-sm text-muted-foreground">{customer.address.startsWith('http') ? <a href={customer.address} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{customer.address}</a> : customer.address}</span>}
+                      <span>{[customer.district, customer.province, customer.postalCode].filter(Boolean).join(", ")}</span>
+                    </div>
                   </div>
                 )}
                 {customer.latitude && customer.longitude && (
@@ -267,7 +271,8 @@ export default function CustomerDetail() {
                 </div>
                 <div><Label>เบอร์โทร</Label><Input value={editForm.phone || ""} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} /></div>
                 <div><Label>อีเมล</Label><Input value={editForm.email || ""} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} /></div>
-                <div className="col-span-2"><Label>ที่อยู่</Label><Textarea value={editForm.address || ""} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} rows={2} /></div>
+                <div className="col-span-2"><Label>โลเคชั่น (Google Maps Link)</Label><Input value={editForm.address || ""} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} placeholder="วางลิงก์ Google Maps" /></div>
+                <div className="col-span-2"><Label>ที่อยู่</Label><Input value={editForm.fullAddress || ""} onChange={(e) => setEditForm({ ...editForm, fullAddress: e.target.value })} placeholder="บ้านเลขที่ หมู่บ้าน ซอย ถนน" /></div>
                 <div><Label>จังหวัด</Label><Input value={editForm.province || ""} onChange={(e) => setEditForm({ ...editForm, province: e.target.value })} /></div>
                 <div><Label>เขต/อำเภอ</Label><Input value={editForm.district || ""} onChange={(e) => setEditForm({ ...editForm, district: e.target.value })} placeholder="เขต/อำเภอ" /></div>
                 <div>

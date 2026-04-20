@@ -115,10 +115,11 @@ export default function Customers() {
     if (!data?.data || selectedIds.size === 0) return;
     const selected = data.data.filter((c: any) => selectedIds.has(c.id));
     if (selected.length === 0) { toast.error("ไม่พบข้อมูลที่เลือก"); return; }
-    const headers = ["ชื่อลูกค้า", "เบอร์โทร", "โลเคชั่น", "ช่องทาง", "เขต/อำเภอ", "จังหวัด", "ค่าไฟ/เดือน", "ประเภทหลังคา", "ระบบไฟ", "หมายเหตุ", "สถานะ", "วันที่สร้าง"];
+    const headers = ["ชื่อลูกค้า", "เบอร์โทร", "ที่อยู่", "โลเคชั่น", "ช่องทาง", "เขต/อำเภอ", "จังหวัด", "ค่าไฟ/เดือน", "ประเภทหลังคา", "ระบบไฟ", "หมายเหตุ", "สถานะ", "วันที่สร้าง"];
     const rows = selected.map((c: any) => ({
       "ชื่อลูกค้า": c.name || "",
       "เบอร์โทร": c.phone || "",
+      "ที่อยู่": c.fullAddress || "",
       "โลเคชั่น": c.address || "",
       "ช่องทาง": c.source || "",
       "เขต/อำเภอ": c.district || "",
@@ -498,6 +499,7 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete, selectedIds, on
               </th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">ชื่อลูกค้า</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">เบอร์โทร</th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell">ที่อยู่</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell">โลเคชั่น</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell">ช่องทาง</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">เขต/อำเภอ</th>
@@ -532,6 +534,9 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete, selectedIds, on
                   </td>
                   <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
                     {c.phone || "-"}
+                  </td>
+                  <td className="px-3 py-2.5 max-w-[180px] truncate hidden md:table-cell text-muted-foreground">
+                    {c.fullAddress || "-"}
                   </td>
                   <td className="px-3 py-2.5 max-w-[180px] truncate hidden md:table-cell text-muted-foreground">
                     {c.address ? (
@@ -719,7 +724,7 @@ function CustomerGridView({ data, onRowClick, onEdit, onDelete, selectedIds, onT
 
 /* ==================== ADD CUSTOMER DIALOG ==================== */
 function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: boolean; onOpenChange: (v: boolean) => void; onSubmit: (d: any) => void; loading: boolean }) {
-  const [form, setForm] = useState({ name: "", phone: "", address: "", district: "", province: "", source: "other" as string, notes: "", electricityBill: "", roofType: "", phaseType: "" as string });
+  const [form, setForm] = useState({ name: "", phone: "", address: "", district: "", province: "", source: "other" as string, notes: "", electricityBill: "", roofType: "", phaseType: "" as string, fullAddress: "" });
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) { toast.error("กรุณาระบุชื่อลูกค้า"); return; }
@@ -727,9 +732,10 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
       ...form,
       electricityBill: form.electricityBill || undefined,
       phaseType: form.phaseType || undefined,
+      fullAddress: form.fullAddress || undefined,
       source: form.source as any,
     });
-    setForm({ name: "", phone: "", address: "", district: "", province: "", source: "other", notes: "", electricityBill: "", roofType: "", phaseType: "" });
+    setForm({ name: "", phone: "", address: "", district: "", province: "", source: "other", notes: "", electricityBill: "", roofType: "", phaseType: "", fullAddress: "" });
   };
 
   return (
@@ -752,6 +758,10 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
             <div>
               <Label>โลเคชั่น (Google Maps Link)</Label>
               <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="วางลิงก์ Google Maps หรือที่อยู่" />
+            </div>
+            <div className="col-span-2">
+              <Label>ที่อยู่</Label>
+              <Input value={form.fullAddress} onChange={(e) => setForm({ ...form, fullAddress: e.target.value })} placeholder="บ้านเลขที่ หมู่บ้าน ซอย ถนน" />
             </div>
             <div>
               <Label>เขต/อำเภอ</Label>
@@ -804,7 +814,8 @@ const COLUMN_MAP: Record<string, string> = {
   "ชื่อลูกค้า": "name", "ชื่อ": "name", "name": "name", "ชื่อ-นามสกุล": "name",
   "เบอร์โทร": "phone", "โทร": "phone", "phone": "phone", "เบอร์": "phone", "เบอร์โทรศัพท์": "phone",
   "อีเมล": "email", "email": "email", "e-mail": "email",
-  "ที่อยู่": "address", "address": "address", "โลเคชั่น": "address", "location": "address",
+  "โลเคชั่น": "address", "location": "address", "address": "address",
+  "ที่อยู่": "fullAddress", "full_address": "fullAddress", "บ้านเลขที่": "fullAddress",
   "จังหวัด": "province", "province": "province",
   "เขต": "district", "อำเภอ": "district", "เขต/อำเภอ": "district", "district": "district",
   "แหล่งที่มา": "source", "ช่องทาง": "source", "source": "source",

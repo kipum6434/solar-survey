@@ -51,6 +51,7 @@ const customerRouter = router({
       roofArea: z.string().optional(),
       phaseType: z.enum(["single", "three"]).optional(),
       meterSize: z.string().optional(),
+      fullAddress: z.string().optional(),
       notes: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
@@ -79,6 +80,7 @@ const customerRouter = router({
       roofArea: z.string().optional(),
       phaseType: z.enum(["single", "three"]).optional(),
       meterSize: z.string().optional(),
+      fullAddress: z.string().optional(),
       notes: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
