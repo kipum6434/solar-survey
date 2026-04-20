@@ -54,9 +54,11 @@ export default function Surveys() {
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [filterByMonth, setFilterByMonth] = useState(false);
 
-  // Fetch sources and users for filter dropdowns
+  // Fetch sources and team members for filter dropdowns
   const { data: sourcesData } = trpc.source.list.useQuery();
-  const { data: usersData } = trpc.users.list.useQuery();
+  const { data: teamSurveyorsData } = trpc.teamMember.list.useQuery({ role: "surveyor" });
+  const { data: teamAdminSendersData } = trpc.teamMember.list.useQuery({ role: "admin_sender" });
+  const { data: teamClosersData } = trpc.teamMember.list.useQuery({ role: "closer" });
 
   const queryInput = useMemo(() => ({
     search,
@@ -262,30 +264,30 @@ export default function Surveys() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="_all">เซลล์ทั้งหมด</SelectItem>
-              {(usersData || []).map((u: any) => (
-                <SelectItem key={u.id} value={String(u.id)}>{u.name || `User #${u.id}`}</SelectItem>
+              {(teamSurveyorsData || []).map((m: any) => (
+                <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Select value={adminSenderFilter} onValueChange={(v) => { setAdminSenderFilter(v === "_all" ? "" : v); setPage(1); }}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="คนส่งสำรวจ" />
-            </SelectTrigger>
+        </div>
+        <div>
+          <Select value={adminSenderFilter} onValueChange={setAdminSenderFilter}>
+            <SelectTrigger className="h-9"><SelectValue placeholder="คนส่งสำรวจ" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="_all">คนส่งทั้งหมด</SelectItem>
-              {(usersData || []).map((u: any) => (
-                <SelectItem key={u.id} value={String(u.id)}>{u.name || `User #${u.id}`}</SelectItem>
+              {(teamAdminSendersData || []).map((m: any) => (
+                <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Select value={closerFilter} onValueChange={(v) => { setCloserFilter(v === "_all" ? "" : v); setPage(1); }}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="คนปิดการขาย" />
-            </SelectTrigger>
+        </div>
+        <div>
+          <Select value={closerFilter} onValueChange={setCloserFilter}>
+            <SelectTrigger className="h-9"><SelectValue placeholder="คนปิดการขาย" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="_all">คนปิดทั้งหมด</SelectItem>
-              {(usersData || []).map((u: any) => (
-                <SelectItem key={u.id} value={String(u.id)}>{u.name || `User #${u.id}`}</SelectItem>
+              {(teamClosersData || []).map((m: any) => (
+                <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>

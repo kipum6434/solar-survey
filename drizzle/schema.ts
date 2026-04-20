@@ -92,6 +92,22 @@ export const surveys = mysqlTable("surveys", {
 export type Survey = typeof surveys.$inferSelect;
 export type InsertSurvey = typeof surveys.$inferInsert;
 
+// ==================== TEAM MEMBERS ====================
+export const teamMembers = mysqlTable("team_members", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 50 }),
+  email: varchar("email", { length: 320 }),
+  role: mysqlEnum("role", ["admin_sender", "surveyor", "closer"]).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  linkedUserId: int("linkedUserId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type TeamMember = typeof teamMembers.$inferSelect;
+export type InsertTeamMember = typeof teamMembers.$inferInsert;
+
 // ==================== SOURCES (Auto-suggest) ====================
 export const sources = mysqlTable("sources", {
   id: int("id").autoincrement().primaryKey(),

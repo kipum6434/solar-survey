@@ -182,3 +182,12 @@
 ### 23. Export Excel
 - [x] Backend: สร้าง API export รายงานสำรวจทั้งหมดเป็น Excel (.xlsx)
 - [x] Frontend: เพิ่มปุ่ม Export Excel ในหน้างานสำรวจ
+
+## User Request - Round 6: หน้าจัดการทีมงาน (Team Management)
+
+### 24. หน้าจัดการทีมงาน - เพิ่ม/ลบสมาชิกทีม
+- [x] Schema: สร้าง team_members table แยกจาก users (เก็บชื่อ, เบอร์โทร, role)
+- [x] Backend: CRUD API สำหรับ team_members (list, create, update, delete)
+- [x] Frontend: สร้างหน้า TeamManagement.tsx พร้อมตารางแสดงสมาชิก + ปุ่มเพิ่ม/แก้ไข/ลบ
+- [x] Frontend: เพิ่มเมนู "จัดการทีมงาน" ใน sidebar
+- [x] Frontend: อัพเดท dropdown แอดมินผู้ส่งงาน/ทีมสำรวจ/คนปิดการขาย ให้ดึงจาก team_members

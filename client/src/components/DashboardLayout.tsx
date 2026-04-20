@@ -25,6 +25,7 @@ import { useIsMobile } from "@/hooks/useMobile";
 import {
   LayoutDashboard,
   Users,
+  Users2,
   ClipboardList,
   CalendarDays,
   Bell,
@@ -44,6 +45,7 @@ const menuItems = [
   { icon: LayoutDashboard, label: "แดชบอร์ด", path: "/" },
   { icon: Users, label: "ลูกค้า", path: "/customers" },
   { icon: ClipboardList, label: "งานสำรวจ", path: "/surveys" },
+  { icon: Users2, label: "จัดการทีมงาน", path: "/team" },
   { icon: CalendarDays, label: "ปฏิทิน", path: "/calendar" },
   { icon: Bell, label: "แจ้งเตือน", path: "/notifications" },
 ];

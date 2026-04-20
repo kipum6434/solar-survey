@@ -39,7 +39,9 @@ export default function SurveyDetail() {
   const { data: documents, refetch: refetchDocs } = trpc.document.list.useQuery({ surveyId });
   const { data: followUps, refetch: refetchFollowUps } = trpc.followUp.list.useQuery({ surveyId });
   const { data: shareLinks, refetch: refetchLinks } = trpc.shareLink.list.useQuery({ surveyId });
-  const { data: users } = trpc.users.list.useQuery();
+  const { data: teamAdminSenders } = trpc.teamMember.list.useQuery({ role: "admin_sender" });
+  const { data: teamSurveyors } = trpc.teamMember.list.useQuery({ role: "surveyor" });
+  const { data: teamClosers } = trpc.teamMember.list.useQuery({ role: "closer" });
 
   // Inline edit state for tech card
   const [editingTech, setEditingTech] = useState(false);
@@ -208,7 +210,7 @@ export default function SurveyDetail() {
         <CustomerInfoCard customer={c} updateCustomer={updateCustomer} />
 
         {/* Workflow / Team Card - Editable */}
-        <TeamCard data={data} surveyId={surveyId} users={users} refetch={refetch} />
+        <TeamCard data={data} surveyId={surveyId} teamAdminSenders={teamAdminSenders || []} teamSurveyors={teamSurveyors || []} teamClosers={teamClosers || []} refetch={refetch} />
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -474,7 +476,7 @@ export default function SurveyDetail() {
       )}
 
       {/* Edit Status Dialog */}
-      <EditSurveyDialog open={showEditStatus} onOpenChange={setShowEditStatus} survey={s} users={users || []} assignments={(data as any)?.assignments || []} onSubmit={(d: any) => updateSurvey.mutate({ id: surveyId, ...d })} loading={updateSurvey.isPending} />
+      <EditSurveyDialog open={showEditStatus} onOpenChange={setShowEditStatus} survey={s} adminSenders={teamAdminSenders || []} surveyors={teamSurveyors || []} closers={teamClosers || []} assignments={(data as any)?.assignments || []} onSubmit={(d: any) => updateSurvey.mutate({ id: surveyId, ...d })} loading={updateSurvey.isPending} />
 
       {/* Confirm Delete Photo Dialog */}
       <Dialog open={confirmDeletePhoto !== null} onOpenChange={() => setConfirmDeletePhoto(null)}>
@@ -505,12 +507,12 @@ export default function SurveyDetail() {
       </Dialog>
 
       {/* Add Follow-up Dialog */}
-      <AddFollowUpDialog open={showAddFollowUp} onOpenChange={setShowAddFollowUp} surveyId={surveyId} customerId={c.id} users={users || []} onSubmit={(d: any) => createFollowUp.mutate(d)} loading={createFollowUp.isPending} />
+      <AddFollowUpDialog open={showAddFollowUp} onOpenChange={setShowAddFollowUp} surveyId={surveyId} customerId={c.id} surveyors={teamSurveyors || []} onSubmit={(d: any) => createFollowUp.mutate(d)} loading={createFollowUp.isPending} />
     </DashboardLayout>
   );
 }
 
-function EditSurveyDialog({ open, onOpenChange, survey, users, onSubmit, loading, assignments }: any) {
+function EditSurveyDialog({ open, onOpenChange, survey, adminSenders, surveyors, closers, onSubmit, loading, assignments }: any) {
   const [form, setForm] = useState<any>({});
   const s = survey;
   if (!s) return null;
@@ -536,7 +538,7 @@ function EditSurveyDialog({ open, onOpenChange, survey, users, onSubmit, loading
     });
   };
 
-  const userOptions = (users || []).map((u: any) => ({ id: u.id, name: u.name || `User #${u.id}`, role: u.role }));
+  const surveyorOptions = (surveyors || []).map((m: any) => ({ id: m.id, name: m.name, role: "surveyor" }));
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (v) handleOpen(); onOpenChange(v); }}>
@@ -571,7 +573,7 @@ function EditSurveyDialog({ open, onOpenChange, survey, users, onSubmit, loading
               <Select value={form.adminSenderId || ""} onValueChange={(v) => setForm({ ...form, adminSenderId: v })}>
                 <SelectTrigger><SelectValue placeholder="เลือกแอดมิน..." /></SelectTrigger>
                 <SelectContent>
-                  {users.map((u: any) => (<SelectItem key={u.id} value={String(u.id)}>{u.name || `User #${u.id}`}</SelectItem>))}
+                  {(adminSenders || []).map((m: any) => (<SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>
@@ -579,7 +581,7 @@ function EditSurveyDialog({ open, onOpenChange, survey, users, onSubmit, loading
               <Label>ทีมสำรวจ</Label>
               <p className="text-xs text-muted-foreground mb-1">เซลล์ที่ไปสำรวจ (เลือกได้หลายคน)</p>
               <MultiUserSelect
-                users={userOptions}
+                users={surveyorOptions}
                 selectedIds={form.surveyorIds || []}
                 onChange={(ids) => setForm({ ...form, surveyorIds: ids })}
                 placeholder="เลือกทีมสำรวจ..."
@@ -591,7 +593,7 @@ function EditSurveyDialog({ open, onOpenChange, survey, users, onSubmit, loading
               <Select value={form.closerId || ""} onValueChange={(v) => setForm({ ...form, closerId: v })}>
                 <SelectTrigger><SelectValue placeholder="เลือกผู้ปิดการขาย..." /></SelectTrigger>
                 <SelectContent>
-                  {users.map((u: any) => (<SelectItem key={u.id} value={String(u.id)}>{u.name || `User #${u.id}`}</SelectItem>))}
+                  {(closers || []).map((m: any) => (<SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>
@@ -631,7 +633,7 @@ function EditSurveyDialog({ open, onOpenChange, survey, users, onSubmit, loading
   );
 }
 
-function AddFollowUpDialog({ open, onOpenChange, surveyId, customerId, users, onSubmit, loading }: any) {
+function AddFollowUpDialog({ open, onOpenChange, surveyId, customerId, surveyors, onSubmit, loading }: any) {
   const [form, setForm] = useState({ dueDate: "", method: "phone", notes: "", assignedTo: "" });
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -671,7 +673,7 @@ function AddFollowUpDialog({ open, onOpenChange, surveyId, customerId, users, on
               <Select value={form.assignedTo} onValueChange={(v) => setForm({ ...form, assignedTo: v })}>
                 <SelectTrigger><SelectValue placeholder="เลือก" /></SelectTrigger>
                 <SelectContent>
-                  {users.map((u: any) => (<SelectItem key={u.id} value={String(u.id)}>{u.name || `User #${u.id}`}</SelectItem>))}
+                  {(surveyors || []).map((m: any) => (<SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>
@@ -960,7 +962,7 @@ function CustomerInfoCard({ customer: c, updateCustomer }: { customer: any; upda
 }
 
 /* ==================== TEAM CARD - Editable ==================== */
-function TeamCard({ data, surveyId, users, refetch }: { data: any; surveyId: number; users: any; refetch: () => void }) {
+function TeamCard({ data, surveyId, teamAdminSenders, teamSurveyors, teamClosers, refetch }: { data: any; surveyId: number; teamAdminSenders: any[]; teamSurveyors: any[]; teamClosers: any[]; refetch: () => void }) {
   const assignments = data?.assignments || [];
   const adminSender = assignments.find((a: any) => a.assignment.role === "admin_sender");
   const surveyors = assignments.filter((a: any) => a.assignment.role === "surveyor");
@@ -996,7 +998,9 @@ function TeamCard({ data, surveyId, users, refetch }: { data: any; surveyId: num
     updateSurvey.mutate(payload);
   };
 
-  const userOptions = users || [];
+  const adminSenderOpts = teamAdminSenders.map((m: any) => ({ id: m.id, name: m.name }));
+  const surveyorOpts = teamSurveyors.map((m: any) => ({ id: m.id, name: m.name }));
+  const closerOpts = teamClosers.map((m: any) => ({ id: m.id, name: m.name }));
 
   return (
     <Card className="border-0 shadow-sm">
@@ -1026,7 +1030,9 @@ function TeamCard({ data, surveyId, users, refetch }: { data: any; surveyId: num
                 <Select value={teamForm.adminSenderId || "placeholder"} onValueChange={(v) => setTeamForm({ ...teamForm, adminSenderId: v === "placeholder" ? "" : v })}>
                   <SelectTrigger className="h-9 flex-1"><SelectValue placeholder="เลือก" /></SelectTrigger>
                   <SelectContent>
-                    {userOptions.map((u: any) => <SelectItem key={u.id} value={String(u.id)}>{u.name || `User #${u.id}`}</SelectItem>)}
+                    {adminSenderOpts.length > 0 ? adminSenderOpts.map((m: any) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>) : (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">ยังไม่มีสมาชิก - เพิ่มที่หน้าจัดการทีมงาน</div>
+                    )}
                   </SelectContent>
                 </Select>
                 {teamForm.adminSenderId && (
@@ -1039,7 +1045,7 @@ function TeamCard({ data, surveyId, users, refetch }: { data: any; surveyId: num
             <div>
               <Label className="text-xs">ทีมสำรวจ (เลือกได้หลายคน)</Label>
               <MultiUserSelect
-                users={userOptions}
+                users={surveyorOpts}
                 selectedIds={teamForm.surveyorIds.filter(Boolean).map(Number)}
                 onChange={(ids) => setTeamForm({ ...teamForm, surveyorIds: ids.map(String) })}
               />
@@ -1050,7 +1056,9 @@ function TeamCard({ data, surveyId, users, refetch }: { data: any; surveyId: num
                 <Select value={teamForm.closerId || "placeholder"} onValueChange={(v) => setTeamForm({ ...teamForm, closerId: v === "placeholder" ? "" : v })}>
                   <SelectTrigger className="h-9 flex-1"><SelectValue placeholder="เลือก" /></SelectTrigger>
                   <SelectContent>
-                    {userOptions.map((u: any) => <SelectItem key={u.id} value={String(u.id)}>{u.name || `User #${u.id}`}</SelectItem>)}
+                    {closerOpts.length > 0 ? closerOpts.map((m: any) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>) : (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">ยังไม่มีสมาชิก - เพิ่มที่หน้าจัดการทีมงาน</div>
+                    )}
                   </SelectContent>
                 </Select>
                 {teamForm.closerId && (

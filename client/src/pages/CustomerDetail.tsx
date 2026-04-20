@@ -28,7 +28,7 @@ export default function CustomerDetail() {
 
   const { data: customer, isLoading, refetch } = trpc.customer.getById.useQuery({ id: customerId });
   const { data: surveys } = trpc.survey.getByCustomer.useQuery({ customerId });
-  const { data: users } = trpc.users.list.useQuery();
+
   const updateMutation = trpc.customer.update.useMutation({
     onSuccess: () => { toast.success("อัพเดทข้อมูลสำเร็จ"); setEditing(false); refetch(); },
     onError: (e) => toast.error(e.message),
@@ -305,7 +305,6 @@ export default function CustomerDetail() {
         open={showAddSurvey}
         onOpenChange={setShowAddSurvey}
         customerId={customerId}
-        users={users || []}
         onSubmit={(d: any) => createSurveyMutation.mutate(d)}
         loading={createSurveyMutation.isPending}
       />
@@ -313,7 +312,7 @@ export default function CustomerDetail() {
   );
 }
 
-function AddSurveyDialog({ open, onOpenChange, customerId, users, onSubmit, loading }: any) {
+function AddSurveyDialog({ open, onOpenChange, customerId, onSubmit, loading }: any) {
   const [form, setForm] = useState({
     scheduledDate: "",
     scheduledTime: "",
@@ -334,7 +333,10 @@ function AddSurveyDialog({ open, onOpenChange, customerId, users, onSubmit, load
     setForm({ scheduledDate: "", scheduledTime: "", adminSenderId: "", surveyorIds: [], surveyNotes: "" });
   };
 
-  const userOptions = (users || []).map((u: any) => ({ id: u.id, name: u.name || `User #${u.id}`, role: u.role }));
+  const { data: teamAdminSenders } = trpc.teamMember.list.useQuery({ role: "admin_sender" });
+  const { data: teamSurveyors } = trpc.teamMember.list.useQuery({ role: "surveyor" });
+  const adminSenderOptions = (teamAdminSenders || []).map((m: any) => ({ id: m.id, name: m.name }));
+  const surveyorOptions = (teamSurveyors || []).map((m: any) => ({ id: m.id, name: m.name }));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -361,9 +363,11 @@ function AddSurveyDialog({ open, onOpenChange, customerId, users, onSubmit, load
             <Select value={form.adminSenderId} onValueChange={(v) => setForm({ ...form, adminSenderId: v })}>
               <SelectTrigger><SelectValue placeholder="เลือกแอดมิน" /></SelectTrigger>
               <SelectContent>
-                {users.map((u: any) => (
-                  <SelectItem key={u.id} value={String(u.id)}>{u.name || `User #${u.id}`}</SelectItem>
-                ))}
+                {adminSenderOptions.length > 0 ? adminSenderOptions.map((m: any) => (
+                  <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+                )) : (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">ยังไม่มีสมาชิก - เพิ่มได้ที่หน้าจัดการทีมงาน</div>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -372,7 +376,7 @@ function AddSurveyDialog({ open, onOpenChange, customerId, users, onSubmit, load
             <Label>ทีมสำรวจ</Label>
             <p className="text-xs text-muted-foreground">เซลล์ที่ไปสำรวจ (เลือกได้หลายคน)</p>
             <MultiUserSelect
-              users={userOptions}
+              users={surveyorOptions}
               selectedIds={form.surveyorIds}
               onChange={(ids) => setForm({ ...form, surveyorIds: ids })}
               placeholder="เลือกทีมสำรวจ..."

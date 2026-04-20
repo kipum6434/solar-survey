@@ -1,6 +1,6 @@
 import { eq, and, or, like, desc, gte, lte, sql, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment } from "../drizzle/schema";
+import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -562,4 +562,39 @@ export async function getSurveysWithCustomer(opts: { status?: string; assignedTo
     ? await db.select({ count: sql<number>`count(*)` }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(whereClause)
     : await db.select({ count: sql<number>`count(*)` }).from(surveys);
   return { data: data.map(d => ({ ...d, assignments: assignmentsMap[d.survey.id] || [] })), total: countQ[0]?.count ?? 0 };
+}
+
+// ==================== TEAM MEMBERS QUERIES ====================
+export async function getTeamMembers(role?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  if (role) {
+    return db.select().from(teamMembers).where(and(eq(teamMembers.role, role as any), eq(teamMembers.isActive, true))).orderBy(teamMembers.name);
+  }
+  return db.select().from(teamMembers).where(eq(teamMembers.isActive, true)).orderBy(teamMembers.name);
+}
+
+export async function getAllTeamMembers() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(teamMembers).orderBy(teamMembers.role, teamMembers.name);
+}
+
+export async function createTeamMember(data: { name: string; phone?: string; email?: string; role: "admin_sender" | "surveyor" | "closer" }) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(teamMembers).values(data);
+  return { id: result[0].insertId, ...data };
+}
+
+export async function updateTeamMember(id: number, data: { name?: string; phone?: string; email?: string; role?: "admin_sender" | "surveyor" | "closer"; isActive?: boolean }) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(teamMembers).set(data).where(eq(teamMembers.id, id));
+}
+
+export async function deleteTeamMember(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(teamMembers).where(eq(teamMembers.id, id));
 }

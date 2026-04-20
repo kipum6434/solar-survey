@@ -531,6 +531,53 @@ const usersRouter = router({
   list: protectedProcedure.query(() => db.getAllUsers()),
 });
 
+// ==================== TEAM MEMBER ROUTER ====================
+const teamMemberRouter = router({
+  list: protectedProcedure
+    .input(z.object({ role: z.string().optional() }).optional())
+    .query(({ input }) => db.getTeamMembers(input?.role)),
+
+  listAll: protectedProcedure.query(() => db.getAllTeamMembers()),
+
+  create: protectedProcedure
+    .input(z.object({
+      name: z.string().min(1),
+      phone: z.string().optional(),
+      email: z.string().optional(),
+      role: z.enum(["admin_sender", "surveyor", "closer"]),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await db.createTeamMember(input);
+      await db.logActivity({ userId: ctx.user.id, action: "create", entityType: "team_member", entityId: result.id, details: `เพิ่มสมาชิกทีม: ${input.name} (${input.role})` });
+      return result;
+    }),
+
+  update: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      name: z.string().optional(),
+      phone: z.string().optional(),
+      email: z.string().optional(),
+      role: z.enum(["admin_sender", "surveyor", "closer"]).optional(),
+      isActive: z.boolean().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const { id, ...data } = input;
+      await db.updateTeamMember(id, data);
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "team_member", entityId: id, details: `แก้ไขสมาชิกทีม ID: ${id}` });
+      const members = await db.getTeamMembers();
+      return members.find((m: any) => m.id === id) || { id, ...data };
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      await db.deleteTeamMember(input.id);
+      await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "team_member", entityId: input.id, details: `ลบสมาชิกทีม ID: ${input.id}` });
+      return { success: true };
+    }),
+});
+
 // ==================== APP ROUTER ====================
 export const appRouter = router({
   system: systemRouter,
@@ -555,6 +602,7 @@ export const appRouter = router({
   storage: storageRouter,
   source: sourceRouter,
   assignment: assignmentRouter,
+  teamMember: teamMemberRouter,
 });
 
 export type AppRouter = typeof appRouter;
