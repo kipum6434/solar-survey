@@ -533,7 +533,6 @@ function EditSurveyDialog({ open, onOpenChange, survey, adminSenders, surveyors,
       systemSize: s.systemSize || "",
       panelCount: s.panelCount || "",
       inverterModel: s.inverterModel || "",
-      estimatedCost: s.estimatedCost || "",
       quotedPrice: s.quotedPrice || "",
     });
   };
@@ -604,7 +603,6 @@ function EditSurveyDialog({ open, onOpenChange, survey, adminSenders, surveyors,
             <div><Label>ขนาดระบบ (kW)</Label><Input value={form.systemSize || ""} onChange={(e) => setForm({ ...form, systemSize: e.target.value })} /></div>
             <div><Label>จำนวนแผง</Label><Input type="number" value={form.panelCount || ""} onChange={(e) => setForm({ ...form, panelCount: e.target.value })} /></div>
             <div><Label>รุ่นอินเวอร์เตอร์</Label><Input value={form.inverterModel || ""} onChange={(e) => setForm({ ...form, inverterModel: e.target.value })} /></div>
-            <div><Label>ราคาประเมิน</Label><Input value={form.estimatedCost || ""} onChange={(e) => setForm({ ...form, estimatedCost: e.target.value })} /></div>
             <div className="col-span-2"><Label>ราคาเสนอ</Label><Input value={form.quotedPrice || ""} onChange={(e) => setForm({ ...form, quotedPrice: e.target.value })} /></div>
             <div className="col-span-2"><Label>หมายเหตุ</Label><Textarea value={form.surveyNotes || ""} onChange={(e) => setForm({ ...form, surveyNotes: e.target.value })} rows={3} /></div>
           </div>
@@ -618,7 +616,6 @@ function EditSurveyDialog({ open, onOpenChange, survey, adminSenders, surveyors,
               if (form.systemSize) payload.systemSize = form.systemSize;
               if (form.panelCount) payload.panelCount = parseInt(form.panelCount);
               if (form.inverterModel) payload.inverterModel = form.inverterModel;
-              if (form.estimatedCost) payload.estimatedCost = form.estimatedCost;
               if (form.quotedPrice) payload.quotedPrice = form.quotedPrice;
               // Workflow assignments
               if (form.adminSenderId) payload.adminSenderId = parseInt(form.adminSenderId);
@@ -700,7 +697,6 @@ function TechInfoCard({ survey: s, surveyId, updateSurvey }: { survey: any; surv
     panelCount: s.panelCount ? String(s.panelCount) : "",
     inverterModel: s.inverterModel || "",
     panelBrand: s.panelBrand || "",
-    estimatedCost: s.estimatedCost || "",
     quotedPrice: s.quotedPrice || "",
     needBattery: s.needBattery || "",
     needOptimizer: s.needOptimizer || "",
@@ -714,7 +710,7 @@ function TechInfoCard({ survey: s, surveyId, updateSurvey }: { survey: any; surv
   }
 
   // Sync form when survey data changes (after save)
-  const surveyKey = `${s.systemSize}|${s.panelCount}|${s.inverterModel}|${s.panelBrand}|${s.estimatedCost}|${s.quotedPrice}|${s.needBattery}|${s.needOptimizer}|${s.systemType}|${s.surveyNotes}`;
+  const surveyKey = `${s.systemSize}|${s.panelCount}|${s.inverterModel}|${s.panelBrand}|${s.quotedPrice}|${s.needBattery}|${s.needOptimizer}|${s.systemType}|${s.surveyNotes}`;
 
   const updateField = (key: string, val: string) => {
     setForm((prev: any) => ({ ...prev, [key]: val }));
@@ -728,7 +724,6 @@ function TechInfoCard({ survey: s, surveyId, updateSurvey }: { survey: any; surv
     payload.panelCount = form.panelCount ? parseInt(form.panelCount) : undefined;
     payload.inverterModel = form.inverterModel || undefined;
     payload.panelBrand = form.panelBrand || undefined;
-    payload.estimatedCost = form.estimatedCost || undefined;
     payload.quotedPrice = form.quotedPrice || undefined;
     payload.needBattery = form.needBattery || undefined;
     payload.needOptimizer = form.needOptimizer || undefined;
@@ -746,16 +741,6 @@ function TechInfoCard({ survey: s, surveyId, updateSurvey }: { survey: any; surv
 
   if (!form) return null;
 
-  const BATTERY_OPTIONS = [
-    { value: "yes", label: "ต้องการ" },
-    { value: "no", label: "ไม่ต้องการ" },
-    { value: "undecided", label: "ยังไม่แน่ใจ" },
-  ];
-  const OPTIMIZER_OPTIONS = [
-    { value: "yes", label: "ต้องการ" },
-    { value: "no", label: "ไม่ต้องการ" },
-    { value: "undecided", label: "ยังไม่แน่ใจ" },
-  ];
   const SYSTEM_TYPE_OPTIONS = [
     { value: "string", label: "String Inverter" },
     { value: "micro", label: "Micro Inverter" },
@@ -783,26 +768,9 @@ function TechInfoCard({ survey: s, surveyId, updateSurvey }: { survey: any; surv
           <EditableField label="จำนวนแผง" value={form.panelCount} onChange={(v) => updateField("panelCount", v)} placeholder="เช่น 12" type="number" icon={<Sun className="h-3.5 w-3.5 text-amber-500" />} suffix="แผง" />
           <EditableField label="ยี่ห้อแผง" value={form.panelBrand} onChange={(v) => updateField("panelBrand", v)} placeholder="เช่น JA Solar, Longi" />
           <EditableField label="รุ่นอินเวอร์เตอร์" value={form.inverterModel} onChange={(v) => updateField("inverterModel", v)} placeholder="เช่น Huawei SUN2000" />
-          <EditableField label="ราคาประเมิน (บาท)" value={form.estimatedCost} onChange={(v) => updateField("estimatedCost", v)} placeholder="เช่น 250000" suffix="บาท" />
           <EditableField label="ราคาเสนอ (บาท)" value={form.quotedPrice} onChange={(v) => updateField("quotedPrice", v)} placeholder="เช่น 280000" suffix="บาท" />
-          <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">ต้องการแบตเตอรี่?</label>
-            <Select value={form.needBattery || "placeholder"} onValueChange={(v) => updateField("needBattery", v === "placeholder" ? "" : v)}>
-              <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="เลือก" /></SelectTrigger>
-              <SelectContent>
-                {BATTERY_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">ต้องการ Optimizer?</label>
-            <Select value={form.needOptimizer || "placeholder"} onValueChange={(v) => updateField("needOptimizer", v === "placeholder" ? "" : v)}>
-              <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="เลือก" /></SelectTrigger>
-              <SelectContent>
-                {OPTIMIZER_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+          <EditableField label="แบตเตอรี่" value={form.needBattery} onChange={(v) => updateField("needBattery", v)} placeholder="เช่น 2 ก้อน Tesla Powerwall" />
+          <EditableField label="Optimizer" value={form.needOptimizer} onChange={(v) => updateField("needOptimizer", v)} placeholder="เช่น 12 ตัว Huawei SUN2000" />
           <div className="space-y-1 col-span-2 md:col-span-1">
             <label className="text-xs text-muted-foreground">ประเภทระบบ</label>
             <Select value={form.systemType || "placeholder"} onValueChange={(v) => updateField("systemType", v === "placeholder" ? "" : v)}>
@@ -825,46 +793,30 @@ function TechInfoCard({ survey: s, surveyId, updateSurvey }: { survey: any; surv
 function EditableField({ label, value, onChange, placeholder, type, icon, suffix, multiline }: {
   label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; icon?: React.ReactNode; suffix?: string; multiline?: boolean;
 }) {
-  const [editing, setEditing] = useState(false);
-
-  if (editing || !value) {
-    // Show input
-    return (
-      <div className="space-y-1">
-        <label className="text-xs text-muted-foreground">{label}</label>
-        {multiline ? (
-          <Textarea
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={placeholder}
-            rows={2}
-            className="text-sm"
-            onBlur={() => setEditing(false)}
-            autoFocus={editing}
-          />
-        ) : (
+  return (
+    <div className="space-y-1">
+      <label className="text-xs text-muted-foreground">{label}</label>
+      {multiline ? (
+        <Textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          rows={2}
+          className="text-sm"
+        />
+      ) : (
+        <div className="relative">
+          {icon && <span className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none">{icon}</span>}
           <Input
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
             type={type}
-            className="h-8 text-sm"
-            onBlur={() => { if (value) setEditing(false); }}
-            autoFocus={editing}
+            className={`h-8 text-sm ${icon ? "pl-7" : ""}`}
           />
-        )}
-      </div>
-    );
-  }
-
-  // Show display value - clickable to edit
-  return (
-    <div className="space-y-1 cursor-pointer group" onClick={() => setEditing(true)}>
-      <label className="text-xs text-muted-foreground">{label}</label>
-      <p className="font-medium text-sm flex items-center gap-1 group-hover:text-primary transition-colors min-h-[32px] items-center border border-transparent group-hover:border-border rounded px-2 py-1 -mx-2">
-        {icon}{value}{suffix ? ` ${suffix}` : ""}
-        <Pencil className="h-3 w-3 ml-1 opacity-0 group-hover:opacity-50 transition-opacity" />
-      </p>
+          {suffix && value && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">{suffix}</span>}
+        </div>
+      )}
     </div>
   );
 }

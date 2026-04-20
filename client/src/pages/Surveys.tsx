@@ -131,7 +131,6 @@ export default function Surveys() {
         "ประเภทระบบ": s.systemType ? (SYSTEM_TYPE_MAP as any)[s.systemType] || s.systemType : "",
         "แบตเตอรี่": s.needBattery ? (BATTERY_MAP as any)[s.needBattery] || s.needBattery : "",
         "Optimizer": s.needOptimizer ? (BATTERY_MAP as any)[s.needOptimizer] || s.needOptimizer : "",
-        "ราคาประเมิน": s.estimatedCost || "",
         "ราคาเสนอ": s.quotedPrice || "",
         "เซลล์": surveyors,
         "คนส่งสำรวจ": senders,

@@ -248,3 +248,11 @@
 - [x] Frontend: บล็อกหน้า /users ถ้าไม่ใช่ superadmin (redirect กลับ /) + เพิ่ม superadmin role display
 - [x] Schema: เพิ่ม superadmin ใน role enum + migration
 - [x] Tests: 63/63 passed (รวม 7 tests ใหม่สำหรับ superadmin access control)
+
+## User Request - Round 11: แก้ไขหน้างานสำรวจ (SurveyDetail)
+
+- [x] เปลี่ยนแบตเตอรี่จาก dropdown เป็นช่องกรอกข้อความ + schema migration varchar(500)
+- [x] เปลี่ยน Optimizer จาก dropdown เป็นช่องกรอกข้อความ + schema migration varchar(500)
+- [x] แก้บัค input พิมพ์ตัวแรกแล้วเด้งออก - ลบ editing state ให้แสดง input ตลอด
+- [x] ตัดราคาประเมินออกจากหน้าแสดง + หน้าแก้ไข + Excel export
+- [x] ตัดราคาประเมินออกจากหน้าแก้ไข (EditSurveyDialog)

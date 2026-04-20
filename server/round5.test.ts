@@ -47,8 +47,8 @@ beforeAll(async () => {
     customerId: testCustomerId,
     status: "pending",
     panelBrand: "Longi",
-    needBattery: "yes",
-    needOptimizer: "no",
+    needBattery: "2 ก้อน Tesla Powerwall",
+    needOptimizer: "ไม่ต้องการ",
     systemType: "string",
   });
   testSurveyId = survey.id;
@@ -62,8 +62,8 @@ describe("Round 5 - New Survey Fields", () => {
   it("survey.getById returns new tech fields", async () => {
     const result = await caller.survey.getById({ id: testSurveyId });
     expect(result.survey.panelBrand).toBe("Longi");
-    expect(result.survey.needBattery).toBe("yes");
-    expect(result.survey.needOptimizer).toBe("no");
+    expect(result.survey.needBattery).toBe("2 ก้อน Tesla Powerwall");
+    expect(result.survey.needOptimizer).toBe("ไม่ต้องการ");
     expect(result.survey.systemType).toBe("string");
   });
 
@@ -71,14 +71,14 @@ describe("Round 5 - New Survey Fields", () => {
     await caller.survey.update({
       id: testSurveyId,
       panelBrand: "JA Solar",
-      needBattery: "undecided",
-      needOptimizer: "yes",
+      needBattery: "3 ก้อน BYD HVS",
+      needOptimizer: "12 ตัว Huawei SUN2000",
       systemType: "micro",
     });
     const result = await caller.survey.getById({ id: testSurveyId });
     expect(result.survey.panelBrand).toBe("JA Solar");
-    expect(result.survey.needBattery).toBe("undecided");
-    expect(result.survey.needOptimizer).toBe("yes");
+    expect(result.survey.needBattery).toBe("3 ก้อน BYD HVS");
+    expect(result.survey.needOptimizer).toBe("12 ตัว Huawei SUN2000");
     expect(result.survey.systemType).toBe("micro");
   });
 });
