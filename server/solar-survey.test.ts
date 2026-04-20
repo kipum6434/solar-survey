@@ -539,3 +539,51 @@ describe("Solar Survey - Round 12: Legacy Assignment Fallback", () => {
     expect(hasResolvedName).toBe(true);
   });
 });
+
+// ==================== Round 13: Bulk Delete Customers ====================
+describe("customer.bulkDelete", () => {
+  it("should bulk delete multiple customers and their related data", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+
+    // Create 3 customers
+    const c1 = await adminCaller.customer.create({ name: "BulkDel Customer 1", source: "website" });
+    const c2 = await adminCaller.customer.create({ name: "BulkDel Customer 2", source: "website" });
+    const c3 = await adminCaller.customer.create({ name: "BulkDel Customer 3", source: "website" });
+
+    // Create a survey for c1 to test cascade
+    await adminCaller.survey.create({
+      customerId: c1.id,
+      surveyDate: Date.now(),
+      surveyTime: "10:00",
+      status: "pending",
+    });
+
+    // Bulk delete c1 and c2
+    const result = await adminCaller.customer.bulkDelete({ ids: [c1.id, c2.id] });
+    expect(result.deleted).toBe(2);
+
+    // Verify c1 and c2 are gone
+    const list = await adminCaller.customer.list({ page: 1, limit: 100 });
+    const remainingIds = list.data.map((c: any) => c.id);
+    expect(remainingIds).not.toContain(c1.id);
+    expect(remainingIds).not.toContain(c2.id);
+    // c3 should still exist
+    expect(remainingIds).toContain(c3.id);
+  }, 15000);
+
+  it("should return deleted count of 0 for non-existent IDs", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    const result = await adminCaller.customer.bulkDelete({ ids: [999999] });
+    expect(result.deleted).toBe(1); // The delete runs even if no matching rows
+  });
+
+  it("should reject empty array", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    await expect(adminCaller.customer.bulkDelete({ ids: [] })).rejects.toThrow();
+  });
+
+  it("should reject non-admin users", async () => {
+    const userCaller = appRouter.createCaller(createUserContext());
+    await expect(userCaller.customer.bulkDelete({ ids: [1] })).rejects.toThrow();
+  });
+});

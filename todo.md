@@ -266,3 +266,12 @@
 - [x] Data backfill: ใช้ dual join (team_members + users fallback) รองรับทั้ง legacy และ new data
 - [x] เพิ่ม test ครอบคลุม assignment data (68 tests passed)
 - [x] ตรวจสอบผ่าน backend vitest (68 tests passed)
+
+## User Request - Round 13: ลบลูกค้าทีละหลายรายการ (Bulk Delete)
+- [x] Backend: เพิ่ม API customer.bulkDelete รับ array ของ customer IDs
+- [x] Backend: ลบ surveys + assignments + photos + documents + follow-ups ที่เกี่ยวข้องด้วย
+- [x] Frontend: เพิ่ม checkbox ในตารางลูกค้า (table view) ให้เลือกหลายรายการ
+- [x] Frontend: เพิ่ม checkbox "เลือกทั้งหมด" ที่ header
+- [x] Frontend: แสดง action bar เมื่อเลือกรายการ (จำนวนที่เลือก + ปุ่มลบ)
+- [x] Frontend: confirm dialog ก่อนลบ พร้อมแจ้งจำนวนที่จะลบ
+- [x] Tests: เพิ่ม vitest สำหรับ customer.bulkDelete (72 tests passed)

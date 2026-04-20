@@ -143,6 +143,28 @@ export async function deleteCustomer(id: number) {
   await db.delete(customers).where(eq(customers.id, id));
 }
 
+export async function bulkDeleteCustomers(ids: number[]) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  if (ids.length === 0) return { deleted: 0 };
+  // Get all surveys for these customers
+  const customerSurveys = await db.select({ id: surveys.id }).from(surveys).where(inArray(surveys.customerId, ids));
+  const surveyIds = customerSurveys.map(s => s.id);
+  // Delete related data
+  if (surveyIds.length > 0) {
+    await db.delete(surveyAssignments).where(inArray(surveyAssignments.surveyId, surveyIds));
+    await db.delete(surveyPhotos).where(inArray(surveyPhotos.surveyId, surveyIds));
+    await db.delete(surveyDocuments).where(inArray(surveyDocuments.surveyId, surveyIds));
+    await db.delete(followUps).where(inArray(followUps.surveyId, surveyIds));
+    await db.delete(shareLinks).where(inArray(shareLinks.surveyId, surveyIds));
+    await db.delete(notifications).where(inArray(notifications.relatedSurveyId, surveyIds));
+    await db.delete(surveys).where(inArray(surveys.id, surveyIds));
+  }
+  // Delete customers
+  await db.delete(customers).where(inArray(customers.id, ids));
+  return { deleted: ids.length };
+}
+
 // ==================== SURVEY QUERIES ====================
 export async function getSurveys(opts: { customerId?: number; status?: string; assignedTo?: number; page?: number; limit?: number; startDate?: number; endDate?: number }) {
   const db = await getDb();

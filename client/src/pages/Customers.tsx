@@ -4,18 +4,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import { SourceCombobox } from "@/components/SourceCombobox";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useLocation } from "wouter";
 import {
   Users, Plus, Search, Phone, MapPin, ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Trash2, Eye,
-  LayoutList, Table2, Zap, FileUp, Download, ExternalLink,
+  LayoutList, Table2, Zap, FileUp, Download, ExternalLink, X,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -44,6 +48,10 @@ export default function Customers() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "table">("table");
   const [showImport, setShowImport] = useState(false);
+
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
 
   const importMutation = trpc.customer.importBatch.useMutation({
     onSuccess: (result) => {
@@ -80,6 +88,15 @@ export default function Customers() {
     onSuccess: () => { toast.success("ลบลูกค้าสำเร็จ"); setDeleteId(null); refetch(); },
     onError: (e) => toast.error(e.message),
   });
+  const bulkDeleteMutation = trpc.customer.bulkDelete.useMutation({
+    onSuccess: (result) => {
+      toast.success(`ลบลูกค้า ${result.deleted} รายการสำเร็จ`);
+      setSelectedIds(new Set());
+      setShowBulkDelete(false);
+      refetch();
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   const totalPages = Math.ceil((data?.total ?? 0) / 30);
 
@@ -101,6 +118,37 @@ export default function Customers() {
     setFilterByMonth(true);
     setPage(1);
   };
+
+  // Bulk selection handlers
+  const currentPageIds = useMemo(() => data?.data?.map((c: any) => c.id) || [], [data]);
+
+  const allSelected = currentPageIds.length > 0 && currentPageIds.every((id: number) => selectedIds.has(id));
+  const someSelected = currentPageIds.some((id: number) => selectedIds.has(id)) && !allSelected;
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (allSelected) {
+        currentPageIds.forEach((id: number) => next.delete(id));
+      } else {
+        currentPageIds.forEach((id: number) => next.add(id));
+      }
+      return next;
+    });
+  }, [allSelected, currentPageIds]);
+
+  const toggleSelect = useCallback((id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
 
   return (
     <DashboardLayout>
@@ -191,6 +239,28 @@ export default function Customers() {
           </div>
         </div>
 
+        {/* Bulk Action Bar */}
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-3 p-3 bg-destructive/5 border border-destructive/20 rounded-lg animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center gap-2 flex-1">
+              <div className="h-8 w-8 rounded-full bg-destructive/10 flex items-center justify-center">
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </div>
+              <span className="text-sm font-medium">
+                เลือกแล้ว <span className="text-destructive font-bold">{selectedIds.size}</span> รายการ
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={clearSelection} className="gap-1.5 text-muted-foreground">
+                <X className="h-3.5 w-3.5" /> ยกเลิก
+              </Button>
+              <Button variant="destructive" size="sm" onClick={() => setShowBulkDelete(true)} className="gap-1.5">
+                <Trash2 className="h-3.5 w-3.5" /> ลบ {selectedIds.size} รายการ
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Filter info */}
         {filterByMonth && (
           <div className="text-sm text-muted-foreground">
@@ -213,6 +283,11 @@ export default function Customers() {
                 onRowClick={(id) => setLocation(`/customers/${id}`)}
                 onEdit={(id) => setLocation(`/customers/${id}?edit=true`)}
                 onDelete={(id) => setDeleteId(id)}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
+                onToggleSelectAll={toggleSelectAll}
+                allSelected={allSelected}
+                someSelected={someSelected}
               />
             ) : (
               <CustomerGridView
@@ -220,6 +295,11 @@ export default function Customers() {
                 onRowClick={(id) => setLocation(`/customers/${id}`)}
                 onEdit={(id) => setLocation(`/customers/${id}?edit=true`)}
                 onDelete={(id) => setDeleteId(id)}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
+                onToggleSelectAll={toggleSelectAll}
+                allSelected={allSelected}
+                someSelected={someSelected}
               />
             )}
             {totalPages > 1 && (
@@ -258,7 +338,7 @@ export default function Customers() {
         loading={importMutation.isPending}
       />
 
-      {/* Delete Confirmation */}
+      {/* Single Delete Confirmation */}
       <Dialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
         <DialogContent>
           <DialogHeader>
@@ -273,18 +353,61 @@ export default function Customers() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={showBulkDelete} onOpenChange={setShowBulkDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ยืนยันการลบหลายรายการ</AlertDialogTitle>
+            <AlertDialogDescription>
+              คุณต้องการลบลูกค้า <span className="font-bold text-destructive">{selectedIds.size} รายการ</span> หรือไม่?
+              <br />
+              <span className="text-xs mt-1 block">งานสำรวจ, รูปภาพ, เอกสาร และข้อมูลที่เกี่ยวข้องทั้งหมดจะถูกลบด้วย การดำเนินการนี้ไม่สามารถย้อนกลับได้</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => bulkDeleteMutation.mutate({ ids: Array.from(selectedIds) })}
+              disabled={bulkDeleteMutation.isPending}
+            >
+              {bulkDeleteMutation.isPending ? "กำลังลบ..." : `ลบ ${selectedIds.size} รายการ`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }
 
 /* ==================== TABLE VIEW ==================== */
-function CustomerTableView({ data, onRowClick, onEdit, onDelete }: { data: any[]; onRowClick: (id: number) => void; onEdit: (id: number) => void; onDelete: (id: number) => void }) {
+interface TableViewProps {
+  data: any[];
+  onRowClick: (id: number) => void;
+  onEdit: (id: number) => void;
+  onDelete: (id: number) => void;
+  selectedIds: Set<number>;
+  onToggleSelect: (id: number) => void;
+  onToggleSelectAll: () => void;
+  allSelected: boolean;
+  someSelected: boolean;
+}
+
+function CustomerTableView({ data, onRowClick, onEdit, onDelete, selectedIds, onToggleSelect, onToggleSelectAll, allSelected, someSelected }: TableViewProps) {
   return (
     <div className="border rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-muted/50 border-b">
+              <th className="px-3 py-2.5 w-10">
+                <Checkbox
+                  checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                  onCheckedChange={onToggleSelectAll}
+                  aria-label="เลือกทั้งหมด"
+                />
+              </th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">ชื่อลูกค้า</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">เบอร์โทร</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell">โลเคชั่น</th>
@@ -300,82 +423,92 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete }: { data: any[]
             </tr>
           </thead>
           <tbody>
-            {data.map((c: any) => (
-              <tr
-                key={c.id}
-                className="border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
-                onClick={() => onRowClick(c.id)}
-              >
-                <td className="px-3 py-2.5 font-medium max-w-[200px] truncate">
-                  {c.name}
-                </td>
-                <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
-                  {c.phone || "-"}
-                </td>
-                <td className="px-3 py-2.5 max-w-[180px] truncate hidden md:table-cell text-muted-foreground">
-                  {c.address ? (
-                    c.address.startsWith("http") ? (
-                      <a href={c.address} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 text-blue-600 hover:underline">
-                        <ExternalLink className="h-3 w-3" /> ดูแผนที่
-                      </a>
-                    ) : <span className="truncate">{c.address}</span>
-                  ) : "-"}
-                </td>
-                <td className="px-3 py-2.5 whitespace-nowrap hidden md:table-cell">
-                  {c.source ? (
-                    <Badge variant="secondary" className="text-[10px] font-normal">
-                      {c.source || "-"}
-                    </Badge>
-                  ) : "-"}
-                </td>
-                <td className="px-3 py-2.5 whitespace-nowrap hidden lg:table-cell text-muted-foreground">
-                  {c.district || "-"}
-                </td>
-                <td className="px-3 py-2.5 whitespace-nowrap hidden lg:table-cell text-muted-foreground">
-                  {c.province || "-"}
-                </td>
-                <td className="px-3 py-2.5 whitespace-nowrap hidden lg:table-cell">
-                  {c.electricityBill ? (
-                    <span className="flex items-center gap-1 text-amber-600">
-                      <Zap className="h-3 w-3" />
-                      {Number(c.electricityBill).toLocaleString()} ฿
-                    </span>
-                  ) : <span className="text-muted-foreground">-</span>}
-                </td>
-                <td className="px-3 py-2.5 whitespace-nowrap hidden xl:table-cell text-muted-foreground text-xs">
-                  {c.roofType || "-"}
-                </td>
-                <td className="px-3 py-2.5 whitespace-nowrap hidden xl:table-cell text-muted-foreground text-xs">
-                  {c.phaseType === "single" ? "1 เฟส" : c.phaseType === "three" ? "3 เฟส" : "-"}
-                </td>
-                <td className="px-3 py-2.5 max-w-[150px] truncate hidden xl:table-cell text-muted-foreground text-xs">
-                  {c.notes || "-"}
-                </td>
-                <td className="px-3 py-2.5 whitespace-nowrap hidden xl:table-cell text-muted-foreground text-xs">
-                  {new Date(c.createdAt).toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "2-digit" })}
-                </td>
-                <td className="px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-7 w-7">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onRowClick(c.id)}>
-                        <Eye className="h-4 w-4 mr-2" /> ดูรายละเอียด
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onEdit(c.id)}>
-                        <Pencil className="h-4 w-4 mr-2" /> แก้ไข
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive" onClick={() => onDelete(c.id)}>
-                        <Trash2 className="h-4 w-4 mr-2" /> ลบ
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </td>
-              </tr>
-            ))}
+            {data.map((c: any) => {
+              const isSelected = selectedIds.has(c.id);
+              return (
+                <tr
+                  key={c.id}
+                  className={`border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors ${isSelected ? "bg-primary/5" : ""}`}
+                  onClick={() => onRowClick(c.id)}
+                >
+                  <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => onToggleSelect(c.id)}
+                      aria-label={`เลือก ${c.name}`}
+                    />
+                  </td>
+                  <td className="px-3 py-2.5 font-medium max-w-[200px] truncate">
+                    {c.name}
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
+                    {c.phone || "-"}
+                  </td>
+                  <td className="px-3 py-2.5 max-w-[180px] truncate hidden md:table-cell text-muted-foreground">
+                    {c.address ? (
+                      c.address.startsWith("http") ? (
+                        <a href={c.address} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 text-blue-600 hover:underline">
+                          <ExternalLink className="h-3 w-3" /> ดูแผนที่
+                        </a>
+                      ) : <span className="truncate">{c.address}</span>
+                    ) : "-"}
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap hidden md:table-cell">
+                    {c.source ? (
+                      <Badge variant="secondary" className="text-[10px] font-normal">
+                        {c.source || "-"}
+                      </Badge>
+                    ) : "-"}
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap hidden lg:table-cell text-muted-foreground">
+                    {c.district || "-"}
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap hidden lg:table-cell text-muted-foreground">
+                    {c.province || "-"}
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap hidden lg:table-cell">
+                    {c.electricityBill ? (
+                      <span className="flex items-center gap-1 text-amber-600">
+                        <Zap className="h-3 w-3" />
+                        {Number(c.electricityBill).toLocaleString()} ฿
+                      </span>
+                    ) : <span className="text-muted-foreground">-</span>}
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap hidden xl:table-cell text-muted-foreground text-xs">
+                    {c.roofType || "-"}
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap hidden xl:table-cell text-muted-foreground text-xs">
+                    {c.phaseType === "single" ? "1 เฟส" : c.phaseType === "three" ? "3 เฟส" : "-"}
+                  </td>
+                  <td className="px-3 py-2.5 max-w-[150px] truncate hidden xl:table-cell text-muted-foreground text-xs">
+                    {c.notes || "-"}
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap hidden xl:table-cell text-muted-foreground text-xs">
+                    {new Date(c.createdAt).toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "2-digit" })}
+                  </td>
+                  <td className="px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onRowClick(c.id)}>
+                          <Eye className="h-4 w-4 mr-2" /> ดูรายละเอียด
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onEdit(c.id)}>
+                          <Pencil className="h-4 w-4 mr-2" /> แก้ไข
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive" onClick={() => onDelete(c.id)}>
+                          <Trash2 className="h-4 w-4 mr-2" /> ลบ
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -384,68 +517,88 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete }: { data: any[]
 }
 
 /* ==================== GRID VIEW (original card layout) ==================== */
-function CustomerGridView({ data, onRowClick, onEdit, onDelete }: { data: any[]; onRowClick: (id: number) => void; onEdit: (id: number) => void; onDelete: (id: number) => void }) {
-  const [, setLocation] = useLocation();
+function CustomerGridView({ data, onRowClick, onEdit, onDelete, selectedIds, onToggleSelect, onToggleSelectAll, allSelected, someSelected }: TableViewProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {data.map((customer: any) => (
-        <Card
-          key={customer.id}
-          className="border-0 shadow-sm hover:shadow-md transition-all cursor-pointer group"
-          onClick={() => onRowClick(customer.id)}
-        >
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Users className="h-5 w-5 text-primary" />
+    <div className="space-y-3">
+      {/* Select all bar for grid view */}
+      <div className="flex items-center gap-2 px-1">
+        <Checkbox
+          checked={allSelected ? true : someSelected ? "indeterminate" : false}
+          onCheckedChange={onToggleSelectAll}
+          aria-label="เลือกทั้งหมด"
+        />
+        <span className="text-xs text-muted-foreground">เลือกทั้งหมด</span>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {data.map((customer: any) => {
+          const isSelected = selectedIds.has(customer.id);
+          return (
+            <Card
+              key={customer.id}
+              className={`border-0 shadow-sm hover:shadow-md transition-all cursor-pointer group ${isSelected ? "ring-2 ring-primary/50 bg-primary/5" : ""}`}
+              onClick={() => onRowClick(customer.id)}
+            >
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => onToggleSelect(customer.id)}
+                        aria-label={`เลือก ${customer.name}`}
+                      />
+                    </div>
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Users className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm truncate">{customer.name}</p>
+                      {customer.source && (
+                        <Badge variant="secondary" className="text-[10px] mt-1 font-normal">
+                          {customer.source || "-"}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onRowClick(customer.id); }}>
+                        <Eye className="h-4 w-4 mr-2" /> ดูรายละเอียด
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(customer.id); }}>
+                        <Pencil className="h-4 w-4 mr-2" /> แก้ไข
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(customer.id); }}>
+                        <Trash2 className="h-4 w-4 mr-2" /> ลบ
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-                <div className="min-w-0">
-                  <p className="font-semibold text-sm truncate">{customer.name}</p>
-                  {customer.source && (
-                    <Badge variant="secondary" className="text-[10px] mt-1 font-normal">
-                      {customer.source || "-"}
-                    </Badge>
+                <div className="space-y-1.5 text-xs text-muted-foreground">
+                  {customer.phone && (
+                    <div className="flex items-center gap-2"><Phone className="h-3 w-3" />{customer.phone}</div>
+                  )}
+                  {customer.address && (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-3 w-3 shrink-0" />
+                      {customer.address.startsWith("http") ? (
+                        <a href={customer.address} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-600 hover:underline inline-flex items-center gap-1">
+                          <ExternalLink className="h-3 w-3" /> ดูโลเคชั่น
+                        </a>
+                      ) : <span className="truncate">{customer.address}</span>}
+                    </div>
                   )}
                 </div>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onRowClick(customer.id); }}>
-                    <Eye className="h-4 w-4 mr-2" /> ดูรายละเอียด
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(customer.id); }}>
-                    <Pencil className="h-4 w-4 mr-2" /> แก้ไข
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(customer.id); }}>
-                    <Trash2 className="h-4 w-4 mr-2" /> ลบ
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            <div className="space-y-1.5 text-xs text-muted-foreground">
-              {customer.phone && (
-                <div className="flex items-center gap-2"><Phone className="h-3 w-3" />{customer.phone}</div>
-              )}
-              {customer.address && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-3 w-3 shrink-0" />
-                  {customer.address.startsWith("http") ? (
-                    <a href={customer.address} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-600 hover:underline inline-flex items-center gap-1">
-                      <ExternalLink className="h-3 w-3" /> ดูโลเคชั่น
-                    </a>
-                  ) : <span className="truncate">{customer.address}</span>}
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 }

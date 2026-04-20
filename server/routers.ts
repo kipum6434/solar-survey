@@ -90,6 +90,14 @@ const customerRouter = router({
       return { success: true };
     }),
 
+  bulkDelete: adminProcedure
+    .input(z.object({ ids: z.array(z.number()).min(1).max(100) }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await db.bulkDeleteCustomers(input.ids);
+      await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "customer", entityId: input.ids[0], details: `ลบลูกค้า ${input.ids.length} รายการ (IDs: ${input.ids.join(", ")})` });
+      return result;
+    }),
+
   importBatch: protectedProcedure
     .input(z.object({
       customers: z.array(z.object({
