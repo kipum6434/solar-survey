@@ -308,3 +308,7 @@
 ## Bug Fix - Round 16: ลิงก์ Google Maps กดไม่ได้จากมือถือ
 - [x] แก้ไข CustomerDetail.tsx ให้ลิงก์ Google Maps เป็น clickable button ที่เปิดได้จากมือถือ
 - [x] ตรวจสอบจุดอื่นที่แสดงลิงก์ Google Maps (Customers, SurveyDetail) ให้กดได้เช่นกัน
+
+## User Request - Round 17: ซ่อนเอกสารในหน้า Share Link สาธารณะ
+- [x] ซ่อนส่วน "เอกสาร" ในหน้า share link สาธารณะ ไม่ให้คนนอกเห็น
+- [x] คนในระบบ (login แล้ว) ยังเห็นเอกสารเหมือนเดิม (หน้า SurveyDetail ไม่เปลี่ยน)

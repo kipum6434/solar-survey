@@ -1,12 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { SURVEY_STATUS_MAP, PHOTO_CATEGORY_MAP, DOC_TYPE_MAP } from "@/lib/constants";
+import { SURVEY_STATUS_MAP, PHOTO_CATEGORY_MAP } from "@/lib/constants";
 import { useParams } from "wouter";
 import { useState } from "react";
 import {
-  Camera, FileText, MapPin, Calendar, Phone, Mail, Zap, Home, Gauge,
-  X, Image, Download, Sun,
+  Camera, MapPin, Calendar, Phone, Mail, Zap, Home, Gauge,
+  X, Image, Sun,
 } from "lucide-react";
 
 export default function SharedSurvey() {
@@ -42,7 +42,6 @@ export default function SharedSurvey() {
   const s = 'survey' in data ? data.survey : null;
   const c = 'customer' in data ? data.customer : null;
   const photosData = 'photos' in data ? data.photos : [];
-  const docsData = 'documents' in data ? data.documents : [];
   if (!s || !c) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-orange-50 flex items-center justify-center p-4">
@@ -143,30 +142,7 @@ export default function SharedSurvey() {
           </Card>
         )}
 
-        {/* Documents */}
-        {docsData && docsData.length > 0 && (
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <FileText className="h-4 w-4" /> เอกสาร ({docsData.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {docsData.map((doc: any) => (
-                  <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                    <FileText className="h-5 w-5 text-primary" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{doc.fileName.replace(/^\d+-/, "")}</p>
-                      <Badge variant="secondary" className="text-[10px] mt-0.5">{DOC_TYPE_MAP[doc.fileType] || doc.fileType}</Badge>
-                    </div>
-                    <Download className="h-4 w-4 text-muted-foreground" />
-                  </a>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Documents section hidden from public share link - only visible to logged-in users in SurveyDetail */}
 
         {/* Survey Notes */}
         {s.surveyNotes && (
