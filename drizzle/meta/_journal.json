@@ -43,6 +43,13 @@
       "when": 1776650825637,
       "tag": "0005_panoramic_alice",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1776657669912,
+      "tag": "0006_green_manta",
+      "breakpoints": true
     }
   ]
 }

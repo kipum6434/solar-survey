@@ -14,10 +14,12 @@ import Notifications from "./pages/Notifications";
 import SharedSurvey from "./pages/SharedSurvey";
 import TeamManagement from "./pages/TeamManagement";
 import UserManagement from "./pages/UserManagement";
+import Login from "./pages/Login";
 
 function Router() {
   return (
     <Switch>
+      <Route path={"/login"} component={Login} />
       <Route path={"/"} component={Home} />
       <Route path={"/customers"} component={Customers} />
       <Route path={"/customers/:id"} component={CustomerDetail} />

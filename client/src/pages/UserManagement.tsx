@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Shield, ShieldCheck, User, Mail, Clock } from "lucide-react";
+import { Plus, Pencil, Trash2, Shield, ShieldCheck, User, Mail, Clock, KeyRound, AtSign } from "lucide-react";
 
 const ROLE_OPTIONS = [
   { value: "admin", label: "แอดมิน", color: "bg-amber-100 text-amber-800", icon: ShieldCheck },
@@ -29,6 +29,7 @@ export default function UserManagement() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editUser, setEditUser] = useState<any>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<any>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<any>(null);
 
   const { data: usersList = [], isLoading } = trpc.users.list.useQuery();
   const utils = trpc.useUtils();
@@ -56,6 +57,14 @@ export default function UserManagement() {
       utils.users.list.invalidate();
       setDeleteConfirm(null);
       toast.success("ลบผู้ใช้สำเร็จ");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const resetPasswordMutation = trpc.users.resetPassword.useMutation({
+    onSuccess: () => {
+      setResetPasswordUser(null);
+      toast.success("รีเซ็ตรหัสผ่านสำเร็จ");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -175,6 +184,12 @@ export default function UserManagement() {
                           )}
                         </div>
                         <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground flex-wrap">
+                          {user.username && (
+                            <span className="flex items-center gap-1">
+                              <AtSign className="h-3 w-3" />
+                              {user.username}
+                            </span>
+                          )}
                           {user.email && (
                             <span className="flex items-center gap-1">
                               <Mail className="h-3 w-3" />
@@ -191,6 +206,11 @@ export default function UserManagement() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
+                      {user.loginMethod === "manual" && (
+                        <Button variant="ghost" size="icon" className="h-8 w-8" title="รีเซ็ตรหัสผ่าน" onClick={() => setResetPasswordUser(user)}>
+                          <KeyRound className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditUser(user)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -206,25 +226,32 @@ export default function UserManagement() {
         )}
 
         {/* Add Dialog */}
-        <UserDialog
+        <AddUserDialog
           open={showAddDialog}
           onClose={() => setShowAddDialog(false)}
           onSave={(data) => createMutation.mutate(data)}
           isLoading={createMutation.isPending}
-          title="เพิ่มผู้ใช้ใหม่"
         />
 
         {/* Edit Dialog */}
         {editUser && (
-          <UserDialog
+          <EditUserDialog
             open={!!editUser}
             onClose={() => setEditUser(null)}
             onSave={(data) => updateMutation.mutate({ id: editUser.id, ...data })}
             isLoading={updateMutation.isPending}
-            title="แก้ไขผู้ใช้"
             defaultValues={editUser}
           />
         )}
+
+        {/* Reset Password Dialog */}
+        <ResetPasswordDialog
+          open={resetPasswordUser !== null}
+          onClose={() => setResetPasswordUser(null)}
+          onSave={(newPassword) => resetPasswordUser && resetPasswordMutation.mutate({ id: resetPasswordUser.id, newPassword })}
+          isLoading={resetPasswordMutation.isPending}
+          userName={resetPasswordUser?.name || ""}
+        />
 
         {/* Delete Confirm Dialog */}
         <Dialog open={deleteConfirm !== null} onOpenChange={() => setDeleteConfirm(null)}>
@@ -249,13 +276,107 @@ export default function UserManagement() {
   );
 }
 
-function UserDialog({ open, onClose, onSave, isLoading, title, defaultValues }: {
+// ==================== ADD USER DIALOG ====================
+function AddUserDialog({ open, onClose, onSave, isLoading }: {
+  open: boolean;
+  onClose: () => void;
+  onSave: (data: { name: string; username: string; password: string; email?: string; role: "user" | "admin" }) => void;
+  isLoading: boolean;
+}) {
+  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("admin");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      toast.error("กรุณากรอกชื่อ");
+      return;
+    }
+    if (!username.trim() || username.trim().length < 3) {
+      toast.error("ชื่อผู้ใช้ต้องมีอย่างน้อย 3 ตัวอักษร");
+      return;
+    }
+    if (!password || password.length < 4) {
+      toast.error("รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร");
+      return;
+    }
+    onSave({
+      name: name.trim(),
+      username: username.trim().toLowerCase(),
+      password,
+      email: email.trim() || undefined,
+      role: role as "user" | "admin",
+    });
+  };
+
+  const handleClose = () => {
+    setName("");
+    setUsername("");
+    setPassword("");
+    setEmail("");
+    setRole("admin");
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>เพิ่มผู้ใช้ใหม่</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label>ชื่อ-นามสกุล *</Label>
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder="ชื่อ-นามสกุล" className="mt-1" />
+          </div>
+          <div>
+            <Label>ชื่อผู้ใช้ (Username) *</Label>
+            <Input value={username} onChange={e => setUsername(e.target.value)} placeholder="username" className="mt-1" autoComplete="off" />
+            <p className="text-xs text-muted-foreground mt-1">ใช้สำหรับเข้าสู่ระบบ (อย่างน้อย 3 ตัวอักษร)</p>
+          </div>
+          <div>
+            <Label>รหัสผ่าน *</Label>
+            <Input value={password} onChange={e => setPassword(e.target.value)} placeholder="รหัสผ่าน" className="mt-1" type="password" autoComplete="new-password" />
+            <p className="text-xs text-muted-foreground mt-1">อย่างน้อย 4 ตัวอักษร</p>
+          </div>
+          <div>
+            <Label>อีเมล (ไม่บังคับ)</Label>
+            <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="email@example.com" className="mt-1" type="email" />
+          </div>
+          <div>
+            <Label>สิทธิ์การใช้งาน *</Label>
+            <Select value={role} onValueChange={setRole}>
+              <SelectTrigger className="mt-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">แอดมิน (เข้าถึงทุกข้อมูล)</SelectItem>
+                <SelectItem value="user">ผู้ใช้ทั่วไป (เห็นเฉพาะข้อมูลตัวเอง)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button type="button" variant="outline" onClick={handleClose}>ยกเลิก</Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "กำลังบันทึก..." : "บันทึก"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ==================== EDIT USER DIALOG ====================
+function EditUserDialog({ open, onClose, onSave, isLoading, defaultValues }: {
   open: boolean;
   onClose: () => void;
   onSave: (data: { name: string; email?: string; role: "user" | "admin" }) => void;
   isLoading: boolean;
-  title: string;
-  defaultValues?: { name?: string; email?: string; role?: string };
+  defaultValues: { name?: string; email?: string; role?: string };
 }) {
   const [name, setName] = useState(defaultValues?.name || "");
   const [email, setEmail] = useState(defaultValues?.email || "");
@@ -278,7 +399,7 @@ function UserDialog({ open, onClose, onSave, isLoading, title, defaultValues }: 
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle>แก้ไขผู้ใช้</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -305,6 +426,66 @@ function UserDialog({ open, onClose, onSave, isLoading, title, defaultValues }: 
             <Button type="button" variant="outline" onClick={onClose}>ยกเลิก</Button>
             <Button type="submit" disabled={isLoading}>
               {isLoading ? "กำลังบันทึก..." : "บันทึก"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ==================== RESET PASSWORD DIALOG ====================
+function ResetPasswordDialog({ open, onClose, onSave, isLoading, userName }: {
+  open: boolean;
+  onClose: () => void;
+  onSave: (newPassword: string) => void;
+  isLoading: boolean;
+  userName: string;
+}) {
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || newPassword.length < 4) {
+      toast.error("รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("รหัสผ่านไม่ตรงกัน");
+      return;
+    }
+    onSave(newPassword);
+  };
+
+  const handleClose = () => {
+    setNewPassword("");
+    setConfirmPassword("");
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>รีเซ็ตรหัสผ่าน</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          ตั้งรหัสผ่านใหม่ให้ <strong>{userName}</strong>
+        </p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label>รหัสผ่านใหม่ *</Label>
+            <Input value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="รหัสผ่านใหม่" className="mt-1" type="password" autoComplete="new-password" />
+          </div>
+          <div>
+            <Label>ยืนยันรหัสผ่าน *</Label>
+            <Input value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="ยืนยันรหัสผ่าน" className="mt-1" type="password" autoComplete="new-password" />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button type="button" variant="outline" onClick={handleClose}>ยกเลิก</Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "กำลังบันทึก..." : "รีเซ็ตรหัสผ่าน"}
             </Button>
           </DialogFooter>
         </form>

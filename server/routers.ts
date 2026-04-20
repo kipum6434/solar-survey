@@ -2,9 +2,11 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
+import { sdk } from "./_core/sdk";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { nanoid } from "nanoid";
+import bcrypt from "bcryptjs";
 import { storagePut, storageDelete } from "./storage";
 import * as db from "./db";
 
@@ -569,12 +571,21 @@ const usersRouter = router({
   create: adminProcedure
     .input(z.object({
       name: z.string().min(1),
+      username: z.string().min(3, "ชื่อผู้ใช้ต้องมีอย่างน้อย 3 ตัวอักษร"),
+      password: z.string().min(4, "รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร"),
       email: z.string().optional(),
       role: z.enum(["user", "admin"]),
     }))
     .mutation(async ({ input, ctx }) => {
-      const result = await db.createManualUser(input);
-      await db.logActivity({ userId: ctx.user.id, action: "create", entityType: "user", entityId: result.id, details: `สร้างผู้ใช้: ${input.name} (${input.role})` });
+      const passwordHash = await bcrypt.hash(input.password, 10);
+      const result = await db.createManualUser({
+        name: input.name,
+        username: input.username,
+        passwordHash,
+        email: input.email,
+        role: input.role,
+      });
+      await db.logActivity({ userId: ctx.user.id, action: "create", entityType: "user", entityId: result.id, details: `สร้างผู้ใช้: ${input.name} (@${input.username}) (${input.role})` });
       return result;
     }),
 
@@ -592,6 +603,18 @@ const usersRouter = router({
       return { success: true };
     }),
 
+  resetPassword: adminProcedure
+    .input(z.object({
+      id: z.number(),
+      newPassword: z.string().min(4, "รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร"),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const passwordHash = await bcrypt.hash(input.newPassword, 10);
+      await db.updateUser(input.id, { passwordHash });
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "user", entityId: input.id, details: `รีเซ็ตรหัสผ่านผู้ใช้ ID:${input.id}` });
+      return { success: true };
+    }),
+
   delete: adminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
@@ -601,6 +624,34 @@ const usersRouter = router({
       await db.deleteUser(input.id);
       await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "user", entityId: input.id, details: `ลบผู้ใช้ ID:${input.id}` });
       return { success: true };
+    }),
+
+  // Public login with username/password
+  login: publicProcedure
+    .input(z.object({
+      username: z.string().min(1),
+      password: z.string().min(1),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const user = await db.getUserByUsername(input.username);
+      if (!user || !user.passwordHash) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
+      }
+      const valid = await bcrypt.compare(input.password, user.passwordHash);
+      if (!valid) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
+      }
+      // Create session token using the user's openId
+      const token = await sdk.createSessionToken(user.openId, { name: user.name || "" });
+      // Set session cookie
+      const cookieOptions = getSessionCookieOptions(ctx.req);
+      ctx.res.cookie(COOKIE_NAME, token, {
+        ...cookieOptions,
+        maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
+      });
+      // Update last signed in
+      await db.upsertUser({ openId: user.openId, lastSignedIn: new Date() });
+      return { success: true, user: { id: user.id, name: user.name, role: user.role } };
     }),
 });
 

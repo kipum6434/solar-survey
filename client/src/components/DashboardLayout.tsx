@@ -36,7 +36,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Redirect } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 import { trpc } from "@/lib/trpc";
@@ -77,34 +77,7 @@ export default function DashboardLayout({
   }
 
   if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#1e3a5f] via-[#2d4a6f] to-[#1e3a5f]">
-        <div className="flex flex-col items-center gap-8 p-10 max-w-md w-full bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl">
-          <div className="flex flex-col items-center gap-4">
-            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg">
-              <Sun className="h-9 w-9 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#1e3a5f] text-center">
-              Solar Survey System
-            </h1>
-            <p className="text-sm text-stone-500 text-center max-w-sm leading-relaxed">
-              ระบบจัดการงานสำรวจติดตั้งโซล่าเซลล์
-              <br />
-              กรุณาเข้าสู่ระบบเพื่อดำเนินการต่อ
-            </p>
-          </div>
-          <Button
-            onClick={() => {
-              window.location.href = getLoginUrl();
-            }}
-            size="lg"
-            className="w-full bg-[#1e3a5f] hover:bg-[#2d4a6f] text-white shadow-lg hover:shadow-xl transition-all h-12 text-base font-medium"
-          >
-            เข้าสู่ระบบ
-          </Button>
-        </div>
-      </div>
-    );
+    return <Redirect to="/login" />;
   }
 
   return (

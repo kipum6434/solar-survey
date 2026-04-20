@@ -449,6 +449,7 @@ export async function getAllUsers() {
     openId: users.openId,
     name: users.name,
     email: users.email,
+    username: users.username,
     role: users.role,
     loginMethod: users.loginMethod,
     createdAt: users.createdAt,
@@ -456,19 +457,31 @@ export async function getAllUsers() {
   }).from(users).orderBy(desc(users.createdAt));
 }
 
-export async function createManualUser(data: { name: string; email?: string; role: "user" | "admin" }) {
+export async function createManualUser(data: { name: string; email?: string; username: string; passwordHash: string; role: "user" | "admin" }) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
+  // Check if username already exists
+  const existing = await db.select({ id: users.id }).from(users).where(eq(users.username, data.username)).limit(1);
+  if (existing.length > 0) throw new Error("ชื่อผู้ใช้นี้ถูกใช้แล้ว");
   const openId = `manual_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const result = await db.insert(users).values({
     openId,
     name: data.name,
     email: data.email || null,
+    username: data.username,
+    passwordHash: data.passwordHash,
     role: data.role,
     loginMethod: "manual",
     lastSignedIn: new Date(),
   });
   return { id: Number(result[0].insertId), openId };
+}
+
+export async function getUserByUsername(username: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.username, username)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
 }
 
 export async function updateUserRole(id: number, role: "user" | "admin") {
@@ -477,13 +490,14 @@ export async function updateUserRole(id: number, role: "user" | "admin") {
   await db.update(users).set({ role }).where(eq(users.id, id));
 }
 
-export async function updateUser(id: number, data: { name?: string; email?: string; role?: "user" | "admin" }) {
+export async function updateUser(id: number, data: { name?: string; email?: string; role?: "user" | "admin"; passwordHash?: string }) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   const updateSet: Record<string, unknown> = {};
   if (data.name !== undefined) updateSet.name = data.name;
   if (data.email !== undefined) updateSet.email = data.email || null;
   if (data.role !== undefined) updateSet.role = data.role;
+  if (data.passwordHash !== undefined) updateSet.passwordHash = data.passwordHash;
   if (Object.keys(updateSet).length === 0) return;
   await db.update(users).set(updateSet).where(eq(users.id, id));
 }

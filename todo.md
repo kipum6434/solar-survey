@@ -218,3 +218,13 @@
 - [x] ฟอร์มเพิ่มลูกค้า: ตัดช่อง "อีเมล" ออก
 - [x] ฟอร์มเพิ่มลูกค้า: เพิ่มช่อง "โลเคชั่น" (Google Maps link)
 - [x] ลำดับคอลัมน์ใหม่: ชื่อลูกค้า > เบอร์โทร > โลเคชั่น > ช่องทาง > เขต/อำเภอ > จังหวัด > ค่าไฟ/เดือน > ประเภทหลังคา > ระบบไฟ > หมายเหตุ > วันที่สร้าง
+
+## User Request - Round 9: ระบบ Login ด้วย Username/Password
+
+- [x] ฟอร์มเพิ่มผู้ใช้: เพิ่มช่อง username และ password
+- [x] Backend: เพิ่ม username, passwordHash ใน users table
+- [x] Backend: สร้าง API login ด้วย username/password (ออก session token)
+- [x] Backend: อัพเดท users.create ให้รองรับ username/password
+- [x] Frontend: สร้างหน้า Login ด้วย username/password (/login)
+- [x] Frontend: เชื่อม login flow - DashboardLayout redirect ไป /login
+- [x] ฟอร์มแก้ไขผู้ใช้: เพิ่มปุ่ม reset password (key icon)
