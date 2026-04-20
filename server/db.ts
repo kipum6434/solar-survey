@@ -181,15 +181,28 @@ export async function getSurveyWithCustomer(id: number) {
     .where(eq(surveys.id, id))
     .limit(1);
   if (!result[0]) return undefined;
-  // Fetch assignments with user info
+  // Fetch assignments with team member info (fallback to users for legacy data)
   const assignmentRows = await db.select({
     assignment: surveyAssignments,
-    user: { id: users.id, name: users.name, role: users.role },
+    teamMemberId: teamMembers.id,
+    teamMemberName: teamMembers.name,
+    teamMemberRole: teamMembers.role,
+    fallbackUserId: users.id,
+    fallbackUserName: users.name,
   }).from(surveyAssignments)
+    .leftJoin(teamMembers, eq(surveyAssignments.userId, teamMembers.id))
     .leftJoin(users, eq(surveyAssignments.userId, users.id))
     .where(eq(surveyAssignments.surveyId, id))
     .orderBy(surveyAssignments.createdAt);
-  return { ...result[0], assignments: assignmentRows };
+  const assignments = assignmentRows.map(r => ({
+    assignment: r.assignment,
+    user: {
+      id: r.teamMemberId ?? r.fallbackUserId ?? r.assignment.userId,
+      name: r.teamMemberName ?? r.fallbackUserName ?? null,
+      role: r.teamMemberRole ?? r.assignment.role,
+    },
+  }));
+  return { ...result[0], assignments };
 }
 
 export async function createSurvey(data: InsertSurvey) {
@@ -533,13 +546,28 @@ export async function getOrCreateSource(name: string, category?: string) {
 export async function getSurveyAssignments(surveyId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select({
+  // Join with both team_members (primary) and users (fallback for legacy data)
+  const rows = await db.select({
     assignment: surveyAssignments,
-    user: { id: users.id, name: users.name, role: users.role },
+    teamMemberId: teamMembers.id,
+    teamMemberName: teamMembers.name,
+    teamMemberRole: teamMembers.role,
+    fallbackUserId: users.id,
+    fallbackUserName: users.name,
   }).from(surveyAssignments)
+    .leftJoin(teamMembers, eq(surveyAssignments.userId, teamMembers.id))
     .leftJoin(users, eq(surveyAssignments.userId, users.id))
     .where(eq(surveyAssignments.surveyId, surveyId))
     .orderBy(surveyAssignments.createdAt);
+  // Return unified format: prefer team_members, fallback to users
+  return rows.map(r => ({
+    assignment: r.assignment,
+    user: {
+      id: r.teamMemberId ?? r.fallbackUserId ?? r.assignment.userId,
+      name: r.teamMemberName ?? r.fallbackUserName ?? null,
+      role: r.teamMemberRole ?? r.assignment.role,
+    },
+  }));
 }
 
 export async function setSurveyAssignments(surveyId: number, assignments: { userId: number; role: "admin_sender" | "surveyor" | "closer" }[]) {
@@ -610,13 +638,15 @@ export async function getSurveysWithCustomer(opts: { status?: string; assignedTo
     const allAssignments = await db.select({
       surveyId: surveyAssignments.surveyId,
       role: surveyAssignments.role,
-      userName: users.name,
+      teamMemberName: teamMembers.name,
+      fallbackUserName: users.name,
     }).from(surveyAssignments)
+      .leftJoin(teamMembers, eq(surveyAssignments.userId, teamMembers.id))
       .leftJoin(users, eq(surveyAssignments.userId, users.id))
       .where(inArray(surveyAssignments.surveyId, surveyIds));
     for (const a of allAssignments) {
       if (!assignmentsMap[a.surveyId]) assignmentsMap[a.surveyId] = [];
-      assignmentsMap[a.surveyId].push({ role: a.role, userName: a.userName });
+      assignmentsMap[a.surveyId].push({ role: a.role, userName: a.teamMemberName ?? a.fallbackUserName });
     }
   }
   const countQ = whereClause

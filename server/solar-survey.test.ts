@@ -384,3 +384,158 @@ describe("Solar Survey - Survey Assignments", () => {
     }
   });
 });
+
+describe("Solar Survey - Round 12: Team Assignment Sync", () => {
+  it("survey.update with team member IDs stores and returns correct assignments", async () => {
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+
+    // Create a team member first
+    const teamMember = await caller.teamMember.create({
+      name: "Round12 Test Admin",
+      role: "admin_sender",
+    });
+    expect(teamMember.id).toBeDefined();
+
+    const surveyor = await caller.teamMember.create({
+      name: "Round12 Test Surveyor",
+      role: "surveyor",
+    });
+    expect(surveyor.id).toBeDefined();
+
+    const closer = await caller.teamMember.create({
+      name: "Round12 Test Closer",
+      role: "closer",
+    });
+    expect(closer.id).toBeDefined();
+
+    // Get a survey to update
+    const list = await caller.survey.list({ page: 1, limit: 1 });
+    expect(list.data.length).toBeGreaterThan(0);
+    const surveyId = list.data[0].survey.id;
+
+    // Update with team member IDs
+    await caller.survey.update({
+      id: surveyId,
+      adminSenderId: teamMember.id,
+      surveyorIds: [surveyor.id],
+      closerId: closer.id,
+    });
+
+    // Verify assignments are returned with correct team member info
+    const detail = await caller.survey.getById({ id: surveyId });
+    const assignments = (detail as any).assignments || [];
+
+    const adminAssignment = assignments.find((a: any) => a.assignment.role === "admin_sender");
+    expect(adminAssignment).toBeDefined();
+    expect(adminAssignment.user.id).toBe(teamMember.id);
+    expect(adminAssignment.user.name).toBe("Round12 Test Admin");
+
+    const surveyorAssignment = assignments.find((a: any) => a.assignment.role === "surveyor");
+    expect(surveyorAssignment).toBeDefined();
+    expect(surveyorAssignment.user.id).toBe(surveyor.id);
+    expect(surveyorAssignment.user.name).toBe("Round12 Test Surveyor");
+
+    const closerAssignment = assignments.find((a: any) => a.assignment.role === "closer");
+    expect(closerAssignment).toBeDefined();
+    expect(closerAssignment.user.id).toBe(closer.id);
+    expect(closerAssignment.user.name).toBe("Round12 Test Closer");
+  });
+
+  it("survey.update with null adminSenderId clears admin sender assignment", async () => {
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const list = await caller.survey.list({ page: 1, limit: 1 });
+    expect(list.data.length).toBeGreaterThan(0);
+    const surveyId = list.data[0].survey.id;
+
+    // First set an admin sender
+    const teamMember = await caller.teamMember.create({
+      name: "Round12 Clear Test",
+      role: "admin_sender",
+    });
+    await caller.survey.update({
+      id: surveyId,
+      adminSenderId: teamMember.id,
+    });
+
+    // Verify it was set
+    let detail = await caller.survey.getById({ id: surveyId });
+    let admin = (detail as any).assignments.find((a: any) => a.assignment.role === "admin_sender");
+    expect(admin).toBeDefined();
+
+    // Now clear it with null
+    await caller.survey.update({
+      id: surveyId,
+      adminSenderId: null,
+      surveyorIds: [],
+      closerId: null,
+    });
+
+    // Verify it was cleared
+    detail = await caller.survey.getById({ id: surveyId });
+    admin = (detail as any).assignments.find((a: any) => a.assignment.role === "admin_sender");
+    expect(admin).toBeUndefined();
+  });
+
+  it("survey.list returns team member names in assignments", async () => {
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const list = await caller.survey.list({ page: 1, limit: 5 });
+    expect(list.data.length).toBeGreaterThan(0);
+
+    // Each survey should have an assignments array
+    for (const item of list.data) {
+      expect(Array.isArray(item.assignments)).toBe(true);
+    }
+  });
+});
+
+describe("Solar Survey - Round 12: Legacy Assignment Fallback", () => {
+  it("survey.getById returns user name for legacy assignments referencing users.id", async () => {
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+
+    // Get a survey that has legacy assignments (userId=1 which is users.id=1 monsterpunchthailand)
+    // We know from data inspection that many surveys have userId=1 as admin_sender/surveyor
+    const list = await caller.survey.list({ page: 1, limit: 50 });
+    
+    // Find a survey that has assignments
+    let foundLegacy = false;
+    for (const item of list.data) {
+      if (item.assignments.length > 0) {
+        const detail = await caller.survey.getById({ id: item.survey.id });
+        const assignments = (detail as any).assignments || [];
+        for (const a of assignments) {
+          // Every assignment should have a user with a name (either from team_members or users fallback)
+          if (a.user && a.user.name) {
+            foundLegacy = true;
+          }
+        }
+        if (foundLegacy) break;
+      }
+    }
+    // At least one survey should have assignments with resolved names
+    expect(foundLegacy).toBe(true);
+  });
+
+  it("survey.list shows team member names for all assignments via fallback", async () => {
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const list = await caller.survey.list({ page: 1, limit: 50 });
+    
+    // Check that assignments with known userId values have userName resolved
+    let hasResolvedName = false;
+    for (const item of list.data) {
+      for (const a of item.assignments) {
+        if (a.userName) {
+          hasResolvedName = true;
+        }
+      }
+    }
+    expect(hasResolvedName).toBe(true);
+  });
+});

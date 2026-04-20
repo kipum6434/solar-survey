@@ -256,3 +256,13 @@
 - [x] แก้บัค input พิมพ์ตัวแรกแล้วเด้งออก - ลบ editing state ให้แสดง input ตลอด
 - [x] ตัดราคาประเมินออกจากหน้าแสดง + หน้าแก้ไข + Excel export
 - [x] ตัดราคาประเมินออกจากหน้าแก้ไข (EditSurveyDialog)
+
+## Bug Fix - Round 12: ทีมงานไม่ลิงก์กันระหว่างหน้าแสดงและหน้าแก้ไข
+- [x] ตรวจสอบว่า TeamCard แสดงข้อมูลทีมงานจาก survey data ถูกต้อง
+- [x] ตรวจสอบว่า EditSurveyDialog บันทึกทีมงานลง DB ถูกต้อง
+- [x] ให้ข้อมูลทีมงาน sync กันทั้ง 2 จุด - กรอกจากไหนก็แสดงเหมือนกัน
+- [x] TeamCard แสดงชื่อทีมงานหลังบันทึกจาก EditSurveyDialog
+- [x] TeamCard แก้ไขทีมงานแล้วแสดงใน EditSurveyDialog ด้วย
+- [x] Data backfill: ใช้ dual join (team_members + users fallback) รองรับทั้ง legacy และ new data
+- [x] เพิ่ม test ครอบคลุม assignment data (68 tests passed)
+- [x] ตรวจสอบผ่าน backend vitest (68 tests passed)

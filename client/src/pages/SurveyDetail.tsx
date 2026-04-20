@@ -526,14 +526,13 @@ function EditSurveyDialog({ open, onOpenChange, survey, adminSenders, surveyors,
       status: s.status,
       scheduledDate: s.scheduledDate ? new Date(s.scheduledDate).toISOString().split("T")[0] : "",
       scheduledTime: s.scheduledTime || "",
-      adminSenderId: adminSender?.assignment?.userId ? String(adminSender.assignment.userId) : "",
-      surveyorIds: surveyors.map((a: any) => a.assignment.userId),
-      closerId: closer?.assignment?.userId ? String(closer.assignment.userId) : "",
+      adminSenderId: adminSender?.user?.id ? String(adminSender.user.id) : "",
+      surveyorIds: surveyors.map((a: any) => a.user?.id).filter(Boolean),
+      closerId: closer?.user?.id ? String(closer.user.id) : "",
       surveyNotes: s.surveyNotes || "",
       systemSize: s.systemSize || "",
       panelCount: s.panelCount || "",
       inverterModel: s.inverterModel || "",
-      quotedPrice: s.quotedPrice || "",
     });
   };
 
@@ -603,7 +602,6 @@ function EditSurveyDialog({ open, onOpenChange, survey, adminSenders, surveyors,
             <div><Label>ขนาดระบบ (kW)</Label><Input value={form.systemSize || ""} onChange={(e) => setForm({ ...form, systemSize: e.target.value })} /></div>
             <div><Label>จำนวนแผง</Label><Input type="number" value={form.panelCount || ""} onChange={(e) => setForm({ ...form, panelCount: e.target.value })} /></div>
             <div><Label>รุ่นอินเวอร์เตอร์</Label><Input value={form.inverterModel || ""} onChange={(e) => setForm({ ...form, inverterModel: e.target.value })} /></div>
-            <div className="col-span-2"><Label>ราคาเสนอ</Label><Input value={form.quotedPrice || ""} onChange={(e) => setForm({ ...form, quotedPrice: e.target.value })} /></div>
             <div className="col-span-2"><Label>หมายเหตุ</Label><Textarea value={form.surveyNotes || ""} onChange={(e) => setForm({ ...form, surveyNotes: e.target.value })} rows={3} /></div>
           </div>
           <DialogFooter>
@@ -616,11 +614,10 @@ function EditSurveyDialog({ open, onOpenChange, survey, adminSenders, surveyors,
               if (form.systemSize) payload.systemSize = form.systemSize;
               if (form.panelCount) payload.panelCount = parseInt(form.panelCount);
               if (form.inverterModel) payload.inverterModel = form.inverterModel;
-              if (form.quotedPrice) payload.quotedPrice = form.quotedPrice;
-              // Workflow assignments
-              if (form.adminSenderId) payload.adminSenderId = parseInt(form.adminSenderId);
-              if (form.surveyorIds && form.surveyorIds.length > 0) payload.surveyorIds = form.surveyorIds;
-              if (form.closerId) payload.closerId = parseInt(form.closerId);
+              // Always send team assignments (null to clear, number to set)
+              payload.adminSenderId = form.adminSenderId ? parseInt(form.adminSenderId) : null;
+              payload.surveyorIds = form.surveyorIds && form.surveyorIds.length > 0 ? form.surveyorIds : [];
+              payload.closerId = form.closerId ? parseInt(form.closerId) : null;
               onSubmit(payload);
             }} disabled={loading}>{loading ? "กำลังบันทึก..." : "บันทึก"}</Button>
           </DialogFooter>
