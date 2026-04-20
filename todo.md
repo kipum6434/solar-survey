@@ -228,3 +228,8 @@
 - [x] Frontend: สร้างหน้า Login ด้วย username/password (/login)
 - [x] Frontend: เชื่อม login flow - DashboardLayout redirect ไป /login
 - [x] ฟอร์มแก้ไขผู้ใช้: เพิ่มปุ่ม reset password (key icon)
+
+## Bug Fix - Round 9.1: หน้า Login auto-redirect ไป Manus OAuth
+
+- [x] แก้ไขหน้า /login ไม่ให้ auto-redirect ไป Manus OAuth portal (แก้ main.tsx + useAuth.ts)
+- [x] ให้หน้า Login แสดงฟอร์ม username/password เป็นหลัก ผู้ใช้เลือกเองว่าจะ login แบบไหน
