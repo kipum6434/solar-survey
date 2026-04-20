@@ -444,7 +444,54 @@ export async function getSurveyDocumentById(id: number) {
 export async function getAllUsers() {
   const db = await getDb();
   if (!db) return [];
-  return db.select({ id: users.id, name: users.name, email: users.email, role: users.role }).from(users);
+  return db.select({
+    id: users.id,
+    openId: users.openId,
+    name: users.name,
+    email: users.email,
+    role: users.role,
+    loginMethod: users.loginMethod,
+    createdAt: users.createdAt,
+    lastSignedIn: users.lastSignedIn,
+  }).from(users).orderBy(desc(users.createdAt));
+}
+
+export async function createManualUser(data: { name: string; email?: string; role: "user" | "admin" }) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const openId = `manual_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const result = await db.insert(users).values({
+    openId,
+    name: data.name,
+    email: data.email || null,
+    role: data.role,
+    loginMethod: "manual",
+    lastSignedIn: new Date(),
+  });
+  return { id: Number(result[0].insertId), openId };
+}
+
+export async function updateUserRole(id: number, role: "user" | "admin") {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(users).set({ role }).where(eq(users.id, id));
+}
+
+export async function updateUser(id: number, data: { name?: string; email?: string; role?: "user" | "admin" }) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const updateSet: Record<string, unknown> = {};
+  if (data.name !== undefined) updateSet.name = data.name;
+  if (data.email !== undefined) updateSet.email = data.email || null;
+  if (data.role !== undefined) updateSet.role = data.role;
+  if (Object.keys(updateSet).length === 0) return;
+  await db.update(users).set(updateSet).where(eq(users.id, id));
+}
+
+export async function deleteUser(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(users).where(eq(users.id, id));
 }
 
 // ==================== SOURCES QUERIES ====================

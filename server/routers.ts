@@ -2,6 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { nanoid } from "nanoid";
 import { storagePut, storageDelete } from "./storage";
@@ -85,6 +86,41 @@ const customerRouter = router({
       await db.deleteCustomer(input.id);
       await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "customer", entityId: input.id, details: `ลบลูกค้า ID: ${input.id}` });
       return { success: true };
+    }),
+
+  importBatch: protectedProcedure
+    .input(z.object({
+      customers: z.array(z.object({
+        name: z.string().min(1),
+        phone: z.string().optional(),
+        email: z.string().optional(),
+        address: z.string().optional(),
+        province: z.string().optional(),
+        district: z.string().optional(),
+        source: z.string().optional(),
+        electricityBill: z.string().optional(),
+        roofType: z.string().optional(),
+        phaseType: z.enum(["single", "three"]).optional(),
+        meterSize: z.string().optional(),
+        notes: z.string().optional(),
+      })),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      let successCount = 0;
+      let errorCount = 0;
+      const errors: string[] = [];
+      for (const customer of input.customers) {
+        try {
+          if (customer.source) await db.getOrCreateSource(customer.source);
+          await db.createCustomer({ ...customer, createdBy: ctx.user.id });
+          successCount++;
+        } catch (err: any) {
+          errorCount++;
+          errors.push(`${customer.name}: ${err.message}`);
+        }
+      }
+      await db.logActivity({ userId: ctx.user.id, action: "create", entityType: "customer", entityId: 0, details: `Import ลูกค้า ${successCount} รายการ (ผิดพลาด ${errorCount})` });
+      return { successCount, errorCount, errors: errors.slice(0, 10) };
     }),
 });
 
@@ -529,6 +565,43 @@ const assignmentRouter = router({
 // ==================== USERS ROUTER ====================
 const usersRouter = router({
   list: protectedProcedure.query(() => db.getAllUsers()),
+
+  create: adminProcedure
+    .input(z.object({
+      name: z.string().min(1),
+      email: z.string().optional(),
+      role: z.enum(["user", "admin"]),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await db.createManualUser(input);
+      await db.logActivity({ userId: ctx.user.id, action: "create", entityType: "user", entityId: result.id, details: `สร้างผู้ใช้: ${input.name} (${input.role})` });
+      return result;
+    }),
+
+  update: adminProcedure
+    .input(z.object({
+      id: z.number(),
+      name: z.string().optional(),
+      email: z.string().optional(),
+      role: z.enum(["user", "admin"]).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const { id, ...data } = input;
+      await db.updateUser(id, data);
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "user", entityId: id, details: `แก้ไขผู้ใช้ ID:${id}` });
+      return { success: true };
+    }),
+
+  delete: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      if (input.id === ctx.user.id) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "ไม่สามารถลบบัญชีตัวเองได้" });
+      }
+      await db.deleteUser(input.id);
+      await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "user", entityId: input.id, details: `ลบผู้ใช้ ID:${input.id}` });
+      return { success: true };
+    }),
 });
 
 // ==================== TEAM MEMBER ROUTER ====================

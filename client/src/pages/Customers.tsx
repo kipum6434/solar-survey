@@ -8,8 +8,9 @@ import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import {
   Users, Plus, Search, Phone, Mail, MapPin, ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Trash2, Eye,
-  LayoutList, Table2, Zap,
+  LayoutList, Table2, Zap, FileUp, Download,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -42,6 +43,19 @@ export default function Customers() {
   const [showAdd, setShowAdd] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "table">("table");
+  const [showImport, setShowImport] = useState(false);
+
+  const importMutation = trpc.customer.importBatch.useMutation({
+    onSuccess: (result) => {
+      toast.success(`นำเข้าสำเร็จ ${result.successCount} รายการ` + (result.errorCount > 0 ? ` (ผิดพลาด ${result.errorCount})` : ""));
+      if (result.errors.length > 0) {
+        result.errors.forEach(e => toast.error(e));
+      }
+      setShowImport(false);
+      refetch();
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   // Month/Year filter
   const now = new Date();
@@ -96,9 +110,14 @@ export default function Customers() {
             <h1 className="text-2xl font-bold tracking-tight">ลูกค้า</h1>
             <p className="text-sm text-muted-foreground mt-1">จัดการข้อมูลลูกค้าทั้งหมด</p>
           </div>
-          <Button onClick={() => setShowAdd(true)} className="gap-2">
-            <Plus className="h-4 w-4" /> เพิ่มลูกค้า
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowImport(true)} className="gap-2">
+              <FileUp className="h-4 w-4" /> Import Excel
+            </Button>
+            <Button onClick={() => setShowAdd(true)} className="gap-2">
+              <Plus className="h-4 w-4" /> เพิ่มลูกค้า
+            </Button>
+          </div>
         </div>
 
         {/* Month Navigation Bar */}
@@ -230,6 +249,14 @@ export default function Customers() {
 
       {/* Add Customer Dialog */}
       <AddCustomerDialog open={showAdd} onOpenChange={setShowAdd} onSubmit={(d) => createMutation.mutate(d)} loading={createMutation.isPending} />
+
+      {/* Import Excel Dialog */}
+      <ImportExcelDialog
+        open={showImport}
+        onOpenChange={setShowImport}
+        onImport={(customers) => importMutation.mutate({ customers })}
+        loading={importMutation.isPending}
+      />
 
       {/* Delete Confirmation */}
       <Dialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
@@ -485,6 +512,223 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
             <Button type="submit" disabled={loading}>{loading ? "กำลังบันทึก..." : "บันทึก"}</Button>
           </DialogFooter>
         </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
+/* ==================== IMPORT EXCEL DIALOG ==================== */
+const COLUMN_MAP: Record<string, string> = {
+  "ชื่อลูกค้า": "name", "ชื่อ": "name", "name": "name", "ชื่อ-นามสกุล": "name",
+  "เบอร์โทร": "phone", "โทร": "phone", "phone": "phone", "เบอร์": "phone", "เบอร์โทรศัพท์": "phone",
+  "อีเมล": "email", "email": "email", "e-mail": "email",
+  "ที่อยู่": "address", "address": "address",
+  "จังหวัด": "province", "province": "province",
+  "เขต": "district", "อำเภอ": "district", "เขต/อำเภอ": "district", "district": "district",
+  "แหล่งที่มา": "source", "ช่องทาง": "source", "source": "source",
+  "ค่าไฟ": "electricityBill", "ค่าไฟ/เดือน": "electricityBill", "electricity": "electricityBill", "bill": "electricityBill",
+  "ประเภทหลังคา": "roofType", "หลังคา": "roofType", "roof": "roofType",
+  "ระบบไฟฟ้า": "phaseType", "เฟส": "phaseType", "phase": "phaseType",
+  "ขนาดมิเตอร์": "meterSize", "มิเตอร์": "meterSize", "meter": "meterSize",
+  "หมายเหตุ": "notes", "notes": "notes", "note": "notes",
+};
+
+function normalizePhaseType(val: string): "single" | "three" | undefined {
+  if (!val) return undefined;
+  const v = val.toLowerCase().trim();
+  if (v.includes("3") || v.includes("three") || v.includes("สาม")) return "three";
+  if (v.includes("1") || v.includes("single") || v.includes("เดียว")) return "single";
+  return undefined;
+}
+
+function ImportExcelDialog({ open, onOpenChange, onImport, loading }: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onImport: (customers: any[]) => void;
+  loading: boolean;
+}) {
+  const [parsedData, setParsedData] = useState<any[]>([]);
+  const [fileName, setFileName] = useState("");
+  const [error, setError] = useState("");
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileName(file.name);
+    setError("");
+    setParsedData([]);
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const wb = XLSX.read(evt.target?.result, { type: "binary" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: "" });
+
+        if (jsonData.length === 0) {
+          setError("ไฟล์ไม่มีข้อมูล");
+          return;
+        }
+
+        // Map columns
+        const headers = Object.keys(jsonData[0]);
+        const mapping: Record<string, string> = {};
+        headers.forEach(h => {
+          const normalized = h.trim().toLowerCase();
+          for (const [key, val] of Object.entries(COLUMN_MAP)) {
+            if (key.toLowerCase() === normalized) {
+              mapping[h] = val;
+              break;
+            }
+          }
+        });
+
+        const customers = jsonData
+          .map(row => {
+            const mapped: Record<string, any> = {};
+            for (const [origCol, fieldName] of Object.entries(mapping)) {
+              const val = String(row[origCol] ?? "").trim();
+              if (val) {
+                if (fieldName === "phaseType") {
+                  mapped[fieldName] = normalizePhaseType(val);
+                } else {
+                  mapped[fieldName] = val;
+                }
+              }
+            }
+            return mapped;
+          })
+          .filter(c => c.name);
+
+        if (customers.length === 0) {
+          setError("ไม่พบคอลัมน์ \"ชื่อลูกค้า\" หรือ \"name\" ในไฟล์ กรุณาตรวจสอบหัวคอลัมน์");
+          return;
+        }
+
+        setParsedData(customers);
+      } catch {
+        setError("ไม่สามารถอ่านไฟล์ได้ กรุณาตรวจสอบว่าเป็นไฟล์ Excel (.xlsx, .xls)");
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const downloadTemplate = () => {
+    const ws = XLSX.utils.aoa_to_sheet([
+      ["ชื่อลูกค้า", "เบอร์โทร", "อีเมล", "ที่อยู่", "เขต/อำเภอ", "จังหวัด", "แหล่งที่มา", "ค่าไฟ/เดือน", "ประเภทหลังคา", "ระบบไฟฟ้า", "ขนาดมิเตอร์", "หมายเหตุ"],
+      ["สมชาย ใจดี", "0812345678", "somchai@email.com", "123 ถ.สุขุมวิท", "บางนา", "กรุงเทพ", "website", "3500", "เมทัลชีท", "3 เฟส", "30/100", "สนใจติดตั้ง 10kW"],
+    ]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "ลูกค้า");
+    XLSX.writeFile(wb, "template_import_customers.xlsx");
+  };
+
+  const handleClose = () => {
+    setParsedData([]);
+    setFileName("");
+    setError("");
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileUp className="h-5 w-5" />
+            นำเข้าข้อมูลลูกค้าจาก Excel
+          </DialogTitle>
+          <DialogDescription>
+            อัพโหลดไฟล์ Excel (.xlsx, .xls) ที่มีข้อมูลลูกค้า ระบบจะจับคู่คอลัมน์อัตโนมัติ
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Download Template */}
+          <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <Download className="h-5 w-5 text-blue-600 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-blue-900">ดาวน์โหลดไฟล์ตัวอย่าง</p>
+              <p className="text-xs text-blue-700">ใช้เป็นแม่แบบสำหรับเตรียมข้อมูล</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={downloadTemplate} className="shrink-0">
+              <Download className="h-4 w-4 mr-1" /> ดาวน์โหลด
+            </Button>
+          </div>
+
+          {/* File Upload */}
+          <div>
+            <Label>เลือกไฟล์ Excel</Label>
+            <Input
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              onChange={handleFile}
+              className="mt-1"
+            />
+            {fileName && <p className="text-xs text-muted-foreground mt-1">ไฟล์: {fileName}</p>}
+          </div>
+
+          {error && (
+            <div className="p-3 bg-destructive/10 text-destructive text-sm rounded-lg">
+              {error}
+            </div>
+          )}
+
+          {/* Preview */}
+          {parsedData.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium">ตัวอย่างข้อมูล ({parsedData.length} รายการ)</p>
+                <Badge variant="secondary">{parsedData.length} รายการ</Badge>
+              </div>
+              <div className="border rounded-lg overflow-hidden">
+                <div className="overflow-x-auto max-h-[300px]">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-muted/50 border-b">
+                        <th className="text-left px-2 py-1.5 font-medium">#</th>
+                        <th className="text-left px-2 py-1.5 font-medium">ชื่อ</th>
+                        <th className="text-left px-2 py-1.5 font-medium">เบอร์โทร</th>
+                        <th className="text-left px-2 py-1.5 font-medium">อีเมล</th>
+                        <th className="text-left px-2 py-1.5 font-medium">จังหวัด</th>
+                        <th className="text-left px-2 py-1.5 font-medium">แหล่งที่มา</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parsedData.slice(0, 10).map((row, i) => (
+                        <tr key={i} className="border-b last:border-0">
+                          <td className="px-2 py-1.5 text-muted-foreground">{i + 1}</td>
+                          <td className="px-2 py-1.5 font-medium">{row.name}</td>
+                          <td className="px-2 py-1.5">{row.phone || "-"}</td>
+                          <td className="px-2 py-1.5">{row.email || "-"}</td>
+                          <td className="px-2 py-1.5">{row.province || "-"}</td>
+                          <td className="px-2 py-1.5">{row.source || "-"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {parsedData.length > 10 && (
+                  <div className="text-center py-1.5 text-xs text-muted-foreground bg-muted/30 border-t">
+                    ...และอีก {parsedData.length - 10} รายการ
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={handleClose}>ยกเลิก</Button>
+          <Button
+            onClick={() => onImport(parsedData)}
+            disabled={parsedData.length === 0 || loading}
+            className="gap-2"
+          >
+            {loading ? "กำลังนำเข้า..." : `นำเข้า ${parsedData.length} รายการ`}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

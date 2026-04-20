@@ -26,6 +26,7 @@ import {
   LayoutDashboard,
   Users,
   Users2,
+  Shield,
   ClipboardList,
   CalendarDays,
   Bell,
@@ -46,6 +47,7 @@ const menuItems = [
   { icon: Users, label: "ลูกค้า", path: "/customers" },
   { icon: ClipboardList, label: "งานสำรวจ", path: "/surveys" },
   { icon: Users2, label: "จัดการทีมงาน", path: "/team" },
+  { icon: Shield, label: "จัดการผู้ใช้งาน", path: "/users" },
   { icon: CalendarDays, label: "ปฏิทิน", path: "/calendar" },
   { icon: Bell, label: "แจ้งเตือน", path: "/notifications" },
 ];

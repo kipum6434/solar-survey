@@ -191,3 +191,20 @@
 - [x] Frontend: สร้างหน้า TeamManagement.tsx พร้อมตารางแสดงสมาชิก + ปุ่มเพิ่ม/แก้ไข/ลบ
 - [x] Frontend: เพิ่มเมนู "จัดการทีมงาน" ใน sidebar
 - [x] Frontend: อัพเดท dropdown แอดมินผู้ส่งงาน/ทีมสำรวจ/คนปิดการขาย ให้ดึงจาก team_members
+
+## User Request - Round 7: จัดการผู้ใช้แอดมิน + Import Excel
+
+### 25. ระบบจัดการผู้ใช้/แอดมิน (Super Admin)
+- [x] Backend: สร้าง API สำหรับเพิ่มผู้ใช้แอดมินใหม่ (ชื่อ, username, password, role)
+- [x] Backend: สร้าง API สำหรับลบ/ปิดการใช้งานผู้ใช้
+- [x] Backend: สร้าง API สำหรับเปลี่ยน role ผู้ใช้ (admin/user)
+- [x] Frontend: สร้างหน้าจัดการผู้ใช้ (UserManagement) แสดงรายชื่อผู้ใช้ทั้งหมด
+- [x] Frontend: ปุ่มเพิ่มผู้ใช้ใหม่ (ชื่อ, username, password, role)
+- [x] Frontend: ปุ่มลบ/เปลี่ยน role ผู้ใช้
+- [x] Sidebar: เพิ่มเมนู "จัดการผู้ใช้" ใน DashboardLayout
+
+### 26. Import ลูกค้าจาก Excel
+- [x] Backend: สร้าง API สำหรับ import ลูกค้าจาก Excel (.xlsx)
+- [x] Frontend: เพิ่มปุ่ม Import Excel ในหน้าลูกค้า
+- [x] Frontend: Dialog upload ไฟล์ + preview ข้อมูลก่อน import
+- [x] Frontend: แสดงผลลัพธ์การ import (สำเร็จ/ล้มเหลว)
