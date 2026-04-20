@@ -193,11 +193,17 @@ export default function SurveyDetail() {
         </div>
 
         {/* Location link */}
-        {c.latitude && c.longitude && (
+        {(c.latitude && c.longitude || (c.address && c.address.startsWith('http'))) && (
           <Card className="border-0 shadow-sm">
             <CardContent className="p-4">
-              <a href={`https://www.google.com/maps?q=${c.latitude},${c.longitude}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary hover:underline text-sm">
-                <MapPin className="h-4 w-4" /> ดูโลเคชั่นบน Google Maps
+              <a
+                href={c.address && c.address.startsWith('http') ? c.address : `https://www.google.com/maps?q=${c.latitude},${c.longitude}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary/10 text-primary rounded-lg text-sm font-medium hover:bg-primary/20 active:bg-primary/30 transition-colors touch-manipulation"
+                style={{ WebkitTapHighlightColor: 'transparent' }}
+              >
+                <MapPin className="h-4 w-4" /> เปิด Google Maps
               </a>
             </CardContent>
           </Card>

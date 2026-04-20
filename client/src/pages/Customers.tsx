@@ -541,8 +541,8 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete, selectedIds, on
                   <td className="px-3 py-2.5 max-w-[180px] truncate hidden md:table-cell text-muted-foreground">
                     {c.address ? (
                       c.address.startsWith("http") ? (
-                        <a href={c.address} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 text-blue-600 hover:underline">
-                          <ExternalLink className="h-3 w-3" /> ดูแผนที่
+                        <a href={c.address} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded text-xs font-medium hover:bg-primary/20 active:bg-primary/30 touch-manipulation">
+                          <ExternalLink className="h-3 w-3" /> เปิดแผนที่
                         </a>
                       ) : <span className="truncate">{c.address}</span>
                     ) : "-"}
@@ -703,8 +703,8 @@ function CustomerGridView({ data, onRowClick, onEdit, onDelete, selectedIds, onT
                     <div className="flex items-center gap-2">
                       <MapPin className="h-3 w-3 shrink-0" />
                       {customer.address.startsWith("http") ? (
-                        <a href={customer.address} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-600 hover:underline inline-flex items-center gap-1">
-                          <ExternalLink className="h-3 w-3" /> ดูโลเคชั่น
+                        <a href={customer.address} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded text-xs font-medium hover:bg-primary/20 active:bg-primary/30 touch-manipulation">
+                          <ExternalLink className="h-3 w-3" /> เปิดแผนที่
                         </a>
                       ) : <span className="truncate">{customer.address}</span>}
                     </div>

@@ -120,10 +120,24 @@ export default function CustomerDetail() {
                 {(customer.fullAddress || customer.address) && (
                   <div className="flex items-start gap-3">
                     <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                    <div className="flex flex-col">
+                    <div className="flex flex-col gap-1">
                       {customer.fullAddress && <span>{customer.fullAddress}</span>}
-                      {customer.address && <span className="text-sm text-muted-foreground">{customer.address.startsWith('http') ? <a href={customer.address} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{customer.address}</a> : customer.address}</span>}
-                      <span>{[customer.district, customer.province, customer.postalCode].filter(Boolean).join(", ")}</span>
+                      <span className="text-sm text-muted-foreground">{[customer.district, customer.province, customer.postalCode].filter(Boolean).join(", ")}</span>
+                      {customer.address && customer.address.startsWith('http') && (
+                        <a
+                          href={customer.address}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 mt-1 px-3 py-2 bg-primary/10 text-primary rounded-lg text-sm font-medium hover:bg-primary/20 active:bg-primary/30 transition-colors touch-manipulation"
+                          style={{ WebkitTapHighlightColor: 'transparent' }}
+                        >
+                          <MapPin className="h-4 w-4" />
+                          เปิด Google Maps
+                        </a>
+                      )}
+                      {customer.address && !customer.address.startsWith('http') && (
+                        <span className="text-sm text-muted-foreground">{customer.address}</span>
+                      )}
                     </div>
                   </div>
                 )}

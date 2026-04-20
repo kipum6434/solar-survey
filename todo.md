@@ -304,3 +304,7 @@
 ## User Request - Round 15: เพิ่มช่องที่อยู่ในฟอร์มเพิ่มลูกค้า
 - [x] Frontend: เพิ่มช่อง "ที่อยู่" (บ้านเลขที่ หมู่บ้าน ถนน ซอย) ในฟอร์มเพิ่มลูกค้า
 - [x] Frontend: เพิ่มช่อง "ที่อยู่" ในฟอร์มแก้ไขลูกค้าด้วย (CustomerDetail.tsx)
+
+## Bug Fix - Round 16: ลิงก์ Google Maps กดไม่ได้จากมือถือ
+- [x] แก้ไข CustomerDetail.tsx ให้ลิงก์ Google Maps เป็น clickable button ที่เปิดได้จากมือถือ
+- [x] ตรวจสอบจุดอื่นที่แสดงลิงก์ Google Maps (Customers, SurveyDetail) ให้กดได้เช่นกัน
