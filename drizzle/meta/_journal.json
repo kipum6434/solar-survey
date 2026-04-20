@@ -50,6 +50,13 @@
       "when": 1776657669912,
       "tag": "0006_green_manta",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1776659776294,
+      "tag": "0007_cultured_green_goblin",
+      "breakpoints": true
     }
   ]
 }

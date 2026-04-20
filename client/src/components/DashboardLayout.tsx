@@ -42,12 +42,12 @@ import { Button } from "./ui/button";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "./ui/badge";
 
-const menuItems = [
+const baseMenuItems = [
   { icon: LayoutDashboard, label: "แดชบอร์ด", path: "/" },
   { icon: Users, label: "ลูกค้า", path: "/customers" },
   { icon: ClipboardList, label: "งานสำรวจ", path: "/surveys" },
   { icon: Users2, label: "จัดการทีมงาน", path: "/team" },
-  { icon: Shield, label: "จัดการผู้ใช้งาน", path: "/users" },
+  { icon: Shield, label: "จัดการผู้ใช้งาน", path: "/users", superadminOnly: true },
   { icon: CalendarDays, label: "ปฏิทิน", path: "/calendar" },
   { icon: Bell, label: "แจ้งเตือน", path: "/notifications" },
 ];
@@ -110,6 +110,10 @@ function DashboardLayoutContent({
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const menuItems = baseMenuItems.filter((item) => {
+    if ((item as any).superadminOnly && user?.role !== "superadmin") return false;
+    return true;
+  });
   const activeMenuItem = menuItems.find((item) => item.path === location);
   const isMobile = useIsMobile();
 
@@ -238,7 +242,7 @@ function DashboardLayoutContent({
                       {user?.name || "User"}
                     </p>
                     <p className="text-[11px] text-sidebar-foreground/50 truncate mt-1">
-                      {user?.role === "admin" ? "ผู้ดูแลระบบ" : "ทีมสำรวจ"}
+                      {user?.role === "superadmin" ? "Super Admin" : user?.role === "admin" ? "ผู้ดูแลระบบ" : "ทีมสำรวจ"}
                     </p>
                   </div>
                 </button>

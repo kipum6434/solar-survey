@@ -9,22 +9,37 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Shield, ShieldCheck, User, Mail, Clock, KeyRound, AtSign } from "lucide-react";
+import { Plus, Pencil, Trash2, Shield, ShieldCheck, User, Mail, Clock, KeyRound, AtSign, ShieldAlert } from "lucide-react";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { Redirect } from "wouter";
 
 const ROLE_OPTIONS = [
   { value: "admin", label: "แอดมิน", color: "bg-amber-100 text-amber-800", icon: ShieldCheck },
   { value: "user", label: "ผู้ใช้ทั่วไป", color: "bg-blue-100 text-blue-800", icon: User },
 ] as const;
 
+const ALL_ROLE_DISPLAY: Record<string, { label: string; color: string; icon: any }> = {
+  superadmin: { label: "Super Admin", color: "bg-purple-100 text-purple-800", icon: ShieldAlert },
+  admin: { label: "แอดมิน", color: "bg-amber-100 text-amber-800", icon: ShieldCheck },
+  user: { label: "ผู้ใช้ทั่วไป", color: "bg-blue-100 text-blue-800", icon: User },
+};
+
 function getRoleLabel(role: string) {
-  return ROLE_OPTIONS.find(r => r.value === role)?.label || role;
+  return ALL_ROLE_DISPLAY[role]?.label || role;
 }
 
 function getRoleColor(role: string) {
-  return ROLE_OPTIONS.find(r => r.value === role)?.color || "bg-gray-100 text-gray-800";
+  return ALL_ROLE_DISPLAY[role]?.color || "bg-gray-100 text-gray-800";
 }
 
 export default function UserManagement() {
+  const { user: currentUser, loading: authLoading } = useAuth();
+
+  // Only superadmin can access this page
+  if (!authLoading && currentUser && currentUser.role !== "superadmin") {
+    return <Redirect to="/" />;
+  }
+
   const [filterRole, setFilterRole] = useState<string>("all");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editUser, setEditUser] = useState<any>(null);
@@ -71,6 +86,7 @@ export default function UserManagement() {
 
   const filteredUsers = filterRole === "all" ? usersList : usersList.filter((u: any) => u.role === filterRole);
 
+  const superadminCount = usersList.filter((u: any) => u.role === "superadmin").length;
   const adminCount = usersList.filter((u: any) => u.role === "admin").length;
   const userCount = usersList.filter((u: any) => u.role === "user").length;
 
@@ -90,7 +106,7 @@ export default function UserManagement() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
           <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilterRole("all")}>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
@@ -98,8 +114,21 @@ export default function UserManagement() {
                   <Shield className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">ผู้ใช้ทั้งหมด</p>
+                  <p className="text-sm text-muted-foreground">ทั้งหมด</p>
                   <p className="text-2xl font-bold">{usersList.length}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilterRole(filterRole === "superadmin" ? "all" : "superadmin")}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg p-2 bg-purple-100 text-purple-800">
+                  <ShieldAlert className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Super Admin</p>
+                  <p className="text-2xl font-bold">{superadminCount}</p>
                 </div>
               </div>
             </CardContent>
@@ -137,16 +166,15 @@ export default function UserManagement() {
           <Button variant={filterRole === "all" ? "default" : "outline"} size="sm" onClick={() => setFilterRole("all")}>
             ทั้งหมด ({usersList.length})
           </Button>
-          {ROLE_OPTIONS.map(role => (
-            <Button
-              key={role.value}
-              variant={filterRole === role.value ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilterRole(role.value)}
-            >
-              {role.label} ({role.value === "admin" ? adminCount : userCount})
-            </Button>
-          ))}
+          <Button variant={filterRole === "superadmin" ? "default" : "outline"} size="sm" onClick={() => setFilterRole("superadmin")}>
+            Super Admin ({superadminCount})
+          </Button>
+          <Button variant={filterRole === "admin" ? "default" : "outline"} size="sm" onClick={() => setFilterRole("admin")}>
+            แอดมิน ({adminCount})
+          </Button>
+          <Button variant={filterRole === "user" ? "default" : "outline"} size="sm" onClick={() => setFilterRole("user")}>
+            ผู้ใช้ทั่วไป ({userCount})
+          </Button>
         </div>
 
         {/* User List */}
@@ -171,7 +199,7 @@ export default function UserManagement() {
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className={`rounded-full p-2 shrink-0 ${getRoleColor(user.role)}`}>
-                        {user.role === "admin" ? <ShieldCheck className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                        {user.role === "superadmin" ? <ShieldAlert className="h-4 w-4" /> : user.role === "admin" ? <ShieldCheck className="h-4 w-4" /> : <User className="h-4 w-4" />}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">

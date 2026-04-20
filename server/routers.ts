@@ -1,7 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, adminProcedure, superadminProcedure, router } from "./_core/trpc";
 import { sdk } from "./_core/sdk";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -566,9 +566,9 @@ const assignmentRouter = router({
 
 // ==================== USERS ROUTER ====================
 const usersRouter = router({
-  list: protectedProcedure.query(() => db.getAllUsers()),
+  list: superadminProcedure.query(() => db.getAllUsers()),
 
-  create: adminProcedure
+  create: superadminProcedure
     .input(z.object({
       name: z.string().min(1),
       username: z.string().min(3, "ชื่อผู้ใช้ต้องมีอย่างน้อย 3 ตัวอักษร"),
@@ -589,7 +589,7 @@ const usersRouter = router({
       return result;
     }),
 
-  update: adminProcedure
+  update: superadminProcedure
     .input(z.object({
       id: z.number(),
       name: z.string().optional(),
@@ -603,7 +603,7 @@ const usersRouter = router({
       return { success: true };
     }),
 
-  resetPassword: adminProcedure
+  resetPassword: superadminProcedure
     .input(z.object({
       id: z.number(),
       newPassword: z.string().min(4, "รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร"),
@@ -615,7 +615,7 @@ const usersRouter = router({
       return { success: true };
     }),
 
-  delete: adminProcedure
+  delete: superadminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
       if (input.id === ctx.user.id) {

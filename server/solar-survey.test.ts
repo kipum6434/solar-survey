@@ -201,11 +201,19 @@ describe("Solar Survey - Share Link (Public)", () => {
 });
 
 describe("Solar Survey - Users", () => {
-  it("users.list returns array of users for admin", async () => {
+  it("users.list returns array of users for superadmin", async () => {
     const ctx = createAdminContext();
+    // Override role to superadmin for users.list access
+    (ctx.user as any).role = "superadmin";
     const caller = appRouter.createCaller(ctx);
     const result = await caller.users.list();
     expect(Array.isArray(result)).toBe(true);
+  });
+
+  it("users.list rejects admin role", async () => {
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.users.list()).rejects.toThrow();
   });
 });
 

@@ -240,3 +240,11 @@
 - [x] บันทึก username + password ลง localStorage เมื่อเลือก Remember Me และ login สำเร็จ
 - [x] โหลด username + password จาก localStorage เมื่อเปิดหน้า Login
 - [x] ล้าง localStorage เมื่อยกเลิก Remember Me
+
+## User Request - Round 10: จำกัดสิทธิ์หน้าจัดการผู้ใช้งาน เฉพาะ Superadmin
+
+- [x] Backend: เปลี่ยน users router ทั้งหมดให้ใช้ superadminProcedure (list, create, update, delete, resetPassword, updateRole)
+- [x] Frontend: ซ่อนเมนู "จัดการผู้ใช้งาน" ใน sidebar ถ้าไม่ใช่ superadmin (DashboardLayout)
+- [x] Frontend: บล็อกหน้า /users ถ้าไม่ใช่ superadmin (redirect กลับ /) + เพิ่ม superadmin role display
+- [x] Schema: เพิ่ม superadmin ใน role enum + migration
+- [x] Tests: 63/63 passed (รวม 7 tests ใหม่สำหรับ superadmin access control)

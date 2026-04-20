@@ -7,7 +7,7 @@ function createCaller(overrides: any = {}) {
       id: 1,
       openId: "test-open-id",
       name: "Test Admin",
-      role: "admin",
+      role: "superadmin",
       ...overrides,
     },
   } as any);
