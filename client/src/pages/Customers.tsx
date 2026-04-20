@@ -7,8 +7,8 @@ import { SourceCombobox } from "@/components/SourceCombobox";
 import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import {
-  Users, Plus, Search, Phone, Mail, MapPin, ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Trash2, Eye,
-  LayoutList, Table2, Zap, FileUp, Download,
+  Users, Plus, Search, Phone, MapPin, ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Trash2, Eye,
+  LayoutList, Table2, Zap, FileUp, Download, ExternalLink,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Badge } from "@/components/ui/badge";
@@ -165,7 +165,7 @@ export default function Customers() {
           <div className="relative flex-1 min-w-[200px] max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="ค้นหาชื่อ, เบอร์โทร, อีเมล..."
+              placeholder="ค้นหาชื่อ, เบอร์โทร..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               className="pl-10"
@@ -287,12 +287,14 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete }: { data: any[]
             <tr className="bg-muted/50 border-b">
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">ชื่อลูกค้า</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">เบอร์โทร</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell">อีเมล</th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell">โลเคชั่น</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell">ช่องทาง</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">เขต/อำเภอ</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">จังหวัด</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">ค่าไฟ/เดือน</th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">ประเภทหลังคา</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">ระบบไฟ</th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">หมายเหตุ</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">วันที่สร้าง</th>
               <th className="text-right px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap w-10"></th>
             </tr>
@@ -311,7 +313,13 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete }: { data: any[]
                   {c.phone || "-"}
                 </td>
                 <td className="px-3 py-2.5 max-w-[180px] truncate hidden md:table-cell text-muted-foreground">
-                  {c.email || "-"}
+                  {c.address ? (
+                    c.address.startsWith("http") ? (
+                      <a href={c.address} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 text-blue-600 hover:underline">
+                        <ExternalLink className="h-3 w-3" /> ดูแผนที่
+                      </a>
+                    ) : <span className="truncate">{c.address}</span>
+                  ) : "-"}
                 </td>
                 <td className="px-3 py-2.5 whitespace-nowrap hidden md:table-cell">
                   {c.source ? (
@@ -335,7 +343,13 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete }: { data: any[]
                   ) : <span className="text-muted-foreground">-</span>}
                 </td>
                 <td className="px-3 py-2.5 whitespace-nowrap hidden xl:table-cell text-muted-foreground text-xs">
+                  {c.roofType || "-"}
+                </td>
+                <td className="px-3 py-2.5 whitespace-nowrap hidden xl:table-cell text-muted-foreground text-xs">
                   {c.phaseType === "single" ? "1 เฟส" : c.phaseType === "three" ? "3 เฟส" : "-"}
+                </td>
+                <td className="px-3 py-2.5 max-w-[150px] truncate hidden xl:table-cell text-muted-foreground text-xs">
+                  {c.notes || "-"}
                 </td>
                 <td className="px-3 py-2.5 whitespace-nowrap hidden xl:table-cell text-muted-foreground text-xs">
                   {new Date(c.createdAt).toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "2-digit" })}
@@ -418,11 +432,15 @@ function CustomerGridView({ data, onRowClick, onEdit, onDelete }: { data: any[];
               {customer.phone && (
                 <div className="flex items-center gap-2"><Phone className="h-3 w-3" />{customer.phone}</div>
               )}
-              {customer.email && (
-                <div className="flex items-center gap-2"><Mail className="h-3 w-3" /><span className="truncate">{customer.email}</span></div>
-              )}
               {customer.address && (
-                <div className="flex items-center gap-2"><MapPin className="h-3 w-3 shrink-0" /><span className="truncate">{customer.address}</span></div>
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-3 w-3 shrink-0" />
+                  {customer.address.startsWith("http") ? (
+                    <a href={customer.address} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-600 hover:underline inline-flex items-center gap-1">
+                      <ExternalLink className="h-3 w-3" /> ดูโลเคชั่น
+                    </a>
+                  ) : <span className="truncate">{customer.address}</span>}
+                </div>
               )}
             </div>
           </CardContent>
@@ -434,7 +452,7 @@ function CustomerGridView({ data, onRowClick, onEdit, onDelete }: { data: any[];
 
 /* ==================== ADD CUSTOMER DIALOG ==================== */
 function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: boolean; onOpenChange: (v: boolean) => void; onSubmit: (d: any) => void; loading: boolean }) {
-  const [form, setForm] = useState({ name: "", phone: "", email: "", address: "", district: "", province: "", source: "other" as string, notes: "", electricityBill: "", roofType: "", phaseType: "" as string });
+  const [form, setForm] = useState({ name: "", phone: "", address: "", district: "", province: "", source: "other" as string, notes: "", electricityBill: "", roofType: "", phaseType: "" as string });
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) { toast.error("กรุณาระบุชื่อลูกค้า"); return; }
@@ -444,7 +462,7 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
       phaseType: form.phaseType || undefined,
       source: form.source as any,
     });
-    setForm({ name: "", phone: "", email: "", address: "", district: "", province: "", source: "other", notes: "", electricityBill: "", roofType: "", phaseType: "" });
+    setForm({ name: "", phone: "", address: "", district: "", province: "", source: "other", notes: "", electricityBill: "", roofType: "", phaseType: "" });
   };
 
   return (
@@ -465,12 +483,8 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
               <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="0xx-xxx-xxxx" />
             </div>
             <div>
-              <Label>อีเมล</Label>
-              <Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="email@example.com" />
-            </div>
-            <div className="col-span-2">
-              <Label>ที่อยู่</Label>
-              <Textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="ที่อยู่ลูกค้า" rows={2} />
+              <Label>โลเคชั่น (Google Maps Link)</Label>
+              <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="วางลิงก์ Google Maps หรือที่อยู่" />
             </div>
             <div>
               <Label>เขต/อำเภอ</Label>
@@ -523,7 +537,7 @@ const COLUMN_MAP: Record<string, string> = {
   "ชื่อลูกค้า": "name", "ชื่อ": "name", "name": "name", "ชื่อ-นามสกุล": "name",
   "เบอร์โทร": "phone", "โทร": "phone", "phone": "phone", "เบอร์": "phone", "เบอร์โทรศัพท์": "phone",
   "อีเมล": "email", "email": "email", "e-mail": "email",
-  "ที่อยู่": "address", "address": "address",
+  "ที่อยู่": "address", "address": "address", "โลเคชั่น": "address", "location": "address",
   "จังหวัด": "province", "province": "province",
   "เขต": "district", "อำเภอ": "district", "เขต/อำเภอ": "district", "district": "district",
   "แหล่งที่มา": "source", "ช่องทาง": "source", "source": "source",
@@ -616,8 +630,8 @@ function ImportExcelDialog({ open, onOpenChange, onImport, loading }: {
 
   const downloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet([
-      ["ชื่อลูกค้า", "เบอร์โทร", "อีเมล", "ที่อยู่", "เขต/อำเภอ", "จังหวัด", "แหล่งที่มา", "ค่าไฟ/เดือน", "ประเภทหลังคา", "ระบบไฟฟ้า", "ขนาดมิเตอร์", "หมายเหตุ"],
-      ["สมชาย ใจดี", "0812345678", "somchai@email.com", "123 ถ.สุขุมวิท", "บางนา", "กรุงเทพ", "website", "3500", "เมทัลชีท", "3 เฟส", "30/100", "สนใจติดตั้ง 10kW"],
+      ["ชื่อลูกค้า", "เบอร์โทร", "โลเคชั่น", "เขต/อำเภอ", "จังหวัด", "แหล่งที่มา", "ค่าไฟ/เดือน", "ประเภทหลังคา", "ระบบไฟฟ้า", "ขนาดมิเตอร์", "หมายเหตุ"],
+      ["สมชาย ใจดี", "0812345678", "https://maps.google.com/...", "บางนา", "กรุงเทพ", "website", "3500", "เมทัลชีท", "3 เฟส", "30/100", "สนใจติดตั้ง 10kW"],
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "ลูกค้า");
@@ -690,7 +704,7 @@ function ImportExcelDialog({ open, onOpenChange, onImport, loading }: {
                         <th className="text-left px-2 py-1.5 font-medium">#</th>
                         <th className="text-left px-2 py-1.5 font-medium">ชื่อ</th>
                         <th className="text-left px-2 py-1.5 font-medium">เบอร์โทร</th>
-                        <th className="text-left px-2 py-1.5 font-medium">อีเมล</th>
+                        <th className="text-left px-2 py-1.5 font-medium">โลเคชั่น</th>
                         <th className="text-left px-2 py-1.5 font-medium">จังหวัด</th>
                         <th className="text-left px-2 py-1.5 font-medium">แหล่งที่มา</th>
                       </tr>
@@ -701,7 +715,7 @@ function ImportExcelDialog({ open, onOpenChange, onImport, loading }: {
                           <td className="px-2 py-1.5 text-muted-foreground">{i + 1}</td>
                           <td className="px-2 py-1.5 font-medium">{row.name}</td>
                           <td className="px-2 py-1.5">{row.phone || "-"}</td>
-                          <td className="px-2 py-1.5">{row.email || "-"}</td>
+                          <td className="px-2 py-1.5 max-w-[150px] truncate">{row.address || "-"}</td>
                           <td className="px-2 py-1.5">{row.province || "-"}</td>
                           <td className="px-2 py-1.5">{row.source || "-"}</td>
                         </tr>
