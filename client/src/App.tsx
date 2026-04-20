@@ -14,6 +14,7 @@ import Notifications from "./pages/Notifications";
 import SharedSurvey from "./pages/SharedSurvey";
 import TeamManagement from "./pages/TeamManagement";
 import UserManagement from "./pages/UserManagement";
+import TeamPerformance from "./pages/TeamPerformance";
 import Login from "./pages/Login";
 
 function Router() {
@@ -26,6 +27,7 @@ function Router() {
       <Route path={"/surveys"} component={Surveys} />
       <Route path={"/surveys/:id"} component={SurveyDetail} />
       <Route path={"/team"} component={TeamManagement} />
+      <Route path={"/team-performance"} component={TeamPerformance} />
       <Route path={"/users"} component={UserManagement} />
       <Route path={"/calendar"} component={CalendarPage} />
       <Route path={"/notifications"} component={Notifications} />

@@ -275,3 +275,28 @@
 - [x] Frontend: แสดง action bar เมื่อเลือกรายการ (จำนวนที่เลือก + ปุ่มลบ)
 - [x] Frontend: confirm dialog ก่อนลบ พร้อมแจ้งจำนวนที่จะลบ
 - [x] Tests: เพิ่ม vitest สำหรับ customer.bulkDelete (72 tests passed)
+
+## User Request - Round 14: Multiple Features
+
+### 14A: Bug Fix - ฟิลเตอร์เซลล์ในหน้างานสำรวจไม่แสดงงานที่มีเซลล์คนนั้นเป็น co-assignment
+- [x] Backend: แก้ survey.list filter ให้ดูจาก survey_assignments ทุก role ไม่ใช่แค่ primary
+- [x] Frontend: ตรวจสอบว่า filter เซลล์ส่งค่าถูกต้อง
+
+### 14B: หน้าสรุปผลงานเซลล์ (Sales Performance)
+- [x] Backend: เพิ่ม API สรุปจำนวนเคสสำรวจต่อทีมงานต่อเดือน (นับจาก assignments - ไปคู่นับคนละ 1)
+- [x] Frontend: สร้างหน้าสรุปผลงานเซลล์ แสดงจำนวนเคสต่อคนต่อเดือน
+- [x] Frontend: เพิ่มเมนูในไซด์บาร์
+
+### 14C: สถานะลูกค้าในหน้าลูกค้า
+- [x] Backend: เพิ่ม logic คำนวณสถานะลูกค้า (ยังไม่นัดสำรวจ / นัดสำรวจแล้ว / สำรวจเสร็จ / ปิดการขาย)
+- [x] Frontend: เพิ่มคอลัมน์สถานะในตารางลูกค้า + badge สี
+- [x] Frontend: เพิ่มฟิลเตอร์ตามสถานะ
+
+### 14D: ฟิลเตอร์เขต/อำเภอ จังหวัด แหล่งที่มา
+- [x] Backend: เพิ่ม filter parameters ในทั้ง customer.list และ survey.list
+- [x] Frontend: เพิ่ม dropdown ฟิลเตอร์ในหน้าลูกค้า (เขต/อำเภอ, จังหวัด, แหล่งที่มา)
+- [x] Frontend: เพิ่ม dropdown ฟิลเตอร์ในหน้างานสำรวจ (เขต/อำเภอ, จังหวัด)
+
+### 14E: Export ลูกค้าที่เลือกเป็น Excel
+- [x] Frontend: เพิ่มปุ่ม Export Excel ใน bulk action bar เมื่อเลือกลูกค้า
+- [x] Frontend: สร้างไฟล์ Excel จากข้อมูลลูกค้าที่เลือก

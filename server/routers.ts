@@ -19,8 +19,15 @@ const customerRouter = router({
       limit: z.number().default(20),
       month: z.number().min(1).max(12).optional(),
       year: z.number().optional(),
+      district: z.string().optional(),
+      province: z.string().optional(),
+      source: z.string().optional(),
+      surveyStatus: z.string().optional(),
     }))
     .query(({ input }) => db.getCustomers(input)),
+
+  distinctValues: protectedProcedure
+    .query(() => db.getCustomerDistinctValues()),
 
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))
@@ -148,6 +155,8 @@ const surveyRouter = router({
       month: z.number().min(1).max(12).optional(),
       year: z.number().optional(),
       source: z.string().optional(),
+      district: z.string().optional(),
+      province: z.string().optional(),
     }))
     .query(({ input }) => db.getSurveysWithCustomer(input)),
 
@@ -709,6 +718,16 @@ const teamMemberRouter = router({
     }),
 });
 
+// ==================== TEAM PERFORMANCE ROUTER ====================
+const teamPerformanceRouter = router({
+  summary: protectedProcedure
+    .input(z.object({
+      month: z.number().min(1).max(12).optional(),
+      year: z.number().optional(),
+    }))
+    .query(({ input }) => db.getTeamPerformance(input)),
+});
+
 // ==================== APP ROUTER ====================
 export const appRouter = router({
   system: systemRouter,
@@ -734,6 +753,7 @@ export const appRouter = router({
   source: sourceRouter,
   assignment: assignmentRouter,
   teamMember: teamMemberRouter,
+  teamPerformance: teamPerformanceRouter,
 });
 
 export type AppRouter = typeof appRouter;

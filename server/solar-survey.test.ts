@@ -587,3 +587,94 @@ describe("customer.bulkDelete", () => {
     await expect(userCaller.customer.bulkDelete({ ids: [1] })).rejects.toThrow();
   });
 });
+
+// ==================== Round 14 Tests ====================
+
+describe("Round 14A: Survey filter by ANY assignment (not just primary)", () => {
+  it("should return surveys where a team member is assigned in any role", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    
+    // Create a team member
+    const member = await adminCaller.teamMember.create({ name: "FilterTest Surveyor R14", role: "surveyor" });
+    
+    // Create a customer + survey
+    const customer = await adminCaller.customer.create({ name: "R14 Filter Test Customer" });
+    const survey = await adminCaller.survey.create({
+      customerId: customer.id,
+      scheduledDate: Date.now(),
+      assignedTo: member.id,
+    });
+    
+    // Filter by assignedTo should find this survey
+    const result = await adminCaller.survey.list({ assignedTo: member.id, page: 1, limit: 50 });
+    const surveyIds = result.data.map((s: any) => s.survey.id);
+    expect(surveyIds).toContain(survey.id);
+  }, 10000);
+});
+
+describe("Round 14B: Team Performance API", () => {
+  it("should return team performance data", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    const now = new Date();
+    const result = await adminCaller.teamPerformance.summary({
+      month: now.getMonth() + 1,
+      year: now.getFullYear(),
+    });
+    expect(result).toBeDefined();
+    expect(Array.isArray(result)).toBe(true);
+  });
+});
+
+describe("Round 14C: Customer status and filters", () => {
+  it("should return customers with surveyStatus field", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    const result = await adminCaller.customer.list({ page: 1, limit: 10 });
+    expect(result.data.length).toBeGreaterThan(0);
+    // Each customer should have surveyStatus
+    result.data.forEach((c: any) => {
+      expect(c.surveyStatus).toBeDefined();
+    });
+  });
+
+  it("should filter customers by surveyStatus", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    // Create a customer with no survey - should be "no_survey"
+    const customer = await adminCaller.customer.create({ name: "R14 NoSurvey Customer" });
+    
+    const result = await adminCaller.customer.list({ page: 1, limit: 100, surveyStatus: "no_survey" });
+    const ids = result.data.map((c: any) => c.id);
+    expect(ids).toContain(customer.id);
+  });
+});
+
+describe("Round 14D: District/Province filters", () => {
+  it("should return distinct values for filters", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    const result = await adminCaller.customer.distinctValues();
+    expect(result).toBeDefined();
+    expect(Array.isArray(result.provinces)).toBe(true);
+    expect(Array.isArray(result.districts)).toBe(true);
+    expect(Array.isArray(result.sources)).toBe(true);
+  });
+
+  it("should filter customers by province", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    // Create customer with province
+    await adminCaller.customer.create({ name: "R14 Province Test", province: "เชียงใหม่" });
+    
+    const result = await adminCaller.customer.list({ page: 1, limit: 100, province: "เชียงใหม่" });
+    result.data.forEach((c: any) => {
+      expect(c.province).toBe("เชียงใหม่");
+    });
+  });
+
+  it("should filter surveys by district/province", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    // Create customer with district + survey
+    const customer = await adminCaller.customer.create({ name: "R14 District Survey Test", district: "บางกอกน้อย", province: "กรุงเทพมหานคร" });
+    await adminCaller.survey.create({ customerId: customer.id, scheduledDate: Date.now() });
+    
+    const result = await adminCaller.survey.list({ page: 1, limit: 100, district: "บางกอกน้อย" });
+    expect(result.data.length).toBeGreaterThan(0);
+  }, 10000);
+});

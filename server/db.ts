@@ -90,10 +90,10 @@ export async function getUserByOpenId(openId: string) {
 }
 
 // ==================== CUSTOMER QUERIES ====================
-export async function getCustomers(opts: { search?: string; page?: number; limit?: number; month?: number; year?: number }) {
+export async function getCustomers(opts: { search?: string; page?: number; limit?: number; month?: number; year?: number; district?: string; province?: string; source?: string; surveyStatus?: string }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { search, page = 1, limit = 20, month, year } = opts;
+  const { search, page = 1, limit = 20, month, year, district, province, source, surveyStatus } = opts;
   const offset = (page - 1) * limit;
   const conditions: any[] = [];
   if (search) {
@@ -103,6 +103,9 @@ export async function getCustomers(opts: { search?: string; page?: number; limit
       like(customers.email, `%${search}%`)
     ));
   }
+  if (district) conditions.push(eq(customers.district, district));
+  if (province) conditions.push(eq(customers.province, province));
+  if (source) conditions.push(eq(customers.source, source));
   if (month && year) {
     conditions.push(sql`MONTH(${customers.createdAt}) = ${month}`);
     conditions.push(sql`YEAR(${customers.createdAt}) = ${year}`);
@@ -114,7 +117,111 @@ export async function getCustomers(opts: { search?: string; page?: number; limit
   const countQ = whereClause
     ? await db.select({ count: sql<number>`count(*)` }).from(customers).where(whereClause)
     : await db.select({ count: sql<number>`count(*)` }).from(customers);
-  return { data, total: countQ[0]?.count ?? 0 };
+
+  // Compute customer survey status for each customer
+  const customerIds = data.map(c => c.id);
+  let statusMap: Record<number, string> = {};
+  if (customerIds.length > 0) {
+    const surveyData = await db.select({
+      customerId: surveys.customerId,
+      status: surveys.status,
+    }).from(surveys).where(inArray(surveys.customerId, customerIds));
+    // Group by customer
+    const grouped: Record<number, string[]> = {};
+    for (const s of surveyData) {
+      if (!grouped[s.customerId]) grouped[s.customerId] = [];
+      grouped[s.customerId].push(s.status);
+    }
+    for (const cId of customerIds) {
+      const statuses = grouped[cId] || [];
+      if (statuses.length === 0) {
+        statusMap[cId] = "no_survey";
+      } else if (statuses.some(s => s === "won")) {
+        statusMap[cId] = "won";
+      } else if (statuses.some(s => s === "surveyed" || s === "quoted" || s === "negotiating")) {
+        statusMap[cId] = "surveyed";
+      } else if (statuses.some(s => s === "scheduled" || s === "in_progress")) {
+        statusMap[cId] = "scheduled";
+      } else if (statuses.every(s => s === "lost" || s === "cancelled")) {
+        statusMap[cId] = "lost";
+      } else {
+        statusMap[cId] = "pending";
+      }
+    }
+  }
+
+  // Filter by surveyStatus if provided
+  let filteredData = data;
+  if (surveyStatus) {
+    filteredData = data.filter(c => statusMap[c.id] === surveyStatus);
+  }
+
+  return { data: filteredData.map(c => ({ ...c, surveyStatus: statusMap[c.id] || "no_survey" })), total: surveyStatus ? filteredData.length : (countQ[0]?.count ?? 0) };
+}
+
+export async function getCustomerDistinctValues() {
+  const db = await getDb();
+  if (!db) return { districts: [], provinces: [], sources: [] };
+  const districtRows = await db.selectDistinct({ value: customers.district }).from(customers).where(sql`${customers.district} IS NOT NULL AND ${customers.district} != ''`);
+  const provinceRows = await db.selectDistinct({ value: customers.province }).from(customers).where(sql`${customers.province} IS NOT NULL AND ${customers.province} != ''`);
+  const sourceRows = await db.selectDistinct({ value: customers.source }).from(customers).where(sql`${customers.source} IS NOT NULL AND ${customers.source} != ''`);
+  return {
+    districts: districtRows.map(r => r.value).filter(Boolean) as string[],
+    provinces: provinceRows.map(r => r.value).filter(Boolean) as string[],
+    sources: sourceRows.map(r => r.value).filter(Boolean) as string[],
+  };
+}
+
+export async function getTeamPerformance(opts: { month?: number; year?: number }) {
+  const db = await getDb();
+  if (!db) return [];
+  const { month, year } = opts;
+  const conditions: any[] = [];
+  if (month && year) {
+    conditions.push(sql`MONTH(${surveys.createdAt}) = ${month}`);
+    conditions.push(sql`YEAR(${surveys.createdAt}) = ${year}`);
+  } else if (year) {
+    conditions.push(sql`YEAR(${surveys.createdAt}) = ${year}`);
+  }
+  // Get all survey assignments with survey info
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  const surveyData = whereClause
+    ? await db.select({ surveyId: surveys.id, createdAt: surveys.createdAt, status: surveys.status }).from(surveys).where(whereClause)
+    : await db.select({ surveyId: surveys.id, createdAt: surveys.createdAt, status: surveys.status }).from(surveys);
+  const surveyIds = surveyData.map(s => s.surveyId);
+  if (surveyIds.length === 0) return [];
+  // Get all assignments for these surveys
+  const assignments = await db.select({
+    surveyId: surveyAssignments.surveyId,
+    userId: surveyAssignments.userId,
+    role: surveyAssignments.role,
+    teamMemberName: teamMembers.name,
+    teamMemberRole: teamMembers.role,
+    fallbackUserName: users.name,
+  }).from(surveyAssignments)
+    .leftJoin(teamMembers, eq(surveyAssignments.userId, teamMembers.id))
+    .leftJoin(users, eq(surveyAssignments.userId, users.id))
+    .where(inArray(surveyAssignments.surveyId, surveyIds));
+  // Count per team member - each assignment counts as 1 regardless of co-assignment
+  const memberStats: Record<number, { name: string; role: string; surveyCount: number; completedCount: number }> = {};
+  const surveyStatusMap: Record<number, string> = {};
+  for (const s of surveyData) surveyStatusMap[s.surveyId] = s.status;
+  for (const a of assignments) {
+    if (!memberStats[a.userId]) {
+      memberStats[a.userId] = {
+        name: a.teamMemberName ?? a.fallbackUserName ?? `ID:${a.userId}`,
+        role: a.teamMemberRole ?? a.role,
+        surveyCount: 0,
+        completedCount: 0,
+      };
+    }
+    memberStats[a.userId].surveyCount++;
+    const surveyStatus = surveyStatusMap[a.surveyId];
+    if (surveyStatus === "surveyed" || surveyStatus === "quoted" || surveyStatus === "negotiating" || surveyStatus === "won") {
+      memberStats[a.userId].completedCount++;
+    }
+  }
+  return Object.entries(memberStats).map(([id, stats]) => ({ teamMemberId: Number(id), ...stats }));
 }
 
 export async function getCustomerById(id: number) {
@@ -618,16 +725,29 @@ export async function deleteSource(id: number) {
   await db.delete(sources).where(eq(sources.id, id));
 }
 
-export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; adminSenderId?: number; closerId?: number; page?: number; limit?: number; search?: string; month?: number; year?: number; source?: string }) {
+export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; adminSenderId?: number; closerId?: number; page?: number; limit?: number; search?: string; month?: number; year?: number; source?: string; district?: string; province?: string }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { status, assignedTo, adminSenderId, closerId, page = 1, limit = 20, search, month, year, source } = opts;
+  const { status, assignedTo, adminSenderId, closerId, page = 1, limit = 20, search, month, year, source, district, province } = opts;
   const offset = (page - 1) * limit;
+
+  // If filtering by team member (any role), find matching survey IDs first
+  let filteredSurveyIds: number[] | null = null;
+  if (assignedTo || adminSenderId || closerId) {
+    const assignConditions: any[] = [];
+    if (assignedTo) assignConditions.push(and(eq(surveyAssignments.userId, assignedTo), eq(surveyAssignments.role, "surveyor")));
+    if (adminSenderId) assignConditions.push(and(eq(surveyAssignments.userId, adminSenderId), eq(surveyAssignments.role, "admin_sender")));
+    if (closerId) assignConditions.push(and(eq(surveyAssignments.userId, closerId), eq(surveyAssignments.role, "closer")));
+    const matchingAssignments = await db.selectDistinct({ surveyId: surveyAssignments.surveyId })
+      .from(surveyAssignments)
+      .where(assignConditions.length === 1 ? assignConditions[0] : or(...assignConditions));
+    filteredSurveyIds = matchingAssignments.map(a => a.surveyId);
+    if (filteredSurveyIds.length === 0) return { data: [], total: 0 };
+  }
+
   const conditions: any[] = [];
+  if (filteredSurveyIds) conditions.push(inArray(surveys.id, filteredSurveyIds));
   if (status) conditions.push(eq(surveys.status, status as any));
-  if (assignedTo) conditions.push(eq(surveys.assignedTo, assignedTo));
-  if (adminSenderId) conditions.push(eq(surveys.adminSenderId, adminSenderId));
-  if (closerId) conditions.push(eq(surveys.closerId, closerId));
   if (search) {
     conditions.push(or(
       like(customers.name, `%${search}%`),
@@ -635,6 +755,8 @@ export async function getSurveysWithCustomer(opts: { status?: string; assignedTo
     ));
   }
   if (source) conditions.push(eq(customers.source, source));
+  if (district) conditions.push(eq(customers.district, district));
+  if (province) conditions.push(eq(customers.province, province));
   if (month && year) {
     conditions.push(sql`MONTH(${surveys.createdAt}) = ${month}`);
     conditions.push(sql`YEAR(${surveys.createdAt}) = ${year}`);

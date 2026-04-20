@@ -65,11 +65,17 @@ export default function Customers() {
     onError: (e) => toast.error(e.message),
   });
 
-  // Month/Year filter
+  // Filters
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [filterByMonth, setFilterByMonth] = useState(false);
+  const [districtFilter, setDistrictFilter] = useState("");
+  const [provinceFilter, setProvinceFilter] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+
+  const { data: distinctValues } = trpc.customer.distinctValues.useQuery();
 
   const queryInput = useMemo(() => ({
     search,
@@ -77,7 +83,11 @@ export default function Customers() {
     limit: 30,
     month: filterByMonth ? selectedMonth : undefined,
     year: filterByMonth ? selectedYear : undefined,
-  }), [search, page, filterByMonth, selectedMonth, selectedYear]);
+    district: districtFilter || undefined,
+    province: provinceFilter || undefined,
+    source: sourceFilter || undefined,
+    surveyStatus: statusFilter || undefined,
+  }), [search, page, filterByMonth, selectedMonth, selectedYear, districtFilter, provinceFilter, sourceFilter, statusFilter]);
 
   const { data, isLoading, refetch } = trpc.customer.list.useQuery(queryInput);
   const createMutation = trpc.customer.create.useMutation({
@@ -99,6 +109,34 @@ export default function Customers() {
   });
 
   const totalPages = Math.ceil((data?.total ?? 0) / 30);
+
+  // Export selected customers to Excel
+  const handleExportSelected = useCallback(() => {
+    if (!data?.data || selectedIds.size === 0) return;
+    const selected = data.data.filter((c: any) => selectedIds.has(c.id));
+    if (selected.length === 0) { toast.error("ไม่พบข้อมูลที่เลือก"); return; }
+    const headers = ["ชื่อลูกค้า", "เบอร์โทร", "โลเคชั่น", "ช่องทาง", "เขต/อำเภอ", "จังหวัด", "ค่าไฟ/เดือน", "ประเภทหลังคา", "ระบบไฟ", "หมายเหตุ", "สถานะ", "วันที่สร้าง"];
+    const rows = selected.map((c: any) => ({
+      "ชื่อลูกค้า": c.name || "",
+      "เบอร์โทร": c.phone || "",
+      "โลเคชั่น": c.address || "",
+      "ช่องทาง": c.source || "",
+      "เขต/อำเภอ": c.district || "",
+      "จังหวัด": c.province || "",
+      "ค่าไฟ/เดือน": c.electricityBill || "",
+      "ประเภทหลังคา": c.roofType || "",
+      "ระบบไฟ": c.phaseType === "single" ? "1 เฟส" : c.phaseType === "three" ? "3 เฟส" : "",
+      "หมายเหตุ": c.notes || "",
+      "สถานะ": c.surveyStatus === "no_survey" ? "ยังไม่นัดสำรวจ" : c.surveyStatus === "scheduled" ? "นัดสำรวจแล้ว" : c.surveyStatus === "surveyed" ? "สำรวจเสร็จ" : c.surveyStatus === "won" ? "ปิดการขาย" : c.surveyStatus || "",
+      "วันที่สร้าง": c.createdAt ? new Date(c.createdAt).toLocaleDateString("th-TH") : "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows, { header: headers });
+    ws["!cols"] = headers.map((h) => ({ wch: Math.max(h.length * 2, 12) }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "ลูกค้า");
+    XLSX.writeFile(wb, `customers-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast.success(`Export สำเร็จ ${selected.length} รายการ`);
+  }, [data, selectedIds]);
 
   const yearOptions = useMemo(() => {
     const years = [];
@@ -208,7 +246,7 @@ export default function Customers() {
           </Select>
         </div>
 
-        {/* Search + View Toggle */}
+        {/* Search + Filters + View Toggle */}
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative flex-1 min-w-[200px] max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -219,6 +257,53 @@ export default function Customers() {
               className="pl-10"
             />
           </div>
+          <Select value={statusFilter || "_all"} onValueChange={(v) => { setStatusFilter(v === "_all" ? "" : v); setPage(1); }}>
+            <SelectTrigger className="w-[140px] h-9 text-xs">
+              <SelectValue placeholder="สถานะ" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">สถานะทั้งหมด</SelectItem>
+              <SelectItem value="no_survey">ยังไม่นัดสำรวจ</SelectItem>
+              <SelectItem value="pending">รอดำเนินการ</SelectItem>
+              <SelectItem value="scheduled">นัดสำรวจแล้ว</SelectItem>
+              <SelectItem value="surveyed">สำรวจเสร็จ</SelectItem>
+              <SelectItem value="won">ปิดการขาย</SelectItem>
+              <SelectItem value="lost">ไม่สำเร็จ</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={provinceFilter || "_all"} onValueChange={(v) => { setProvinceFilter(v === "_all" ? "" : v); setPage(1); }}>
+            <SelectTrigger className="w-[130px] h-9 text-xs">
+              <SelectValue placeholder="จังหวัด" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">จังหวัดทั้งหมด</SelectItem>
+              {(distinctValues?.provinces ?? []).map((p: string) => (
+                <SelectItem key={p} value={p}>{p}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={districtFilter || "_all"} onValueChange={(v) => { setDistrictFilter(v === "_all" ? "" : v); setPage(1); }}>
+            <SelectTrigger className="w-[130px] h-9 text-xs">
+              <SelectValue placeholder="เขต/อำเภอ" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">เขต/อำเภอทั้งหมด</SelectItem>
+              {(distinctValues?.districts ?? []).map((d: string) => (
+                <SelectItem key={d} value={d}>{d}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={sourceFilter || "_all"} onValueChange={(v) => { setSourceFilter(v === "_all" ? "" : v); setPage(1); }}>
+            <SelectTrigger className="w-[130px] h-9 text-xs">
+              <SelectValue placeholder="แหล่งที่มา" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">แหล่งที่มาทั้งหมด</SelectItem>
+              {(distinctValues?.sources ?? []).map((s: string) => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <div className="flex items-center border rounded-md">
             <Button
               variant={viewMode === "grid" ? "default" : "ghost"}
@@ -253,6 +338,9 @@ export default function Customers() {
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={clearSelection} className="gap-1.5 text-muted-foreground">
                 <X className="h-3.5 w-3.5" /> ยกเลิก
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportSelected} className="gap-1.5">
+                <Download className="h-3.5 w-3.5" /> Export Excel
               </Button>
               <Button variant="destructive" size="sm" onClick={() => setShowBulkDelete(true)} className="gap-1.5">
                 <Trash2 className="h-3.5 w-3.5" /> ลบ {selectedIds.size} รายการ
@@ -419,6 +507,7 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete, selectedIds, on
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">ระบบไฟ</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">หมายเหตุ</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">วันที่สร้าง</th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">สถานะ</th>
               <th className="text-right px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap w-10"></th>
             </tr>
           </thead>
@@ -486,6 +575,9 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete, selectedIds, on
                   <td className="px-3 py-2.5 whitespace-nowrap hidden xl:table-cell text-muted-foreground text-xs">
                     {new Date(c.createdAt).toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "2-digit" })}
                   </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap">
+                    <SurveyStatusBadge status={c.surveyStatus} />
+                  </td>
                   <td className="px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -516,7 +608,26 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete, selectedIds, on
   );
 }
 
-/* ==================== GRID VIEW (original card layout) ==================== */
+/* ==================== SURVEY STATUS BADGE ==================== */
+const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+  no_survey: { label: "ยังไม่นัดสำรวจ", className: "bg-gray-100 text-gray-700 border-gray-200" },
+  pending: { label: "รอดำเนินการ", className: "bg-yellow-50 text-yellow-700 border-yellow-200" },
+  scheduled: { label: "นัดสำรวจแล้ว", className: "bg-blue-50 text-blue-700 border-blue-200" },
+  surveyed: { label: "สำรวจเสร็จ", className: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+  won: { label: "ปิดการขาย", className: "bg-green-50 text-green-700 border-green-200" },
+  lost: { label: "ไม่สำเร็จ", className: "bg-red-50 text-red-700 border-red-200" },
+};
+
+function SurveyStatusBadge({ status }: { status?: string }) {
+  const config = STATUS_CONFIG[status || "no_survey"] || STATUS_CONFIG.no_survey;
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${config.className}`}>
+      {config.label}
+    </span>
+  );
+}
+
+/* ==================== GRID VIEW ==================== */
 function CustomerGridView({ data, onRowClick, onEdit, onDelete, selectedIds, onToggleSelect, onToggleSelectAll, allSelected, someSelected }: TableViewProps) {
   return (
     <div className="space-y-3">
@@ -593,6 +704,9 @@ function CustomerGridView({ data, onRowClick, onEdit, onDelete, selectedIds, onT
                       ) : <span className="truncate">{customer.address}</span>}
                     </div>
                   )}
+                </div>
+                <div className="mt-2">
+                  <SurveyStatusBadge status={customer.surveyStatus} />
                 </div>
               </CardContent>
             </Card>

@@ -45,6 +45,8 @@ export default function Surveys() {
   const [surveyorFilter, setSurveyorFilter] = useState("");
   const [adminSenderFilter, setAdminSenderFilter] = useState("");
   const [closerFilter, setCloserFilter] = useState("");
+  const [districtFilter, setDistrictFilter] = useState("");
+  const [provinceFilter, setProvinceFilter] = useState("");
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<"list" | "table">("table");
 
@@ -59,6 +61,7 @@ export default function Surveys() {
   const { data: teamSurveyorsData } = trpc.teamMember.list.useQuery({ role: "surveyor" });
   const { data: teamAdminSendersData } = trpc.teamMember.list.useQuery({ role: "admin_sender" });
   const { data: teamClosersData } = trpc.teamMember.list.useQuery({ role: "closer" });
+  const { data: distinctValues } = trpc.customer.distinctValues.useQuery();
 
   const queryInput = useMemo(() => ({
     search,
@@ -67,11 +70,13 @@ export default function Surveys() {
     assignedTo: surveyorFilter ? Number(surveyorFilter) : undefined,
     adminSenderId: adminSenderFilter ? Number(adminSenderFilter) : undefined,
     closerId: closerFilter ? Number(closerFilter) : undefined,
+    district: districtFilter || undefined,
+    province: provinceFilter || undefined,
     page,
     limit: 50,
     month: filterByMonth ? selectedMonth : undefined,
     year: filterByMonth ? selectedYear : undefined,
-  }), [search, statusFilter, sourceFilter, surveyorFilter, adminSenderFilter, closerFilter, page, filterByMonth, selectedMonth, selectedYear]);
+  }), [search, statusFilter, sourceFilter, surveyorFilter, adminSenderFilter, closerFilter, districtFilter, provinceFilter, page, filterByMonth, selectedMonth, selectedYear]);
 
   const { data, isLoading } = trpc.survey.list.useQuery(queryInput);
   const totalPages = Math.ceil((data?.total ?? 0) / 50);
@@ -269,9 +274,9 @@ export default function Surveys() {
             </SelectContent>
           </Select>
         </div>
-        <div>
-          <Select value={adminSenderFilter} onValueChange={setAdminSenderFilter}>
-            <SelectTrigger className="h-9"><SelectValue placeholder="คนส่งสำรวจ" /></SelectTrigger>
+        <div className="flex items-center gap-3 flex-wrap">
+          <Select value={adminSenderFilter || "_all"} onValueChange={(v) => { setAdminSenderFilter(v === "_all" ? "" : v); setPage(1); }}>
+            <SelectTrigger className="w-[140px] h-9 text-xs"><SelectValue placeholder="คนส่งสำรวจ" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="_all">คนส่งทั้งหมด</SelectItem>
               {(teamAdminSendersData || []).map((m: any) => (
@@ -279,14 +284,30 @@ export default function Surveys() {
               ))}
             </SelectContent>
           </Select>
-        </div>
-        <div>
-          <Select value={closerFilter} onValueChange={setCloserFilter}>
-            <SelectTrigger className="h-9"><SelectValue placeholder="คนปิดการขาย" /></SelectTrigger>
+          <Select value={closerFilter || "_all"} onValueChange={(v) => { setCloserFilter(v === "_all" ? "" : v); setPage(1); }}>
+            <SelectTrigger className="w-[140px] h-9 text-xs"><SelectValue placeholder="คนปิดการขาย" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="_all">คนปิดทั้งหมด</SelectItem>
               {(teamClosersData || []).map((m: any) => (
                 <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={provinceFilter || "_all"} onValueChange={(v) => { setProvinceFilter(v === "_all" ? "" : v); setPage(1); }}>
+            <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue placeholder="จังหวัด" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">จังหวัดทั้งหมด</SelectItem>
+              {(distinctValues?.provinces ?? []).map((p: string) => (
+                <SelectItem key={p} value={p}>{p}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={districtFilter || "_all"} onValueChange={(v) => { setDistrictFilter(v === "_all" ? "" : v); setPage(1); }}>
+            <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue placeholder="เขต/อำเภอ" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">เขต/อำเภอทั้งหมด</SelectItem>
+              {(distinctValues?.districts ?? []).map((d: string) => (
+                <SelectItem key={d} value={d}>{d}</SelectItem>
               ))}
             </SelectContent>
           </Select>
