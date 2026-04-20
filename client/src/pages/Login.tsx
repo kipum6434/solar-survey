@@ -1,22 +1,49 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Sun, LogIn, Eye, EyeOff } from "lucide-react";
 import { getLoginUrl } from "@/const";
+
+const REMEMBER_KEY = "solar-survey-remember";
+const SAVED_USERNAME_KEY = "solar-survey-saved-username";
+const SAVED_PASSWORD_KEY = "solar-survey-saved-password";
 
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+
+  // Load saved credentials on mount
+  useEffect(() => {
+    const remembered = localStorage.getItem(REMEMBER_KEY) === "true";
+    if (remembered) {
+      setRememberMe(true);
+      const savedUsername = localStorage.getItem(SAVED_USERNAME_KEY) || "";
+      const savedPassword = localStorage.getItem(SAVED_PASSWORD_KEY) || "";
+      setUsername(savedUsername);
+      setPassword(savedPassword);
+    }
+  }, []);
 
   const loginMutation = trpc.users.login.useMutation({
     onSuccess: () => {
+      // Save or clear credentials based on Remember Me
+      if (rememberMe) {
+        localStorage.setItem(REMEMBER_KEY, "true");
+        localStorage.setItem(SAVED_USERNAME_KEY, username.trim());
+        localStorage.setItem(SAVED_PASSWORD_KEY, password);
+      } else {
+        localStorage.removeItem(REMEMBER_KEY);
+        localStorage.removeItem(SAVED_USERNAME_KEY);
+        localStorage.removeItem(SAVED_PASSWORD_KEY);
+      }
       toast.success("เข้าสู่ระบบสำเร็จ");
-      // Redirect to home after login
       window.location.href = "/";
     },
     onError: (err) => {
@@ -35,6 +62,15 @@ export default function Login() {
       return;
     }
     loginMutation.mutate({ username: username.trim(), password });
+  };
+
+  const handleRememberChange = (checked: boolean) => {
+    setRememberMe(checked);
+    if (!checked) {
+      localStorage.removeItem(REMEMBER_KEY);
+      localStorage.removeItem(SAVED_USERNAME_KEY);
+      localStorage.removeItem(SAVED_PASSWORD_KEY);
+    }
   };
 
   return (
@@ -90,6 +126,22 @@ export default function Login() {
                   </button>
                 </div>
               </div>
+
+              {/* Remember Me */}
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="rememberMe"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => handleRememberChange(checked === true)}
+                />
+                <Label
+                  htmlFor="rememberMe"
+                  className="text-sm font-normal cursor-pointer select-none text-muted-foreground"
+                >
+                  จำรหัสผ่าน
+                </Label>
+              </div>
+
               <Button type="submit" className="w-full gap-2" disabled={loginMutation.isPending}>
                 {loginMutation.isPending ? (
                   "กำลังเข้าสู่ระบบ..."

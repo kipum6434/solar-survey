@@ -233,3 +233,10 @@
 
 - [x] แก้ไขหน้า /login ไม่ให้ auto-redirect ไป Manus OAuth portal (แก้ main.tsx + useAuth.ts)
 - [x] ให้หน้า Login แสดงฟอร์ม username/password เป็นหลัก ผู้ใช้เลือกเองว่าจะ login แบบไหน
+
+## User Request - Round 9.2: Remember Me ในหน้า Login
+
+- [x] เพิ่ม checkbox "จำรหัสผ่าน" ในหน้า Login
+- [x] บันทึก username + password ลง localStorage เมื่อเลือก Remember Me และ login สำเร็จ
+- [x] โหลด username + password จาก localStorage เมื่อเปิดหน้า Login
+- [x] ล้าง localStorage เมื่อยกเลิก Remember Me
