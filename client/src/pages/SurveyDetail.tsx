@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { MultiUserSelect } from "@/components/MultiUserSelect";
 import { SourceCombobox } from "@/components/SourceCombobox";
+import { StatusDropdown } from "@/components/StatusDropdown";
 
 export default function SurveyDetail() {
   const params = useParams<{ id: string }>();
@@ -488,7 +489,7 @@ export default function SurveyDetail() {
       )}
 
       {/* Edit Status Dialog */}
-      <EditSurveyDialog open={showEditStatus} onOpenChange={setShowEditStatus} survey={s} adminSenders={teamAdminSenders || []} surveyors={teamSurveyors || []} closers={teamClosers || []} assignments={(data as any)?.assignments || []} onSubmit={(d: any) => updateSurvey.mutate({ id: surveyId, ...d })} loading={updateSurvey.isPending} />
+      <EditSurveyDialog open={showEditStatus} onOpenChange={setShowEditStatus} survey={s} adminSenders={teamAdminSenders || []} surveyors={teamSurveyors || []} closers={teamClosers || []} assignments={(data as any)?.assignments || []} onSubmit={(d: any) => updateSurvey.mutate({ id: surveyId, ...d })} loading={updateSurvey.isPending} customStatus={(data as any)?.customStatus || null} onRefetch={refetch} />
 
       {/* Confirm Delete Photo Dialog */}
       <Dialog open={confirmDeletePhoto !== null} onOpenChange={() => setConfirmDeletePhoto(null)}>
@@ -524,7 +525,7 @@ export default function SurveyDetail() {
   );
 }
 
-function EditSurveyDialog({ open, onOpenChange, survey, adminSenders, surveyors, closers, onSubmit, loading, assignments }: any) {
+function EditSurveyDialog({ open, onOpenChange, survey, adminSenders, surveyors, closers, onSubmit, loading, assignments, customStatus, onRefetch }: any) {
   const [form, setForm] = useState<any>({});
   const s = survey;
   if (!s) return null;
@@ -532,23 +533,42 @@ function EditSurveyDialog({ open, onOpenChange, survey, adminSenders, surveyors,
   const handleOpen = () => {
     const currentAssignments = assignments || [];
     const adminSender = currentAssignments.find((a: any) => a.assignment.role === "admin_sender");
-    const surveyors = currentAssignments.filter((a: any) => a.assignment.role === "surveyor");
+    const surveyorsList = currentAssignments.filter((a: any) => a.assignment.role === "surveyor");
     const closer = currentAssignments.find((a: any) => a.assignment.role === "closer");
     setForm({
       status: s.status,
       scheduledDate: s.scheduledDate ? new Date(s.scheduledDate).toISOString().split("T")[0] : "",
       scheduledTime: s.scheduledTime || "",
       adminSenderId: adminSender?.user?.id ? String(adminSender.user.id) : "",
-      surveyorIds: surveyors.map((a: any) => a.user?.id).filter(Boolean),
+      surveyorIds: surveyorsList.map((a: any) => a.user?.id).filter(Boolean),
       closerId: closer?.user?.id ? String(closer.user.id) : "",
       surveyNotes: s.surveyNotes || "",
       systemSize: s.systemSize || "",
-      panelCount: s.panelCount || "",
+      panelCount: s.panelCount ? String(s.panelCount) : "",
       inverterModel: s.inverterModel || "",
+      panelBrand: s.panelBrand || "",
+      quotedPrice: s.quotedPrice || "",
+      needBattery: s.needBattery || "",
+      needOptimizer: s.needOptimizer || "",
+      systemType: s.systemType || "",
     });
   };
 
   const surveyorOptions = (surveyors || []).map((m: any) => ({ id: m.id, name: m.name, role: "surveyor" }));
+
+  const SURVEY_STATUS_FALLBACK: Record<string, { color: string; bg: string }> = {
+    pending: { color: "#78716c", bg: "#f5f5f4" },
+    scheduled: { color: "#1d4ed8", bg: "#eff6ff" },
+    in_progress: { color: "#d97706", bg: "#fffbeb" },
+    surveyed: { color: "#059669", bg: "#ecfdf5" },
+    quoted: { color: "#7c3aed", bg: "#f5f3ff" },
+    negotiating: { color: "#ea580c", bg: "#fff7ed" },
+    won: { color: "#15803d", bg: "#dcfce7" },
+    lost: { color: "#dc2626", bg: "#fef2f2" },
+    cancelled: { color: "#6b7280", bg: "#f3f4f6" },
+  };
+
+  const statusInfo = SURVEY_STATUS_MAP[s.status] || SURVEY_STATUS_MAP.pending;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (v) handleOpen(); onOpenChange(v); }}>
@@ -558,18 +578,25 @@ function EditSurveyDialog({ open, onOpenChange, survey, adminSenders, surveyors,
           <DialogDescription>อัพเดทข้อมูลและสถานะงานสำรวจ</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <Label>สถานะ</Label>
-              <Select value={form.status || s.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(SURVEY_STATUS_MAP).map(([k, v]) => (
-                    <SelectItem key={k} value={k}>{v.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* Custom Status (synced with table dropdown) */}
+          <div>
+            <Label>สถานะ</Label>
+            <div className="mt-1.5">
+              <StatusDropdown
+                type="survey"
+                entityId={s.id}
+                currentStatusId={s.statusId || null}
+                currentCustomStatus={customStatus || null}
+                fallbackLabel={statusInfo.label}
+                fallbackColor={SURVEY_STATUS_FALLBACK[s.status]?.color}
+                fallbackBgColor={SURVEY_STATUS_FALLBACK[s.status]?.bg}
+                onStatusChanged={() => { onRefetch?.(); }}
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">สถานะนี้จะ sync กับหน้าตารางงานสำรวจ</p>
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div><Label>วันที่สำรวจ</Label><Input type="date" value={form.scheduledDate || ""} onChange={(e) => setForm({ ...form, scheduledDate: e.target.value })} /></div>
             <div><Label>เวลา</Label><Input type="time" value={form.scheduledTime || ""} onChange={(e) => setForm({ ...form, scheduledTime: e.target.value })} /></div>
           </div>
@@ -613,19 +640,60 @@ function EditSurveyDialog({ open, onOpenChange, survey, adminSenders, surveyors,
           <div className="grid grid-cols-2 gap-4">
             <div><Label>ขนาดระบบ (kW)</Label><Input value={form.systemSize || ""} onChange={(e) => setForm({ ...form, systemSize: e.target.value })} /></div>
             <div><Label>จำนวนแผง</Label><Input type="number" value={form.panelCount || ""} onChange={(e) => setForm({ ...form, panelCount: e.target.value })} /></div>
+            <div><Label>ยี่ห้อแผง</Label><Input value={form.panelBrand || ""} onChange={(e) => setForm({ ...form, panelBrand: e.target.value })} /></div>
             <div><Label>รุ่นอินเวอร์เตอร์</Label><Input value={form.inverterModel || ""} onChange={(e) => setForm({ ...form, inverterModel: e.target.value })} /></div>
+            <div><Label>ราคาเสนอ (บาท)</Label><Input value={form.quotedPrice || ""} onChange={(e) => setForm({ ...form, quotedPrice: e.target.value })} /></div>
+            <div>
+              <Label>แบตเตอรี่</Label>
+              <Select value={form.needBattery || ""} onValueChange={(v) => setForm({ ...form, needBattery: v })}>
+                <SelectTrigger><SelectValue placeholder="เลือก..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="yes">ต้องการ</SelectItem>
+                  <SelectItem value="no">ไม่ต้องการ</SelectItem>
+                  <SelectItem value="undecided">ยังไม่ตัดสินใจ</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Optimizer</Label>
+              <Select value={form.needOptimizer || ""} onValueChange={(v) => setForm({ ...form, needOptimizer: v })}>
+                <SelectTrigger><SelectValue placeholder="เลือก..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="yes">ต้องการ</SelectItem>
+                  <SelectItem value="no">ไม่ต้องการ</SelectItem>
+                  <SelectItem value="undecided">ยังไม่ตัดสินใจ</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>ประเภทระบบ</Label>
+              <Select value={form.systemType || ""} onValueChange={(v) => setForm({ ...form, systemType: v })}>
+                <SelectTrigger><SelectValue placeholder="เลือก..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="string">String Inverter</SelectItem>
+                  <SelectItem value="micro">Micro Inverter</SelectItem>
+                  <SelectItem value="both">ทั้งสอง</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="col-span-2"><Label>หมายเหตุ</Label><Textarea value={form.surveyNotes || ""} onChange={(e) => setForm({ ...form, surveyNotes: e.target.value })} rows={3} /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => onOpenChange(false)}>ยกเลิก</Button>
             <Button onClick={() => {
-              const payload: any = { status: form.status };
+              const payload: any = {};
               if (form.scheduledDate) payload.scheduledDate = new Date(form.scheduledDate).getTime();
-              if (form.scheduledTime) payload.scheduledTime = form.scheduledTime;
-              if (form.surveyNotes) payload.surveyNotes = form.surveyNotes;
-              if (form.systemSize) payload.systemSize = form.systemSize;
+              else if (form.scheduledDate === "") payload.scheduledDate = undefined;
+              if (form.scheduledTime !== undefined) payload.scheduledTime = form.scheduledTime;
+              payload.surveyNotes = form.surveyNotes || "";
+              payload.systemSize = form.systemSize || "";
               if (form.panelCount) payload.panelCount = parseInt(form.panelCount);
-              if (form.inverterModel) payload.inverterModel = form.inverterModel;
+              payload.inverterModel = form.inverterModel || "";
+              payload.panelBrand = form.panelBrand || "";
+              payload.quotedPrice = form.quotedPrice || "";
+              if (form.needBattery) payload.needBattery = form.needBattery;
+              if (form.needOptimizer) payload.needOptimizer = form.needOptimizer;
+              if (form.systemType) payload.systemType = form.systemType;
               // Always send team assignments (null to clear, number to set)
               payload.adminSenderId = form.adminSenderId ? parseInt(form.adminSenderId) : null;
               payload.surveyorIds = form.surveyorIds && form.surveyorIds.length > 0 ? form.surveyorIds : [];

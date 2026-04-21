@@ -95,6 +95,15 @@ export default function Surveys() {
     onError: (e) => toast.error(e.message),
   });
 
+  // Scheduled date mutation (inline edit from table)
+  const updateSurveyMutation = trpc.survey.update.useMutation({
+    onSuccess: () => { toast.success("บันทึกวันที่สำรวจสำเร็จ"); refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const handleUpdateScheduledDate = useCallback((surveyId: number, date: number | null, time: string | null) => {
+    updateSurveyMutation.mutate({ id: surveyId, scheduledDate: date ?? undefined, scheduledTime: time ?? undefined });
+  }, [updateSurveyMutation]);
+
   const bulkDeleteMutation = trpc.survey.bulkDelete.useMutation({
     onSuccess: (result) => {
       toast.success(`ลบงานสำรวจ ${result.deleted} รายการสำเร็จ`);
@@ -427,6 +436,7 @@ export default function Surveys() {
                 onRowClick={(id) => setLocation(`/surveys/${id}`)}
                 onRefetch={refetch}
                 onUpdateInstallationDate={(surveyId, date) => updateInstallationDate.mutate({ surveyId, installationDate: date })}
+                onUpdateScheduledDate={handleUpdateScheduledDate}
                 selectedIds={selectedIds}
                 onToggleSelect={toggleSelect}
                 onToggleSelectAll={toggleSelectAll}
@@ -439,6 +449,7 @@ export default function Surveys() {
                 onRowClick={(id) => setLocation(`/surveys/${id}`)}
                 onRefetch={refetch}
                 onUpdateInstallationDate={(surveyId, date) => updateInstallationDate.mutate({ surveyId, installationDate: date })}
+                onUpdateScheduledDate={handleUpdateScheduledDate}
                 selectedIds={selectedIds}
                 onToggleSelect={toggleSelect}
                 onToggleSelectAll={toggleSelectAll}
@@ -506,6 +517,67 @@ const SURVEY_STATUS_FALLBACK: Record<string, { color: string; bg: string }> = {
   cancelled: { color: "#6b7280", bg: "#f3f4f6" },
 };
 
+/* ==================== SCHEDULED DATE CELL (inline edit) ==================== */
+function ScheduledDateCell({ surveyId, currentDate, currentTime, onUpdate }: { surveyId: number; currentDate: number | null; currentTime: string | null; onUpdate: (surveyId: number, date: number | null, time: string | null) => void }) {
+  const [dateStr, setDateStr] = useState(currentDate ? new Date(currentDate).toISOString().split("T")[0] : "");
+  const [timeStr, setTimeStr] = useState(currentTime || "");
+  const [open, setOpen] = useState(false);
+
+  const handleSave = () => {
+    onUpdate(surveyId, dateStr ? new Date(dateStr).getTime() : null, timeStr || null);
+    setOpen(false);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          className="text-xs hover:text-primary transition-colors cursor-pointer"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {currentDate
+            ? new Date(currentDate).toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "2-digit" })
+            : <span className="text-muted-foreground">-</span>}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-3" align="start" onClick={(e) => e.stopPropagation()}>
+        <div className="space-y-2">
+          <p className="text-xs font-medium">วันที่สำรวจ</p>
+          <input
+            type="date"
+            value={dateStr}
+            onChange={(e) => setDateStr(e.target.value)}
+            className="border rounded px-2 py-1 text-xs w-full"
+          />
+          <p className="text-xs font-medium">เวลา</p>
+          <input
+            type="time"
+            value={timeStr}
+            onChange={(e) => setTimeStr(e.target.value)}
+            className="border rounded px-2 py-1 text-xs w-full"
+          />
+          <div className="flex gap-2">
+            <button
+              className="flex-1 text-xs bg-primary text-primary-foreground rounded px-2 py-1 hover:bg-primary/90"
+              onClick={handleSave}
+            >
+              บันทึก
+            </button>
+            {currentDate && (
+              <button
+                className="text-xs text-destructive hover:underline"
+                onClick={() => { onUpdate(surveyId, null, null); setOpen(false); }}
+              >
+                ลบ
+              </button>
+            )}
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 /* ==================== INSTALLATION DATE CELL ==================== */
 function InstallationDateCell({ surveyId, currentDate, onUpdate }: { surveyId: number; currentDate: number | null; onUpdate: (surveyId: number, date: number | null) => void }) {
   const [dateStr, setDateStr] = useState(currentDate ? new Date(currentDate).toISOString().split("T")[0] : "");
@@ -569,6 +641,7 @@ interface SurveyViewProps {
   onRowClick: (id: number) => void;
   onRefetch: () => void;
   onUpdateInstallationDate: (surveyId: number, date: number | null) => void;
+  onUpdateScheduledDate: (surveyId: number, date: number | null, time: string | null) => void;
   selectedIds: Set<number>;
   onToggleSelect: (id: number) => void;
   onToggleSelectAll: () => void;
@@ -577,7 +650,7 @@ interface SurveyViewProps {
 }
 
 /* ==================== TABLE VIEW ==================== */
-function SurveyTableView({ data, onRowClick, onRefetch, onUpdateInstallationDate, selectedIds, onToggleSelect, onToggleSelectAll, allSelected, someSelected }: SurveyViewProps) {
+function SurveyTableView({ data, onRowClick, onRefetch, onUpdateInstallationDate, onUpdateScheduledDate, selectedIds, onToggleSelect, onToggleSelectAll, allSelected, someSelected }: SurveyViewProps) {
   return (
     <div className="border rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
@@ -628,10 +701,13 @@ function SurveyTableView({ data, onRowClick, onRefetch, onUpdateInstallationDate
                       aria-label={`เลือก ${c.name}`}
                     />
                   </td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">
-                    {s.scheduledDate
-                      ? new Date(s.scheduledDate).toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "2-digit" })
-                      : <span className="text-muted-foreground">-</span>}
+                  <td className="px-3 py-2.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    <ScheduledDateCell
+                      surveyId={s.id}
+                      currentDate={s.scheduledDate || null}
+                      currentTime={s.scheduledTime || null}
+                      onUpdate={onUpdateScheduledDate}
+                    />
                   </td>
                   <td className="px-3 py-2.5 whitespace-nowrap">
                     {s.scheduledTime || <span className="text-muted-foreground">-</span>}
@@ -696,7 +772,7 @@ function SurveyTableView({ data, onRowClick, onRefetch, onUpdateInstallationDate
 }
 
 /* ==================== LIST VIEW (original) ==================== */
-function SurveyListView({ data, onRowClick, onRefetch, onUpdateInstallationDate, selectedIds, onToggleSelect, onToggleSelectAll, allSelected, someSelected }: SurveyViewProps) {
+function SurveyListView({ data, onRowClick, onRefetch, onUpdateInstallationDate, onUpdateScheduledDate, selectedIds, onToggleSelect, onToggleSelectAll, allSelected, someSelected }: SurveyViewProps) {
   return (
     <div className="space-y-3">
       {/* Select all bar for list view */}
@@ -755,13 +831,16 @@ function SurveyListView({ data, onRowClick, onRefetch, onUpdateInstallationDate,
                     )}
                   </div>
                   <div className="flex items-center gap-4 mt-1.5 text-xs text-muted-foreground flex-wrap">
-                    {s.scheduledDate && (
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {new Date(s.scheduledDate).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}
-                        {s.scheduledTime ? ` ${s.scheduledTime} น.` : ""}
-                      </span>
-                    )}
+                    <span className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      <Calendar className="h-3 w-3" />
+                      <ScheduledDateCell
+                        surveyId={s.id}
+                        currentDate={s.scheduledDate || null}
+                        currentTime={s.scheduledTime || null}
+                        onUpdate={onUpdateScheduledDate}
+                      />
+                      {s.scheduledTime ? <span className="ml-0.5">{s.scheduledTime} น.</span> : null}
+                    </span>
                     {c.phone && (
                       <span className="flex items-center gap-1">
                         <Phone className="h-3 w-3" />

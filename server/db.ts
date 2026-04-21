@@ -341,7 +341,15 @@ export async function getSurveyWithCustomer(id: number) {
       role: r.teamMemberRole ?? r.assignment.role,
     },
   }));
-  return { ...result[0], assignments };
+  // Fetch custom status if survey has statusId
+  let customStatus: { id: number; label: string; color: string; bgColor: string } | null = null;
+  if (result[0].survey.statusId) {
+    const csRows = await db.select().from(customStatuses).where(eq(customStatuses.id, result[0].survey.statusId)).limit(1);
+    if (csRows[0]) {
+      customStatus = { id: csRows[0].id, label: csRows[0].label, color: csRows[0].color, bgColor: csRows[0].bgColor };
+    }
+  }
+  return { ...result[0], assignments, customStatus };
 }
 
 export async function createSurvey(data: InsertSurvey) {
