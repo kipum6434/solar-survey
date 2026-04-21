@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import {
   ArrowLeft, Camera, FileText, PhoneCall, Share2, MapPin, Calendar, User, Pencil,
   Upload, Trash2, Download, Link2, Copy, X, Image, Eye, CheckCircle2, Clock,
-  Zap, Sun, Home, Gauge, Receipt, Settings2, Users,
+  Zap, Sun, Home, Gauge, Receipt, Settings2, Users, Wrench,
 } from "lucide-react";
 import { MultiUserSelect } from "@/components/MultiUserSelect";
 import { SourceCombobox } from "@/components/SourceCombobox";
@@ -180,6 +180,12 @@ export default function SurveyDetail() {
               )}
               {c.phone && <span className="flex items-center gap-1"><User className="h-3.5 w-3.5" />{c.phone}</span>}
               {c.address && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{c.province || c.address}</span>}
+              {s.installationDate && (
+                <span className="flex items-center gap-1 text-green-700">
+                  <Wrench className="h-3.5 w-3.5" />
+                  นัดติดตั้ง: {new Date(s.installationDate).toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" })}
+                </span>
+              )}
             </div>
           </div>
           <div className="flex gap-2 shrink-0">

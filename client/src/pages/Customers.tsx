@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import { SourceCombobox } from "@/components/SourceCombobox";
 import { useState, useMemo, useCallback } from "react";
+import { StatusDropdown } from "@/components/StatusDropdown";
 import { useLocation } from "wouter";
 import {
   Users, Plus, Search, Phone, MapPin, ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Trash2, Eye,
@@ -377,6 +378,7 @@ export default function Customers() {
                 onToggleSelectAll={toggleSelectAll}
                 allSelected={allSelected}
                 someSelected={someSelected}
+                onRefetch={refetch}
               />
             ) : (
               <CustomerGridView
@@ -389,6 +391,7 @@ export default function Customers() {
                 onToggleSelectAll={toggleSelectAll}
                 allSelected={allSelected}
                 someSelected={someSelected}
+                onRefetch={refetch}
               />
             )}
             {totalPages > 1 && (
@@ -481,9 +484,10 @@ interface TableViewProps {
   onToggleSelectAll: () => void;
   allSelected: boolean;
   someSelected: boolean;
+  onRefetch: () => void;
 }
 
-function CustomerTableView({ data, onRowClick, onEdit, onDelete, selectedIds, onToggleSelect, onToggleSelectAll, allSelected, someSelected }: TableViewProps) {
+function CustomerTableView({ data, onRowClick, onEdit, onDelete, selectedIds, onToggleSelect, onToggleSelectAll, allSelected, someSelected, onRefetch }: TableViewProps) {
   return (
     <div className="border rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
@@ -580,8 +584,17 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete, selectedIds, on
                   <td className="px-3 py-2.5 whitespace-nowrap hidden xl:table-cell text-muted-foreground text-xs">
                     {new Date(c.createdAt).toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "2-digit" })}
                   </td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">
-                    <SurveyStatusBadge status={c.surveyStatus} />
+                  <td className="px-3 py-2.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    <StatusDropdown
+                      type="customer"
+                      entityId={c.id}
+                      currentStatusId={c.statusId || null}
+                      currentCustomStatus={c.customStatus || null}
+                      fallbackLabel={STATUS_CONFIG[c.surveyStatus]?.label || "ยังไม่นัดสำรวจ"}
+                      fallbackColor={STATUS_FALLBACK_COLORS[c.surveyStatus]?.color}
+                      fallbackBgColor={STATUS_FALLBACK_COLORS[c.surveyStatus]?.bg}
+                      onStatusChanged={onRefetch}
+                    />
                   </td>
                   <td className="px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
@@ -613,7 +626,7 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete, selectedIds, on
   );
 }
 
-/* ==================== SURVEY STATUS BADGE ==================== */
+/* ==================== STATUS CONFIG ==================== */
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   no_survey: { label: "ยังไม่นัดสำรวจ", className: "bg-gray-100 text-gray-700 border-gray-200" },
   pending: { label: "รอดำเนินการ", className: "bg-yellow-50 text-yellow-700 border-yellow-200" },
@@ -623,17 +636,17 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   lost: { label: "ไม่สำเร็จ", className: "bg-red-50 text-red-700 border-red-200" },
 };
 
-function SurveyStatusBadge({ status }: { status?: string }) {
-  const config = STATUS_CONFIG[status || "no_survey"] || STATUS_CONFIG.no_survey;
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${config.className}`}>
-      {config.label}
-    </span>
-  );
-}
+const STATUS_FALLBACK_COLORS: Record<string, { color: string; bg: string }> = {
+  no_survey: { color: "#78716c", bg: "#f5f5f4" },
+  pending: { color: "#d97706", bg: "#fffbeb" },
+  scheduled: { color: "#1d4ed8", bg: "#eff6ff" },
+  surveyed: { color: "#4338ca", bg: "#eef2ff" },
+  won: { color: "#15803d", bg: "#dcfce7" },
+  lost: { color: "#dc2626", bg: "#fef2f2" },
+};
 
 /* ==================== GRID VIEW ==================== */
-function CustomerGridView({ data, onRowClick, onEdit, onDelete, selectedIds, onToggleSelect, onToggleSelectAll, allSelected, someSelected }: TableViewProps) {
+function CustomerGridView({ data, onRowClick, onEdit, onDelete, selectedIds, onToggleSelect, onToggleSelectAll, allSelected, someSelected, onRefetch }: TableViewProps) {
   return (
     <div className="space-y-3">
       {/* Select all bar for grid view */}
@@ -710,8 +723,17 @@ function CustomerGridView({ data, onRowClick, onEdit, onDelete, selectedIds, onT
                     </div>
                   )}
                 </div>
-                <div className="mt-2">
-                  <SurveyStatusBadge status={customer.surveyStatus} />
+                <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                  <StatusDropdown
+                    type="customer"
+                    entityId={customer.id}
+                    currentStatusId={customer.statusId || null}
+                    currentCustomStatus={customer.customStatus || null}
+                    fallbackLabel={STATUS_CONFIG[customer.surveyStatus]?.label || "ยังไม่นัดสำรวจ"}
+                    fallbackColor={STATUS_FALLBACK_COLORS[customer.surveyStatus]?.color}
+                    fallbackBgColor={STATUS_FALLBACK_COLORS[customer.surveyStatus]?.bg}
+                    onStatusChanged={onRefetch}
+                  />
                 </div>
               </CardContent>
             </Card>

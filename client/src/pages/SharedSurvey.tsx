@@ -6,7 +6,7 @@ import { useParams } from "wouter";
 import { useState } from "react";
 import {
   Camera, MapPin, Calendar, Phone, Mail, Zap, Home, Gauge,
-  X, Image, Sun,
+  X, Image, Sun, Wrench,
 } from "lucide-react";
 
 export default function SharedSurvey() {
@@ -79,7 +79,7 @@ export default function SharedSurvey() {
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold">ข้อมูลลูกค้า</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant="secondary" className={`${statusInfo.bg} ${statusInfo.color} text-xs border-0`}>{statusInfo.label}</Badge>
                 {s.scheduledDate && (
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -88,6 +88,14 @@ export default function SharedSurvey() {
                   </span>
                 )}
               </div>
+              {s.installationDate && (
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant="secondary" className="bg-green-50 text-green-700 text-xs border-0">
+                    <Wrench className="h-3 w-3 mr-1" />
+                    นัดติดตั้ง: {new Date(s.installationDate).toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" })}
+                  </Badge>
+                </div>
+              )}
               {c.phone && <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" />{c.phone}</div>}
               {c.email && <div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" />{c.email}</div>}
               {c.address && (

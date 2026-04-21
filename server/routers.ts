@@ -247,6 +247,8 @@ const surveyRouter = router({
       adminSenderId: z.number().nullable().optional(),
       surveyorIds: z.array(z.number()).optional(),
       closerId: z.number().nullable().optional(),
+      statusId: z.number().nullable().optional(),
+      installationDate: z.number().nullable().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const { id, surveyorIds, ...data } = input;
@@ -553,7 +555,75 @@ const calendarRouter = router({
     .query(({ input }) => db.getCalendarEvents(input.startDate, input.endDate)),
 });
 
-// ==================== STORAGE ROUTER ====================
+// ==================== CUSTOM STATUS ROUTER ====================
+const customStatusRouter = router({
+  list: protectedProcedure
+    .input(z.object({ type: z.enum(["customer", "survey"]).optional() }).optional())
+    .query(({ input }) => db.getCustomStatuses(input?.type)),
+
+  create: protectedProcedure
+    .input(z.object({
+      type: z.enum(["customer", "survey"]),
+      label: z.string().min(1),
+      color: z.string().optional(),
+      bgColor: z.string().optional(),
+      sortOrder: z.number().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await db.createCustomStatus(input);
+      await db.logActivity({ userId: ctx.user.id, action: "create", entityType: "custom_status", entityId: result.id, details: `สร้างสถานะ: ${input.label} (${input.type})` });
+      return result;
+    }),
+
+  update: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      label: z.string().optional(),
+      color: z.string().optional(),
+      bgColor: z.string().optional(),
+      sortOrder: z.number().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const { id, ...data } = input;
+      await db.updateCustomStatus(id, data);
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "custom_status", entityId: id, details: `แก้ไขสถานะ ID: ${id}` });
+      return { success: true };
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      await db.deleteCustomStatus(input.id);
+      await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "custom_status", entityId: input.id, details: `ลบสถานะ ID: ${input.id}` });
+      return { success: true };
+    }),
+
+  updateCustomerStatus: protectedProcedure
+    .input(z.object({ customerId: z.number(), statusId: z.number().nullable() }))
+    .mutation(async ({ input, ctx }) => {
+      await db.updateCustomerStatus(input.customerId, input.statusId);
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "customer", entityId: input.customerId, details: `เปลี่ยนสถานะลูกค้า ID: ${input.customerId}` });
+      return { success: true };
+    }),
+
+  updateSurveyStatus: protectedProcedure
+    .input(z.object({ surveyId: z.number(), statusId: z.number().nullable() }))
+    .mutation(async ({ input, ctx }) => {
+      await db.updateSurveyStatus(input.surveyId, input.statusId);
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "survey", entityId: input.surveyId, details: `เปลี่ยนสถานะงานสำรวจ ID: ${input.surveyId}` });
+      return { success: true };
+    }),
+
+  updateInstallationDate: protectedProcedure
+    .input(z.object({ surveyId: z.number(), installationDate: z.number().nullable() }))
+    .mutation(async ({ input, ctx }) => {
+      await db.updateSurveyInstallationDate(input.surveyId, input.installationDate);
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "survey", entityId: input.surveyId, details: `อัพเดทวันที่นัดติดตั้ง งาน ID: ${input.surveyId}` });
+      return { success: true };
+    }),
+});
+
+// ==================== STORAGE ROUTER ==
 const storageRouter = router({
   stats: protectedProcedure.query(() => db.getStorageStats()),
 });
@@ -756,6 +826,7 @@ export const appRouter = router({
   assignment: assignmentRouter,
   teamMember: teamMemberRouter,
   teamPerformance: teamPerformanceRouter,
+  customStatus: customStatusRouter,
 });
 
 export type AppRouter = typeof appRouter;

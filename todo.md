@@ -312,3 +312,27 @@
 ## User Request - Round 17: ซ่อนเอกสารในหน้า Share Link สาธารณะ
 - [x] ซ่อนส่วน "เอกสาร" ในหน้า share link สาธารณะ ไม่ให้คนนอกเห็น
 - [x] คนในระบบ (login แล้ว) ยังเห็นเอกสารเหมือนเดิม (หน้า SurveyDetail ไม่เปลี่ยน)
+
+## User Request - Round 18: ระบบจัดการสถานะที่กำหนดเองได้ + วันที่นัดติดตั้ง
+- [x] สร้างตาราง custom_statuses ใน DB (type: customer/survey, label, color, sortOrder)
+- [x] Seed ค่าเริ่มต้นสถานะลูกค้า: ยังไม่นัดสำรวจ, นัดสำรวจแล้ว, สำรวจเสร็จ, ปิดการขาย
+- [x] Seed ค่าเริ่มต้นสถานะงานสำรวจ: นัดสำรวจแล้ว, สำรวจเสร็จ, ปิดการขาย
+- [x] เพิ่มคอลัมน์ statusId ในตาราง customers (FK → custom_statuses)
+- [x] เพิ่มคอลัมน์ statusId ในตาราง surveys (FK → custom_statuses)
+- [x] เพิ่มคอลัมน์ installationDate ในตาราง surveys (วันที่นัดติดตั้ง)
+- [x] Backend: CRUD สถานะ (เพิ่ม/ลบ/แก้ไข) แยกตาม type
+- [x] Backend: API เปลี่ยนสถานะลูกค้า (customer.updateStatus)
+- [x] Backend: API เปลี่ยนสถานะงานสำรวจ (survey.updateStatus)
+- [x] Backend: API อัพเดท installationDate
+- [x] หน้าลูกค้า: คอลัมน์สถานะกดเปลี่ยนได้เลย (dropdown inline)
+- [x] หน้าลูกค้า: filter สถานะใช้จาก custom_statuses
+- [x] หน้างานสำรวจ: คอลัมน์สถานะกดเปลี่ยนได้เลย (dropdown inline)
+- [x] หน้างานสำรวจ: เมื่อเลือกสถานะ "ปิดการขาย" ให้แสดง date picker ลงวันที่นัดติดตั้ง
+- [x] หน้า SurveyDetail: แสดงวันที่นัดติดตั้ง
+- [x] หน้า SharedSurvey: แสดงวันที่นัดติดตั้ง (ถ้ามี)
+- [x] หน้าจัดการสถานะ: เพิ่ม/ลบ/แก้ไขคำสถานะได้ (แยก customer/survey)
+- [x] เขียน tests สำหรับ custom statuses CRUD + status update + installationDate (14 tests ผ่าน)
+
+### Round 18 Gaps - ต้องแก้ไขเพิ่ม
+- [x] หน้า SurveyDetail: เพิ่มการแสดงผล installationDate ในหน้ารายละเอียดงานสำรวจ
+- [x] Backend: getSurveyWithCustomer return installationDate ไปยัง SharedSurvey (อยู่ใน surveys table แล้ว - return ทั้ง row)

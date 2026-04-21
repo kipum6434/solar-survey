@@ -7,7 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
 import { SURVEY_STATUS_MAP } from "@/lib/constants";
+import { StatusDropdown } from "@/components/StatusDropdown";
 import { useState, useMemo, useCallback } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import {
@@ -78,7 +80,13 @@ export default function Surveys() {
     year: filterByMonth ? selectedYear : undefined,
   }), [search, statusFilter, sourceFilter, surveyorFilter, adminSenderFilter, closerFilter, districtFilter, provinceFilter, page, filterByMonth, selectedMonth, selectedYear]);
 
-  const { data, isLoading } = trpc.survey.list.useQuery(queryInput);
+  const { data, isLoading, refetch } = trpc.survey.list.useQuery(queryInput);
+
+  // Installation date mutation
+  const updateInstallationDate = trpc.customStatus.updateInstallationDate.useMutation({
+    onSuccess: () => { toast.success("บันทึกวันที่นัดติดตั้งสำเร็จ"); refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
   const totalPages = Math.ceil((data?.total ?? 0) / 50);
 
   // Export Excel query
@@ -348,9 +356,9 @@ export default function Surveys() {
         ) : data?.data && data.data.length > 0 ? (
           <>
             {viewMode === "table" ? (
-              <SurveyTableView data={data.data} onRowClick={(id) => setLocation(`/surveys/${id}`)} />
+              <SurveyTableView data={data.data} onRowClick={(id) => setLocation(`/surveys/${id}`)} onRefetch={refetch} onUpdateInstallationDate={(surveyId, date) => updateInstallationDate.mutate({ surveyId, installationDate: date })} />
             ) : (
-              <SurveyListView data={data.data} onRowClick={(id) => setLocation(`/surveys/${id}`)} />
+              <SurveyListView data={data.data} onRowClick={(id) => setLocation(`/surveys/${id}`)} onRefetch={refetch} onUpdateInstallationDate={(surveyId, date) => updateInstallationDate.mutate({ surveyId, installationDate: date })} />
             )}
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-2 pt-4">
@@ -375,8 +383,78 @@ export default function Surveys() {
   );
 }
 
+/* ==================== SURVEY STATUS FALLBACK COLORS ==================== */
+const SURVEY_STATUS_FALLBACK: Record<string, { color: string; bg: string }> = {
+  pending: { color: "#78716c", bg: "#f5f5f4" },
+  scheduled: { color: "#1d4ed8", bg: "#eff6ff" },
+  in_progress: { color: "#d97706", bg: "#fffbeb" },
+  surveyed: { color: "#059669", bg: "#ecfdf5" },
+  quoted: { color: "#7c3aed", bg: "#f5f3ff" },
+  negotiating: { color: "#ea580c", bg: "#fff7ed" },
+  won: { color: "#15803d", bg: "#dcfce7" },
+  lost: { color: "#dc2626", bg: "#fef2f2" },
+  cancelled: { color: "#6b7280", bg: "#f3f4f6" },
+};
+
+/* ==================== INSTALLATION DATE CELL ==================== */
+function InstallationDateCell({ surveyId, currentDate, onUpdate }: { surveyId: number; currentDate: number | null; onUpdate: (surveyId: number, date: number | null) => void }) {
+  const [dateStr, setDateStr] = useState(currentDate ? new Date(currentDate).toISOString().split("T")[0] : "");
+  const [open, setOpen] = useState(false);
+
+  const handleSave = () => {
+    if (dateStr) {
+      onUpdate(surveyId, new Date(dateStr).getTime());
+    } else {
+      onUpdate(surveyId, null);
+    }
+    setOpen(false);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {currentDate
+            ? new Date(currentDate).toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "2-digit" })
+            : <span className="text-muted-foreground/50">-</span>}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-3" align="start" onClick={(e) => e.stopPropagation()}>
+        <div className="space-y-2">
+          <p className="text-xs font-medium">วันที่นัดติดตั้ง</p>
+          <input
+            type="date"
+            value={dateStr}
+            onChange={(e) => setDateStr(e.target.value)}
+            className="border rounded px-2 py-1 text-xs w-full"
+          />
+          <div className="flex gap-2">
+            <button
+              className="flex-1 text-xs bg-primary text-primary-foreground rounded px-2 py-1 hover:bg-primary/90"
+              onClick={handleSave}
+            >
+              บันทึก
+            </button>
+            {currentDate && (
+              <button
+                className="text-xs text-destructive hover:underline"
+                onClick={() => { onUpdate(surveyId, null); setOpen(false); }}
+              >
+                ลบ
+              </button>
+            )}
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 /* ==================== TABLE VIEW ==================== */
-function SurveyTableView({ data, onRowClick }: { data: any[]; onRowClick: (id: number) => void }) {
+function SurveyTableView({ data, onRowClick, onRefetch, onUpdateInstallationDate }: { data: any[]; onRowClick: (id: number) => void; onRefetch: () => void; onUpdateInstallationDate: (surveyId: number, date: number | null) => void }) {
   return (
     <div className="border rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
@@ -393,6 +471,7 @@ function SurveyTableView({ data, onRowClick }: { data: any[]; onRowClick: (id: n
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">คนส่งสำรวจ</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">คนปิดการขาย</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">สถานะ</th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">วันนัดติดตั้ง</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">หมายเหตุ</th>
             </tr>
           </thead>
@@ -445,10 +524,24 @@ function SurveyTableView({ data, onRowClick }: { data: any[]; onRowClick: (id: n
                   <td className="px-3 py-2.5 whitespace-nowrap hidden xl:table-cell text-muted-foreground text-xs">
                     {closers || "-"}
                   </td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">
-                    <Badge variant="secondary" className={`${statusInfo.bg} ${statusInfo.color} text-[10px] font-medium border-0`}>
-                      {statusInfo.label}
-                    </Badge>
+                  <td className="px-3 py-2.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    <StatusDropdown
+                      type="survey"
+                      entityId={s.id}
+                      currentStatusId={s.statusId || null}
+                      currentCustomStatus={item.customStatus || null}
+                      fallbackLabel={statusInfo.label}
+                      fallbackColor={SURVEY_STATUS_FALLBACK[s.status]?.color}
+                      fallbackBgColor={SURVEY_STATUS_FALLBACK[s.status]?.bg}
+                      onStatusChanged={onRefetch}
+                    />
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap hidden xl:table-cell" onClick={(e) => e.stopPropagation()}>
+                    <InstallationDateCell
+                      surveyId={s.id}
+                      currentDate={s.installationDate || null}
+                      onUpdate={onUpdateInstallationDate}
+                    />
                   </td>
                   <td className="px-3 py-2.5 max-w-[200px] truncate hidden xl:table-cell text-muted-foreground text-xs">
                     {s.surveyNotes || "-"}
@@ -464,7 +557,7 @@ function SurveyTableView({ data, onRowClick }: { data: any[]; onRowClick: (id: n
 }
 
 /* ==================== LIST VIEW (original) ==================== */
-function SurveyListView({ data, onRowClick }: { data: any[]; onRowClick: (id: number) => void }) {
+function SurveyListView({ data, onRowClick, onRefetch, onUpdateInstallationDate }: { data: any[]; onRowClick: (id: number) => void; onRefetch: () => void; onUpdateInstallationDate: (surveyId: number, date: number | null) => void }) {
   return (
     <div className="space-y-3">
       {data.map((item: any) => {
@@ -486,9 +579,23 @@ function SurveyListView({ data, onRowClick }: { data: any[]; onRowClick: (id: nu
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-sm">{c.name}</span>
                     <span className="text-xs text-muted-foreground">#{s.id}</span>
-                    <Badge variant="secondary" className={`${statusInfo.bg} ${statusInfo.color} text-[10px] font-medium border-0`}>
-                      {statusInfo.label}
-                    </Badge>
+                    <span onClick={(e) => e.stopPropagation()}>
+                      <StatusDropdown
+                        type="survey"
+                        entityId={s.id}
+                        currentStatusId={s.statusId || null}
+                        currentCustomStatus={item.customStatus || null}
+                        fallbackLabel={statusInfo.label}
+                        fallbackColor={SURVEY_STATUS_FALLBACK[s.status]?.color}
+                        fallbackBgColor={SURVEY_STATUS_FALLBACK[s.status]?.bg}
+                        onStatusChanged={onRefetch}
+                      />
+                    </span>
+                    {s.installationDate && (
+                      <span className="text-[10px] text-green-700 bg-green-50 px-1.5 py-0.5 rounded-full">
+                        นัดติดตั้ง: {new Date(s.installationDate).toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "2-digit" })}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-4 mt-1.5 text-xs text-muted-foreground flex-wrap">
                     {s.scheduledDate && (

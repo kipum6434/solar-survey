@@ -678,3 +678,148 @@ describe("Round 14D: District/Province filters", () => {
     expect(result.data.length).toBeGreaterThan(0);
   }, 10000);
 });
+
+
+// ==================== ROUND 18: CUSTOM STATUS TESTS ====================
+describe("Custom Status Management", () => {
+  it("should create a customer custom status", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    const result = await adminCaller.customStatus.create({
+      type: "customer",
+      label: "ลูกค้าใหม่",
+      color: "#2563eb",
+      bgColor: "#eff6ff",
+    });
+    expect(result).toBeDefined();
+    expect(result.id).toBeGreaterThan(0);
+  });
+
+  it("should create a survey custom status", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    const result = await adminCaller.customStatus.create({
+      type: "survey",
+      label: "รอเสนอราคา",
+      color: "#7c3aed",
+      bgColor: "#f5f3ff",
+    });
+    expect(result).toBeDefined();
+    expect(result.id).toBeGreaterThan(0);
+  });
+
+  it("should list custom statuses by type", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    // Create both types
+    await adminCaller.customStatus.create({ type: "customer", label: "R18 Customer Status" });
+    await adminCaller.customStatus.create({ type: "survey", label: "R18 Survey Status" });
+
+    const customerStatuses = await adminCaller.customStatus.list({ type: "customer" });
+    expect(customerStatuses.length).toBeGreaterThan(0);
+    customerStatuses.forEach((s: any) => expect(s.type).toBe("customer"));
+
+    const surveyStatuses = await adminCaller.customStatus.list({ type: "survey" });
+    expect(surveyStatuses.length).toBeGreaterThan(0);
+    surveyStatuses.forEach((s: any) => expect(s.type).toBe("survey"));
+  });
+
+  it("should list all custom statuses without type filter", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    const allStatuses = await adminCaller.customStatus.list();
+    expect(allStatuses.length).toBeGreaterThan(0);
+  });
+
+  it("should update a custom status label and color", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    const created = await adminCaller.customStatus.create({ type: "customer", label: "R18 Update Test" });
+    const result = await adminCaller.customStatus.update({ id: created.id, label: "R18 Updated", color: "#dc2626" });
+    expect(result.success).toBe(true);
+  });
+
+  it("should delete a custom status", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    const created = await adminCaller.customStatus.create({ type: "customer", label: "R18 Delete Test" });
+    const result = await adminCaller.customStatus.delete({ id: created.id });
+    expect(result.success).toBe(true);
+  });
+
+  it("should update customer status (statusId)", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    // Create a custom status
+    const status = await adminCaller.customStatus.create({ type: "customer", label: "R18 Assign Test" });
+    // Create a customer
+    const customer = await adminCaller.customer.create({ name: "R18 Status Customer" });
+    // Assign status
+    const result = await adminCaller.customStatus.updateCustomerStatus({ customerId: customer.id, statusId: status.id });
+    expect(result.success).toBe(true);
+  });
+
+  it("should update survey status (statusId)", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    // Create a custom status
+    const status = await adminCaller.customStatus.create({ type: "survey", label: "R18 Survey Assign" });
+    // Create customer + survey
+    const customer = await adminCaller.customer.create({ name: "R18 Survey Status Customer" });
+    const survey = await adminCaller.survey.create({ customerId: customer.id, scheduledDate: Date.now() });
+    // Assign status
+    const result = await adminCaller.customStatus.updateSurveyStatus({ surveyId: survey.id, statusId: status.id });
+    expect(result.success).toBe(true);
+  });
+
+  it("should clear customer status (set to null)", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    const customer = await adminCaller.customer.create({ name: "R18 Clear Status" });
+    const result = await adminCaller.customStatus.updateCustomerStatus({ customerId: customer.id, statusId: null });
+    expect(result.success).toBe(true);
+  });
+
+  it("should update installation date for survey", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    const customer = await adminCaller.customer.create({ name: "R18 Install Date Customer" });
+    const survey = await adminCaller.survey.create({ customerId: customer.id, scheduledDate: Date.now() });
+    const installDate = new Date("2026-05-15").getTime();
+    const result = await adminCaller.customStatus.updateInstallationDate({ surveyId: survey.id, installationDate: installDate });
+    expect(result.success).toBe(true);
+  });
+
+  it("should clear installation date (set to null)", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    const customer = await adminCaller.customer.create({ name: "R18 Clear Install" });
+    const survey = await adminCaller.survey.create({ customerId: customer.id, scheduledDate: Date.now() });
+    const result = await adminCaller.customStatus.updateInstallationDate({ surveyId: survey.id, installationDate: null });
+    expect(result.success).toBe(true);
+  });
+
+  it("should return customStatus in customer list when statusId is set", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    const status = await adminCaller.customStatus.create({ type: "customer", label: "R18 List Check", color: "#059669", bgColor: "#ecfdf5" });
+    const customer = await adminCaller.customer.create({ name: "R18 CustomStatus List" });
+    await adminCaller.customStatus.updateCustomerStatus({ customerId: customer.id, statusId: status.id });
+    const list = await adminCaller.customer.list({ page: 1, limit: 100, search: "R18 CustomStatus List" });
+    const found = list.data.find((c: any) => c.id === customer.id);
+    expect(found).toBeDefined();
+    expect(found.customStatus).toBeDefined();
+    expect(found.customStatus.label).toBe("R18 List Check");
+  }, 10000);
+
+  it("should return customStatus in survey list when statusId is set", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    const status = await adminCaller.customStatus.create({ type: "survey", label: "R18 Survey List Check", color: "#7c3aed", bgColor: "#f5f3ff" });
+    const customer = await adminCaller.customer.create({ name: "R18 Survey CustomStatus" });
+    const survey = await adminCaller.survey.create({ customerId: customer.id, scheduledDate: Date.now() });
+    await adminCaller.customStatus.updateSurveyStatus({ surveyId: survey.id, statusId: status.id });
+    const list = await adminCaller.survey.list({ page: 1, limit: 100 });
+    const found = list.data.find((d: any) => d.survey.id === survey.id);
+    expect(found).toBeDefined();
+    expect(found.customStatus).toBeDefined();
+    expect(found.customStatus.label).toBe("R18 Survey List Check");
+  }, 10000);
+
+  it("should include installationDate in survey data via survey.update", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    const customer = await adminCaller.customer.create({ name: "R18 InstallDate Update" });
+    const survey = await adminCaller.survey.create({ customerId: customer.id, scheduledDate: Date.now() });
+    const installDate = new Date("2026-06-01").getTime();
+    await adminCaller.survey.update({ id: survey.id, installationDate: installDate });
+    const detail = await adminCaller.survey.getById({ id: survey.id });
+    expect(detail.survey.installationDate).toBe(installDate);
+  }, 10000);
+});

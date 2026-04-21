@@ -47,6 +47,7 @@ export const customers = mysqlTable("customers", {
   phaseType: mysqlEnum("phaseType", ["single", "three"]),
   meterSize: varchar("meterSize", { length: 50 }),
   fullAddress: text("fullAddress"),
+  statusId: int("statusId"),
   notes: text("notes"),
   createdBy: int("createdBy"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -86,6 +87,8 @@ export const surveys = mysqlTable("surveys", {
   needBattery: varchar("needBattery", { length: 500 }),
   needOptimizer: varchar("needOptimizer", { length: 500 }),
   systemType: mysqlEnum("systemType", ["string", "micro", "both"]),
+  statusId: int("statusId"),
+  installationDate: bigint("installationDate", { mode: "number" }),
   completedAt: bigint("completedAt", { mode: "number" }),
   createdBy: int("createdBy"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -252,3 +255,18 @@ export const activityLog = mysqlTable("activity_log", {
 
 export type ActivityLog = typeof activityLog.$inferSelect;
 export type InsertActivityLog = typeof activityLog.$inferInsert;
+
+// ==================== CUSTOM STATUSES ====================
+export const customStatuses = mysqlTable("custom_statuses", {
+  id: int("id").autoincrement().primaryKey(),
+  type: mysqlEnum("type", ["customer", "survey"]).notNull(),
+  label: varchar("label", { length: 255 }).notNull(),
+  color: varchar("color", { length: 50 }).default("#6b7280").notNull(),
+  bgColor: varchar("bgColor", { length: 50 }).default("#f3f4f6").notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  isDefault: boolean("isDefault").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CustomStatus = typeof customStatuses.$inferSelect;
+export type InsertCustomStatus = typeof customStatuses.$inferInsert;

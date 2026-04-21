@@ -1,6 +1,6 @@
-import { eq, and, or, like, desc, gte, lte, sql, inArray } from "drizzle-orm";
+import { eq, and, or, like, desc, gte, lte, sql, inArray, asc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember } from "../drizzle/schema";
+import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -156,7 +156,17 @@ export async function getCustomers(opts: { search?: string; page?: number; limit
     filteredData = data.filter(c => statusMap[c.id] === surveyStatus);
   }
 
-  return { data: filteredData.map(c => ({ ...c, surveyStatus: statusMap[c.id] || "no_survey" })), total: surveyStatus ? filteredData.length : (countQ[0]?.count ?? 0) };
+  // Also fetch custom status info for customers that have statusId
+  const statusIds = filteredData.map(c => c.statusId).filter(Boolean) as number[];
+  let customStatusMap: Record<number, { id: number; label: string; color: string; bgColor: string }> = {};
+  if (statusIds.length > 0) {
+    const customStatusData = await db.select().from(customStatuses).where(inArray(customStatuses.id, statusIds));
+    for (const cs of customStatusData) {
+      customStatusMap[cs.id] = { id: cs.id, label: cs.label, color: cs.color, bgColor: cs.bgColor };
+    }
+  }
+
+  return { data: filteredData.map(c => ({ ...c, surveyStatus: statusMap[c.id] || "no_survey", customStatus: c.statusId ? customStatusMap[c.statusId] || null : null })), total: surveyStatus ? filteredData.length : (countQ[0]?.count ?? 0) };
 }
 
 export async function getCustomerDistinctValues() {
@@ -796,7 +806,16 @@ export async function getSurveysWithCustomer(opts: { status?: string; assignedTo
   const countQ = whereClause
     ? await db.select({ count: sql<number>`count(*)` }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(whereClause)
     : await db.select({ count: sql<number>`count(*)` }).from(surveys);
-  return { data: data.map(d => ({ ...d, assignments: assignmentsMap[d.survey.id] || [] })), total: countQ[0]?.count ?? 0 };
+  // Fetch custom status info for surveys that have statusId
+  const surveyStatusIds = data.map(d => d.survey.statusId).filter(Boolean) as number[];
+  let surveyCustomStatusMap: Record<number, { id: number; label: string; color: string; bgColor: string }> = {};
+  if (surveyStatusIds.length > 0) {
+    const customStatusData = await db.select().from(customStatuses).where(inArray(customStatuses.id, surveyStatusIds));
+    for (const cs of customStatusData) {
+      surveyCustomStatusMap[cs.id] = { id: cs.id, label: cs.label, color: cs.color, bgColor: cs.bgColor };
+    }
+  }
+  return { data: data.map(d => ({ ...d, assignments: assignmentsMap[d.survey.id] || [], customStatus: d.survey.statusId ? surveyCustomStatusMap[d.survey.statusId] || null : null })), total: countQ[0]?.count ?? 0 };
 }
 
 // ==================== TEAM MEMBERS QUERIES ====================
@@ -832,4 +851,66 @@ export async function deleteTeamMember(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.delete(teamMembers).where(eq(teamMembers.id, id));
+}
+
+// ==================== CUSTOM STATUSES QUERIES ====================
+export async function getCustomStatuses(type?: "customer" | "survey") {
+  const db = await getDb();
+  if (!db) return [];
+  if (type) {
+    return db.select().from(customStatuses).where(eq(customStatuses.type, type)).orderBy(asc(customStatuses.sortOrder));
+  }
+  return db.select().from(customStatuses).orderBy(asc(customStatuses.sortOrder));
+}
+
+export async function createCustomStatus(data: { type: "customer" | "survey"; label: string; color?: string; bgColor?: string; sortOrder?: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(customStatuses).values({
+    type: data.type,
+    label: data.label,
+    color: data.color || "#6b7280",
+    bgColor: data.bgColor || "#f3f4f6",
+    sortOrder: data.sortOrder || 0,
+  });
+  return { id: result[0].insertId };
+}
+
+export async function updateCustomStatus(id: number, data: { label?: string; color?: string; bgColor?: string; sortOrder?: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const updateSet: Record<string, unknown> = {};
+  if (data.label !== undefined) updateSet.label = data.label;
+  if (data.color !== undefined) updateSet.color = data.color;
+  if (data.bgColor !== undefined) updateSet.bgColor = data.bgColor;
+  if (data.sortOrder !== undefined) updateSet.sortOrder = data.sortOrder;
+  if (Object.keys(updateSet).length === 0) return;
+  await db.update(customStatuses).set(updateSet).where(eq(customStatuses.id, id));
+}
+
+export async function deleteCustomStatus(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  // Clear references in customers and surveys
+  await db.update(customers).set({ statusId: null }).where(eq(customers.statusId, id));
+  await db.update(surveys).set({ statusId: null }).where(eq(surveys.statusId, id));
+  await db.delete(customStatuses).where(eq(customStatuses.id, id));
+}
+
+export async function updateCustomerStatus(customerId: number, statusId: number | null) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(customers).set({ statusId }).where(eq(customers.id, customerId));
+}
+
+export async function updateSurveyStatus(surveyId: number, statusId: number | null) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(surveys).set({ statusId }).where(eq(surveys.id, surveyId));
+}
+
+export async function updateSurveyInstallationDate(surveyId: number, installationDate: number | null) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(surveys).set({ installationDate }).where(eq(surveys.id, surveyId));
 }
