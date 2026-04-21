@@ -48,6 +48,7 @@ export default function SurveyDetail() {
   const createCategory = trpc.photoCategory.create.useMutation({ onSuccess: () => { refetchCategories(); toast.success("เพิ่มประเภทรูปภาพสำเร็จ"); } });
   const deleteCategory = trpc.photoCategory.delete.useMutation({ onSuccess: () => { refetchCategories(); toast.success("ลบประเภทรูปภาพสำเร็จ"); } });
   const [showNewCategory, setShowNewCategory] = useState(false);
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [newCategoryLabel, setNewCategoryLabel] = useState("");
   const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<{ id: number; label: string } | null>(null);
 
@@ -257,37 +258,49 @@ export default function SurveyDetail() {
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <CardTitle className="text-sm font-semibold">รูปภาพหน้างาน</CardTitle>
                   <div className="flex items-center gap-2">
-                    <Select value={photoCategory} onValueChange={(val) => {
-                      if (val === "__new__") {
-                        setShowNewCategory(true);
-                      } else {
-                        setPhotoCategory(val);
-                      }
-                    }}>
-                      <SelectTrigger className="w-[180px] h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(photoCategories || []).map((cat: any) => (
-                          <SelectItem key={cat.key} value={cat.key}>
-                            <span className="flex items-center justify-between w-full gap-2">
-                              <span>{cat.label}</span>
-                              {!cat.isDefault && (
-                                <button
-                                  className="ml-1 text-destructive/60 hover:text-destructive"
-                                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); setConfirmDeleteCategory({ id: cat.id, label: cat.label }); }}
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
-                              )}
-                            </span>
-                          </SelectItem>
-                        ))}
-                        <SelectItem value="__new__" className="text-primary font-medium border-t mt-1 pt-1">
-                          + เพิ่มประเภทใหม่
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
+                        className="flex items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-1.5 text-xs shadow-xs w-[200px] h-8 hover:bg-accent/50 transition-colors"
+                      >
+                        <span className="truncate">{dynamicCategoryMap[photoCategory] || photoCategory}</span>
+                        <svg className="h-3.5 w-3.5 opacity-50 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                      </button>
+                      {categoryDropdownOpen && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setCategoryDropdownOpen(false)} />
+                          <div className="absolute top-full left-0 mt-1 z-50 bg-popover text-popover-foreground border rounded-md shadow-md min-w-[220px] max-h-[300px] overflow-y-auto p-1">
+                            {(photoCategories || []).map((cat: any) => (
+                              <div
+                                key={cat.key}
+                                className={`flex items-center justify-between gap-1 rounded-sm px-2 py-1.5 text-xs cursor-pointer hover:bg-accent hover:text-accent-foreground ${photoCategory === cat.key ? 'bg-accent/60 font-medium' : ''}`}
+                                onClick={() => { setPhotoCategory(cat.key); setCategoryDropdownOpen(false); }}
+                              >
+                                <span className="truncate">{cat.label}</span>
+                                {!cat.isDefault && (
+                                  <button
+                                    type="button"
+                                    className="shrink-0 p-0.5 rounded text-destructive/50 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                    onClick={(e) => { e.stopPropagation(); setCategoryDropdownOpen(false); setConfirmDeleteCategory({ id: cat.id, label: cat.label }); }}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                            <div className="border-t mt-1 pt-1">
+                              <div
+                                className="flex items-center gap-1 rounded-sm px-2 py-1.5 text-xs cursor-pointer text-primary font-medium hover:bg-accent hover:text-accent-foreground"
+                                onClick={() => { setCategoryDropdownOpen(false); setShowNewCategory(true); }}
+                              >
+                                + เพิ่มประเภทใหม่
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
                     <Button size="sm" onClick={() => photoInputRef.current?.click()} className="gap-1.5" disabled={uploadPhoto.isPending}>
                       <Upload className="h-3.5 w-3.5" /> {uploadPhoto.isPending ? "กำลังอัพ..." : "อัพโหลด"}
                     </Button>

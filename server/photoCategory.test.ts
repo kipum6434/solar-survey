@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 
@@ -22,6 +22,20 @@ function createPublicContext(): TrpcContext {
 describe("Photo Category CRUD", () => {
   const adminCaller = appRouter.createCaller(createAdminContext());
   const publicCaller = appRouter.createCaller(createPublicContext());
+
+  // Track all test-created category IDs for cleanup
+  const createdCategoryIds: number[] = [];
+
+  afterAll(async () => {
+    // Cleanup: delete all test-created categories
+    for (const id of createdCategoryIds) {
+      try {
+        await adminCaller.photoCategory.delete({ id });
+      } catch {
+        // Ignore errors (already deleted in tests)
+      }
+    }
+  });
 
   describe("list", () => {
     it("should list photo categories (public)", async () => {
@@ -52,15 +66,18 @@ describe("Photo Category CRUD", () => {
       });
       expect(result).toBeDefined();
       expect(result.id).toBeGreaterThan(0);
+      createdCategoryIds.push(result.id);
     });
 
     it("should appear in list after creation", async () => {
       const uniqueKey = `test_list_${Date.now()}`;
-      await adminCaller.photoCategory.create({
+      const created = await adminCaller.photoCategory.create({
         key: uniqueKey,
         label: "ทดสอบแสดงในรายการ",
         sortOrder: 11,
       });
+      createdCategoryIds.push(created.id);
+
       const categories = await publicCaller.photoCategory.list();
       const found = categories.find((c: any) => c.key === uniqueKey);
       expect(found).toBeDefined();
@@ -76,6 +93,8 @@ describe("Photo Category CRUD", () => {
         label: "ก่อนแก้ไข",
         sortOrder: 12,
       });
+      createdCategoryIds.push(created.id);
+
       await adminCaller.photoCategory.update({
         id: created.id,
         label: "หลังแก้ไข",
@@ -94,6 +113,8 @@ describe("Photo Category CRUD", () => {
         label: "จะลบ",
         sortOrder: 13,
       });
+      // Don't push to createdCategoryIds since we delete it in this test
+
       const result = await adminCaller.photoCategory.delete({ id: created.id });
       expect(result.success).toBe(true);
 

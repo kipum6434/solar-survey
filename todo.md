@@ -407,3 +407,11 @@
 - [x] Frontend SharedSurvey: ใช้ dynamic category labels จาก DB (fallback static)
 - [x] เขียน tests: 8 tests ผ่าน (list, create, update, delete default/non-default, photo upload with dynamic category)
 - [x] ลบ debug-notes.txt
+
+## Bug Fix - Round 26.1: ปุ่มลบประเภทรูปภาพไม่แสดงใน dropdown
+
+- [x] ตรวจสอบ SurveyDetail.tsx dropdown — ปัญหาคือ Radix UI SelectItem มี pointer-events-none บน SVG ทำให้กดปุ่มลบไม่ได้
+- [x] แก้ไข: เปลี่ยนจาก Radix Select เป็น custom dropdown (div-based) ที่รองรับปุ่มลบได้
+- [x] ลบ test data ซ้ำใน DB (จาก vitest ที่ไม่ cleanup)
+- [x] แก้ไข test ให้ cleanup test data หลังรัน (afterAll)
+- [x] ทดสอบ: dropdown แสดงปุ่มลบ (ถังขยะ) ข้างประเภทที่เพิ่มเอง + dialog ยืนยันลบทำงานถูกต้อง
