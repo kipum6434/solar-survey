@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { trpc } from "@/lib/trpc";
 import { SURVEY_STATUS_MAP, PHOTO_CATEGORY_MAP, DOC_TYPE_MAP, FOLLOW_UP_METHOD_MAP } from "@/lib/constants";
 import { useParams, useLocation } from "wouter";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import {
   ArrowLeft, Camera, FileText, PhoneCall, Share2, MapPin, Calendar, User, Pencil,
@@ -528,31 +528,35 @@ export default function SurveyDetail() {
 function EditSurveyDialog({ open, onOpenChange, survey, adminSenders, surveyors, closers, onSubmit, loading, assignments, customStatus, onRefetch }: any) {
   const [form, setForm] = useState<any>({});
   const s = survey;
-  if (!s) return null;
 
-  const handleOpen = () => {
-    const currentAssignments = assignments || [];
-    const adminSender = currentAssignments.find((a: any) => a.assignment.role === "admin_sender");
-    const surveyorsList = currentAssignments.filter((a: any) => a.assignment.role === "surveyor");
-    const closer = currentAssignments.find((a: any) => a.assignment.role === "closer");
-    setForm({
-      status: s.status,
-      scheduledDate: s.scheduledDate ? new Date(s.scheduledDate).toISOString().split("T")[0] : "",
-      scheduledTime: s.scheduledTime || "",
-      adminSenderId: adminSender?.user?.id ? String(adminSender.user.id) : "",
-      surveyorIds: surveyorsList.map((a: any) => a.user?.id).filter(Boolean),
-      closerId: closer?.user?.id ? String(closer.user.id) : "",
-      surveyNotes: s.surveyNotes || "",
-      systemSize: s.systemSize || "",
-      panelCount: s.panelCount ? String(s.panelCount) : "",
-      inverterModel: s.inverterModel || "",
-      panelBrand: s.panelBrand || "",
-      quotedPrice: s.quotedPrice || "",
-      needBattery: s.needBattery || "",
-      needOptimizer: s.needOptimizer || "",
-      systemType: s.systemType || "",
-    });
-  };
+  // Pre-fill form data whenever dialog opens or survey data changes
+  useEffect(() => {
+    if (open && s) {
+      const currentAssignments = assignments || [];
+      const adminSender = currentAssignments.find((a: any) => a.assignment?.role === "admin_sender");
+      const surveyorsList = currentAssignments.filter((a: any) => a.assignment?.role === "surveyor");
+      const closer = currentAssignments.find((a: any) => a.assignment?.role === "closer");
+      setForm({
+        status: s.status,
+        scheduledDate: s.scheduledDate ? new Date(s.scheduledDate).toISOString().split("T")[0] : "",
+        scheduledTime: s.scheduledTime || "",
+        adminSenderId: adminSender?.user?.id ? String(adminSender.user.id) : "",
+        surveyorIds: surveyorsList.map((a: any) => a.user?.id).filter(Boolean),
+        closerId: closer?.user?.id ? String(closer.user.id) : "",
+        surveyNotes: s.surveyNotes || "",
+        systemSize: s.systemSize || "",
+        panelCount: s.panelCount ? String(s.panelCount) : "",
+        inverterModel: s.inverterModel || "",
+        panelBrand: s.panelBrand || "",
+        quotedPrice: s.quotedPrice || "",
+        needBattery: s.needBattery || "",
+        needOptimizer: s.needOptimizer || "",
+        systemType: s.systemType || "",
+      });
+    }
+  }, [open, s, assignments]);
+
+  if (!s) return null;
 
   const surveyorOptions = (surveyors || []).map((m: any) => ({ id: m.id, name: m.name, role: "surveyor" }));
 
@@ -571,7 +575,7 @@ function EditSurveyDialog({ open, onOpenChange, survey, adminSenders, surveyors,
   const statusInfo = SURVEY_STATUS_MAP[s.status] || SURVEY_STATUS_MAP.pending;
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (v) handleOpen(); onOpenChange(v); }}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>แก้ไขงานสำรวจ</DialogTitle>
@@ -645,25 +649,11 @@ function EditSurveyDialog({ open, onOpenChange, survey, adminSenders, surveyors,
             <div><Label>ราคาเสนอ (บาท)</Label><Input value={form.quotedPrice || ""} onChange={(e) => setForm({ ...form, quotedPrice: e.target.value })} /></div>
             <div>
               <Label>แบตเตอรี่</Label>
-              <Select value={form.needBattery || ""} onValueChange={(v) => setForm({ ...form, needBattery: v })}>
-                <SelectTrigger><SelectValue placeholder="เลือก..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="yes">ต้องการ</SelectItem>
-                  <SelectItem value="no">ไม่ต้องการ</SelectItem>
-                  <SelectItem value="undecided">ยังไม่ตัดสินใจ</SelectItem>
-                </SelectContent>
-              </Select>
+              <Input value={form.needBattery || ""} onChange={(e) => setForm({ ...form, needBattery: e.target.value })} placeholder="เช่น 2 ก้อน Tesla Powerwall" />
             </div>
             <div>
               <Label>Optimizer</Label>
-              <Select value={form.needOptimizer || ""} onValueChange={(v) => setForm({ ...form, needOptimizer: v })}>
-                <SelectTrigger><SelectValue placeholder="เลือก..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="yes">ต้องการ</SelectItem>
-                  <SelectItem value="no">ไม่ต้องการ</SelectItem>
-                  <SelectItem value="undecided">ยังไม่ตัดสินใจ</SelectItem>
-                </SelectContent>
-              </Select>
+              <Input value={form.needOptimizer || ""} onChange={(e) => setForm({ ...form, needOptimizer: e.target.value })} placeholder="เช่น 12 ตัว Huawei SUN2000" />
             </div>
             <div>
               <Label>ประเภทระบบ</Label>

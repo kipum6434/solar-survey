@@ -386,3 +386,11 @@
 - [x] EditSurveyDialog: สถานะใน dialog sync กับ StatusDropdown ในตาราง (เปลี่ยนตรงไหนก็ได้)
 - [x] หน้างานสำรวจ (ตาราง): เพิ่มคอลัมน์วันที่สำรวจที่กดแก้ไขได้ (inline date picker)
 - [x] วันที่สำรวจ: sync ระหว่าง dialog แก้ไข กับ inline edit ในตาราง
+
+## Bug Fix - Round 25: EditSurveyDialog ไม่ pre-fill ข้อมูลเดิม
+
+- [ ] EditSurveyDialog: ต้อง pre-fill ข้อมูลเทคนิค (ขนาด kW, จำนวนแผง, ยี่ห้อแผง, inverter, ราคา, แบตเตอรี่, optimizer, ประเภทระบบ, หมายเหตุ)
+- [ ] EditSurveyDialog: ต้อง pre-fill ข้อมูลลูกค้า (ค่าไฟ, ประเภทหลังคา, พื้นที่หลังคา, ระบบไฟ, ขนาดมิเตอร์, ช่องทาง, ที่อยู่, หมายเหตุลูกค้า)
+- [ ] EditSurveyDialog: ต้อง pre-fill ทีมงาน (แอดมินผู้ส่งงาน, ทีมสำรวจ, ผู้ปิดการขาย)
+- [ ] EditSurveyDialog: ต้อง pre-fill วันที่สำรวจ + เวลา
+- [ ] EditSurveyDialog: ต้อง pre-fill สถานะปัจจุบัน
