@@ -85,6 +85,13 @@
       "when": 1776776426911,
       "tag": "0011_windy_gateway",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1776785276342,
+      "tag": "0012_charming_newton_destine",
+      "breakpoints": true
     }
   ]
 }

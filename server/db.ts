@@ -1,6 +1,6 @@
 import { eq, and, or, like, desc, gte, lte, sql, inArray, asc, isNotNull, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus } from "../drizzle/schema";
+import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1151,5 +1151,37 @@ export async function deleteDocument(docId: number) {
   if (!doc) return null;
   await db.delete(surveyDocuments).where(eq(surveyDocuments.id, docId));
   return doc;
+}
+
+// ==================== Photo Categories ====================
+
+export async function getPhotoCategories() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(photoCategories).orderBy(asc(photoCategories.sortOrder), asc(photoCategories.id));
+}
+
+export async function createPhotoCategory(data: InsertPhotoCategory) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(photoCategories).values(data).$returningId();
+  return result;
+}
+
+export async function updatePhotoCategory(id: number, data: Partial<InsertPhotoCategory>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(photoCategories).set(data).where(eq(photoCategories.id, id));
+}
+
+export async function deletePhotoCategory(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // Only allow deleting non-default categories
+  const [cat] = await db.select().from(photoCategories).where(eq(photoCategories.id, id));
+  if (!cat) throw new Error("Category not found");
+  if (cat.isDefault) throw new Error("Cannot delete default category");
+  await db.delete(photoCategories).where(eq(photoCategories.id, id));
+  return cat;
 }
 

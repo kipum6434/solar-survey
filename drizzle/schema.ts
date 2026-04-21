@@ -147,15 +147,7 @@ export const surveyPhotos = mysqlTable("survey_photos", {
   url: text("url").notNull(),
   fileKey: varchar("fileKey", { length: 512 }).notNull(),
   fileName: varchar("fileName", { length: 255 }),
-  category: mysqlEnum("category", [
-    "roof_overview",
-    "roof_detail",
-    "electrical_panel",
-    "meter",
-    "inverter_location",
-    "surroundings",
-    "other"
-  ]).default("other"),
+  category: varchar("category", { length: 100 }).default("other"),
   fileSize: int("fileSize"),
   caption: text("caption"),
   uploadedBy: int("uploadedBy"),
@@ -271,3 +263,15 @@ export const customStatuses = mysqlTable("custom_statuses", {
 
 export type CustomStatus = typeof customStatuses.$inferSelect;
 export type InsertCustomStatus = typeof customStatuses.$inferInsert;
+// ==================== PHOTO CATEGORIES ====================
+export const photoCategories = mysqlTable("photo_categories", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 100 }).notNull().unique(),
+  label: varchar("label", { length: 255 }).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  isDefault: boolean("isDefault").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PhotoCategory = typeof photoCategories.$inferSelect;
+export type InsertPhotoCategory = typeof photoCategories.$inferInsert;

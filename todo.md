@@ -389,8 +389,21 @@
 
 ## Bug Fix - Round 25: EditSurveyDialog ไม่ pre-fill ข้อมูลเดิม
 
-- [ ] EditSurveyDialog: ต้อง pre-fill ข้อมูลเทคนิค (ขนาด kW, จำนวนแผง, ยี่ห้อแผง, inverter, ราคา, แบตเตอรี่, optimizer, ประเภทระบบ, หมายเหตุ)
-- [ ] EditSurveyDialog: ต้อง pre-fill ข้อมูลลูกค้า (ค่าไฟ, ประเภทหลังคา, พื้นที่หลังคา, ระบบไฟ, ขนาดมิเตอร์, ช่องทาง, ที่อยู่, หมายเหตุลูกค้า)
-- [ ] EditSurveyDialog: ต้อง pre-fill ทีมงาน (แอดมินผู้ส่งงาน, ทีมสำรวจ, ผู้ปิดการขาย)
-- [ ] EditSurveyDialog: ต้อง pre-fill วันที่สำรวจ + เวลา
-- [ ] EditSurveyDialog: ต้อง pre-fill สถานะปัจจุบัน
+- [x] EditSurveyDialog: ต้อง pre-fill ข้อมูลเทคนิค (ขนาด kW, จำนวนแผง, ยี่ห้อแผง, inverter, ราคา, แบตเตอรี่, optimizer, ประเภทระบบ, หมายเหตุ)
+- [x] EditSurveyDialog: ต้อง pre-fill ข้อมูลลูกค้า (ค่าไฟ, ประเภทหลังคา, พื้นที่หลังคา, ระบบไฟ, ขนาดมิเตอร์, ช่องทาง, ที่อยู่, หมายเหตุลูกค้า)
+- [x] EditSurveyDialog: ต้อง pre-fill ทีมงาน (แอดมินผู้ส่งงาน, ทีมสำรวจ, ผู้ปิดการขาย)
+- [x] EditSurveyDialog: ต้อง pre-fill วันที่สำรวจ + เวลา
+- [x] EditSurveyDialog: ต้อง pre-fill สถานะปัจจุบัน
+
+## User Request - Round 26: ประเภทรูปภาพจัดการได้เอง
+
+- [x] Schema: เพิ่ม photo_categories table (key, label, sortOrder, isDefault) + เปลี่ยน survey_photos.category จาก ENUM เป็น VARCHAR(100)
+- [x] Migration: 0012_charming_newton_destine.sql applied + seed 7 default categories
+- [x] Backend: เพิ่ม CRUD functions ใน db.ts (getPhotoCategories, createPhotoCategory, updatePhotoCategory, deletePhotoCategory)
+- [x] Backend: เพิ่ม photoCategoryRouter ใน routers.ts (list/create/update/delete) - list เป็น publicProcedure
+- [x] Backend: เปลี่ยน photo.upload category จาก z.enum เป็น z.string() รองรับ category อะไรก็ได้
+- [x] Frontend SurveyDetail: dropdown ประเภทรูปภาพดึงจาก DB + ปุ่ม "เพิ่มประเภทใหม่" + ปุ่มลบ (เฉพาะ non-default)
+- [x] Frontend FileManagement: ใช้ dynamic category labels จาก DB (fallback static)
+- [x] Frontend SharedSurvey: ใช้ dynamic category labels จาก DB (fallback static)
+- [x] เขียน tests: 8 tests ผ่าน (list, create, update, delete default/non-default, photo upload with dynamic category)
+- [x] ลบ debug-notes.txt

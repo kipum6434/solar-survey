@@ -51,7 +51,8 @@ function formatDate(d: Date | string | null): string {
   });
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
+// Static fallback + document types (always static)
+const STATIC_CATEGORY_LABELS: Record<string, string> = {
   roof_overview: "ภาพรวมหลังคา",
   roof_detail: "รายละเอียดหลังคา",
   electrical_panel: "ตู้ไฟ",
@@ -86,6 +87,15 @@ export default function FileManagement() {
     }, 300);
     setSearchTimer(timer);
   };
+
+  // Dynamic photo categories from DB
+  const { data: photoCategories } = trpc.photoCategory.list.useQuery();
+  const categoryLabels: Record<string, string> = { ...STATIC_CATEGORY_LABELS };
+  if (photoCategories) {
+    for (const cat of photoCategories) {
+      categoryLabels[cat.key] = cat.label;
+    }
+  }
 
   const { data: stats } = trpc.storage.stats.useQuery();
   const { data: filesData, isLoading, refetch } = trpc.storage.listFiles.useQuery({
@@ -317,7 +327,7 @@ export default function FileManagement() {
                             </span>
                           </td>
                           <td className="p-3 text-muted-foreground">
-                            {CATEGORY_LABELS[file.category || ""] || file.category || "-"}
+                            {categoryLabels[file.category || ""] || file.category || "-"}
                           </td>
                           <td className="p-3">
                             <div>{file.customerName}</div>

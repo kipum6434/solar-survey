@@ -329,7 +329,7 @@ const photoRouter = router({
       surveyId: z.number(),
       customerId: z.number(),
       fileName: z.string(),
-      category: z.enum(["roof_overview", "roof_detail", "electrical_panel", "meter", "inverter_location", "surroundings", "other"]).optional(),
+      category: z.string().optional(),
       caption: z.string().optional(),
       base64Data: z.string(),
       mimeType: z.string().default("image/jpeg"),
@@ -921,6 +921,45 @@ const installationRouter = router({
     }),
 });
 
+// ==================== PHOTO CATEGORY ROUTER ====================
+const photoCategoryRouter = router({
+  list: publicProcedure
+    .query(() => db.getPhotoCategories()),
+
+  create: protectedProcedure
+    .input(z.object({
+      key: z.string().min(1),
+      label: z.string().min(1),
+      sortOrder: z.number().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await db.createPhotoCategory({ ...input, isDefault: false });
+      await db.logActivity({ userId: ctx.user.id, action: "create", entityType: "photo_category", entityId: result.id, details: `สร้างประเภทรูปภาพ: ${input.label}` });
+      return result;
+    }),
+
+  update: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      label: z.string().optional(),
+      sortOrder: z.number().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const { id, ...data } = input;
+      await db.updatePhotoCategory(id, data);
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "photo_category", entityId: id, details: `แก้ไขประเภทรูปภาพ ID: ${id}` });
+      return { success: true };
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      await db.deletePhotoCategory(input.id);
+      await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "photo_category", entityId: input.id, details: `ลบประเภทรูปภาพ ID: ${input.id}` });
+      return { success: true };
+    }),
+});
+
 // ==================== APP ROUTER ====================
 export const appRouter = router({
   system: systemRouter,
@@ -949,6 +988,7 @@ export const appRouter = router({
   teamPerformance: teamPerformanceRouter,
   customStatus: customStatusRouter,
   installation: installationRouter,
+  photoCategory: photoCategoryRouter,
 });
 
 export type AppRouter = typeof appRouter;

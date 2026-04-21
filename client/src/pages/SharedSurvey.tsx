@@ -12,7 +12,16 @@ import {
 export default function SharedSurvey() {
   const params = useParams<{ token: string }>();
   const { data, isLoading, error } = trpc.shareLink.getByToken.useQuery({ token: params.token || "" });
+  const { data: photoCategories } = trpc.photoCategory.list.useQuery();
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
+
+  // Build dynamic category map from DB, fallback to static
+  const categoryMap: Record<string, string> = { ...PHOTO_CATEGORY_MAP };
+  if (photoCategories) {
+    for (const cat of photoCategories) {
+      categoryMap[cat.key] = cat.label;
+    }
+  }
 
   if (isLoading) {
     return (
@@ -140,7 +149,7 @@ export default function SharedSurvey() {
                     <img src={photo.url} alt={photo.caption || ""} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
                       <Badge variant="secondary" className="text-[9px] bg-white/80 text-foreground">
-                        {PHOTO_CATEGORY_MAP[photo.category] || photo.category}
+                        {categoryMap[photo.category] || photo.category}
                       </Badge>
                     </div>
                   </div>

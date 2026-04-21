@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
 import { SURVEY_STATUS_MAP, PHOTO_CATEGORY_MAP, DOC_TYPE_MAP, FOLLOW_UP_METHOD_MAP } from "@/lib/constants";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useParams, useLocation } from "wouter";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
@@ -43,6 +44,21 @@ export default function SurveyDetail() {
   const { data: teamAdminSenders } = trpc.teamMember.list.useQuery({ role: "admin_sender" });
   const { data: teamSurveyors } = trpc.teamMember.list.useQuery({ role: "surveyor" });
   const { data: teamClosers } = trpc.teamMember.list.useQuery({ role: "closer" });
+  const { data: photoCategories, refetch: refetchCategories } = trpc.photoCategory.list.useQuery();
+  const createCategory = trpc.photoCategory.create.useMutation({ onSuccess: () => { refetchCategories(); toast.success("เพิ่มประเภทรูปภาพสำเร็จ"); } });
+  const deleteCategory = trpc.photoCategory.delete.useMutation({ onSuccess: () => { refetchCategories(); toast.success("ลบประเภทรูปภาพสำเร็จ"); } });
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [newCategoryLabel, setNewCategoryLabel] = useState("");
+  const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<{ id: number; label: string } | null>(null);
+
+  // Build dynamic category map from DB
+  const dynamicCategoryMap: Record<string, string> = {};
+  if (photoCategories) {
+    for (const cat of photoCategories) {
+      dynamicCategoryMap[cat.key] = cat.label;
+    }
+  }
+  const categoryMap = Object.keys(dynamicCategoryMap).length > 0 ? dynamicCategoryMap : PHOTO_CATEGORY_MAP;
 
   // Inline edit state for tech card
   const [editingTech, setEditingTech] = useState(false);
@@ -241,14 +257,35 @@ export default function SurveyDetail() {
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <CardTitle className="text-sm font-semibold">รูปภาพหน้างาน</CardTitle>
                   <div className="flex items-center gap-2">
-                    <Select value={photoCategory} onValueChange={setPhotoCategory}>
-                      <SelectTrigger className="w-[160px] h-8 text-xs">
+                    <Select value={photoCategory} onValueChange={(val) => {
+                      if (val === "__new__") {
+                        setShowNewCategory(true);
+                      } else {
+                        setPhotoCategory(val);
+                      }
+                    }}>
+                      <SelectTrigger className="w-[180px] h-8 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {Object.entries(PHOTO_CATEGORY_MAP).map(([k, v]) => (
-                          <SelectItem key={k} value={k}>{v}</SelectItem>
+                        {(photoCategories || []).map((cat: any) => (
+                          <SelectItem key={cat.key} value={cat.key}>
+                            <span className="flex items-center justify-between w-full gap-2">
+                              <span>{cat.label}</span>
+                              {!cat.isDefault && (
+                                <button
+                                  className="ml-1 text-destructive/60 hover:text-destructive"
+                                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); setConfirmDeleteCategory({ id: cat.id, label: cat.label }); }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              )}
+                            </span>
+                          </SelectItem>
                         ))}
+                        <SelectItem value="__new__" className="text-primary font-medium border-t mt-1 pt-1">
+                          + เพิ่มประเภทใหม่
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <Button size="sm" onClick={() => photoInputRef.current?.click()} className="gap-1.5" disabled={uploadPhoto.isPending}>
@@ -269,7 +306,7 @@ export default function SurveyDetail() {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-1">
                                 <Badge variant="secondary" className="text-[9px] bg-white/90 text-foreground">
-                                  {PHOTO_CATEGORY_MAP[photo.category] || photo.category}
+                                  {categoryMap[photo.category] || photo.category}
                                 </Badge>
                                 {photo.fileSize && (
                                   <span className="text-[9px] text-white/80 font-medium">
@@ -518,6 +555,69 @@ export default function SurveyDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* New Category Dialog */}
+      <Dialog open={showNewCategory} onOpenChange={setShowNewCategory}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>เพิ่มประเภทรูปภาพใหม่</DialogTitle>
+            <DialogDescription>ระบุชื่อประเภทรูปภาพที่ต้องการเพิ่ม</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>ชื่อประเภท (ภาษาไทย)</Label>
+              <Input
+                value={newCategoryLabel}
+                onChange={(e) => setNewCategoryLabel(e.target.value)}
+                placeholder="เช่น รูปหลังคารายละเอียด"
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowNewCategory(false); setNewCategoryLabel(""); }}>ยกเลิก</Button>
+            <Button
+              onClick={() => {
+                if (!newCategoryLabel.trim()) { toast.error("กรุณาระบุชื่อประเภท"); return; }
+                const key = newCategoryLabel.trim().toLowerCase().replace(/[^a-z0-9฀-๿]+/g, "_").replace(/^_|_$/g, "") || `custom_${Date.now()}`;
+                createCategory.mutate({ key, label: newCategoryLabel.trim(), sortOrder: 50 }, {
+                  onSuccess: () => { setPhotoCategory(key); setShowNewCategory(false); setNewCategoryLabel(""); }
+                });
+              }}
+              disabled={createCategory.isPending}
+            >
+              {createCategory.isPending ? "กำลังเพิ่ม..." : "เพิ่มประเภท"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm Delete Category Dialog */}
+      <AlertDialog open={confirmDeleteCategory !== null} onOpenChange={() => setConfirmDeleteCategory(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ลบประเภทรูปภาพ</AlertDialogTitle>
+            <AlertDialogDescription>
+              คุณต้องการลบประเภท "{confirmDeleteCategory?.label}" หรือไม่? รูปภาพที่อัพโหลดไปแล้วจะยังคงอยู่
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (confirmDeleteCategory) {
+                  deleteCategory.mutate({ id: confirmDeleteCategory.id });
+                  if (photoCategory === confirmDeleteCategory.label) setPhotoCategory("other");
+                  setConfirmDeleteCategory(null);
+                }
+              }}
+            >
+              ลบประเภท
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Add Follow-up Dialog */}
       <AddFollowUpDialog open={showAddFollowUp} onOpenChange={setShowAddFollowUp} surveyId={surveyId} customerId={c.id} surveyors={teamSurveyors || []} onSubmit={(d: any) => createFollowUp.mutate(d)} loading={createFollowUp.isPending} />
