@@ -1,5 +1,5 @@
 import { trpc } from "@/lib/trpc";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
@@ -36,6 +36,15 @@ export function StatusDropdown({
   const [, setLocation] = useLocation();
   const { data: statuses } = trpc.customStatus.list.useQuery({ type });
 
+  // Store the selected status label in a ref so we can access it in onSuccess
+  const selectedStatusLabelRef = useRef<string | null>(null);
+
+  // Helper to check if a status label indicates installation/closed deal
+  const isInstallationStatus = (label: string) => {
+    const keywords = ["ปิดการขาย", "นัดติดตั้ง", "ติดตั้ง"];
+    return keywords.some(kw => label.includes(kw));
+  };
+
   const updateCustomerStatus = trpc.customStatus.updateCustomerStatus.useMutation({
     onSuccess: () => {
       toast.success("เปลี่ยนสถานะสำเร็จ");
@@ -46,35 +55,34 @@ export function StatusDropdown({
   });
 
   const updateSurveyStatus = trpc.customStatus.updateSurveyStatus.useMutation({
-    onSuccess: (_data, variables) => {
+    onSuccess: () => {
       toast.success("เปลี่ยนสถานะสำเร็จ");
       onStatusChanged?.();
       setOpen(false);
       // Check if selected status triggers navigation to installations page
-      if (navigateOnInstallation && variables.statusId) {
-        const selectedStatus = statuses?.find((s: any) => s.id === variables.statusId);
-        if (selectedStatus && isInstallationStatus(selectedStatus.label)) {
+      if (navigateOnInstallation && selectedStatusLabelRef.current) {
+        if (isInstallationStatus(selectedStatusLabelRef.current)) {
           toast.info("กำลังไปหน้างานติดตั้ง...", { duration: 2000 });
           setTimeout(() => setLocation("/installations"), 500);
         }
       }
+      selectedStatusLabelRef.current = null;
     },
-    onError: (e) => toast.error(e.message),
+    onError: (e) => {
+      toast.error(e.message);
+      selectedStatusLabelRef.current = null;
+    },
   });
-
-  // Helper to check if a status label indicates installation/closed deal
-  const isInstallationStatus = (label: string) => {
-    const keywords = ["ปิดการขาย", "นัดติดตั้ง"];
-    return keywords.some(kw => label.includes(kw));
-  };
 
   const isPending = updateCustomerStatus.isPending || updateSurveyStatus.isPending;
 
-  const handleSelect = (statusId: number | null) => {
+  const handleSelect = (statusId: number | null, statusLabel?: string) => {
     if (statusId === currentStatusId) {
       setOpen(false);
       return;
     }
+    // Store the label before mutation
+    selectedStatusLabelRef.current = statusLabel || null;
     if (type === "customer") {
       updateCustomerStatus.mutate({ customerId: entityId, statusId });
     } else {
@@ -134,7 +142,7 @@ export function StatusDropdown({
               className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-muted/50 transition-colors text-left ${
                 currentStatusId === s.id ? "bg-muted/30" : ""
               }`}
-              onClick={() => handleSelect(s.id)}
+              onClick={() => handleSelect(s.id, s.label)}
             >
               <span
                 className="w-3 h-3 rounded-full border shrink-0"
