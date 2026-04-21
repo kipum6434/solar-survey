@@ -89,6 +89,7 @@ export const surveys = mysqlTable("surveys", {
   systemType: mysqlEnum("systemType", ["string", "micro", "both"]),
   statusId: int("statusId"),
   installationDate: bigint("installationDate", { mode: "number" }),
+  installationStatus: mysqlEnum("installationStatus", ["waiting", "in_progress", "completed", "delivered"]),
   completedAt: bigint("completedAt", { mode: "number" }),
   createdBy: int("createdBy"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

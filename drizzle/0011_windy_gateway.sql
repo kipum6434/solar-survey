@@ -1,0 +1,1 @@
+ALTER TABLE `surveys` ADD `installationStatus` enum('waiting','in_progress','completed','delivered');

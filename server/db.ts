@@ -938,6 +938,12 @@ export async function updateSurveyInstallationDate(surveyId: number, installatio
   await db.update(surveys).set({ installationDate }).where(eq(surveys.id, surveyId));
 }
 
+export async function updateInstallationStatus(surveyId: number, installationStatus: string | null) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(surveys).set({ installationStatus: installationStatus as any }).where(eq(surveys.id, surveyId));
+}
+
 // ==================== INSTALLATIONS QUERIES ====================
 export async function getInstallations(opts: any) {
   const db = await getDb();

@@ -12,7 +12,8 @@ import { useLocation } from "wouter";
 import { toast } from "sonner";
 import {
   Search, Wrench, Calendar, ChevronLeft, ChevronRight,
-  MapPin, Phone, ClipboardCheck, Clock, AlertTriangle, CheckCircle2, Trash2,
+  MapPin, Phone, Clock, AlertTriangle, CheckCircle2, Trash2,
+  Download, Package, Truck,
 } from "lucide-react";
 
 const THAI_MONTHS_SHORT = [
@@ -28,6 +29,59 @@ const STATUS_TABS = [
   { value: "completed", label: "ติดตั้งแล้ว", icon: CheckCircle2 },
 ] as const;
 
+// Installation status options
+const INSTALL_STATUS_OPTIONS = [
+  { value: "waiting", label: "รอติดตั้ง", color: "text-amber-700", bg: "bg-amber-50", icon: Clock },
+  { value: "in_progress", label: "กำลังติดตั้ง", color: "text-blue-700", bg: "bg-blue-50", icon: Wrench },
+  { value: "completed", label: "ติดตั้งเสร็จ", color: "text-green-700", bg: "bg-green-50", icon: CheckCircle2 },
+  { value: "delivered", label: "ส่งมอบแล้ว", color: "text-purple-700", bg: "bg-purple-50", icon: Truck },
+] as const;
+
+function InstallationStatusBadge({ status, surveyId, onChanged }: { status: string | null; surveyId: number; onChanged: () => void }) {
+  const utils = trpc.useUtils();
+  const updateStatus = trpc.installation.updateStatus.useMutation({
+    onSuccess: () => {
+      toast.success("เปลี่ยนสถานะติดตั้งสำเร็จ");
+      utils.installation.list.invalidate();
+      onChanged();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const current = INSTALL_STATUS_OPTIONS.find(o => o.value === status) || INSTALL_STATUS_OPTIONS[0];
+  const Icon = current.icon;
+
+  return (
+    <Select
+      value={status || "waiting"}
+      onValueChange={(v) => {
+        updateStatus.mutate({ surveyId, installationStatus: v as any });
+      }}
+    >
+      <SelectTrigger
+        className={`h-7 w-auto min-w-[120px] border-0 ${current.bg} ${current.color} text-xs font-medium px-2 gap-1`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Icon className="h-3 w-3 shrink-0" />
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent onClick={(e) => e.stopPropagation()}>
+        {INSTALL_STATUS_OPTIONS.map(opt => {
+          const OptIcon = opt.icon;
+          return (
+            <SelectItem key={opt.value} value={opt.value}>
+              <span className={`flex items-center gap-1.5 ${opt.color}`}>
+                <OptIcon className="h-3 w-3" />
+                {opt.label}
+              </span>
+            </SelectItem>
+          );
+        })}
+      </SelectContent>
+    </Select>
+  );
+}
+
 export default function Installations() {
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
@@ -37,6 +91,7 @@ export default function Installations() {
   const [filterDistrict, setFilterDistrict] = useState("all");
   const [filterSurveyor, setFilterSurveyor] = useState("all");
   const [filterCloser, setFilterCloser] = useState("all");
+  const [isExporting, setIsExporting] = useState(false);
 
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
@@ -146,6 +201,84 @@ export default function Installations() {
     return `เลย ${Math.abs(diff)} วัน`;
   };
 
+  const getInstallStatusLabel = (status: string | null) => {
+    return INSTALL_STATUS_OPTIONS.find(o => o.value === status)?.label || "รอติดตั้ง";
+  };
+
+  // Export Excel
+  const handleExportExcel = async () => {
+    setIsExporting(true);
+    try {
+      const exportData = await utils.installation.exportExcel.fetch({
+        search: search || undefined,
+        month: filterByMonth ? selectedMonth : undefined,
+        year: filterByMonth ? selectedYear - 543 : undefined,
+        province: filterProvince !== "all" ? filterProvince : undefined,
+        district: filterDistrict !== "all" ? filterDistrict : undefined,
+        installationStatus: statusTab as any,
+      });
+
+      if (!exportData || exportData.length === 0) {
+        toast.error("ไม่มีข้อมูลสำหรับส่งออก");
+        return;
+      }
+
+      // Build CSV with BOM for Excel Thai support
+      const headers = [
+        "ลำดับ", "วันนัดติดตั้ง", "ชื่อลูกค้า", "เบอร์โทร", "เขต/อำเภอ", "จังหวัด",
+        "ขนาดระบบ (kW)", "ประเภทระบบ", "คนสำรวจ", "คนปิดงาน", "สถานะ", "สถานะติดตั้ง",
+        "หมายเหตุ", "ที่อยู่",
+      ];
+
+      const rows = exportData.map((item: any, idx: number) => {
+        const surveyor = item.assignments?.find((a: any) => a.role === "surveyor");
+        const closer = item.assignments?.find((a: any) => a.role === "closer");
+        return [
+          idx + 1,
+          item.survey.installationDate ? new Date(item.survey.installationDate).toLocaleDateString("th-TH") : "-",
+          item.customer.name || "-",
+          item.customer.phone || "-",
+          item.customer.district || "-",
+          item.customer.province || "-",
+          item.survey.systemSize || "-",
+          item.survey.systemType || "-",
+          surveyor?.userName || "-",
+          closer?.userName || "-",
+          item.customStatus?.label || "-",
+          getInstallStatusLabel(item.survey.installationStatus),
+          item.survey.notes || "-",
+          item.customer.address || "-",
+        ];
+      });
+
+      const csvContent = "\uFEFF" + [
+        headers.join(","),
+        ...rows.map(row =>
+          row.map(cell => {
+            const str = String(cell).replace(/"/g, '""');
+            return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
+          }).join(",")
+        ),
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const dateStr = new Date().toLocaleDateString("th-TH").replace(/\//g, "-");
+      a.download = `งานติดตั้ง_${dateStr}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(`ส่งออกข้อมูล ${exportData.length} รายการสำเร็จ`);
+    } catch (e: any) {
+      toast.error("เกิดข้อผิดพลาดในการส่งออก: " + (e.message || ""));
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-4 sm:space-y-6">
@@ -158,8 +291,20 @@ export default function Installations() {
             </h1>
             <p className="text-muted-foreground text-sm">จัดการงานติดตั้งที่ปิดการขายแล้ว</p>
           </div>
-          <div className="text-sm text-muted-foreground">
-            ทั้งหมด <span className="font-semibold text-foreground">{total}</span> รายการ
+          <div className="flex items-center gap-3">
+            <div className="text-sm text-muted-foreground">
+              ทั้งหมด <span className="font-semibold text-foreground">{total}</span> รายการ
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportExcel}
+              disabled={isExporting || total === 0}
+              className="gap-1.5"
+            >
+              <Download className="h-4 w-4" />
+              {isExporting ? "กำลังส่งออก..." : "Export Excel"}
+            </Button>
           </div>
         </div>
 
@@ -243,6 +388,7 @@ export default function Installations() {
               className="pl-10"
             />
           </div>
+
           <div className="flex flex-wrap gap-2">
             <Select value={filterProvince} onValueChange={(v) => { setFilterProvince(v); setFilterDistrict("all"); setPage(1); }}>
               <SelectTrigger className="w-[160px] h-9">
@@ -393,11 +539,20 @@ export default function Installations() {
                         </div>
                       )}
 
-                      {item.customStatus && (
-                        <Badge variant="secondary" className="text-xs border-0" style={{ backgroundColor: item.customStatus.bgColor, color: item.customStatus.color }}>
-                          {item.customStatus.label}
-                        </Badge>
-                      )}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {item.customStatus && (
+                          <Badge variant="secondary" className="text-xs border-0" style={{ backgroundColor: item.customStatus.bgColor, color: item.customStatus.color }}>
+                            {item.customStatus.label}
+                          </Badge>
+                        )}
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <InstallationStatusBadge
+                            status={item.survey.installationStatus}
+                            surveyId={item.survey.id}
+                            onChanged={() => {}}
+                          />
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 );
@@ -475,8 +630,12 @@ export default function Installations() {
                                 </Badge>
                               ) : "-"}
                             </td>
-                            <td className="py-3 px-4">
-                              {getInstallationBadge(item.survey.installationDate, item.survey.completedAt)}
+                            <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                              <InstallationStatusBadge
+                                status={item.survey.installationStatus}
+                                surveyId={item.survey.id}
+                                onChanged={() => {}}
+                              />
                             </td>
                           </tr>
                         );

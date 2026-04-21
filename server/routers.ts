@@ -249,6 +249,7 @@ const surveyRouter = router({
       closerId: z.number().nullable().optional(),
       statusId: z.number().nullable().optional(),
       installationDate: z.number().nullable().optional(),
+      installationStatus: z.enum(["waiting", "in_progress", "completed", "delivered"]).nullable().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const { id, surveyorIds, ...data } = input;
@@ -852,6 +853,39 @@ const teamPerformanceRouter = router({
 
 // ==================== INSTALLATION ROUTER ====================
 const installationRouter = router({
+  updateStatus: protectedProcedure
+    .input(z.object({
+      surveyId: z.number(),
+      installationStatus: z.enum(["waiting", "in_progress", "completed", "delivered"]).nullable(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      await db.updateInstallationStatus(input.surveyId, input.installationStatus);
+      // If status is completed, also set completedAt
+      if (input.installationStatus === "completed" || input.installationStatus === "delivered") {
+        await db.updateSurvey(input.surveyId, { completedAt: Date.now() } as any);
+      } else {
+        // Clear completedAt if not completed/delivered
+        await db.updateSurvey(input.surveyId, { completedAt: null } as any);
+      }
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "survey", entityId: input.surveyId, details: `เปลี่ยนสถานะติดตั้ง: ${input.installationStatus || 'ไม่มี'}` });
+      return { success: true };
+    }),
+
+  exportExcel: protectedProcedure
+    .input(z.object({
+      search: z.string().optional(),
+      month: z.number().min(1).max(12).optional(),
+      year: z.number().optional(),
+      province: z.string().optional(),
+      district: z.string().optional(),
+      installationStatus: z.enum(['all', 'upcoming', 'today', 'overdue', 'completed']).optional(),
+    }))
+    .query(async ({ input }) => {
+      const { installationStatus, ...rest } = input;
+      const result = await db.getInstallations({ ...rest, installationStatus: installationStatus === 'all' ? undefined : installationStatus, page: 1, limit: 10000 });
+      return result.data;
+    }),
+
   delete: adminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
