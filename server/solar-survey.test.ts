@@ -891,3 +891,61 @@ describe("installation.list", () => {
     expect(result.data.some((d: any) => d.customer.name.includes("UniqueXYZ"))).toBe(true);
   }, 10000);
 });
+
+// ==================== R20: FILE MANAGEMENT + INSTALLATION FILTERS ====================
+describe("R20 - File Management", () => {
+  const adminCaller = appRouter.createCaller(createAdminContext());
+
+  it("should list all files (images + documents)", async () => {
+    const result = await adminCaller.storage.listFiles({ page: 1, limit: 50 });
+    expect(result).toHaveProperty("data");
+    expect(result).toHaveProperty("total");
+    expect(Array.isArray(result.data)).toBe(true);
+    expect(typeof result.total).toBe("number");
+  }, 10000);
+
+  it("should filter files by type=photo", async () => {
+    const result = await adminCaller.storage.listFiles({ page: 1, limit: 50, fileType: "photo" });
+    expect(Array.isArray(result.data)).toBe(true);
+    result.data.forEach((f: any) => {
+      expect(f.type).toBe("photo");
+    });
+  }, 10000);
+
+  it("should filter files by type=document", async () => {
+    const result = await adminCaller.storage.listFiles({ page: 1, limit: 50, fileType: "document" });
+    expect(Array.isArray(result.data)).toBe(true);
+    result.data.forEach((f: any) => {
+      expect(f.type).toBe("document");
+    });
+  }, 10000);
+});
+
+describe("R20 - Installation Filters", () => {
+  const adminCaller = appRouter.createCaller(createAdminContext());
+
+  it("should filter installations by province", async () => {
+    const result = await adminCaller.installation.list({ page: 1, limit: 20, province: "NON_EXISTENT_PROVINCE" });
+    expect(result.data.length).toBe(0);
+  }, 10000);
+
+  it("should filter installations by surveyorId", async () => {
+    const result = await adminCaller.installation.list({ page: 1, limit: 20, surveyorId: 999999 });
+    expect(result.data.length).toBe(0);
+  }, 10000);
+
+  it("should filter installations by closerId", async () => {
+    const result = await adminCaller.installation.list({ page: 1, limit: 20, closerId: 999999 });
+    expect(result.data.length).toBe(0);
+  }, 10000);
+
+  it("should filter installations by month and year", async () => {
+    const result = await adminCaller.installation.list({ page: 1, limit: 20, month: 1, year: 2020 });
+    expect(result.data.length).toBe(0);
+  }, 10000);
+
+  it("should filter installations by installationStatus=completed", async () => {
+    const result = await adminCaller.installation.list({ page: 1, limit: 20, installationStatus: "completed" });
+    expect(Array.isArray(result.data)).toBe(true);
+  }, 10000);
+});

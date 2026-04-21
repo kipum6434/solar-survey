@@ -534,6 +534,7 @@ function SurveyTableView({ data, onRowClick, onRefetch, onUpdateInstallationDate
                       fallbackColor={SURVEY_STATUS_FALLBACK[s.status]?.color}
                       fallbackBgColor={SURVEY_STATUS_FALLBACK[s.status]?.bg}
                       onStatusChanged={onRefetch}
+                      navigateOnInstallation
                     />
                   </td>
                   <td className="px-3 py-2.5 whitespace-nowrap hidden xl:table-cell" onClick={(e) => e.stopPropagation()}>
@@ -589,6 +590,7 @@ function SurveyListView({ data, onRowClick, onRefetch, onUpdateInstallationDate 
                         fallbackColor={SURVEY_STATUS_FALLBACK[s.status]?.color}
                         fallbackBgColor={SURVEY_STATUS_FALLBACK[s.status]?.bg}
                         onStatusChanged={onRefetch}
+                        navigateOnInstallation
                       />
                     </span>
                     {s.installationDate && (

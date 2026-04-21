@@ -30,6 +30,10 @@ export default function Installations() {
   const [search, setSearch] = useState("");
   const [statusTab, setStatusTab] = useState<string>("all");
   const [page, setPage] = useState(1);
+  const [filterProvince, setFilterProvince] = useState("all");
+  const [filterDistrict, setFilterDistrict] = useState("all");
+  const [filterSurveyor, setFilterSurveyor] = useState("all");
+  const [filterCloser, setFilterCloser] = useState("all");
 
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
@@ -41,14 +45,26 @@ export default function Installations() {
     return Array.from({ length: 5 }, (_, i) => currentBE - i);
   }, []);
 
+  // Fetch filter data
+  const { data: distinctValues } = trpc.customer.distinctValues.useQuery();
+  const { data: surveyors } = trpc.teamMember.list.useQuery({ role: "surveyor" });
+  const { data: closers } = trpc.teamMember.list.useQuery({ role: "closer" });
+
+  const provinces = distinctValues?.provinces ?? [];
+  const districts = distinctValues?.districts ?? [];
+
   const queryInput = useMemo(() => ({
     page,
     limit: 20,
     search: search || undefined,
     month: filterByMonth ? selectedMonth : undefined,
     year: filterByMonth ? selectedYear - 543 : undefined,
+    province: filterProvince !== "all" ? filterProvince : undefined,
+    district: filterDistrict !== "all" ? filterDistrict : undefined,
+    surveyorId: filterSurveyor !== "all" ? Number(filterSurveyor) : undefined,
+    closerId: filterCloser !== "all" ? Number(filterCloser) : undefined,
     installationStatus: statusTab as any,
-  }), [page, search, filterByMonth, selectedMonth, selectedYear, statusTab]);
+  }), [page, search, filterByMonth, selectedMonth, selectedYear, statusTab, filterProvince, filterDistrict, filterSurveyor, filterCloser]);
 
   const { data, isLoading } = trpc.installation.list.useQuery(queryInput);
   const items = data?.data ?? [];
@@ -60,7 +76,6 @@ export default function Installations() {
       return <Badge className="bg-green-100 text-green-700 border-0 text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />ติดตั้งแล้ว</Badge>;
     }
     if (!installationDate) return null;
-    const now = Date.now();
     const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
     const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
     if (installationDate >= todayStart.getTime() && installationDate <= todayEnd.getTime()) {
@@ -125,9 +140,56 @@ export default function Installations() {
           })}
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
+        {/* Month Navigation */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <Button
+            variant={!filterByMonth ? "default" : "outline"}
+            size="sm"
+            onClick={() => { setFilterByMonth(false); setPage(1); }}
+            className="whitespace-nowrap"
+          >
+            ทั้งหมด
+          </Button>
+          {filterByMonth && (
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => {
+              if (selectedMonth === 1) { setSelectedMonth(12); setSelectedYear(y => y - 1); }
+              else setSelectedMonth(m => m - 1);
+              setPage(1);
+            }}><ChevronLeft className="h-4 w-4" /></Button>
+          )}
+          <div className="flex gap-1 overflow-x-auto">
+            {THAI_MONTHS_SHORT.map((m, i) => (
+              <Button
+                key={i}
+                variant={filterByMonth && selectedMonth === i + 1 ? "default" : "outline"}
+                size="sm"
+                className="min-w-[48px] text-xs"
+                onClick={() => { setFilterByMonth(true); setSelectedMonth(i + 1); setPage(1); }}
+              >
+                {m}
+              </Button>
+            ))}
+          </div>
+          {filterByMonth && (
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => {
+              if (selectedMonth === 12) { setSelectedMonth(1); setSelectedYear(y => y + 1); }
+              else setSelectedMonth(m => m + 1);
+              setPage(1);
+            }}><ChevronRight className="h-4 w-4" /></Button>
+          )}
+          <Select value={String(selectedYear)} onValueChange={(v) => { setSelectedYear(Number(v)); setPage(1); }}>
+            <SelectTrigger className="w-[90px] h-8 shrink-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Search + Filters */}
+        <div className="flex flex-col gap-3">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="ค้นหาชื่อลูกค้า, เบอร์โทร..."
@@ -136,41 +198,46 @@ export default function Installations() {
               className="pl-10"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant={filterByMonth ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilterByMonth(!filterByMonth)}
-              className="whitespace-nowrap"
-            >
-              <Calendar className="h-4 w-4 mr-1" />
-              {filterByMonth ? "กรองเดือน" : "ทั้งหมด"}
-            </Button>
-            {filterByMonth && (
-              <>
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-                    if (selectedMonth === 1) { setSelectedMonth(12); setSelectedYear(y => y - 1); }
-                    else setSelectedMonth(m => m - 1);
-                    setPage(1);
-                  }}><ChevronLeft className="h-4 w-4" /></Button>
-                  <span className="text-sm font-medium min-w-[60px] text-center">{THAI_MONTHS_SHORT[selectedMonth - 1]}</span>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-                    if (selectedMonth === 12) { setSelectedMonth(1); setSelectedYear(y => y + 1); }
-                    else setSelectedMonth(m => m + 1);
-                    setPage(1);
-                  }}><ChevronRight className="h-4 w-4" /></Button>
-                </div>
-                <Select value={String(selectedYear)} onValueChange={(v) => { setSelectedYear(Number(v)); setPage(1); }}>
-                  <SelectTrigger className="w-[90px] h-8">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </>
-            )}
+          <div className="flex flex-wrap gap-2">
+            <Select value={filterProvince} onValueChange={(v) => { setFilterProvince(v); setFilterDistrict("all"); setPage(1); }}>
+              <SelectTrigger className="w-[160px] h-9">
+                <SelectValue placeholder="จังหวัดทั้งหมด" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">จังหวัดทั้งหมด</SelectItem>
+                {provinces.map((p: string) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterDistrict} onValueChange={(v) => { setFilterDistrict(v); setPage(1); }}>
+              <SelectTrigger className="w-[160px] h-9">
+                <SelectValue placeholder="เขต/อำเภอทั้งหมด" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">เขต/อำเภอทั้งหมด</SelectItem>
+                {districts.map((d: string) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterSurveyor} onValueChange={(v) => { setFilterSurveyor(v); setPage(1); }}>
+              <SelectTrigger className="w-[160px] h-9">
+                <SelectValue placeholder="คนสำรวจทั้งหมด" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">คนสำรวจทั้งหมด</SelectItem>
+                {(surveyors ?? []).map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterCloser} onValueChange={(v) => { setFilterCloser(v); setPage(1); }}>
+              <SelectTrigger className="w-[160px] h-9">
+                <SelectValue placeholder="คนปิดงานทั้งหมด" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">คนปิดงานทั้งหมด</SelectItem>
+                {(closers ?? []).map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -191,7 +258,7 @@ export default function Installations() {
           <>
             {/* Mobile Card View */}
             <div className="block sm:hidden space-y-3">
-              {items.map((item) => {
+              {items.map((item: any) => {
                 const surveyor = item.assignments?.find((a: any) => a.role === "surveyor");
                 const closer = item.assignments?.find((a: any) => a.role === "closer");
                 const daysUntil = getDaysUntil(item.survey.installationDate);
@@ -270,7 +337,7 @@ export default function Installations() {
                       </tr>
                     </thead>
                     <tbody>
-                      {items.map((item) => {
+                      {items.map((item: any) => {
                         const surveyor = item.assignments?.find((a: any) => a.role === "surveyor");
                         const closer = item.assignments?.find((a: any) => a.role === "closer");
                         const daysUntil = getDaysUntil(item.survey.installationDate);

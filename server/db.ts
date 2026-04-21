@@ -916,10 +916,10 @@ export async function updateSurveyInstallationDate(surveyId: number, installatio
 }
 
 // ==================== INSTALLATIONS QUERIES ====================
-export async function getInstallations(opts: { page?: number; limit?: number; search?: string; month?: number; year?: number; district?: string; province?: string; installationStatus?: string }) {
+export async function getInstallations(opts: any) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { page = 1, limit = 20, search, month, year, district, province, installationStatus } = opts;
+  const { page = 1, limit = 20, search, month, year, district, province, installationStatus, surveyorId, closerId } = opts;
   const offset = (page - 1) * limit;
 
   // Only show surveys that have installationDate set (closed deals with installation scheduled)
@@ -938,6 +938,13 @@ export async function getInstallations(opts: { page?: number; limit?: number; se
     conditions.push(sql`YEAR(FROM_UNIXTIME(${surveys.installationDate} / 1000)) = ${year}`);
   } else if (year) {
     conditions.push(sql`YEAR(FROM_UNIXTIME(${surveys.installationDate} / 1000)) = ${year}`);
+  }
+  // Filter by surveyor/closer
+  if (surveyorId) {
+    conditions.push(sql`${surveys.id} IN (SELECT surveyId FROM survey_assignments WHERE role = 'surveyor' AND userId = ${surveyorId})`);
+  }
+  if (closerId) {
+    conditions.push(sql`${surveys.id} IN (SELECT surveyId FROM survey_assignments WHERE role = 'closer' AND userId = ${closerId})`);
   }
   // installationStatus: upcoming (future), today, overdue (past, not completed), completed
   const now = Date.now();
@@ -1005,3 +1012,107 @@ export async function getInstallations(opts: { page?: number; limit?: number; se
     total: countQ[0]?.count ?? 0,
   };
 }
+
+// ==================== FILE MANAGEMENT QUERIES ====================
+export async function getAllFiles(opts: { page?: number; limit?: number; search?: string; fileType?: string }) {
+  const db = await getDb();
+  if (!db) return { data: [], total: 0 };
+  const { page = 1, limit = 20, search, fileType } = opts;
+  const offset = (page - 1) * limit;
+
+  // Get photos
+  const photoConditions: any[] = [];
+  if (search) {
+    photoConditions.push(or(
+      like(customers.name, `%${search}%`),
+      like(surveyPhotos.fileName, `%${search}%`),
+      like(surveyPhotos.caption, `%${search}%`)
+    ));
+  }
+
+  const photosQuery = db.select({
+    id: surveyPhotos.id,
+    type: sql<string>`'photo'`.as('type'),
+    url: surveyPhotos.url,
+    fileKey: surveyPhotos.fileKey,
+    fileName: surveyPhotos.fileName,
+    fileSize: surveyPhotos.fileSize,
+    category: surveyPhotos.category,
+    caption: surveyPhotos.caption,
+    surveyId: surveyPhotos.surveyId,
+    customerId: surveyPhotos.customerId,
+    customerName: customers.name,
+    customerPhone: customers.phone,
+    createdAt: surveyPhotos.createdAt,
+  }).from(surveyPhotos)
+    .innerJoin(customers, eq(surveyPhotos.customerId, customers.id))
+    .where(photoConditions.length > 0 ? and(...photoConditions) : undefined);
+
+  // Get documents
+  const docConditions: any[] = [];
+  if (search) {
+    docConditions.push(or(
+      like(customers.name, `%${search}%`),
+      like(surveyDocuments.fileName, `%${search}%`)
+    ));
+  }
+
+  const docsQuery = db.select({
+    id: surveyDocuments.id,
+    type: sql<string>`'document'`.as('type'),
+    url: surveyDocuments.url,
+    fileKey: surveyDocuments.fileKey,
+    fileName: surveyDocuments.fileName,
+    fileSize: surveyDocuments.fileSize,
+    category: surveyDocuments.fileType,
+    caption: sql<string>`NULL`.as('caption'),
+    surveyId: surveyDocuments.surveyId,
+    customerId: surveyDocuments.customerId,
+    customerName: customers.name,
+    customerPhone: customers.phone,
+    createdAt: surveyDocuments.createdAt,
+  }).from(surveyDocuments)
+    .innerJoin(customers, eq(surveyDocuments.customerId, customers.id))
+    .where(docConditions.length > 0 ? and(...docConditions) : undefined);
+
+  if (fileType === 'photo') {
+    const photos = await photosQuery.orderBy(desc(surveyPhotos.createdAt)).limit(limit).offset(offset);
+    const countQ = await db.select({ count: sql<number>`count(*)` }).from(surveyPhotos)
+      .innerJoin(customers, eq(surveyPhotos.customerId, customers.id))
+      .where(photoConditions.length > 0 ? and(...photoConditions) : undefined);
+    return { data: photos, total: countQ[0]?.count ?? 0 };
+  } else if (fileType === 'document') {
+    const docs = await docsQuery.orderBy(desc(surveyDocuments.createdAt)).limit(limit).offset(offset);
+    const countQ = await db.select({ count: sql<number>`count(*)` }).from(surveyDocuments)
+      .innerJoin(customers, eq(surveyDocuments.customerId, customers.id))
+      .where(docConditions.length > 0 ? and(...docConditions) : undefined);
+    return { data: docs, total: countQ[0]?.count ?? 0 };
+  } else {
+    // All files - get both and merge
+    const photos = await photosQuery;
+    const docs = await docsQuery;
+    const allFiles = [...photos, ...docs].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const total = allFiles.length;
+    const paged = allFiles.slice(offset, offset + limit);
+    return { data: paged, total };
+  }
+}
+
+export async function deletePhoto(photoId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [photo] = await db.select().from(surveyPhotos).where(eq(surveyPhotos.id, photoId));
+  if (!photo) return null;
+  await db.delete(surveyPhotos).where(eq(surveyPhotos.id, photoId));
+  return photo;
+}
+
+export async function deleteDocument(docId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [doc] = await db.select().from(surveyDocuments).where(eq(surveyDocuments.id, docId));
+  if (!doc) return null;
+  await db.delete(surveyDocuments).where(eq(surveyDocuments.id, docId));
+  return doc;
+}
+

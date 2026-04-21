@@ -1,10 +1,11 @@
 import { trpc } from "@/lib/trpc";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
 import { ChevronDown, Check } from "lucide-react";
 import { toast } from "sonner";
+import { useLocation } from "wouter";
 
 interface StatusDropdownProps {
   type: "customer" | "survey";
@@ -16,6 +17,8 @@ interface StatusDropdownProps {
   fallbackColor?: string;
   fallbackBgColor?: string;
   onStatusChanged?: () => void;
+  /** If true, when a status with label containing 'ปิดการขาย' or 'นัดติดตั้ง' is selected, navigate to installations page */
+  navigateOnInstallation?: boolean;
 }
 
 export function StatusDropdown({
@@ -27,8 +30,10 @@ export function StatusDropdown({
   fallbackColor,
   fallbackBgColor,
   onStatusChanged,
+  navigateOnInstallation,
 }: StatusDropdownProps) {
   const [open, setOpen] = useState(false);
+  const [, setLocation] = useLocation();
   const { data: statuses } = trpc.customStatus.list.useQuery({ type });
 
   const updateCustomerStatus = trpc.customStatus.updateCustomerStatus.useMutation({
@@ -41,13 +46,27 @@ export function StatusDropdown({
   });
 
   const updateSurveyStatus = trpc.customStatus.updateSurveyStatus.useMutation({
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       toast.success("เปลี่ยนสถานะสำเร็จ");
       onStatusChanged?.();
       setOpen(false);
+      // Check if selected status triggers navigation to installations page
+      if (navigateOnInstallation && variables.statusId) {
+        const selectedStatus = statuses?.find((s: any) => s.id === variables.statusId);
+        if (selectedStatus && isInstallationStatus(selectedStatus.label)) {
+          toast.info("กำลังไปหน้างานติดตั้ง...", { duration: 2000 });
+          setTimeout(() => setLocation("/installations"), 500);
+        }
+      }
     },
     onError: (e) => toast.error(e.message),
   });
+
+  // Helper to check if a status label indicates installation/closed deal
+  const isInstallationStatus = (label: string) => {
+    const keywords = ["ปิดการขาย", "นัดติดตั้ง"];
+    return keywords.some(kw => label.includes(kw));
+  };
 
   const isPending = updateCustomerStatus.isPending || updateSurveyStatus.isPending;
 

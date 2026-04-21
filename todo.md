@@ -345,3 +345,14 @@
 - [x] Frontend: เพิ่ม route /installations ใน App.tsx
 - [x] Frontend: หน้าแชร์ลิงก์ (SharedSurvey) แสดงวันที่นัดติดตั้งให้ช่างเห็น (ทำไว้แล้วใน R18)
 - [x] เขียน tests สำหรับ installation list API (6 tests ผ่าน, รวม 99 tests)
+
+## User Request - Round 20: จัดการไฟล์ + filter งานติดตั้ง + สถานะนัดติดตั้ง
+
+- [x] Backend: API ดึงรายการไฟล์ทั้งหมด (รูปภาพ+เอกสาร) พร้อมข้อมูล survey/customer
+- [x] Backend: API ลบไฟล์ (ลบจาก DB + S3)
+- [x] Backend: เพิ่ม filter ใน installation.list (จังหวัด, เขต, คนสำรวจ, คนปิดงาน)
+- [x] Frontend: สร้างหน้า FileManagement - ดูรูปภาพ/เอกสารทั้งหมด เลือกลบได้
+- [x] Frontend: เพิ่มเมนู "จัดการไฟล์" ใน sidebar + route
+- [x] Frontend: เพิ่ม filter ในหน้างานติดตั้ง (จังหวัด, เขต, คนสำรวจ, คนปิดงาน, เดือน/ปี)
+- [x] Frontend: เมื่อเลือกสถานะ "นัดติดตั้งแล้ว" ให้ redirect ไปหน้างานติดตั้ง
+- [x] เขียน tests สำหรับ file management + installation filters (8 tests ใหม่, รวม 107 tests ผ่าน)

@@ -626,6 +626,40 @@ const customStatusRouter = router({
 // ==================== STORAGE ROUTER ==
 const storageRouter = router({
   stats: protectedProcedure.query(() => db.getStorageStats()),
+  listFiles: protectedProcedure
+    .input(z.object({
+      page: z.number().default(1),
+      limit: z.number().default(20),
+      search: z.string().optional(),
+      fileType: z.enum(['all', 'photo', 'document']).optional(),
+    }))
+    .query(({ input }) => {
+      return db.getAllFiles({
+        ...input,
+        fileType: input.fileType === 'all' ? undefined : input.fileType,
+      });
+    }),
+  deleteFile: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      type: z.enum(['photo', 'document']),
+    }))
+    .mutation(async ({ input }) => {
+      let file: any;
+      if (input.type === 'photo') {
+        file = await db.deletePhoto(input.id);
+      } else {
+        file = await db.deleteDocument(input.id);
+      }
+      if (!file) throw new TRPCError({ code: 'NOT_FOUND', message: 'ไม่พบไฟล์' });
+      // Try to delete from S3
+      try {
+        await storageDelete(file.fileKey);
+      } catch (e) {
+        console.warn('[Storage] Failed to delete from S3:', e);
+      }
+      return { success: true };
+    }),
 });
 
 // ==================== SOURCES ROUTER ====================
@@ -811,6 +845,8 @@ const installationRouter = router({
       year: z.number().optional(),
       district: z.string().optional(),
       province: z.string().optional(),
+      surveyorId: z.number().optional(),
+      closerId: z.number().optional(),
       installationStatus: z.enum(['all', 'upcoming', 'today', 'overdue', 'completed']).optional(),
     }))
     .query(({ input }) => {
