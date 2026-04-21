@@ -415,3 +415,24 @@
 - [x] ลบ test data ซ้ำใน DB (จาก vitest ที่ไม่ cleanup)
 - [x] แก้ไข test ให้ cleanup test data หลังรัน (afterAll)
 - [x] ทดสอบ: dropdown แสดงปุ่มลบ (ถังขยะ) ข้างประเภทที่เพิ่มเอง + dialog ยืนยันลบทำงานถูกต้อง
+
+## User Request - Round 27: ดาวน์โหลดรูปทั้งหมด + ที่อยู่ลูกค้า + ประเภทเอกสาร
+
+### ฟีเจอร์ 1: ดาวน์โหลดรูปภาพทั้งหมดเป็น ZIP
+- [x] Frontend SurveyDetail: เพิ่มปุ่ม "ดาวน์โหลดทั้งหมด" ใช้ JSZip สร้าง ZIP ฝั่ง client (ไม่ต้อง backend)
+- [x] Frontend SharedSurvey: เพิ่มปุ่ม "ดาวน์โหลดทั้งหมด" ในหน้าแชร์ด้วย
+
+### ฟีเจอร์ 2: เพิ่มช่องที่อยู่ลูกค้า (บ้านเลขที่ หมู่บ้าน ถนน ฯลฯ)
+- [x] Schema: ใช้ columns ที่มีอยู่แล้ว (fullAddress, subDistrict, district, province, postalCode) ไม่ต้องเพิ่มใหม่
+- [x] Backend: customer create/update รองรับ fullAddress, subDistrict, district, province, postalCode อยู่แล้ว
+- [x] Frontend SurveyDetail CustomerInfoCard: เพิ่มช่องที่อยู่ (บ้านเลขที่, ตำบล, อำเภอ, จังหวัด, รหัสไปรษณีย์) แก้ไขได้
+- [x] Frontend SharedSurvey: แสดงที่อยู่ละเอียดในหน้าแชร์ให้ช่างติดตั้งเห็น
+
+### ฟีเจอร์ 3: ประเภทเอกสาร dynamic (Document Categories)
+- [x] Schema: เพิ่ม document_categories table + เปลี่ยน survey_documents.fileType จาก ENUM เป็น VARCHAR(100)
+- [x] Migration: 0013_fine_shadow_king.sql applied + seed 6 default doc categories
+- [x] Backend: เพิ่ม CRUD functions ใน db.ts + documentCategoryRouter ใน routers.ts
+- [x] Backend: เปลี่ยน document.upload fileType จาก z.enum เป็น z.string()
+- [x] Frontend SurveyDetail: dropdown ประเภทเอกสารดึงจาก DB + ปุ่มเพิ่ม/ลบประเภท
+- [x] Frontend: badge แสดงชื่อประเภทเอกสาร dynamic (fallback static)
+- [x] เขียน tests: 7 tests ผ่าน (list, create, update, delete default/non-default)

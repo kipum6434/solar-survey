@@ -377,7 +377,7 @@ const documentRouter = router({
       surveyId: z.number(),
       customerId: z.number(),
       fileName: z.string(),
-      fileType: z.enum(["quotation", "simulation", "contract", "other"]).optional(),
+      fileType: z.string().optional(),
       base64Data: z.string(),
       mimeType: z.string().default("application/pdf"),
       fileSize: z.number().optional(),
@@ -921,7 +921,46 @@ const installationRouter = router({
     }),
 });
 
-// ==================== PHOTO CATEGORY ROUTER ====================
+// ==================== DOCUMENT CATEGORY ROUTER ====================
+const documentCategoryRouter = router({
+  list: publicProcedure
+    .query(() => db.getDocumentCategories()),
+
+  create: protectedProcedure
+    .input(z.object({
+      key: z.string().min(1),
+      label: z.string().min(1),
+      sortOrder: z.number().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await db.createDocumentCategory({ ...input, isDefault: false });
+      await db.logActivity({ userId: ctx.user.id, action: "create", entityType: "document_category", entityId: result.id, details: `สร้างประเภทเอกสาร: ${input.label}` });
+      return result;
+    }),
+
+  update: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      label: z.string().optional(),
+      sortOrder: z.number().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const { id, ...data } = input;
+      await db.updateDocumentCategory(id, data);
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "document_category", entityId: id, details: `แก้ไขประเภทเอกสาร ID: ${id}` });
+      return { success: true };
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      await db.deleteDocumentCategory(input.id);
+      await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "document_category", entityId: input.id, details: `ลบประเภทเอกสาร ID: ${input.id}` });
+      return { success: true };
+    }),
+});
+
+// ==================== PHOTO CATEGORY ROUTER ==
 const photoCategoryRouter = router({
   list: publicProcedure
     .query(() => db.getPhotoCategories()),
@@ -989,6 +1028,7 @@ export const appRouter = router({
   customStatus: customStatusRouter,
   installation: installationRouter,
   photoCategory: photoCategoryRouter,
+  documentCategory: documentCategoryRouter,
 });
 
 export type AppRouter = typeof appRouter;

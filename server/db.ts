@@ -1,6 +1,6 @@
 import { eq, and, or, like, desc, gte, lte, sql, inArray, asc, isNotNull, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory } from "../drizzle/schema";
+import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1185,3 +1185,34 @@ export async function deletePhotoCategory(id: number) {
   return cat;
 }
 
+
+// ==================== Document Categories ====================
+
+export async function getDocumentCategories() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(documentCategories).orderBy(asc(documentCategories.sortOrder), asc(documentCategories.id));
+}
+
+export async function createDocumentCategory(data: InsertDocumentCategory) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(documentCategories).values(data).$returningId();
+  return result;
+}
+
+export async function updateDocumentCategory(id: number, data: Partial<InsertDocumentCategory>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(documentCategories).set(data).where(eq(documentCategories.id, id));
+}
+
+export async function deleteDocumentCategory(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [cat] = await db.select().from(documentCategories).where(eq(documentCategories.id, id));
+  if (!cat) throw new Error("Category not found");
+  if (cat.isDefault) throw new Error("Cannot delete default category");
+  await db.delete(documentCategories).where(eq(documentCategories.id, id));
+  return cat;
+}

@@ -6,14 +6,16 @@ import { useParams } from "wouter";
 import { useState } from "react";
 import {
   Camera, MapPin, Calendar, Phone, Mail, Zap, Home, Gauge,
-  X, Image, Sun, Wrench,
+  X, Image, Sun, Wrench, FolderDown, Download,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function SharedSurvey() {
   const params = useParams<{ token: string }>();
   const { data, isLoading, error } = trpc.shareLink.getByToken.useQuery({ token: params.token || "" });
   const { data: photoCategories } = trpc.photoCategory.list.useQuery();
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
 
   // Build dynamic category map from DB, fallback to static
   const categoryMap: Record<string, string> = { ...PHOTO_CATEGORY_MAP };
@@ -107,11 +109,21 @@ export default function SharedSurvey() {
               )}
               {c.phone && <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" />{c.phone}</div>}
               {c.email && <div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" />{c.email}</div>}
-              {c.address && (
+              {c.fullAddress && (
                 <div className="flex items-start gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                  <span>{[c.address, c.subDistrict, c.district, c.province, c.postalCode].filter(Boolean).join(", ")}</span>
+                  <MapPin className="h-4 w-4 text-blue-500 mt-0.5" />
+                  <span className="font-medium">{c.fullAddress}</span>
                 </div>
+              )}
+              {(c.subDistrict || c.district || c.province || c.postalCode) && (
+                <div className="flex items-start gap-2 ml-6">
+                  <span className="text-muted-foreground">{[c.subDistrict, c.district, c.province, c.postalCode].filter(Boolean).join(", ")}</span>
+                </div>
+              )}
+              {c.address && c.address.startsWith('http') && (
+                <a href={c.address} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary hover:underline">
+                  <MapPin className="h-4 w-4" /> ดูโลเคชั่นบน Google Maps
+                </a>
               )}
               {c.latitude && c.longitude && (
                 <a href={`https://www.google.com/maps?q=${c.latitude},${c.longitude}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary hover:underline">
@@ -138,9 +150,48 @@ export default function SharedSurvey() {
         {photosData && photosData.length > 0 && (
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Camera className="h-4 w-4" /> รูปภาพหน้างาน ({photosData.length})
-              </CardTitle>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Camera className="h-4 w-4" /> รูปภาพหน้างาน ({photosData.length})
+                </CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  disabled={isDownloadingAll}
+                  onClick={async () => {
+                    setIsDownloadingAll(true);
+                    try {
+                      const JSZip = (await import('jszip')).default;
+                      const zip = new JSZip();
+                      const folder = zip.folder(`photos-${c.name}`) || zip;
+                      for (let i = 0; i < photosData.length; i++) {
+                        const photo = photosData[i] as any;
+                        try {
+                          const resp = await fetch(photo.url);
+                          const blob = await resp.blob();
+                          const ext = photo.fileName?.split('.').pop() || 'jpg';
+                          const catLabel = categoryMap[photo.category] || photo.category || 'other';
+                          folder.file(`${catLabel}_${i + 1}.${ext}`, blob);
+                        } catch { /* skip failed */ }
+                      }
+                      const content = await zip.generateAsync({ type: 'blob' });
+                      const url = URL.createObjectURL(content);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `photos-${c.name}-${new Date().toISOString().slice(0, 10)}.zip`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    } catch { /* ignore */ }
+                    setIsDownloadingAll(false);
+                  }}
+                >
+                  <FolderDown className="h-3.5 w-3.5" />
+                  {isDownloadingAll ? 'กำลังดาวน์โหลด...' : `ดาวน์โหลดทั้งหมด`}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">

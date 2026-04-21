@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import {
   ArrowLeft, Camera, FileText, PhoneCall, Share2, MapPin, Calendar, User, Pencil,
   Upload, Trash2, Download, Link2, Copy, X, Image, Eye, CheckCircle2, Clock,
-  Zap, Sun, Home, Gauge, Receipt, Settings2, Users, Wrench,
+  Zap, Sun, Home, Gauge, Receipt, Settings2, Users, Wrench, FolderDown,
 } from "lucide-react";
 import { MultiUserSelect } from "@/components/MultiUserSelect";
 import { SourceCombobox } from "@/components/SourceCombobox";
@@ -47,7 +47,16 @@ export default function SurveyDetail() {
   const { data: photoCategories, refetch: refetchCategories } = trpc.photoCategory.list.useQuery();
   const createCategory = trpc.photoCategory.create.useMutation({ onSuccess: () => { refetchCategories(); toast.success("เพิ่มประเภทรูปภาพสำเร็จ"); } });
   const deleteCategory = trpc.photoCategory.delete.useMutation({ onSuccess: () => { refetchCategories(); toast.success("ลบประเภทรูปภาพสำเร็จ"); } });
+  const { data: docCategories, refetch: refetchDocCategories } = trpc.documentCategory.list.useQuery();
+  const createDocCategory = trpc.documentCategory.create.useMutation({ onSuccess: () => { refetchDocCategories(); toast.success("เพิ่มประเภทเอกสารสำเร็จ"); } });
+  const deleteDocCategory = trpc.documentCategory.delete.useMutation({ onSuccess: () => { refetchDocCategories(); toast.success("ลบประเภทเอกสารสำเร็จ"); } });
   const [showNewCategory, setShowNewCategory] = useState(false);
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+  const [showNewDocCategory, setShowNewDocCategory] = useState(false);
+  const [newDocCategoryLabel, setNewDocCategoryLabel] = useState("");
+  const [confirmDeleteDocCategory, setConfirmDeleteDocCategory] = useState<{ id: number; label: string } | null>(null);
+  const [docCategoryDropdownOpen, setDocCategoryDropdownOpen] = useState(false);
+  const [docCategory, setDocCategory] = useState("other");
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [newCategoryLabel, setNewCategoryLabel] = useState("");
   const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<{ id: number; label: string } | null>(null);
@@ -148,14 +157,11 @@ export default function SurveyDetail() {
     reader.onload = () => {
       const base64 = (reader.result as string).split(",")[1];
       const ext = file.name.split(".").pop()?.toLowerCase();
-      let fileType: "quotation" | "simulation" | "contract" | "other" = "other";
-      if (file.name.toLowerCase().includes("quot") || file.name.toLowerCase().includes("ใบเสนอ")) fileType = "quotation";
-      else if (file.name.toLowerCase().includes("sim")) fileType = "simulation";
       uploadDoc.mutate({
         surveyId,
         customerId: data.customer.id,
         fileName: `${Date.now()}-${file.name}`,
-        fileType,
+        fileType: docCategory,
         base64Data: base64,
         mimeType: file.type,
         fileSize: file.size,
@@ -258,6 +264,50 @@ export default function SurveyDetail() {
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <CardTitle className="text-sm font-semibold">รูปภาพหน้างาน</CardTitle>
                   <div className="flex items-center gap-2">
+                    {photos && photos.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        disabled={isDownloadingAll}
+                        onClick={async () => {
+                          if (!photos || photos.length === 0) return;
+                          setIsDownloadingAll(true);
+                          try {
+                            const JSZip = (await import('jszip')).default;
+                            const zip = new JSZip();
+                            const folder = zip.folder(`photos-${c.name}`) || zip;
+                            for (let i = 0; i < photos.length; i++) {
+                              const photo = photos[i] as any;
+                              try {
+                                const resp = await fetch(photo.url);
+                                const blob = await resp.blob();
+                                const ext = photo.fileName?.split('.').pop() || 'jpg';
+                                const catLabel = categoryMap[photo.category] || photo.category || 'other';
+                                folder.file(`${catLabel}_${i + 1}.${ext}`, blob);
+                              } catch { /* skip failed */ }
+                            }
+                            const content = await zip.generateAsync({ type: 'blob' });
+                            const url = URL.createObjectURL(content);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `photos-${c.name}-${new Date().toISOString().slice(0, 10)}.zip`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                            toast.success(`ดาวน์โหลด ${photos.length} รูปสำเร็จ`);
+                          } catch (err) {
+                            toast.error('เกิดข้อผิดพลาดในการดาวน์โหลด');
+                          } finally {
+                            setIsDownloadingAll(false);
+                          }
+                        }}
+                      >
+                        <FolderDown className="h-3.5 w-3.5" />
+                        {isDownloadingAll ? 'กำลังดาวน์โหลด...' : `ดาวน์โหลดทั้งหมด (${photos.length})`}
+                      </Button>
+                    )}
                     <div className="relative">
                       <button
                         type="button"
@@ -356,12 +406,53 @@ export default function SurveyDetail() {
           <TabsContent value="documents" className="mt-4">
             <Card className="border-0 shadow-sm">
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <CardTitle className="text-sm font-semibold">เอกสาร</CardTitle>
-                  <Button size="sm" onClick={() => docInputRef.current?.click()} className="gap-1.5" disabled={uploadDoc.isPending}>
-                    <Upload className="h-3.5 w-3.5" /> {uploadDoc.isPending ? "กำลังอัพ..." : "อัพโหลดเอกสาร"}
-                  </Button>
-                  <input ref={docInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.png" hidden onChange={handleDocUpload} />
+                  <div className="flex items-center gap-2">
+                    {/* Document Category Dropdown */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setDocCategoryDropdownOpen(!docCategoryDropdownOpen)}
+                        className="flex items-center gap-2 h-8 px-3 rounded-md border bg-background text-sm min-w-[140px] justify-between"
+                      >
+                        <span className="truncate">{(docCategories || []).find((cat: any) => cat.key === docCategory)?.label || DOC_TYPE_MAP[docCategory] || docCategory}</span>
+                        <span className="text-muted-foreground text-xs">▼</span>
+                      </button>
+                      {docCategoryDropdownOpen && (
+                        <div className="absolute right-0 top-full mt-1 z-50 w-56 rounded-md border bg-popover shadow-lg py-1 max-h-60 overflow-y-auto">
+                          {(docCategories || []).map((cat: any) => (
+                            <div
+                              key={cat.id}
+                              className={`flex items-center justify-between px-3 py-2 text-sm cursor-pointer hover:bg-accent ${docCategory === cat.key ? 'bg-accent font-medium' : ''}`}
+                              onClick={() => { setDocCategory(cat.key); setDocCategoryDropdownOpen(false); }}
+                            >
+                              <span>{cat.label}</span>
+                              {!cat.isDefault && (
+                                <button
+                                  className="ml-2 p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                                  onClick={(e) => { e.stopPropagation(); setConfirmDeleteDocCategory({ id: cat.id, label: cat.label }); setDocCategoryDropdownOpen(false); }}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                          <div className="border-t my-1" />
+                          <div
+                            className="px-3 py-2 text-sm cursor-pointer hover:bg-accent text-primary font-medium"
+                            onClick={() => { setShowNewDocCategory(true); setDocCategoryDropdownOpen(false); }}
+                          >
+                            + เพิ่มประเภทใหม่
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <Button size="sm" onClick={() => docInputRef.current?.click()} className="gap-1.5" disabled={uploadDoc.isPending}>
+                      <Upload className="h-3.5 w-3.5" /> {uploadDoc.isPending ? "กำลังอัพ..." : "อัพโหลด"}
+                    </Button>
+                    <input ref={docInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.png" hidden onChange={handleDocUpload} />
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -375,7 +466,7 @@ export default function SurveyDetail() {
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{doc.fileName.replace(/^\d+-/, "")}</p>
                           <div className="flex items-center gap-2 mt-0.5">
-                            <Badge variant="secondary" className="text-[10px]">{DOC_TYPE_MAP[doc.fileType] || doc.fileType}</Badge>
+                            <Badge variant="secondary" className="text-[10px]">{(docCategories || []).find((cat: any) => cat.key === doc.fileType)?.label || DOC_TYPE_MAP[doc.fileType] || doc.fileType}</Badge>
                             {doc.fileSize && <span className="text-[10px] text-muted-foreground">{doc.fileSize > 1048576 ? `${(doc.fileSize / 1048576).toFixed(1)} MB` : `${(doc.fileSize / 1024).toFixed(0)} KB`}</span>}
                           </div>
                         </div>
@@ -623,6 +714,65 @@ export default function SurveyDetail() {
                   deleteCategory.mutate({ id: confirmDeleteCategory.id });
                   if (photoCategory === confirmDeleteCategory.label) setPhotoCategory("other");
                   setConfirmDeleteCategory(null);
+                }
+              }}
+            >
+              ลบประเภท
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* New Document Category Dialog */}
+      <Dialog open={showNewDocCategory} onOpenChange={setShowNewDocCategory}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>เพิ่มประเภทเอกสารใหม่</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              placeholder="ชื่อประเภท เช่น ใบรับรอง"
+              value={newDocCategoryLabel}
+              onChange={(e) => setNewDocCategoryLabel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newDocCategoryLabel.trim()) {
+                  const key = newDocCategoryLabel.trim().toLowerCase().replace(/[^a-z0-9฀-๿]/g, '_').replace(/_+/g, '_');
+                  createDocCategory.mutate({ key: `custom_doc_${Date.now()}`, label: newDocCategoryLabel.trim(), sortOrder: (docCategories?.length || 0) + 1 });
+                  setNewDocCategoryLabel("");
+                  setShowNewDocCategory(false);
+                }
+              }}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowNewDocCategory(false)}>ยกเลิก</Button>
+              <Button size="sm" disabled={!newDocCategoryLabel.trim()} onClick={() => {
+                createDocCategory.mutate({ key: `custom_doc_${Date.now()}`, label: newDocCategoryLabel.trim(), sortOrder: (docCategories?.length || 0) + 1 });
+                setNewDocCategoryLabel("");
+                setShowNewDocCategory(false);
+              }}>เพิ่ม</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm Delete Document Category */}
+      <AlertDialog open={!!confirmDeleteDocCategory} onOpenChange={(open) => !open && setConfirmDeleteDocCategory(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ลบประเภทเอกสาร</AlertDialogTitle>
+            <AlertDialogDescription>
+              คุณต้องการลบประเภท "{confirmDeleteDocCategory?.label}" หรือไม่? เอกสารที่อัพโหลดไปแล้วจะยังคงอยู่
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (confirmDeleteDocCategory) {
+                  deleteDocCategory.mutate({ id: confirmDeleteDocCategory.id });
+                  if (docCategory === confirmDeleteDocCategory.label) setDocCategory("other");
+                  setConfirmDeleteDocCategory(null);
                 }
               }}
             >
@@ -1014,6 +1164,11 @@ function CustomerInfoCard({ customer: c, updateCustomer }: { customer: any; upda
     meterSize: c.meterSize || "",
     source: c.source || "",
     notes: c.notes || "",
+    fullAddress: c.fullAddress || "",
+    subDistrict: c.subDistrict || "",
+    district: c.district || "",
+    province: c.province || "",
+    postalCode: c.postalCode || "",
   });
 
   if (!form && c) setForm(initForm());
@@ -1033,6 +1188,11 @@ function CustomerInfoCard({ customer: c, updateCustomer }: { customer: any; upda
     payload.meterSize = form.meterSize || undefined;
     payload.source = form.source || undefined;
     payload.notes = form.notes || undefined;
+    payload.fullAddress = form.fullAddress || undefined;
+    payload.subDistrict = form.subDistrict || undefined;
+    payload.district = form.district || undefined;
+    payload.province = form.province || undefined;
+    payload.postalCode = form.postalCode || undefined;
     updateCustomer.mutate(payload, {
       onSuccess: () => { setDirty(false); }
     });
@@ -1080,10 +1240,11 @@ function CustomerInfoCard({ customer: c, updateCustomer }: { customer: any; upda
             <label className="text-xs text-muted-foreground">ช่องทาง</label>
             <SourceCombobox value={form.source} onChange={(v) => { updateField("source", v); }} />
           </div>
-          <div className="space-y-1 col-span-2">
-            <label className="text-xs text-muted-foreground">ที่อยู่</label>
-            <p className="text-sm font-medium min-h-[32px] flex items-center">{[c.address, c.district, c.province].filter(Boolean).join(", ") || "-"}</p>
-          </div>
+          <EditableField label="ที่อยู่ (บ้านเลขที่ หมู่บ้าน ซอย ถนน)" value={form.fullAddress || ""} onChange={(v) => updateField("fullAddress", v)} placeholder="เช่น 123/45 หมู่บ้านสุขสันต์ ซ.5 ถ.รัตนาธิเบศร์" icon={<MapPin className="h-3.5 w-3.5 text-blue-500" />} />
+          <EditableField label="ตำบล/แขวง" value={form.subDistrict || ""} onChange={(v) => updateField("subDistrict", v)} placeholder="ตำบล/แขวง" />
+          <EditableField label="อำเภอ/เขต" value={form.district || ""} onChange={(v) => updateField("district", v)} placeholder="อำเภอ/เขต" />
+          <EditableField label="จังหวัด" value={form.province || ""} onChange={(v) => updateField("province", v)} placeholder="จังหวัด" />
+          <EditableField label="รหัสไปรษณีย์" value={form.postalCode || ""} onChange={(v) => updateField("postalCode", v)} placeholder="10xxx" />
         </div>
         <div className="mt-3">
           <EditableField label="หมายเหตุลูกค้า" value={form.notes} onChange={(v) => updateField("notes", v)} placeholder="หมายเหตุเพิ่มเติม..." multiline />

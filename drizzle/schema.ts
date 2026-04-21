@@ -165,7 +165,7 @@ export const surveyDocuments = mysqlTable("survey_documents", {
   url: text("url").notNull(),
   fileKey: varchar("fileKey", { length: 512 }).notNull(),
   fileName: varchar("fileName", { length: 255 }).notNull(),
-  fileType: mysqlEnum("fileType", ["quotation", "simulation", "contract", "other"]).default("other"),
+  fileType: varchar("fileType", { length: 100 }).default("other"),
   fileSize: int("fileSize"),
   mimeType: varchar("mimeType", { length: 100 }),
   uploadedBy: int("uploadedBy"),
@@ -275,3 +275,16 @@ export const photoCategories = mysqlTable("photo_categories", {
 
 export type PhotoCategory = typeof photoCategories.$inferSelect;
 export type InsertPhotoCategory = typeof photoCategories.$inferInsert;
+
+// ==================== DOCUMENT CATEGORIES ====================
+export const documentCategories = mysqlTable("document_categories", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 100 }).notNull().unique(),
+  label: varchar("label", { length: 255 }).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  isDefault: boolean("isDefault").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type DocumentCategory = typeof documentCategories.$inferSelect;
+export type InsertDocumentCategory = typeof documentCategories.$inferInsert;
