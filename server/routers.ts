@@ -307,6 +307,14 @@ const surveyRouter = router({
       await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "survey", entityId: input.id, details: `ลบงานสำรวจ ID: ${input.id}` });
       return { success: true };
     }),
+
+  bulkDelete: adminProcedure
+    .input(z.object({ ids: z.array(z.number()).min(1).max(100) }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await db.bulkDeleteSurveys(input.ids);
+      await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "survey", entityId: input.ids[0], details: `ลบงานสำรวจ ${input.ids.length} รายการ (IDs: ${input.ids.join(", ")})` });
+      return result;
+    }),
 });
 
 // ==================== PHOTO ROUTER ====================
@@ -822,6 +830,14 @@ const teamMemberRouter = router({
       await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "team_member", entityId: input.id, details: `ลบสมาชิกทีม ID: ${input.id}` });
       return { success: true };
     }),
+
+  bulkDelete: adminProcedure
+    .input(z.object({ ids: z.array(z.number()).min(1).max(100) }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await db.bulkDeleteTeamMembers(input.ids);
+      await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "team_member", entityId: input.ids[0], details: `ลบสมาชิกทีม ${input.ids.length} รายการ (IDs: ${input.ids.join(", ")})` });
+      return result;
+    }),
 });
 
 // ==================== TEAM PERFORMANCE ROUTER ====================
@@ -836,6 +852,22 @@ const teamPerformanceRouter = router({
 
 // ==================== INSTALLATION ROUTER ====================
 const installationRouter = router({
+  delete: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      await db.deleteSurvey(input.id);
+      await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "survey", entityId: input.id, details: `ลบงานติดตั้ง (survey) ID: ${input.id}` });
+      return { success: true };
+    }),
+
+  bulkDelete: adminProcedure
+    .input(z.object({ ids: z.array(z.number()).min(1).max(100) }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await db.bulkDeleteSurveys(input.ids);
+      await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "survey", entityId: input.ids[0], details: `ลบงานติดตั้ง ${input.ids.length} รายการ (IDs: ${input.ids.join(", ")})` });
+      return result;
+    }),
+
   list: protectedProcedure
     .input(z.object({
       page: z.number().default(1),

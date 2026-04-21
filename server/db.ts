@@ -853,6 +853,29 @@ export async function deleteTeamMember(id: number) {
   await db.delete(teamMembers).where(eq(teamMembers.id, id));
 }
 
+export async function bulkDeleteTeamMembers(ids: number[]) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  if (ids.length === 0) return { deleted: 0 };
+  await db.delete(teamMembers).where(inArray(teamMembers.id, ids));
+  return { deleted: ids.length };
+}
+
+export async function bulkDeleteSurveys(ids: number[]) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  if (ids.length === 0) return { deleted: 0 };
+  // Delete related data first
+  await db.delete(surveyAssignments).where(inArray(surveyAssignments.surveyId, ids));
+  await db.delete(surveyPhotos).where(inArray(surveyPhotos.surveyId, ids));
+  await db.delete(surveyDocuments).where(inArray(surveyDocuments.surveyId, ids));
+  await db.delete(followUps).where(inArray(followUps.surveyId, ids));
+  await db.delete(shareLinks).where(inArray(shareLinks.surveyId, ids));
+  await db.delete(notifications).where(inArray(notifications.relatedSurveyId, ids));
+  await db.delete(surveys).where(inArray(surveys.id, ids));
+  return { deleted: ids.length };
+}
+
 // ==================== CUSTOM STATUSES QUERIES ====================
 export async function getCustomStatuses(type?: "customer" | "survey") {
   const db = await getDb();

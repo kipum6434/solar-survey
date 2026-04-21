@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Users2, UserCheck, Phone, Mail } from "lucide-react";
 
@@ -30,6 +32,10 @@ export default function TeamManagement() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editMember, setEditMember] = useState<any>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
 
   const { data: members = [], isLoading } = trpc.teamMember.listAll.useQuery();
   const utils = trpc.useUtils();
@@ -64,7 +70,43 @@ export default function TeamManagement() {
     onError: (err) => toast.error(err.message),
   });
 
+  const bulkDeleteMutation = trpc.teamMember.bulkDelete.useMutation({
+    onSuccess: (result) => {
+      toast.success(`ลบสมาชิกทีม ${result.deleted} รายการสำเร็จ`);
+      setSelectedIds(new Set());
+      setShowBulkDelete(false);
+      utils.teamMember.listAll.invalidate();
+      utils.teamMember.list.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const filteredMembers = filterRole === "all" ? members : members.filter((m: any) => m.role === filterRole);
+
+  const filteredIds = useMemo(() => filteredMembers.map((m: any) => m.id), [filteredMembers]);
+  const allSelected = filteredIds.length > 0 && filteredIds.every((id: number) => selectedIds.has(id));
+  const someSelected = filteredIds.some((id: number) => selectedIds.has(id)) && !allSelected;
+
+  const toggleSelect = useCallback((id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (filteredIds.every((id: number) => prev.has(id))) {
+        filteredIds.forEach((id: number) => next.delete(id));
+      } else {
+        filteredIds.forEach((id: number) => next.add(id));
+      }
+      return next;
+    });
+  }, [filteredIds]);
 
   const groupedByRole = ROLE_OPTIONS.map(role => ({
     ...role,
@@ -122,6 +164,28 @@ export default function TeamManagement() {
           ))}
         </div>
 
+        {/* Bulk Action Bar */}
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-3 p-3 mb-4 bg-destructive/5 border border-destructive/20 rounded-lg animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center gap-2 flex-1">
+              <div className="h-8 w-8 rounded-full bg-destructive/10 flex items-center justify-center">
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </div>
+              <span className="text-sm font-medium">
+                เลือกแล้ว <span className="text-destructive font-bold">{selectedIds.size}</span> รายการ
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
+                ยกเลิก
+              </Button>
+              <Button variant="destructive" size="sm" onClick={() => setShowBulkDelete(true)} className="gap-1.5">
+                <Trash2 className="h-3.5 w-3.5" /> ลบ {selectedIds.size} รายการ
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Member List */}
         {isLoading ? (
           <div className="text-center py-12 text-muted-foreground">กำลังโหลด...</div>
@@ -138,49 +202,69 @@ export default function TeamManagement() {
           </Card>
         ) : (
           <div className="grid gap-3">
-            {filteredMembers.map((member: any) => (
-              <Card key={member.id} className="hover:shadow-sm transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className={`rounded-full p-2 shrink-0 ${getRoleColor(member.role)}`}>
-                        <UserCheck className="h-4 w-4" />
+            {/* Select All */}
+            <div className="flex items-center gap-2 px-1">
+              <Checkbox
+                checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                onCheckedChange={toggleSelectAll}
+                aria-label="เลือกทั้งหมด"
+              />
+              <span className="text-xs text-muted-foreground">เลือกทั้งหมด</span>
+            </div>
+
+            {filteredMembers.map((member: any) => {
+              const isSelected = selectedIds.has(member.id);
+              return (
+                <Card key={member.id} className={`hover:shadow-sm transition-shadow ${isSelected ? "ring-2 ring-destructive/30 bg-destructive/5" : ""}`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleSelect(member.id)}
+                            aria-label={`เลือก ${member.name}`}
+                          />
+                        </div>
+                        <div className={`rounded-full p-2 shrink-0 ${getRoleColor(member.role)}`}>
+                          <UserCheck className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium">{member.name}</span>
+                            <Badge variant="secondary" className={`text-xs ${getRoleColor(member.role)}`}>
+                              {getRoleLabel(member.role)}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground flex-wrap">
+                            {member.phone && (
+                              <span className="flex items-center gap-1">
+                                <Phone className="h-3 w-3" />
+                                {member.phone}
+                              </span>
+                            )}
+                            {member.email && (
+                              <span className="flex items-center gap-1">
+                                <Mail className="h-3 w-3" />
+                                {member.email}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium">{member.name}</span>
-                          <Badge variant="secondary" className={`text-xs ${getRoleColor(member.role)}`}>
-                            {getRoleLabel(member.role)}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground flex-wrap">
-                          {member.phone && (
-                            <span className="flex items-center gap-1">
-                              <Phone className="h-3 w-3" />
-                              {member.phone}
-                            </span>
-                          )}
-                          {member.email && (
-                            <span className="flex items-center gap-1">
-                              <Mail className="h-3 w-3" />
-                              {member.email}
-                            </span>
-                          )}
-                        </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditMember(member)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteConfirm(member.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditMember(member)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteConfirm(member.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
 
@@ -205,7 +289,7 @@ export default function TeamManagement() {
           />
         )}
 
-        {/* Delete Confirm Dialog */}
+        {/* Delete Confirm Dialog (single) */}
         <Dialog open={deleteConfirm !== null} onOpenChange={() => setDeleteConfirm(null)}>
           <DialogContent className="max-w-sm">
             <DialogHeader>
@@ -220,6 +304,30 @@ export default function TeamManagement() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Bulk Delete Confirm Dialog */}
+        <AlertDialog open={showBulkDelete} onOpenChange={setShowBulkDelete}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>ยืนยันการลบหลายรายการ</AlertDialogTitle>
+              <AlertDialogDescription>
+                คุณต้องการลบสมาชิกทีม <span className="font-bold text-destructive">{selectedIds.size} รายการ</span> หรือไม่?
+                <br />
+                <span className="text-xs mt-1 block">การดำเนินการนี้ไม่สามารถย้อนกลับได้</span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => bulkDeleteMutation.mutate({ ids: Array.from(selectedIds) })}
+                disabled={bulkDeleteMutation.isPending}
+              >
+                {bulkDeleteMutation.isPending ? "กำลังลบ..." : `ลบ ${selectedIds.size} รายการ`}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );

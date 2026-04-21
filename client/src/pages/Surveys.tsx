@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { trpc } from "@/lib/trpc";
 import { SURVEY_STATUS_MAP } from "@/lib/constants";
 import { StatusDropdown } from "@/components/StatusDropdown";
@@ -14,7 +16,7 @@ import { useLocation } from "wouter";
 import { toast } from "sonner";
 import {
   Search, ClipboardList, Calendar, User, ChevronLeft, ChevronRight, Filter,
-  LayoutList, Table2, Phone, MapPin, Download,
+  LayoutList, Table2, Phone, MapPin, Download, Trash2,
 } from "lucide-react";
 
 const THAI_MONTHS = [
@@ -58,12 +60,17 @@ export default function Surveys() {
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [filterByMonth, setFilterByMonth] = useState(false);
 
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
+
   // Fetch sources and team members for filter dropdowns
   const { data: sourcesData } = trpc.source.list.useQuery();
   const { data: teamSurveyorsData } = trpc.teamMember.list.useQuery({ role: "surveyor" });
   const { data: teamAdminSendersData } = trpc.teamMember.list.useQuery({ role: "admin_sender" });
   const { data: teamClosersData } = trpc.teamMember.list.useQuery({ role: "closer" });
   const { data: distinctValues } = trpc.customer.distinctValues.useQuery();
+  const utils = trpc.useUtils();
 
   const queryInput = useMemo(() => ({
     search,
@@ -87,7 +94,44 @@ export default function Surveys() {
     onSuccess: () => { toast.success("บันทึกวันที่นัดติดตั้งสำเร็จ"); refetch(); },
     onError: (e) => toast.error(e.message),
   });
+
+  const bulkDeleteMutation = trpc.survey.bulkDelete.useMutation({
+    onSuccess: (result) => {
+      toast.success(`ลบงานสำรวจ ${result.deleted} รายการสำเร็จ`);
+      setSelectedIds(new Set());
+      setShowBulkDelete(false);
+      utils.survey.list.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   const totalPages = Math.ceil((data?.total ?? 0) / 50);
+
+  // Current page survey IDs for select-all
+  const currentPageIds = useMemo(() => data?.data?.map((item: any) => item.survey.id) || [], [data]);
+  const allSelected = currentPageIds.length > 0 && currentPageIds.every((id: number) => selectedIds.has(id));
+  const someSelected = currentPageIds.some((id: number) => selectedIds.has(id)) && !allSelected;
+
+  const toggleSelect = useCallback((id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (currentPageIds.every((id: number) => prev.has(id))) {
+        currentPageIds.forEach((id: number) => next.delete(id));
+      } else {
+        currentPageIds.forEach((id: number) => next.add(id));
+      }
+      return next;
+    });
+  }, [currentPageIds]);
 
   // Export Excel query
   const exportInput = useMemo(() => ({
@@ -347,6 +391,28 @@ export default function Surveys() {
           </div>
         )}
 
+        {/* Bulk Action Bar */}
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-3 p-3 bg-destructive/5 border border-destructive/20 rounded-lg animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center gap-2 flex-1">
+              <div className="h-8 w-8 rounded-full bg-destructive/10 flex items-center justify-center">
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </div>
+              <span className="text-sm font-medium">
+                เลือกแล้ว <span className="text-destructive font-bold">{selectedIds.size}</span> รายการ
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
+                ยกเลิก
+              </Button>
+              <Button variant="destructive" size="sm" onClick={() => setShowBulkDelete(true)} className="gap-1.5">
+                <Trash2 className="h-3.5 w-3.5" /> ลบ {selectedIds.size} รายการ
+              </Button>
+            </div>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -356,9 +422,29 @@ export default function Surveys() {
         ) : data?.data && data.data.length > 0 ? (
           <>
             {viewMode === "table" ? (
-              <SurveyTableView data={data.data} onRowClick={(id) => setLocation(`/surveys/${id}`)} onRefetch={refetch} onUpdateInstallationDate={(surveyId, date) => updateInstallationDate.mutate({ surveyId, installationDate: date })} />
+              <SurveyTableView
+                data={data.data}
+                onRowClick={(id) => setLocation(`/surveys/${id}`)}
+                onRefetch={refetch}
+                onUpdateInstallationDate={(surveyId, date) => updateInstallationDate.mutate({ surveyId, installationDate: date })}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
+                onToggleSelectAll={toggleSelectAll}
+                allSelected={allSelected}
+                someSelected={someSelected}
+              />
             ) : (
-              <SurveyListView data={data.data} onRowClick={(id) => setLocation(`/surveys/${id}`)} onRefetch={refetch} onUpdateInstallationDate={(surveyId, date) => updateInstallationDate.mutate({ surveyId, installationDate: date })} />
+              <SurveyListView
+                data={data.data}
+                onRowClick={(id) => setLocation(`/surveys/${id}`)}
+                onRefetch={refetch}
+                onUpdateInstallationDate={(surveyId, date) => updateInstallationDate.mutate({ surveyId, installationDate: date })}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
+                onToggleSelectAll={toggleSelectAll}
+                allSelected={allSelected}
+                someSelected={someSelected}
+              />
             )}
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-2 pt-4">
@@ -378,6 +464,30 @@ export default function Surveys() {
             <p className="text-muted-foreground">{search || statusFilter !== "all" || filterByMonth ? "ไม่พบงานสำรวจที่ค้นหา" : "ยังไม่มีงานสำรวจ"}</p>
           </div>
         )}
+
+        {/* Bulk Delete Confirm Dialog */}
+        <AlertDialog open={showBulkDelete} onOpenChange={setShowBulkDelete}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>ยืนยันการลบหลายรายการ</AlertDialogTitle>
+              <AlertDialogDescription>
+                คุณต้องการลบงานสำรวจ <span className="font-bold text-destructive">{selectedIds.size} รายการ</span> หรือไม่?
+                <br />
+                <span className="text-xs mt-1 block">รูปภาพ, เอกสาร, การมอบหมาย และข้อมูลที่เกี่ยวข้องทั้งหมดจะถูกลบด้วย การดำเนินการนี้ไม่สามารถย้อนกลับได้</span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => bulkDeleteMutation.mutate({ ids: Array.from(selectedIds) })}
+                disabled={bulkDeleteMutation.isPending}
+              >
+                {bulkDeleteMutation.isPending ? "กำลังลบ..." : `ลบ ${selectedIds.size} รายการ`}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );
@@ -453,14 +563,34 @@ function InstallationDateCell({ surveyId, currentDate, onUpdate }: { surveyId: n
   );
 }
 
+/* ==================== SHARED PROPS TYPE ==================== */
+interface SurveyViewProps {
+  data: any[];
+  onRowClick: (id: number) => void;
+  onRefetch: () => void;
+  onUpdateInstallationDate: (surveyId: number, date: number | null) => void;
+  selectedIds: Set<number>;
+  onToggleSelect: (id: number) => void;
+  onToggleSelectAll: () => void;
+  allSelected: boolean;
+  someSelected: boolean;
+}
+
 /* ==================== TABLE VIEW ==================== */
-function SurveyTableView({ data, onRowClick, onRefetch, onUpdateInstallationDate }: { data: any[]; onRowClick: (id: number) => void; onRefetch: () => void; onUpdateInstallationDate: (surveyId: number, date: number | null) => void }) {
+function SurveyTableView({ data, onRowClick, onRefetch, onUpdateInstallationDate, selectedIds, onToggleSelect, onToggleSelectAll, allSelected, someSelected }: SurveyViewProps) {
   return (
     <div className="border rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-muted/50 border-b">
+              <th className="px-3 py-2.5 w-10">
+                <Checkbox
+                  checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                  onCheckedChange={onToggleSelectAll}
+                  aria-label="เลือกทั้งหมด"
+                />
+              </th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">วันที่</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">เวลา</th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">ชื่อลูกค้า</th>
@@ -484,12 +614,20 @@ function SurveyTableView({ data, onRowClick, onRefetch, onUpdateInstallationDate
               const surveyors = assigns.filter((a: any) => a.role === "surveyor").map((a: any) => a.userName).filter(Boolean).join(", ");
               const senders = assigns.filter((a: any) => a.role === "admin_sender").map((a: any) => a.userName).filter(Boolean).join(", ");
               const closers = assigns.filter((a: any) => a.role === "closer").map((a: any) => a.userName).filter(Boolean).join(", ");
+              const isSelected = selectedIds.has(s.id);
               return (
                 <tr
                   key={s.id}
-                  className="border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
+                  className={`border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors ${isSelected ? "bg-destructive/5" : ""}`}
                   onClick={() => onRowClick(s.id)}
                 >
+                  <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => onToggleSelect(s.id)}
+                      aria-label={`เลือก ${c.name}`}
+                    />
+                  </td>
                   <td className="px-3 py-2.5 whitespace-nowrap">
                     {s.scheduledDate
                       ? new Date(s.scheduledDate).toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "2-digit" })
@@ -558,21 +696,38 @@ function SurveyTableView({ data, onRowClick, onRefetch, onUpdateInstallationDate
 }
 
 /* ==================== LIST VIEW (original) ==================== */
-function SurveyListView({ data, onRowClick, onRefetch, onUpdateInstallationDate }: { data: any[]; onRowClick: (id: number) => void; onRefetch: () => void; onUpdateInstallationDate: (surveyId: number, date: number | null) => void }) {
+function SurveyListView({ data, onRowClick, onRefetch, onUpdateInstallationDate, selectedIds, onToggleSelect, onToggleSelectAll, allSelected, someSelected }: SurveyViewProps) {
   return (
     <div className="space-y-3">
+      {/* Select all bar for list view */}
+      <div className="flex items-center gap-2 px-1">
+        <Checkbox
+          checked={allSelected ? true : someSelected ? "indeterminate" : false}
+          onCheckedChange={onToggleSelectAll}
+          aria-label="เลือกทั้งหมด"
+        />
+        <span className="text-xs text-muted-foreground">เลือกทั้งหมด</span>
+      </div>
       {data.map((item: any) => {
         const s = item.survey;
         const c = item.customer;
         const statusInfo = SURVEY_STATUS_MAP[s.status] || SURVEY_STATUS_MAP.pending;
+        const isSelected = selectedIds.has(s.id);
         return (
           <Card
             key={s.id}
-            className="border-0 shadow-sm hover:shadow-md transition-all cursor-pointer"
+            className={`border-0 shadow-sm hover:shadow-md transition-all cursor-pointer ${isSelected ? "ring-2 ring-destructive/30 bg-destructive/5" : ""}`}
             onClick={() => onRowClick(s.id)}
           >
             <CardContent className="p-4">
               <div className="flex items-center gap-4">
+                <div onClick={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={() => onToggleSelect(s.id)}
+                    aria-label={`เลือก ${c.name}`}
+                  />
+                </div>
                 <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                   <ClipboardList className="h-6 w-6 text-primary" />
                 </div>

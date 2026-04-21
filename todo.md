@@ -356,3 +356,12 @@
 - [x] Frontend: เพิ่ม filter ในหน้างานติดตั้ง (จังหวัด, เขต, คนสำรวจ, คนปิดงาน, เดือน/ปี)
 - [x] Frontend: เมื่อเลือกสถานะ "นัดติดตั้งแล้ว" ให้ redirect ไปหน้างานติดตั้ง
 - [x] เขียน tests สำหรับ file management + installation filters (8 tests ใหม่, รวม 107 tests ผ่าน)
+
+## User Request - Round 21: Bulk Delete ในหน้าจัดการทีมงาน, งานสำรวจ, งานติดตั้ง
+
+- [x] Backend: เพิ่ม bulk delete API สำหรับ team members (ลบหลายคนพร้อมกัน)
+- [x] Backend: เพิ่ม bulk delete API สำหรับ surveys (ลบหลายงานสำรวจพร้อมกัน + ลบ related data)
+- [x] Frontend: หน้าจัดการทีมงาน - เพิ่ม checkbox เลือกหลายรายการ + ปุ่มลบทีเดียว
+- [x] Frontend: หน้างานสำรวจ - เพิ่ม checkbox เลือกหลายรายการ + ปุ่มลบทีเดียว
+- [x] Frontend: หน้างานติดตั้ง - เพิ่ม checkbox เลือกหลายรายการ + ปุ่มลบทีเดียว
+- [x] เขียน tests สำหรับ bulk delete APIs (6 tests ผ่าน)

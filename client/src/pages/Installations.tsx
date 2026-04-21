@@ -1,15 +1,18 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
 import {
   Search, Wrench, Calendar, ChevronLeft, ChevronRight,
-  MapPin, Phone, ClipboardCheck, Clock, AlertTriangle, CheckCircle2,
+  MapPin, Phone, ClipboardCheck, Clock, AlertTriangle, CheckCircle2, Trash2,
 } from "lucide-react";
 
 const THAI_MONTHS_SHORT = [
@@ -40,6 +43,10 @@ export default function Installations() {
   const [selectedYear, setSelectedYear] = useState(now.getFullYear() + 543);
   const [filterByMonth, setFilterByMonth] = useState(false);
 
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
+
   const years = useMemo(() => {
     const currentBE = now.getFullYear() + 543;
     return Array.from({ length: 5 }, (_, i) => currentBE - i);
@@ -49,6 +56,7 @@ export default function Installations() {
   const { data: distinctValues } = trpc.customer.distinctValues.useQuery();
   const { data: surveyors } = trpc.teamMember.list.useQuery({ role: "surveyor" });
   const { data: closers } = trpc.teamMember.list.useQuery({ role: "closer" });
+  const utils = trpc.useUtils();
 
   const provinces = distinctValues?.provinces ?? [];
   const districts = distinctValues?.districts ?? [];
@@ -70,6 +78,43 @@ export default function Installations() {
   const items = data?.data ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / 20);
+
+  const bulkDeleteMutation = trpc.installation.bulkDelete.useMutation({
+    onSuccess: (result) => {
+      toast.success(`ลบงานติดตั้ง ${result.deleted} รายการสำเร็จ`);
+      setSelectedIds(new Set());
+      setShowBulkDelete(false);
+      utils.installation.list.invalidate();
+      utils.survey.list.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  // Current page IDs for select-all
+  const currentPageIds = useMemo(() => items.map((item: any) => item.survey.id), [items]);
+  const allSelected = currentPageIds.length > 0 && currentPageIds.every((id: number) => selectedIds.has(id));
+  const someSelected = currentPageIds.some((id: number) => selectedIds.has(id)) && !allSelected;
+
+  const toggleSelect = useCallback((id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (currentPageIds.every((id: number) => prev.has(id))) {
+        currentPageIds.forEach((id: number) => next.delete(id));
+      } else {
+        currentPageIds.forEach((id: number) => next.add(id));
+      }
+      return next;
+    });
+  }, [currentPageIds]);
 
   const getInstallationBadge = (installationDate: number | null, completedAt: number | null) => {
     if (completedAt) {
@@ -241,6 +286,28 @@ export default function Installations() {
           </div>
         </div>
 
+        {/* Bulk Action Bar */}
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-3 p-3 bg-destructive/5 border border-destructive/20 rounded-lg animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center gap-2 flex-1">
+              <div className="h-8 w-8 rounded-full bg-destructive/10 flex items-center justify-center">
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </div>
+              <span className="text-sm font-medium">
+                เลือกแล้ว <span className="text-destructive font-bold">{selectedIds.size}</span> รายการ
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
+                ยกเลิก
+              </Button>
+              <Button variant="destructive" size="sm" onClick={() => setShowBulkDelete(true)} className="gap-1.5">
+                <Trash2 className="h-3.5 w-3.5" /> ลบ {selectedIds.size} รายการ
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Content */}
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
@@ -258,25 +325,44 @@ export default function Installations() {
           <>
             {/* Mobile Card View */}
             <div className="block sm:hidden space-y-3">
+              {/* Select all bar for mobile */}
+              <div className="flex items-center gap-2 px-1">
+                <Checkbox
+                  checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                  onCheckedChange={toggleSelectAll}
+                  aria-label="เลือกทั้งหมด"
+                />
+                <span className="text-xs text-muted-foreground">เลือกทั้งหมด</span>
+              </div>
               {items.map((item: any) => {
                 const surveyor = item.assignments?.find((a: any) => a.role === "surveyor");
                 const closer = item.assignments?.find((a: any) => a.role === "closer");
                 const daysUntil = getDaysUntil(item.survey.installationDate);
+                const isSelected = selectedIds.has(item.survey.id);
                 return (
                   <Card
                     key={item.survey.id}
-                    className="cursor-pointer hover:shadow-md transition-shadow"
+                    className={`cursor-pointer hover:shadow-md transition-shadow ${isSelected ? "ring-2 ring-destructive/30 bg-destructive/5" : ""}`}
                     onClick={() => setLocation(`/surveys/${item.survey.id}`)}
                   >
                     <CardContent className="p-4 space-y-3">
                       <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-semibold truncate">{item.customer.name}</p>
-                          {item.customer.phone && (
-                            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                              <Phone className="h-3 w-3" />{item.customer.phone}
-                            </p>
-                          )}
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleSelect(item.survey.id)}
+                              aria-label={`เลือก ${item.customer.name}`}
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold truncate">{item.customer.name}</p>
+                            {item.customer.phone && (
+                              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                <Phone className="h-3 w-3" />{item.customer.phone}
+                              </p>
+                            )}
+                          </div>
                         </div>
                         {getInstallationBadge(item.survey.installationDate, item.survey.completedAt)}
                       </div>
@@ -325,6 +411,13 @@ export default function Installations() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-muted/30">
+                        <th className="py-3 px-4 w-10">
+                          <Checkbox
+                            checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                            onCheckedChange={toggleSelectAll}
+                            aria-label="เลือกทั้งหมด"
+                          />
+                        </th>
                         <th className="py-3 px-4 text-left font-medium text-muted-foreground">วันนัดติดตั้ง</th>
                         <th className="py-3 px-4 text-left font-medium text-muted-foreground">ชื่อลูกค้า</th>
                         <th className="py-3 px-4 text-left font-medium text-muted-foreground">เบอร์โทร</th>
@@ -341,12 +434,20 @@ export default function Installations() {
                         const surveyor = item.assignments?.find((a: any) => a.role === "surveyor");
                         const closer = item.assignments?.find((a: any) => a.role === "closer");
                         const daysUntil = getDaysUntil(item.survey.installationDate);
+                        const isSelected = selectedIds.has(item.survey.id);
                         return (
                           <tr
                             key={item.survey.id}
-                            className="border-b last:border-0 hover:bg-muted/50 cursor-pointer transition-colors"
+                            className={`border-b last:border-0 hover:bg-muted/50 cursor-pointer transition-colors ${isSelected ? "bg-destructive/5" : ""}`}
                             onClick={() => setLocation(`/surveys/${item.survey.id}`)}
                           >
+                            <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => toggleSelect(item.survey.id)}
+                                aria-label={`เลือก ${item.customer.name}`}
+                              />
+                            </td>
                             <td className="py-3 px-4">
                               <div className="flex flex-col">
                                 <span className="font-medium text-primary">{formatDate(item.survey.installationDate)}</span>
@@ -404,6 +505,30 @@ export default function Installations() {
             )}
           </>
         )}
+
+        {/* Bulk Delete Confirm Dialog */}
+        <AlertDialog open={showBulkDelete} onOpenChange={setShowBulkDelete}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>ยืนยันการลบหลายรายการ</AlertDialogTitle>
+              <AlertDialogDescription>
+                คุณต้องการลบงานติดตั้ง <span className="font-bold text-destructive">{selectedIds.size} รายการ</span> หรือไม่?
+                <br />
+                <span className="text-xs mt-1 block">รูปภาพ, เอกสาร, การมอบหมาย และข้อมูลที่เกี่ยวข้องทั้งหมดจะถูกลบด้วย การดำเนินการนี้ไม่สามารถย้อนกลับได้</span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => bulkDeleteMutation.mutate({ ids: Array.from(selectedIds) })}
+                disabled={bulkDeleteMutation.isPending}
+              >
+                {bulkDeleteMutation.isPending ? "กำลังลบ..." : `ลบ ${selectedIds.size} รายการ`}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );
