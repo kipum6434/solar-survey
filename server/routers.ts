@@ -800,6 +800,25 @@ const teamPerformanceRouter = router({
     .query(({ input }) => db.getTeamPerformance(input)),
 });
 
+// ==================== INSTALLATION ROUTER ====================
+const installationRouter = router({
+  list: protectedProcedure
+    .input(z.object({
+      page: z.number().default(1),
+      limit: z.number().default(20),
+      search: z.string().optional(),
+      month: z.number().min(1).max(12).optional(),
+      year: z.number().optional(),
+      district: z.string().optional(),
+      province: z.string().optional(),
+      installationStatus: z.enum(['all', 'upcoming', 'today', 'overdue', 'completed']).optional(),
+    }))
+    .query(({ input }) => {
+      const { installationStatus, ...rest } = input;
+      return db.getInstallations({ ...rest, installationStatus: installationStatus === 'all' ? undefined : installationStatus });
+    }),
+});
+
 // ==================== APP ROUTER ====================
 export const appRouter = router({
   system: systemRouter,
@@ -827,6 +846,7 @@ export const appRouter = router({
   teamMember: teamMemberRouter,
   teamPerformance: teamPerformanceRouter,
   customStatus: customStatusRouter,
+  installation: installationRouter,
 });
 
 export type AppRouter = typeof appRouter;

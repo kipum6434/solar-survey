@@ -823,3 +823,71 @@ describe("Custom Status Management", () => {
     expect(detail.survey.installationDate).toBe(installDate);
   }, 10000);
 });
+
+// ==================== ROUND 19: INSTALLATION LIST TESTS ====================
+describe("installation.list", () => {
+  it("should return empty list when no surveys have installationDate", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    const result = await adminCaller.installation.list({ page: 1, limit: 20 });
+    expect(result).toHaveProperty("data");
+    expect(result).toHaveProperty("total");
+    expect(Array.isArray(result.data)).toBe(true);
+  }, 10000);
+
+  it("should return surveys that have installationDate set", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    // Create customer + survey with installationDate
+    const customer = await adminCaller.customer.create({ name: "R19 Installation Test" });
+    const survey = await adminCaller.survey.create({ customerId: customer.id, scheduledDate: Date.now() });
+    const installDate = new Date("2026-07-15").getTime();
+    await adminCaller.survey.update({ id: survey.id, installationDate: installDate });
+
+    const result = await adminCaller.installation.list({ page: 1, limit: 100 });
+    const found = result.data.find((d: any) => d.survey.id === survey.id);
+    expect(found).toBeDefined();
+    expect(found!.survey.installationDate).toBe(installDate);
+    expect(found!.customer.name).toBe("R19 Installation Test");
+  }, 10000);
+
+  it("should include assignments and customStatus in installation list", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    const customer = await adminCaller.customer.create({ name: "R19 Install Assign" });
+    const survey = await adminCaller.survey.create({ customerId: customer.id, scheduledDate: Date.now() });
+    await adminCaller.survey.update({ id: survey.id, installationDate: Date.now() + 86400000 });
+
+    const result = await adminCaller.installation.list({ page: 1, limit: 100 });
+    const found = result.data.find((d: any) => d.survey.id === survey.id);
+    expect(found).toBeDefined();
+    expect(found).toHaveProperty("assignments");
+    expect(Array.isArray(found!.assignments)).toBe(true);
+  }, 10000);
+
+  it("should not return surveys without installationDate", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    const customer = await adminCaller.customer.create({ name: "R19 No Install Date" });
+    const survey = await adminCaller.survey.create({ customerId: customer.id, scheduledDate: Date.now() });
+    // Do NOT set installationDate
+
+    const result = await adminCaller.installation.list({ page: 1, limit: 100 });
+    const found = result.data.find((d: any) => d.survey.id === survey.id);
+    expect(found).toBeUndefined();
+  }, 10000);
+
+  it("should filter by installationStatus=completed when completedAt is set", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    const result = await adminCaller.installation.list({ page: 1, limit: 20, installationStatus: "completed" });
+    expect(result).toHaveProperty("data");
+    expect(Array.isArray(result.data)).toBe(true);
+  }, 10000);
+
+  it("should support search by customer name", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    const customer = await adminCaller.customer.create({ name: "R19 SearchInstall UniqueXYZ" });
+    const survey = await adminCaller.survey.create({ customerId: customer.id, scheduledDate: Date.now() });
+    await adminCaller.survey.update({ id: survey.id, installationDate: Date.now() + 86400000 * 7 });
+
+    const result = await adminCaller.installation.list({ page: 1, limit: 100, search: "UniqueXYZ" });
+    expect(result.data.length).toBeGreaterThanOrEqual(1);
+    expect(result.data.some((d: any) => d.customer.name.includes("UniqueXYZ"))).toBe(true);
+  }, 10000);
+});

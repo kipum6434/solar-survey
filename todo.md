@@ -336,3 +336,12 @@
 ### Round 18 Gaps - ต้องแก้ไขเพิ่ม
 - [x] หน้า SurveyDetail: เพิ่มการแสดงผล installationDate ในหน้ารายละเอียดงานสำรวจ
 - [x] Backend: getSurveyWithCustomer return installationDate ไปยัง SharedSurvey (อยู่ใน surveys table แล้ว - return ทั้ง row)
+
+## User Request - Round 19: หน้างานติดตั้ง + วันนัดติดตั้งในหน้าแชร์
+
+- [x] Backend: สร้าง API ดึงรายการงานติดตั้ง (survey ที่มี installationDate หรือสถานะปิดการขาย)
+- [x] Frontend: สร้างหน้า Installations.tsx แสดงรายการงานติดตั้ง (ตาราง + filter เดือน/ปี)
+- [x] Frontend: เพิ่มเมนู "งานติดตั้ง" ใน sidebar (ระหว่าง งานสำรวจ กับ ผลงานทีม)
+- [x] Frontend: เพิ่ม route /installations ใน App.tsx
+- [x] Frontend: หน้าแชร์ลิงก์ (SharedSurvey) แสดงวันที่นัดติดตั้งให้ช่างเห็น (ทำไว้แล้วใน R18)
+- [x] เขียน tests สำหรับ installation list API (6 tests ผ่าน, รวม 99 tests)

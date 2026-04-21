@@ -1,4 +1,4 @@
-import { eq, and, or, like, desc, gte, lte, sql, inArray, asc } from "drizzle-orm";
+import { eq, and, or, like, desc, gte, lte, sql, inArray, asc, isNotNull, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -913,4 +913,95 @@ export async function updateSurveyInstallationDate(surveyId: number, installatio
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.update(surveys).set({ installationDate }).where(eq(surveys.id, surveyId));
+}
+
+// ==================== INSTALLATIONS QUERIES ====================
+export async function getInstallations(opts: { page?: number; limit?: number; search?: string; month?: number; year?: number; district?: string; province?: string; installationStatus?: string }) {
+  const db = await getDb();
+  if (!db) return { data: [], total: 0 };
+  const { page = 1, limit = 20, search, month, year, district, province, installationStatus } = opts;
+  const offset = (page - 1) * limit;
+
+  // Only show surveys that have installationDate set (closed deals with installation scheduled)
+  const conditions: any[] = [isNotNull(surveys.installationDate)];
+  if (search) {
+    conditions.push(or(
+      like(customers.name, `%${search}%`),
+      like(customers.phone, `%${search}%`)
+    ));
+  }
+  if (district) conditions.push(eq(customers.district, district));
+  if (province) conditions.push(eq(customers.province, province));
+  if (month && year) {
+    // Filter by installation month/year
+    conditions.push(sql`MONTH(FROM_UNIXTIME(${surveys.installationDate} / 1000)) = ${month}`);
+    conditions.push(sql`YEAR(FROM_UNIXTIME(${surveys.installationDate} / 1000)) = ${year}`);
+  } else if (year) {
+    conditions.push(sql`YEAR(FROM_UNIXTIME(${surveys.installationDate} / 1000)) = ${year}`);
+  }
+  // installationStatus: upcoming (future), today, overdue (past, not completed), completed
+  const now = Date.now();
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  const todayEnd = new Date(); todayEnd.setHours(23,59,59,999);
+  if (installationStatus === 'upcoming') {
+    conditions.push(sql`${surveys.installationDate} > ${todayEnd.getTime()}`);
+  } else if (installationStatus === 'today') {
+    conditions.push(sql`${surveys.installationDate} >= ${todayStart.getTime()} AND ${surveys.installationDate} <= ${todayEnd.getTime()}`);
+  } else if (installationStatus === 'overdue') {
+    conditions.push(sql`${surveys.installationDate} < ${todayStart.getTime()}`);
+    conditions.push(isNull(surveys.completedAt));
+  } else if (installationStatus === 'completed') {
+    conditions.push(isNotNull(surveys.completedAt));
+  }
+
+  const whereClause = and(...conditions);
+  const data = await db.select({
+    survey: surveys,
+    customer: customers,
+  }).from(surveys)
+    .innerJoin(customers, eq(surveys.customerId, customers.id))
+    .where(whereClause)
+    .orderBy(asc(surveys.installationDate))
+    .limit(limit)
+    .offset(offset);
+
+  // Fetch assignments for all surveys
+  const surveyIds = data.map(d => d.survey.id);
+  let assignmentsMap: Record<number, { role: string; userName: string | null }[]> = {};
+  if (surveyIds.length > 0) {
+    const allAssignments = await db.select({
+      surveyId: surveyAssignments.surveyId,
+      role: surveyAssignments.role,
+      teamMemberName: teamMembers.name,
+      fallbackUserName: users.name,
+    }).from(surveyAssignments)
+      .leftJoin(teamMembers, eq(surveyAssignments.userId, teamMembers.id))
+      .leftJoin(users, eq(surveyAssignments.userId, users.id))
+      .where(inArray(surveyAssignments.surveyId, surveyIds));
+    for (const a of allAssignments) {
+      if (!assignmentsMap[a.surveyId]) assignmentsMap[a.surveyId] = [];
+      assignmentsMap[a.surveyId].push({ role: a.role, userName: a.teamMemberName ?? a.fallbackUserName });
+    }
+  }
+
+  // Fetch custom status
+  const surveyStatusIds = data.map(d => d.survey.statusId).filter(Boolean) as number[];
+  let surveyCustomStatusMap: Record<number, { id: number; label: string; color: string; bgColor: string }> = {};
+  if (surveyStatusIds.length > 0) {
+    const customStatusData = await db.select().from(customStatuses).where(inArray(customStatuses.id, surveyStatusIds));
+    for (const cs of customStatusData) {
+      surveyCustomStatusMap[cs.id] = { id: cs.id, label: cs.label, color: cs.color, bgColor: cs.bgColor };
+    }
+  }
+
+  const countQ = await db.select({ count: sql<number>`count(*)` }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(whereClause);
+
+  return {
+    data: data.map(d => ({
+      ...d,
+      assignments: assignmentsMap[d.survey.id] || [],
+      customStatus: d.survey.statusId ? surveyCustomStatusMap[d.survey.statusId] || null : null,
+    })),
+    total: countQ[0]?.count ?? 0,
+  };
 }
