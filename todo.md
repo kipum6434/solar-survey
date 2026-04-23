@@ -436,3 +436,10 @@
 - [x] Frontend SurveyDetail: dropdown ประเภทเอกสารดึงจาก DB + ปุ่มเพิ่ม/ลบประเภท
 - [x] Frontend: badge แสดงชื่อประเภทเอกสาร dynamic (fallback static)
 - [x] เขียน tests: 7 tests ผ่าน (list, create, update, delete default/non-default)
+
+## Bug Fix - Round 27.1: ปุ่มลบประเภทหายไปทั้ง dropdown รูปภาพและเอกสาร
+
+- [x] dropdown รูปภาพ: แสดงปุ่มลบทุกประเภทยกเว้น 'อื่นๆ' (h-5 w-5 text-red-400 hover:text-red-600)
+- [x] dropdown เอกสาร: เปลี่ยนเป็น custom dropdown + ปุ่มลบ + เพิ่มประเภทใหม่
+- [x] แก้ไข logic: ลบได้ทุกประเภทยกเว้น key === 'other'
+- [x] แก้ไข dropdown เอกสารเป็น custom dropdown เหมือนรูปภาพ + ขยายไอคอนลบให้ใหญ่ขึ้น

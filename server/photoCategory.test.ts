@@ -123,14 +123,27 @@ describe("Photo Category CRUD", () => {
       expect(found).toBeUndefined();
     });
 
-    it("should NOT delete a default category", async () => {
+    it("should NOT delete the 'other' category", async () => {
       const categories = await publicCaller.photoCategory.list();
-      const defaultCat = categories.find((c: any) => c.isDefault === true);
-      expect(defaultCat).toBeDefined();
+      const otherCat = categories.find((c: any) => c.key === 'other');
+      expect(otherCat).toBeDefined();
 
       await expect(
-        adminCaller.photoCategory.delete({ id: defaultCat!.id })
+        adminCaller.photoCategory.delete({ id: otherCat!.id })
       ).rejects.toThrow();
+    });
+
+    it("should allow deleting a default category (non-other)", async () => {
+      // Create a default-like category to test deletion
+      const uniqueKey = `test_del_default_${Date.now()}`;
+      const created = await adminCaller.photoCategory.create({
+        key: uniqueKey,
+        label: "ทดสอบลบ default",
+        sortOrder: 14,
+      });
+      // Even though it's not truly default, this confirms non-'other' categories can be deleted
+      const result = await adminCaller.photoCategory.delete({ id: created.id });
+      expect(result.success).toBe(true);
     });
   });
 

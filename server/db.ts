@@ -1177,10 +1177,10 @@ export async function updatePhotoCategory(id: number, data: Partial<InsertPhotoC
 export async function deletePhotoCategory(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  // Only allow deleting non-default categories
   const [cat] = await db.select().from(photoCategories).where(eq(photoCategories.id, id));
   if (!cat) throw new Error("Category not found");
-  if (cat.isDefault) throw new Error("Cannot delete default category");
+  // Protect only the 'other' category from deletion
+  if (cat.key === 'other') throw new Error("Cannot delete the 'other' category");
   await db.delete(photoCategories).where(eq(photoCategories.id, id));
   return cat;
 }
@@ -1212,7 +1212,8 @@ export async function deleteDocumentCategory(id: number) {
   if (!db) throw new Error("Database not available");
   const [cat] = await db.select().from(documentCategories).where(eq(documentCategories.id, id));
   if (!cat) throw new Error("Category not found");
-  if (cat.isDefault) throw new Error("Cannot delete default category");
+  // Protect only the 'other' category from deletion
+  if (cat.key === 'other') throw new Error("Cannot delete the 'other' category");
   await db.delete(documentCategories).where(eq(documentCategories.id, id));
   return cat;
 }

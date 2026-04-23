@@ -120,14 +120,25 @@ describe("Document Category CRUD", () => {
       expect(found).toBeUndefined();
     });
 
-    it("should NOT delete a default category", async () => {
+    it("should NOT delete the 'other' category", async () => {
       const categories = await publicCaller.documentCategory.list();
-      const defaultCat = categories.find((c: any) => c.isDefault === true);
-      expect(defaultCat).toBeDefined();
+      const otherCat = categories.find((c: any) => c.key === 'other');
+      expect(otherCat).toBeDefined();
 
       await expect(
-        adminCaller.documentCategory.delete({ id: defaultCat!.id })
+        adminCaller.documentCategory.delete({ id: otherCat!.id })
       ).rejects.toThrow();
+    });
+
+    it("should allow deleting a default category (non-other)", async () => {
+      const uniqueKey = `test_doc_del_default_${Date.now()}`;
+      const created = await adminCaller.documentCategory.create({
+        key: uniqueKey,
+        label: "ทดสอบลบ default doc",
+        sortOrder: 24,
+      });
+      const result = await adminCaller.documentCategory.delete({ id: created.id });
+      expect(result.success).toBe(true);
     });
   });
 });

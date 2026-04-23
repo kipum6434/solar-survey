@@ -324,17 +324,18 @@ export default function SurveyDetail() {
                             {(photoCategories || []).map((cat: any) => (
                               <div
                                 key={cat.key}
-                                className={`flex items-center justify-between gap-1 rounded-sm px-2 py-1.5 text-xs cursor-pointer hover:bg-accent hover:text-accent-foreground ${photoCategory === cat.key ? 'bg-accent/60 font-medium' : ''}`}
+                                className={`flex items-center justify-between gap-2 rounded-sm px-3 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground ${photoCategory === cat.key ? 'bg-accent/60 font-medium' : ''}`}
                                 onClick={() => { setPhotoCategory(cat.key); setCategoryDropdownOpen(false); }}
                               >
                                 <span className="truncate">{cat.label}</span>
-                                {!cat.isDefault && (
+                                {cat.key !== 'other' && (
                                   <button
                                     type="button"
-                                    className="shrink-0 p-0.5 rounded text-destructive/50 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                    className="shrink-0 p-1.5 rounded text-red-400 hover:text-red-600 hover:bg-red-100 transition-colors"
                                     onClick={(e) => { e.stopPropagation(); setCategoryDropdownOpen(false); setConfirmDeleteCategory({ id: cat.id, label: cat.label }); }}
+                                    title="ลบประเภทนี้"
                                   >
-                                    <Trash2 className="h-3 w-3" />
+                                    <Trash2 className="h-4 w-4" />
                                   </button>
                                 )}
                               </div>
@@ -428,12 +429,13 @@ export default function SurveyDetail() {
                               onClick={() => { setDocCategory(cat.key); setDocCategoryDropdownOpen(false); }}
                             >
                               <span>{cat.label}</span>
-                              {!cat.isDefault && (
+                              {cat.key !== 'other' && (
                                 <button
-                                  className="ml-2 p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                                  className="ml-2 p-1.5 rounded text-red-400 hover:text-red-600 hover:bg-red-100 transition-colors"
                                   onClick={(e) => { e.stopPropagation(); setConfirmDeleteDocCategory({ id: cat.id, label: cat.label }); setDocCategoryDropdownOpen(false); }}
+                                  title="ลบประเภทนี้"
                                 >
-                                  <Trash2 className="h-3 w-3" />
+                                  <Trash2 className="h-4 w-4" />
                                 </button>
                               )}
                             </div>
