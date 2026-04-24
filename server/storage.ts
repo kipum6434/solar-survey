@@ -7,6 +7,7 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
 
 // ── S3 Client (lazy singleton) ──────────────────────────────────────
@@ -114,4 +115,57 @@ export async function storageGet(
   // Since the bucket has a public-read policy, we return the public URL directly
   const url = buildPublicUrl(bucket, region, key);
   return { key, url };
+}
+
+// ── S3 Bucket Usage ─────────────────────────────────────────────────
+
+const FREE_TIER_BYTES = 5 * 1024 * 1024 * 1024; // 5 GB
+
+export async function getS3BucketUsage(): Promise<{
+  totalSize: number;
+  totalObjects: number;
+  freeTierLimit: number;
+  usagePercent: number;
+  bucketName: string;
+  region: string;
+}> {
+  const client = getS3Client();
+  const bucket = getBucket();
+  const region = process.env.AWS_S3_REGION!;
+
+  let totalSize = 0;
+  let totalObjects = 0;
+  let continuationToken: string | undefined;
+
+  // Paginate through all objects to calculate total size
+  do {
+    const response = await client.send(
+      new ListObjectsV2Command({
+        Bucket: bucket,
+        ContinuationToken: continuationToken,
+      })
+    );
+
+    if (response.Contents) {
+      for (const obj of response.Contents) {
+        totalSize += obj.Size ?? 0;
+        totalObjects++;
+      }
+    }
+
+    continuationToken = response.IsTruncated
+      ? response.NextContinuationToken
+      : undefined;
+  } while (continuationToken);
+
+  const usagePercent = (totalSize / FREE_TIER_BYTES) * 100;
+
+  return {
+    totalSize,
+    totalObjects,
+    freeTierLimit: FREE_TIER_BYTES,
+    usagePercent: Math.round(usagePercent * 100) / 100,
+    bucketName: bucket,
+    region,
+  };
 }

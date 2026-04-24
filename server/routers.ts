@@ -7,7 +7,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { nanoid } from "nanoid";
 import bcrypt from "bcryptjs";
-import { storagePut, storageDelete } from "./storage";
+import { storagePut, storageDelete, getS3BucketUsage } from "./storage";
 import * as db from "./db";
 
 // ==================== CUSTOMER ROUTER ====================
@@ -635,6 +635,14 @@ const customStatusRouter = router({
 // ==================== STORAGE ROUTER ==
 const storageRouter = router({
   stats: protectedProcedure.query(() => db.getStorageStats()),
+  s3Usage: protectedProcedure.query(async () => {
+    try {
+      return await getS3BucketUsage();
+    } catch (e: any) {
+      console.warn('[S3 Usage] Failed to get bucket usage:', e.message);
+      return { totalSize: 0, totalObjects: 0, freeTierLimit: 5368709120, usagePercent: 0, bucketName: '', region: '', error: e.message };
+    }
+  }),
   listFiles: protectedProcedure
     .input(z.object({
       page: z.number().default(1),

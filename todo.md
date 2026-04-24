@@ -460,3 +460,10 @@
 - [x] แก้ไข storage layer (server/storage.ts) ให้ใช้ AWS S3 แทน Manus built-in S3
 - [x] ทดสอบ upload/download ผ่าน AWS S3 (5 tests ผ่าน)
 - [x] เขียน vitest ทดสอบ storage functions (รวม 161 tests ผ่าน)
+
+## User Request - Round 30: แสดงพื้นที่จัดเก็บ AWS S3 จริงใน Dashboard
+
+- [x] Backend: เพิ่ม API ดึงข้อมูลพื้นที่ใช้งาน S3 จริง (ListObjectsV2 คำนวณ total size)
+- [x] Frontend: แสดงพื้นที่ใช้ไป / Free Tier (5 GB) พร้อม progress bar
+- [x] Frontend: แจ้งเตือนเมื่อใกล้ถึง Free Tier limit
+- [x] เขียน vitest ทดสอบ API (รวม 161 tests ผ่าน)
