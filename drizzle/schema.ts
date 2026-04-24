@@ -339,3 +339,15 @@ export const installationPhotos = mysqlTable("installation_photos", {
 
 export type InstallationPhoto = typeof installationPhotos.$inferSelect;
 export type InsertInstallationPhoto = typeof installationPhotos.$inferInsert;
+
+// ==================== DELIVERY COMMENTS ====================
+export const deliveryComments = mysqlTable("delivery_comments", {
+  id: int("id").autoincrement().primaryKey(),
+  surveyId: int("surveyId").notNull(),
+  userId: int("userId").notNull(),
+  message: text("message").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type DeliveryComment = typeof deliveryComments.$inferSelect;
+export type InsertDeliveryComment = typeof deliveryComments.$inferInsert;

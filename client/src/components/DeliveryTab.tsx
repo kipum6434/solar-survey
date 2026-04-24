@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import {
   Upload, Trash2, Camera, CheckCircle2, XCircle, Clock, Send,
   Image, Eye, X, Package, Plus, AlertTriangle, Download, FolderDown,
+  MessageSquare, SendHorizontal,
 } from "lucide-react";
 
 interface DeliveryTabProps {
@@ -418,6 +419,9 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
         </CardContent>
       </Card>
 
+      {/* Delivery Comments Section */}
+      <DeliveryCommentSection surveyId={surveyId} isAdmin={isAdmin} currentUserId={user?.id} />
+
       {/* Hidden file input */}
       <input
         ref={photoInputRef}
@@ -583,5 +587,161 @@ function PhotoCard({ photo, canDelete, onView, onDelete }: {
         </div>
       )}
     </div>
+  );
+}
+
+
+/* ==================== Delivery Comment Section ==================== */
+function DeliveryCommentSection({ surveyId, isAdmin, currentUserId }: {
+  surveyId: number;
+  isAdmin: boolean;
+  currentUserId?: number;
+}) {
+  const [newComment, setNewComment] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+
+  const { data: comments = [], isLoading, refetch } = trpc.deliveryComment.list.useQuery(
+    { surveyId },
+    { enabled: !!surveyId }
+  );
+
+  const addComment = trpc.deliveryComment.add.useMutation({
+    onSuccess: () => {
+      toast.success("เพิ่มความคิดเห็นสำเร็จ");
+      setNewComment("");
+      refetch();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const deleteComment = trpc.deliveryComment.delete.useMutation({
+    onSuccess: () => {
+      toast.success("ลบความคิดเห็นสำเร็จ");
+      setConfirmDeleteId(null);
+      refetch();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = newComment.trim();
+    if (!trimmed) return;
+    addComment.mutate({ surveyId, message: trimmed });
+  };
+
+  const formatDate = (d: string | Date) => {
+    return new Date(d).toLocaleDateString("th-TH", {
+      day: "numeric",
+      month: "short",
+      year: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  return (
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+          <MessageSquare className="h-4 w-4" />
+          ความคิดเห็น / บันทึกข้อความ
+          {comments.length > 0 && (
+            <Badge variant="secondary" className="text-xs ml-1">{comments.length}</Badge>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Add comment form */}
+        <form onSubmit={handleSubmit} className="flex gap-2">
+          <Textarea
+            placeholder="เพิ่มความคิดเห็นหรือบันทึกข้อความ..."
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            rows={2}
+            className="resize-none text-sm flex-1"
+            maxLength={2000}
+          />
+          <Button
+            type="submit"
+            size="sm"
+            className="self-end gap-1.5 shrink-0"
+            disabled={!newComment.trim() || addComment.isPending}
+          >
+            <SendHorizontal className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{addComment.isPending ? "กำลังส่ง..." : "ส่ง"}</span>
+          </Button>
+        </form>
+
+        {/* Comments list */}
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2].map(i => <Skeleton key={i} className="h-16 rounded-lg" />)}
+          </div>
+        ) : comments.length === 0 ? (
+          <div className="text-center py-6 text-muted-foreground">
+            <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-30" />
+            <p className="text-xs">ยังไม่มีความคิดเห็น</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {comments.map((comment: any) => {
+              const canDelete = isAdmin || comment.userId === currentUserId;
+              return (
+                <div key={comment.id} className="group bg-muted/40 rounded-lg p-3 relative">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-semibold text-foreground">
+                          {comment.userName || "ผู้ใช้"}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {formatDate(comment.createdAt)}
+                        </span>
+                      </div>
+                      <p className="text-sm mt-1 whitespace-pre-wrap break-words text-foreground/90">
+                        {comment.message}
+                      </p>
+                    </div>
+                    {canDelete && (
+                      <button
+                        className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 rounded-full flex items-center justify-center hover:bg-red-50 shrink-0"
+                        onClick={() => setConfirmDeleteId(comment.id)}
+                        title="ลบความคิดเห็น"
+                      >
+                        <Trash2 className="h-3 w-3 text-red-400 hover:text-red-600" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+
+      {/* Confirm Delete Comment Dialog */}
+      <AlertDialog open={confirmDeleteId !== null} onOpenChange={() => setConfirmDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ลบความคิดเห็น</AlertDialogTitle>
+            <AlertDialogDescription>คุณต้องการลบความคิดเห็นนี้หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (confirmDeleteId) {
+                  deleteComment.mutate({ id: confirmDeleteId });
+                }
+              }}
+            >
+              ลบ
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Card>
   );
 }

@@ -541,3 +541,13 @@
 - [x] Frontend: เพิ่มบีบอัดรูปก่อนอัปโหลดใน SharedSurvey (PublicDeliverySection) — compressImage utility (Canvas API, max 1920px, JPEG 0.8)
 - [x] Frontend: เพิ่มบีบอัดรูปก่อนอัปโหลดใน DeliveryTab + SurveyDetail (admin side) — ใช้ compressImage utility เดียวกัน
 - [x] Tests: 209 tests ผ่านทั้งหมด (18 test files)
+
+## User Request - Round 38: ระบบ Comment/Note ในงานส่งมอบ
+
+- [x] Schema: สร้างตาราง delivery_comments (id, surveyId, userId, message, createdAt) + migration 0017
+- [x] Backend: สร้าง query helpers — addDeliveryComment, getDeliveryComments, deleteDeliveryComment, getDeliveryCommentById (join users.name)
+- [x] Backend: สร้าง tRPC procedures — deliveryComment.list, deliveryComment.add (validate 1-2000 chars), deliveryComment.delete (admin/owner only)
+- [x] Frontend: แสดง comment list ใน DeliveryTab พร้อมชื่อผู้แสดงความคิดเห็น + วันเวลา (เรียงใหม่สุดก่อน)
+- [x] Frontend: ฟอร์มเพิ่ม comment ใน DeliveryTab (textarea + ปุ่มส่ง) — responsive mobile-friendly
+- [x] Frontend: ปุ่มลบ comment (เฉพาะ admin หรือเจ้าของ comment) + confirm dialog
+- [x] Tests: 12 delivery comment tests ผ่าน — 221 tests ทั้งหมดผ่าน (19 test files)

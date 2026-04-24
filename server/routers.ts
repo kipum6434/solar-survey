@@ -1299,6 +1299,57 @@ const deliveryRouter = router({
     }),
 });
 
+// ==================== DELIVERY COMMENT ROUTER ====================
+const deliveryCommentRouter = router({
+  list: protectedProcedure
+    .input(z.object({ surveyId: z.number() }))
+    .query(async ({ input }) => {
+      return db.getDeliveryComments(input.surveyId);
+    }),
+
+  add: protectedProcedure
+    .input(z.object({
+      surveyId: z.number(),
+      message: z.string().min(1, "กรุณาระบุข้อความ").max(2000, "ข้อความยาวเกินไป"),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const id = await db.addDeliveryComment({
+        surveyId: input.surveyId,
+        userId: ctx.user.id,
+        message: input.message,
+      });
+      await db.logActivity({
+        userId: ctx.user.id,
+        action: "create",
+        entityType: "delivery_comment",
+        entityId: input.surveyId,
+        details: `เพิ่มความคิดเห็นในงานส่งมอบ surveyId: ${input.surveyId}`,
+      });
+      return { id };
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const comment = await db.getDeliveryCommentById(input.id);
+      if (!comment) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบความคิดเห็น" });
+      // Only admin/superadmin or comment owner can delete
+      const isAdmin = ctx.user.role === "admin" || ctx.user.role === "superadmin";
+      if (!isAdmin && comment.userId !== ctx.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "ไม่มีสิทธิ์ลบความคิดเห็นนี้" });
+      }
+      await db.deleteDeliveryComment(input.id);
+      await db.logActivity({
+        userId: ctx.user.id,
+        action: "delete",
+        entityType: "delivery_comment",
+        entityId: comment.surveyId,
+        details: `ลบความคิดเห็นในงานส่งมอบ commentId: ${input.id}`,
+      });
+      return { success: true };
+    }),
+});
+
 // ==================== APP ROUTER ====================
 export const appRouter = router({
   system: systemRouter,
@@ -1331,6 +1382,7 @@ export const appRouter = router({
   installationPhotoCategory: installationPhotoCategoryRouter,
   installerTeam: installerTeamRouter,
   delivery: deliveryRouter,
+  deliveryComment: deliveryCommentRouter,
   photoCategory: photoCategoryRouter,
   documentCategory: documentCategoryRouter,
 });

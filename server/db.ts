@@ -1,6 +1,6 @@
 import { eq, and, or, like, desc, gte, lte, sql, inArray, asc, isNotNull, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory, installerTeams, InsertInstallerTeam } from "../drizzle/schema";
+import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory, installerTeams, InsertInstallerTeam, deliveryComments, InsertDeliveryComment } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1509,4 +1509,46 @@ export async function getInstallerTeamReport(opts?: { month?: number; year?: num
   }
 
   return report;
+}
+
+
+// ==================== DELIVERY COMMENTS ====================
+
+export async function addDeliveryComment(data: { surveyId: number; userId: number; message: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(deliveryComments).values(data);
+  return result[0].insertId;
+}
+
+export async function getDeliveryComments(surveyId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db
+    .select({
+      id: deliveryComments.id,
+      surveyId: deliveryComments.surveyId,
+      userId: deliveryComments.userId,
+      message: deliveryComments.message,
+      createdAt: deliveryComments.createdAt,
+      userName: users.name,
+    })
+    .from(deliveryComments)
+    .leftJoin(users, eq(deliveryComments.userId, users.id))
+    .where(eq(deliveryComments.surveyId, surveyId))
+    .orderBy(desc(deliveryComments.createdAt));
+  return rows;
+}
+
+export async function deleteDeliveryComment(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(deliveryComments).where(eq(deliveryComments.id, id));
+}
+
+export async function getDeliveryCommentById(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db.select().from(deliveryComments).where(eq(deliveryComments.id, id));
+  return rows[0] || null;
 }

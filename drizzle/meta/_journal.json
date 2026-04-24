@@ -120,6 +120,13 @@
       "when": 1777036086970,
       "tag": "0016_overjoyed_red_ghost",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1777042260223,
+      "tag": "0017_foamy_smasher",
+      "breakpoints": true
     }
   ]
 }
