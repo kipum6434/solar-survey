@@ -260,6 +260,7 @@ function PublicDeliverySection({ surveyId, token }: { surveyId: number; token: s
   const [uploadingCategory, setUploadingCategory] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const activeCategory = useRef<string>("");
 
   const { data: deliveryInfo, refetch: refetchDelivery } = trpc.delivery.publicInfo.useQuery(
@@ -307,13 +308,19 @@ function PublicDeliverySection({ surveyId, token }: { surveyId: number; token: s
       reader.readAsDataURL(file);
     });
 
-    // Reset input
+    // Reset inputs
     if (fileInputRef.current) fileInputRef.current.value = "";
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
   }, [token, surveyId, uploadMutation]);
 
   const triggerUpload = (categoryKey: string) => {
     activeCategory.current = categoryKey;
     fileInputRef.current?.click();
+  };
+
+  const triggerCamera = (categoryKey: string) => {
+    activeCategory.current = categoryKey;
+    cameraInputRef.current?.click();
   };
 
   const deliveryStatus = deliveryInfo?.deliveryStatus || "pending";
@@ -345,12 +352,21 @@ function PublicDeliverySection({ surveyId, token }: { surveyId: number; token: s
           </div>
         )}
 
-        {/* Hidden file input */}
+        {/* Hidden file input (gallery) */}
         <input
           ref={fileInputRef}
           type="file"
           accept="image/*"
           multiple
+          className="hidden"
+          onChange={handleFileSelect}
+        />
+        {/* Hidden camera input (direct capture) */}
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
           className="hidden"
           onChange={handleFileSelect}
         />
@@ -370,16 +386,28 @@ function PublicDeliverySection({ surveyId, token }: { surveyId: number; token: s
                     )}
                   </h4>
                   {canUpload && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs gap-1"
-                      onClick={() => triggerUpload(cat.key)}
-                      disabled={uploadingCategory === cat.key}
-                    >
-                      <Upload className="h-3 w-3" />
-                      {uploadingCategory === cat.key ? "กำลังอัปโหลด..." : "เพิ่มรูป"}
-                    </Button>
+                    <div className="flex gap-1.5">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs gap-1 px-2.5"
+                        onClick={() => triggerCamera(cat.key)}
+                        disabled={uploadingCategory === cat.key}
+                      >
+                        <Camera className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">ถ่ายรูป</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs gap-1 px-2.5"
+                        onClick={() => triggerUpload(cat.key)}
+                        disabled={uploadingCategory === cat.key}
+                      >
+                        <Upload className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">{uploadingCategory === cat.key ? "อัปโหลด..." : "เลือกรูป"}</span>
+                      </Button>
+                    </div>
                   )}
                 </div>
                 {catPhotos.length > 0 ? (
@@ -405,7 +433,7 @@ function PublicDeliverySection({ surveyId, token }: { surveyId: number; token: s
                   </div>
                 ) : (
                   <div className="text-center py-4 text-xs text-muted-foreground bg-muted/30 rounded-lg">
-                    {canUpload ? "กดปุ่ม \"เพิ่มรูป\" เพื่ออัปโหลด" : "ไม่มีรูป"}
+                    {canUpload ? "กดปุ่ม \"ถ่ายรูป\" หรือ \"เลือกรูป\" เพื่ออัปโหลด" : "ไม่มีรูป"}
                   </div>
                 )}
               </div>

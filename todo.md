@@ -513,3 +513,9 @@
 - [x] Frontend: PublicDeliverySection ในหน้า SharedSurvey (อัปโหลดรูปตามหมวดหมู่ + กดส่งมอบ + ลบรูป ไม่ต้อง login)
 - [x] Mobile-friendly: รองรับ responsive grid ทั้ง desktop + mobile
 - [x] เขียน vitest ทดสอบ installer team (9 tests) + delivery (17 tests) — 201 tests ผ่านทั้งหมด
+
+## User Request - Round 34: ปุ่มเปิดกล้องถ่ายรูปในหน้า Share Link
+
+- [x] Frontend: เพิ่มปุ่ม "ถ่ายรูป" (เปิดกล้องโดยตรง) ข้างปุ่ม "เลือกรูป" ในแต่ละหมวดหมู่ของ PublicDeliverySection
+- [x] ใช้ input[type=file] capture="environment" สำหรับเปิดกล้องหลังบนมือถือ
+- [x] Mobile-friendly: ปุ่มขนาดเหมาะสมสำหรับการกดบนมือถือ + ซ่อนข้อความบนมือถือแสดงเฉพาะ icon
