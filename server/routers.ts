@@ -1020,6 +1020,135 @@ const photoCategoryRouter = router({
     }),
 });
 
+// ==================== INSTALLATION PHOTO CATEGORY ROUTER ====================
+const installationPhotoCategoryRouter = router({
+  list: publicProcedure
+    .query(() => db.getInstallationPhotoCategories()),
+
+  create: protectedProcedure
+    .input(z.object({
+      key: z.string().min(1),
+      label: z.string().min(1),
+      sortOrder: z.number().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await db.createInstallationPhotoCategory({ ...input, isDefault: false });
+      await db.logActivity({ userId: ctx.user.id, action: "create", entityType: "installation_photo_category", entityId: result.id, details: `สร้างประเภทรูปติดตั้ง: ${input.label}` });
+      return result;
+    }),
+
+  update: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      label: z.string().optional(),
+      sortOrder: z.number().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const { id, ...data } = input;
+      await db.updateInstallationPhotoCategory(id, data);
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "installation_photo_category", entityId: id, details: `แก้ไขประเภทรูปติดตั้ง ID: ${id}` });
+      return { success: true };
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      await db.deleteInstallationPhotoCategory(input.id);
+      await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "installation_photo_category", entityId: input.id, details: `ลบประเภทรูปติดตั้ง ID: ${input.id}` });
+      return { success: true };
+    }),
+});
+
+// ==================== INSTALLATION PHOTO ROUTER ====================
+const installationPhotoRouter = router({
+  list: protectedProcedure
+    .input(z.object({ surveyId: z.number() }))
+    .query(async ({ input }) => {
+      return db.getInstallationPhotos(input.surveyId);
+    }),
+
+  upload: protectedProcedure
+    .input(z.object({
+      surveyId: z.number(),
+      fileName: z.string(),
+      fileData: z.string(), // base64
+      category: z.string().default("other"),
+      caption: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const buffer = Buffer.from(input.fileData, "base64");
+      const ext = input.fileName.split(".").pop() || "jpg";
+      const key = `installations/${input.surveyId}/photos/${Date.now()}_${nanoid(8)}.${ext}`;
+      const contentType = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+      const { url } = await storagePut(key, buffer, contentType);
+      const result = await db.createInstallationPhoto({
+        surveyId: input.surveyId,
+        url,
+        fileKey: key,
+        fileName: input.fileName,
+        category: input.category,
+        fileSize: buffer.length,
+        caption: input.caption || null,
+        uploadedBy: ctx.user.id,
+      });
+      await db.logActivity({ userId: ctx.user.id, action: "create", entityType: "installation_photo", entityId: result.id, details: `อัปโหลดรูปติดตั้ง: ${input.fileName} (${input.category})` });
+      return { id: result.id, url, fileKey: key };
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const photo = await db.deleteInstallationPhoto(input.id);
+      if (photo) {
+        try { await storageDelete(photo.fileKey); } catch (e) { console.warn("Failed to delete from S3:", e); }
+      }
+      await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "installation_photo", entityId: input.id, details: `ลบรูปติดตั้ง ID: ${input.id}` });
+      return { success: true };
+    }),
+});
+
+// ==================== DELIVERY ROUTER ====================
+const deliveryRouter = router({
+  info: protectedProcedure
+    .input(z.object({ surveyId: z.number() }))
+    .query(async ({ input }) => {
+      return db.getDeliveryInfo(input.surveyId);
+    }),
+
+  submit: protectedProcedure
+    .input(z.object({ surveyId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      // Check that there are installation photos
+      const photos = await db.getInstallationPhotos(input.surveyId);
+      if (photos.length === 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "กรุณาอัปโหลดรูปติดตั้งก่อนส่งมอบงาน" });
+      }
+      const result = await db.submitDelivery(input.surveyId, ctx.user.id);
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "delivery", entityId: input.surveyId, details: `ส่งมอบงานติดตั้ง surveyId: ${input.surveyId}` });
+      return result;
+    }),
+
+  approve: adminProcedure
+    .input(z.object({ surveyId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await db.approveDelivery(input.surveyId, ctx.user.id);
+      await db.updateInstallationStatus(input.surveyId, "delivered");
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "delivery", entityId: input.surveyId, details: `อนุมัติส่งมอบงาน surveyId: ${input.surveyId}` });
+      return result;
+    }),
+
+  reject: adminProcedure
+    .input(z.object({
+      surveyId: z.number(),
+      reason: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await db.rejectDelivery(input.surveyId, ctx.user.id, input.reason);
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "delivery", entityId: input.surveyId, details: `ปฏิเสธส่งมอบงาน surveyId: ${input.surveyId} เหตุผล: ${input.reason || '-'}` });
+      return result;
+    }),
+});
+
 // ==================== APP ROUTER ====================
 export const appRouter = router({
   system: systemRouter,
@@ -1048,6 +1177,9 @@ export const appRouter = router({
   teamPerformance: teamPerformanceRouter,
   customStatus: customStatusRouter,
   installation: installationRouter,
+  installationPhoto: installationPhotoRouter,
+  installationPhotoCategory: installationPhotoCategoryRouter,
+  delivery: deliveryRouter,
   photoCategory: photoCategoryRouter,
   documentCategory: documentCategoryRouter,
 });

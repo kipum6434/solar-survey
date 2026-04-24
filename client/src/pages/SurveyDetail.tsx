@@ -18,11 +18,12 @@ import { toast } from "sonner";
 import {
   ArrowLeft, Camera, FileText, PhoneCall, Share2, MapPin, Calendar, User, Pencil,
   Upload, Trash2, Download, Link2, Copy, X, Image, Eye, CheckCircle2, Clock,
-  Zap, Sun, Home, Gauge, Receipt, Settings2, Users, Wrench, FolderDown,
+  Zap, Sun, Home, Gauge, Receipt, Settings2, Users, Wrench, FolderDown, Package,
 } from "lucide-react";
 import { MultiUserSelect } from "@/components/MultiUserSelect";
 import { SourceCombobox } from "@/components/SourceCombobox";
 import { StatusDropdown } from "@/components/StatusDropdown";
+import DeliveryTab from "@/components/DeliveryTab";
 
 export default function SurveyDetail() {
   const params = useParams<{ id: string }>();
@@ -255,6 +256,7 @@ export default function SurveyDetail() {
             <TabsTrigger value="documents" className="gap-1.5"><FileText className="h-3.5 w-3.5" /> เอกสาร ({documents?.length ?? 0})</TabsTrigger>
             <TabsTrigger value="followup" className="gap-1.5"><PhoneCall className="h-3.5 w-3.5" /> Follow-up ({followUps?.length ?? 0})</TabsTrigger>
             <TabsTrigger value="share" className="gap-1.5"><Share2 className="h-3.5 w-3.5" /> แชร์ ({shareLinks?.length ?? 0})</TabsTrigger>
+            <TabsTrigger value="delivery" className="gap-1.5"><Package className="h-3.5 w-3.5" /> ส่งมอบงาน</TabsTrigger>
           </TabsList>
 
           {/* Photos Tab */}
@@ -609,6 +611,11 @@ export default function SurveyDetail() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Delivery Tab */}
+          <TabsContent value="delivery" className="mt-4">
+            <DeliveryTab surveyId={surveyId} installationStatus={s.installationStatus} />
           </TabsContent>
         </Tabs>
 

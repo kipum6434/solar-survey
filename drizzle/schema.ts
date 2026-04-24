@@ -91,6 +91,12 @@ export const surveys = mysqlTable("surveys", {
   installationDate: bigint("installationDate", { mode: "number" }),
   installationStatus: mysqlEnum("installationStatus", ["waiting", "in_progress", "completed", "delivered"]),
   completedAt: bigint("completedAt", { mode: "number" }),
+  deliveryStatus: mysqlEnum("deliveryStatus", ["pending", "submitted", "approved", "rejected"]).default("pending"),
+  deliverySubmittedAt: bigint("deliverySubmittedAt", { mode: "number" }),
+  deliverySubmittedBy: int("deliverySubmittedBy"),
+  deliveryApprovedAt: bigint("deliveryApprovedAt", { mode: "number" }),
+  deliveryApprovedBy: int("deliveryApprovedBy"),
+  deliveryRejectionReason: text("deliveryRejectionReason"),
   createdBy: int("createdBy"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -288,3 +294,33 @@ export const documentCategories = mysqlTable("document_categories", {
 
 export type DocumentCategory = typeof documentCategories.$inferSelect;
 export type InsertDocumentCategory = typeof documentCategories.$inferInsert;
+
+// ==================== INSTALLATION PHOTO CATEGORIES ====================
+export const installationPhotoCategories = mysqlTable("installation_photo_categories", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 100 }).notNull().unique(),
+  label: varchar("label", { length: 255 }).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  isDefault: boolean("isDefault").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type InstallationPhotoCategory = typeof installationPhotoCategories.$inferSelect;
+export type InsertInstallationPhotoCategory = typeof installationPhotoCategories.$inferInsert;
+
+// ==================== INSTALLATION PHOTOS ====================
+export const installationPhotos = mysqlTable("installation_photos", {
+  id: int("id").autoincrement().primaryKey(),
+  surveyId: int("surveyId").notNull(),
+  url: text("url").notNull(),
+  fileKey: varchar("fileKey", { length: 512 }).notNull(),
+  fileName: varchar("fileName", { length: 255 }),
+  category: varchar("category", { length: 100 }).default("other"),
+  fileSize: int("fileSize"),
+  caption: text("caption"),
+  uploadedBy: int("uploadedBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type InstallationPhoto = typeof installationPhotos.$inferSelect;
+export type InsertInstallationPhoto = typeof installationPhotos.$inferInsert;

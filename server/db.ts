@@ -1,6 +1,6 @@
 import { eq, and, or, like, desc, gte, lte, sql, inArray, asc, isNotNull, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory } from "../drizzle/schema";
+import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1250,4 +1250,112 @@ export async function deleteDocumentCategory(id: number) {
   if (cat.key === 'other') throw new Error("Cannot delete the 'other' category");
   await db.delete(documentCategories).where(eq(documentCategories.id, id));
   return cat;
+}
+
+// ==================== Installation Photo Categories ====================
+
+export async function getInstallationPhotoCategories() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(installationPhotoCategories).orderBy(asc(installationPhotoCategories.sortOrder), asc(installationPhotoCategories.id));
+}
+
+export async function createInstallationPhotoCategory(data: InsertInstallationPhotoCategory) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(installationPhotoCategories).values(data).$returningId();
+  return result;
+}
+
+export async function updateInstallationPhotoCategory(id: number, data: Partial<InsertInstallationPhotoCategory>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(installationPhotoCategories).set(data).where(eq(installationPhotoCategories.id, id));
+}
+
+export async function deleteInstallationPhotoCategory(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [cat] = await db.select().from(installationPhotoCategories).where(eq(installationPhotoCategories.id, id));
+  if (!cat) throw new Error("Category not found");
+  if (cat.key === 'other') throw new Error("Cannot delete the 'other' category");
+  await db.delete(installationPhotoCategories).where(eq(installationPhotoCategories.id, id));
+  return cat;
+}
+
+// ==================== Installation Photos ====================
+
+export async function getInstallationPhotos(surveyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(installationPhotos).where(eq(installationPhotos.surveyId, surveyId)).orderBy(asc(installationPhotos.createdAt));
+}
+
+export async function createInstallationPhoto(data: InsertInstallationPhoto) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(installationPhotos).values(data).$returningId();
+  return result;
+}
+
+export async function deleteInstallationPhoto(photoId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [photo] = await db.select().from(installationPhotos).where(eq(installationPhotos.id, photoId));
+  if (!photo) return null;
+  await db.delete(installationPhotos).where(eq(installationPhotos.id, photoId));
+  return photo;
+}
+
+// ==================== Delivery Submission ====================
+
+export async function submitDelivery(surveyId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const now = Date.now();
+  await db.update(surveys).set({
+    deliveryStatus: "submitted",
+    deliverySubmittedAt: now,
+    deliverySubmittedBy: userId,
+  }).where(eq(surveys.id, surveyId));
+  return { surveyId, deliveryStatus: "submitted", deliverySubmittedAt: now };
+}
+
+export async function approveDelivery(surveyId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const now = Date.now();
+  await db.update(surveys).set({
+    deliveryStatus: "approved",
+    deliveryApprovedAt: now,
+    deliveryApprovedBy: userId,
+    completedAt: now,
+  }).where(eq(surveys.id, surveyId));
+  return { surveyId, deliveryStatus: "approved", deliveryApprovedAt: now };
+}
+
+export async function rejectDelivery(surveyId: number, userId: number, reason?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(surveys).set({
+    deliveryStatus: "rejected",
+    deliveryRejectionReason: reason || null,
+  }).where(eq(surveys.id, surveyId));
+  return { surveyId, deliveryStatus: "rejected" };
+}
+
+export async function getDeliveryInfo(surveyId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [survey] = await db.select({
+    id: surveys.id,
+    deliveryStatus: surveys.deliveryStatus,
+    deliverySubmittedAt: surveys.deliverySubmittedAt,
+    deliverySubmittedBy: surveys.deliverySubmittedBy,
+    deliveryApprovedAt: surveys.deliveryApprovedAt,
+    deliveryApprovedBy: surveys.deliveryApprovedBy,
+    deliveryRejectionReason: surveys.deliveryRejectionReason,
+    completedAt: surveys.completedAt,
+  }).from(surveys).where(eq(surveys.id, surveyId));
+  return survey || null;
 }

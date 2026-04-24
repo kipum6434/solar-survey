@@ -477,3 +477,21 @@
 - [x] Backend: admin/superadmin ยังเห็นข้อมูลทั้งหมดเหมือนเดิม
 - [x] Frontend: ไม่ต้องแก้ไข — data scoping ทำที่ backend, ข้อมูลถูก filter อัตโนมัติ
 - [x] เขียน vitest ทดสอบ data scoping (14 tests ผ่าน, รวม 175 tests ผ่าน)
+
+## User Request - Round 32: ระบบส่งมอบงานติดตั้ง
+
+- [x] Schema: สร้างตาราง installation_photos (id, surveyId, url, fileKey, fileSize, category, caption, uploadedBy, createdAt)
+- [x] Schema: สร้างตาราง installation_photo_categories (id, key, label, sortOrder, isDefault, createdAt)
+- [x] Schema: เพิ่ม deliveryStatus, deliverySubmittedAt, deliverySubmittedBy, deliveryApprovedAt, deliveryApprovedBy, deliveryRejectionReason, completedAt ใน surveys table
+- [x] Migration: generate + apply SQL (migration 0014 + 0015)
+- [x] Seed: เพิ่มประเภทรูปติดตั้งเริ่มต้น 9 หมวด (อินเวอร์เตอร์, แผงโซลาร์เซลล์, มิเตอร์, สายไฟ/ระบบไฟฟ้า, โครงยึดหลังคา, ภาพรวมการติดตั้ง, ก่อนติดตั้ง, หลังติดตั้ง, อื่นๆ)
+- [x] Backend: CRUD installation_photo_categories (list, create, update, delete) — เพิ่ม/ลบประเภทได้
+- [x] Backend: installation photo upload/delete/list (S3 integration)
+- [x] Backend: API ส่งมอบงาน (delivery submit) — เปลี่ยน deliveryStatus + บันทึก deliverySubmittedAt
+- [x] Backend: API อนุมัติส่งมอบ (delivery approve) — admin only
+- [x] Backend: API ปฏิเสธส่งมอบ (delivery reject) — admin only + เหตุผล
+- [x] Frontend: สร้าง DeliveryTab component ใน SurveyDetail — แสดงสถานะส่งมอบ + อัปโหลดรูปตามหมวดหมู่ + ปุ่มส่งมอบ/อนุมัติ/ปฏิเสธ
+- [x] Frontend: หมวดหมู่รูปติดตั้ง (dynamic) — ดึงจาก DB + แสดงแยกตามหมวดหมู่
+- [x] Frontend: หน้าจัดการหมวดหมู่รูปติดตั้ง ในหน้าจัดการสถานะ (เพิ่ม/ลบ/แก้ไข categories)
+- [x] Frontend: เพิ่ม tabs หมวดหมู่รูปสำรวจ + หมวดหมู่เอกสาร ในหน้าจัดการสถานะ
+- [x] เขียน vitest ทดสอบ delivery + installation photo + categories (17 tests ผ่าน)
