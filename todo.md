@@ -467,3 +467,13 @@
 - [x] Frontend: แสดงพื้นที่ใช้ไป / Free Tier (5 GB) พร้อม progress bar
 - [x] Frontend: แจ้งเตือนเมื่อใกล้ถึง Free Tier limit
 - [x] เขียน vitest ทดสอบ API (รวม 161 tests ผ่าน)
+
+## User Request - Round 31: Data Scoping — เซลล์เห็นเฉพาะงานของตัวเอง
+
+- [x] Backend: งานสำรวจ — user role เห็นเฉพาะงานที่ตัวเองเป็นคนสำรวจ (surveyorId)
+- [x] Backend: งานติดตั้ง — user role เห็นเฉพาะงานที่ตัวเองเป็นคนปิดงาน (closerId)
+- [x] Backend: ลูกค้า — user role เห็นเฉพาะลูกค้าที่เกี่ยวข้องกับงานของตัวเอง
+- [x] Backend: แดชบอร์ด — user role แสดงสถิติเฉพาะงานของตัวเอง
+- [x] Backend: admin/superadmin ยังเห็นข้อมูลทั้งหมดเหมือนเดิม
+- [x] Frontend: ไม่ต้องแก้ไข — data scoping ทำที่ backend, ข้อมูลถูก filter อัตโนมัติ
+- [x] เขียน vitest ทดสอบ data scoping (14 tests ผ่าน, รวม 175 tests ผ่าน)

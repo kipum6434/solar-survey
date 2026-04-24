@@ -90,12 +90,17 @@ export async function getUserByOpenId(openId: string) {
 }
 
 // ==================== CUSTOMER QUERIES ====================
-export async function getCustomers(opts: { search?: string; page?: number; limit?: number; month?: number; year?: number; district?: string; province?: string; source?: string; surveyStatus?: string }) {
+export async function getCustomers(opts: { search?: string; page?: number; limit?: number; month?: number; year?: number; district?: string; province?: string; source?: string; surveyStatus?: string; scopedCustomerIds?: number[] }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { search, page = 1, limit = 20, month, year, district, province, source, surveyStatus } = opts;
+  const { search, page = 1, limit = 20, month, year, district, province, source, surveyStatus, scopedCustomerIds } = opts;
   const offset = (page - 1) * limit;
   const conditions: any[] = [];
+  // Data scoping: เซลล์เห็นเฉพาะลูกค้าที่เกี่ยวข้องกับงานของตัวเอง
+  if (scopedCustomerIds !== undefined) {
+    if (scopedCustomerIds.length === 0) return { data: [], total: 0 };
+    conditions.push(inArray(customers.id, scopedCustomerIds));
+  }
   if (search) {
     conditions.push(or(
       like(customers.name, `%${search}%`),
@@ -520,15 +525,33 @@ export async function getRecentActivities(limit = 20) {
 }
 
 // ==================== DASHBOARD STATS ====================
-export async function getDashboardStats() {
+export async function getDashboardStats(scopedSurveyIds?: number[], scopedCustomerIds?: number[]) {
   const db = await getDb();
   if (!db) return { totalCustomers: 0, totalSurveys: 0, pendingSurveys: 0, completedSurveys: 0, wonDeals: 0, pendingFollowUps: 0 };
-  const [custCount] = await db.select({ count: sql<number>`count(*)` }).from(customers);
-  const [survCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys);
-  const [pendCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).where(inArray(surveys.status, ["pending", "scheduled"]));
-  const [compCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).where(eq(surveys.status, "surveyed"));
-  const [wonCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).where(eq(surveys.status, "won"));
-  const [fuCount] = await db.select({ count: sql<number>`count(*)` }).from(followUps).where(eq(followUps.status, "pending"));
+  // If scoped and empty arrays, return zeros
+  if (scopedSurveyIds !== undefined && scopedSurveyIds.length === 0) {
+    return { totalCustomers: 0, totalSurveys: 0, pendingSurveys: 0, completedSurveys: 0, wonDeals: 0, pendingFollowUps: 0 };
+  }
+  const custConditions: any[] = [];
+  if (scopedCustomerIds !== undefined) {
+    if (scopedCustomerIds.length === 0) custConditions.push(sql`1=0`);
+    else custConditions.push(inArray(customers.id, scopedCustomerIds));
+  }
+  const survConditions: any[] = [];
+  if (scopedSurveyIds !== undefined) {
+    survConditions.push(inArray(surveys.id, scopedSurveyIds));
+  }
+  const [custCount] = await db.select({ count: sql<number>`count(*)` }).from(customers).where(custConditions.length > 0 ? and(...custConditions) : undefined);
+  const [survCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).where(survConditions.length > 0 ? and(...survConditions) : undefined);
+  const [pendCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).where(and(...survConditions, inArray(surveys.status, ["pending", "scheduled"])));
+  const [compCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).where(and(...survConditions, eq(surveys.status, "surveyed")));
+  const [wonCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).where(and(...survConditions, eq(surveys.status, "won")));
+  // Follow-ups: scope by surveyId if scoped
+  const fuConditions: any[] = [eq(followUps.status, "pending")];
+  if (scopedSurveyIds !== undefined) {
+    fuConditions.push(inArray(followUps.surveyId, scopedSurveyIds));
+  }
+  const [fuCount] = await db.select({ count: sql<number>`count(*)` }).from(followUps).where(and(...fuConditions));
   return {
     totalCustomers: custCount?.count ?? 0,
     totalSurveys: survCount?.count ?? 0,
@@ -743,10 +766,10 @@ export async function deleteSource(id: number) {
   await db.delete(sources).where(eq(sources.id, id));
 }
 
-export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; adminSenderId?: number; closerId?: number; page?: number; limit?: number; search?: string; month?: number; year?: number; source?: string; district?: string; province?: string }) {
+export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; adminSenderId?: number; closerId?: number; page?: number; limit?: number; search?: string; month?: number; year?: number; source?: string; district?: string; province?: string; scopedSurveyIds?: number[] }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { status, assignedTo, adminSenderId, closerId, page = 1, limit = 20, search, month, year, source, district, province } = opts;
+  const { status, assignedTo, adminSenderId, closerId, page = 1, limit = 20, search, month, year, source, district, province, scopedSurveyIds } = opts;
   const offset = (page - 1) * limit;
 
   // If filtering by team member (any role), find matching survey IDs first
@@ -764,6 +787,11 @@ export async function getSurveysWithCustomer(opts: { status?: string; assignedTo
   }
 
   const conditions: any[] = [];
+  // Data scoping: เซลล์เห็นเฉพาะงานสำรวจที่ตัวเองถูก assign
+  if (scopedSurveyIds !== undefined) {
+    if (scopedSurveyIds.length === 0) return { data: [], total: 0 };
+    conditions.push(inArray(surveys.id, scopedSurveyIds));
+  }
   if (filteredSurveyIds) conditions.push(inArray(surveys.id, filteredSurveyIds));
   if (status) conditions.push(eq(surveys.status, status as any));
   if (search) {
@@ -956,11 +984,17 @@ export async function updateInstallationStatus(surveyId: number, installationSta
 export async function getInstallations(opts: any) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { page = 1, limit = 20, search, month, year, district, province, installationStatus, surveyorId, closerId } = opts;
+  const { page = 1, limit = 20, search, month, year, district, province, installationStatus, surveyorId, closerId, scopedSurveyIds } = opts;
   const offset = (page - 1) * limit;
+
+  // Data scoping: เซลล์เห็นเฉพาะงานติดตั้งที่ตัวเองเกี่ยวข้อง
+  if (scopedSurveyIds !== undefined && scopedSurveyIds.length === 0) return { data: [], total: 0 };
 
   // Only show surveys that have installationDate set (closed deals with installation scheduled)
   const conditions: any[] = [isNotNull(surveys.installationDate)];
+  if (scopedSurveyIds !== undefined) {
+    conditions.push(inArray(surveys.id, scopedSurveyIds));
+  }
   if (search) {
     conditions.push(or(
       like(customers.name, `%${search}%`),

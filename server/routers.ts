@@ -9,6 +9,7 @@ import { nanoid } from "nanoid";
 import bcrypt from "bcryptjs";
 import { storagePut, storageDelete, getS3BucketUsage } from "./storage";
 import * as db from "./db";
+import { getUserScope } from "./dataScope";
 
 // ==================== CUSTOMER ROUTER ====================
 const customerRouter = router({
@@ -24,7 +25,10 @@ const customerRouter = router({
       source: z.string().optional(),
       surveyStatus: z.string().optional(),
     }))
-    .query(({ input }) => db.getCustomers(input)),
+    .query(async ({ input, ctx }) => {
+      const scope = await getUserScope(ctx.user);
+      return db.getCustomers({ ...input, scopedCustomerIds: scope?.customerIds });
+    }),
 
   distinctValues: protectedProcedure
     .query(() => db.getCustomerDistinctValues()),
@@ -160,7 +164,10 @@ const surveyRouter = router({
       district: z.string().optional(),
       province: z.string().optional(),
     }))
-    .query(({ input }) => db.getSurveysWithCustomer(input)),
+    .query(async ({ input, ctx }) => {
+      const scope = await getUserScope(ctx.user);
+      return db.getSurveysWithCustomer({ ...input, scopedSurveyIds: scope?.surveyIds });
+    }),
 
   exportExcel: protectedProcedure
     .input(z.object({
@@ -169,8 +176,9 @@ const surveyRouter = router({
       year: z.number().optional(),
       source: z.string().optional(),
     }))
-    .query(async ({ input }) => {
-      const result = await db.getSurveysWithCustomer({ ...input, page: 1, limit: 10000 });
+    .query(async ({ input, ctx }) => {
+      const scope = await getUserScope(ctx.user);
+      const result = await db.getSurveysWithCustomer({ ...input, page: 1, limit: 10000, scopedSurveyIds: scope?.surveyIds });
       return result.data;
     }),
 
@@ -548,7 +556,10 @@ const notificationRouter = router({
 
 // ==================== DASHBOARD ROUTER ====================
 const dashboardRouter = router({
-  stats: protectedProcedure.query(() => db.getDashboardStats()),
+  stats: protectedProcedure.query(async ({ ctx }) => {
+    const scope = await getUserScope(ctx.user);
+    return db.getDashboardStats(scope?.surveyIds, scope?.customerIds);
+  }),
   recentActivities: protectedProcedure
     .input(z.object({ limit: z.number().default(20) }).optional())
     .query(({ input }) => db.getRecentActivities(input?.limit)),
@@ -888,9 +899,10 @@ const installationRouter = router({
       district: z.string().optional(),
       installationStatus: z.enum(['all', 'upcoming', 'today', 'overdue', 'completed']).optional(),
     }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      const scope = await getUserScope(ctx.user);
       const { installationStatus, ...rest } = input;
-      const result = await db.getInstallations({ ...rest, installationStatus: installationStatus === 'all' ? undefined : installationStatus, page: 1, limit: 10000 });
+      const result = await db.getInstallations({ ...rest, installationStatus: installationStatus === 'all' ? undefined : installationStatus, page: 1, limit: 10000, scopedSurveyIds: scope?.surveyIds });
       return result.data;
     }),
 
@@ -923,9 +935,10 @@ const installationRouter = router({
       closerId: z.number().optional(),
       installationStatus: z.enum(['all', 'upcoming', 'today', 'overdue', 'completed']).optional(),
     }))
-    .query(({ input }) => {
+    .query(async ({ input, ctx }) => {
+      const scope = await getUserScope(ctx.user);
       const { installationStatus, ...rest } = input;
-      return db.getInstallations({ ...rest, installationStatus: installationStatus === 'all' ? undefined : installationStatus });
+      return db.getInstallations({ ...rest, installationStatus: installationStatus === 'all' ? undefined : installationStatus, scopedSurveyIds: scope?.surveyIds });
     }),
 });
 
