@@ -1,6 +1,6 @@
 import { eq, and, or, like, desc, gte, lte, sql, inArray, asc, isNotNull, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory } from "../drizzle/schema";
+import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory, installerTeams, InsertInstallerTeam } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -984,7 +984,7 @@ export async function updateInstallationStatus(surveyId: number, installationSta
 export async function getInstallations(opts: any) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { page = 1, limit = 20, search, month, year, district, province, installationStatus, surveyorId, closerId, scopedSurveyIds } = opts;
+  const { page = 1, limit = 20, search, month, year, district, province, installationStatus, surveyorId, closerId, installerTeamId, scopedSurveyIds } = opts;
   const offset = (page - 1) * limit;
 
   // Data scoping: เซลล์เห็นเฉพาะงานติดตั้งที่ตัวเองเกี่ยวข้อง
@@ -1016,6 +1016,9 @@ export async function getInstallations(opts: any) {
   }
   if (closerId) {
     conditions.push(sql`${surveys.id} IN (SELECT surveyId FROM survey_assignments WHERE role = 'closer' AND userId = ${closerId})`);
+  }
+  if (installerTeamId) {
+    conditions.push(eq(surveys.installerTeamId, installerTeamId));
   }
   // installationStatus: upcoming (future), today, overdue (past, not completed), completed
   const now = Date.now();
@@ -1062,6 +1065,16 @@ export async function getInstallations(opts: any) {
     }
   }
 
+  // Fetch installer teams
+  const installerTeamIds = data.map(d => d.survey.installerTeamId).filter(Boolean) as number[];
+  let installerTeamMap: Record<number, { id: number; name: string; phone: string | null }> = {};
+  if (installerTeamIds.length > 0) {
+    const teamData = await db.select().from(installerTeams).where(inArray(installerTeams.id, installerTeamIds));
+    for (const t of teamData) {
+      installerTeamMap[t.id] = { id: t.id, name: t.name, phone: t.phone };
+    }
+  }
+
   // Fetch custom status
   const surveyStatusIds = data.map(d => d.survey.statusId).filter(Boolean) as number[];
   let surveyCustomStatusMap: Record<number, { id: number; label: string; color: string; bgColor: string }> = {};
@@ -1079,6 +1092,7 @@ export async function getInstallations(opts: any) {
       ...d,
       assignments: assignmentsMap[d.survey.id] || [],
       customStatus: d.survey.statusId ? surveyCustomStatusMap[d.survey.statusId] || null : null,
+      installerTeam: d.survey.installerTeamId ? installerTeamMap[d.survey.installerTeamId] || null : null,
     })),
     total: countQ[0]?.count ?? 0,
   };
@@ -1309,7 +1323,7 @@ export async function deleteInstallationPhoto(photoId: number) {
 
 // ==================== Delivery Submission ====================
 
-export async function submitDelivery(surveyId: number, userId: number) {
+export async function submitDelivery(surveyId: number, userId: number | null) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const now = Date.now();
@@ -1358,4 +1372,44 @@ export async function getDeliveryInfo(surveyId: number) {
     completedAt: surveys.completedAt,
   }).from(surveys).where(eq(surveys.id, surveyId));
   return survey || null;
+}
+
+// ==================== INSTALLER TEAMS ====================
+export async function getInstallerTeams(onlyActive = false) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions: any[] = [];
+  if (onlyActive) conditions.push(eq(installerTeams.isActive, true));
+  const rows = conditions.length > 0
+    ? await db.select().from(installerTeams).where(and(...conditions)).orderBy(asc(installerTeams.name))
+    : await db.select().from(installerTeams).orderBy(asc(installerTeams.name));
+  return rows;
+}
+
+export async function createInstallerTeam(data: InsertInstallerTeam) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const [result] = await db.insert(installerTeams).values(data).$returningId();
+  return { id: result.id };
+}
+
+export async function updateInstallerTeam(id: number, data: Partial<InsertInstallerTeam>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(installerTeams).set(data).where(eq(installerTeams.id, id));
+  return { id };
+}
+
+export async function deleteInstallerTeam(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(installerTeams).where(eq(installerTeams.id, id));
+  return { id };
+}
+
+export async function getInstallerTeamById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [team] = await db.select().from(installerTeams).where(eq(installerTeams.id, id));
+  return team || null;
 }

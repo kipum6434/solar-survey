@@ -19,6 +19,7 @@ import Login from "./pages/Login";
 import StatusManagement from "./pages/StatusManagement";
 import Installations from "./pages/Installations";
 import FileManagement from "./pages/FileManagement";
+import InstallerTeams from "./pages/InstallerTeams";
 
 function Router() {
   return (
@@ -37,6 +38,7 @@ function Router() {
       <Route path={"/status-management"} component={StatusManagement} />
       <Route path={"/installations"} component={Installations} />
       <Route path={"/file-management"} component={FileManagement} />
+      <Route path={"/installer-teams"} component={InstallerTeams} />
       <Route path={"/share/:token"} component={SharedSurvey} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />

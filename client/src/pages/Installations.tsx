@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import {
   Search, Wrench, Calendar, ChevronLeft, ChevronRight,
   MapPin, Phone, Clock, AlertTriangle, CheckCircle2, Trash2,
-  Download, Package, Truck,
+  Download, Package, Truck, HardHat,
 } from "lucide-react";
 
 const THAI_MONTHS_SHORT = [
@@ -109,10 +109,13 @@ export default function Installations() {
     return Array.from({ length: 5 }, (_, i) => currentBE - i);
   }, []);
 
+  const [filterInstallerTeam, setFilterInstallerTeam] = useState("all");
+
   // Fetch filter data
   const { data: distinctValues } = trpc.customer.distinctValues.useQuery();
   const { data: surveyors } = trpc.teamMember.list.useQuery({ role: "surveyor" });
   const { data: closers } = trpc.teamMember.list.useQuery({ role: "closer" });
+  const { data: installerTeamsList = [] } = trpc.installerTeam.listActive.useQuery();
   const utils = trpc.useUtils();
 
   const provinces = distinctValues?.provinces ?? [];
@@ -128,8 +131,9 @@ export default function Installations() {
     district: filterDistrict !== "all" ? filterDistrict : undefined,
     surveyorId: filterSurveyor !== "all" ? Number(filterSurveyor) : undefined,
     closerId: filterCloser !== "all" ? Number(filterCloser) : undefined,
+    installerTeamId: filterInstallerTeam !== "all" ? Number(filterInstallerTeam) : undefined,
     installationStatus: statusTab as any,
-  }), [page, search, filterByMonth, selectedMonth, selectedYear, statusTab, filterProvince, filterDistrict, filterSurveyor, filterCloser]);
+  }), [page, search, filterByMonth, selectedMonth, selectedYear, statusTab, filterProvince, filterDistrict, filterSurveyor, filterCloser, filterInstallerTeam]);
 
   const { data, isLoading } = trpc.installation.list.useQuery(queryInput);
   const items = data?.data ?? [];
@@ -431,6 +435,16 @@ export default function Installations() {
                 {(closers ?? []).map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
+
+            <Select value={filterInstallerTeam} onValueChange={(v) => { setFilterInstallerTeam(v); setPage(1); }}>
+              <SelectTrigger className="w-[160px] h-9">
+                <SelectValue placeholder="ทีมช่างทั้งหมด" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">ทีมช่างทั้งหมด</SelectItem>
+                {installerTeamsList.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -534,10 +548,11 @@ export default function Installations() {
                         )}
                       </div>
 
-                      {(surveyor || closer) && (
+                      {(surveyor || closer || item.installerTeam) && (
                         <div className="flex flex-wrap gap-2 text-xs">
                           {surveyor && <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">สำรวจ: {surveyor.userName}</span>}
                           {closer && <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded-full">ปิดงาน: {closer.userName}</span>}
+                          {item.installerTeam && <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full flex items-center gap-1"><HardHat className="h-3 w-3" />{item.installerTeam.name}</span>}
                         </div>
                       )}
 
@@ -554,6 +569,9 @@ export default function Installations() {
                             onChanged={() => {}}
                           />
                         </div>
+                        {item.survey.deliveryStatus && (
+                          <DeliveryStatusBadge status={item.survey.deliveryStatus} />
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -650,6 +668,8 @@ function InstallationDesktopTable({
     _closer: item.assignments?.find((a: any) => a.role === "closer")?.userName || "",
     _statusLabel: item.customStatus?.label || "",
     _installationStatus: item.survey.installationStatus || "waiting",
+    _installerTeam: item.installerTeam?.name || "",
+    _deliveryStatus: item.survey.deliveryStatus || "",
   })), [items]);
 
   const { sortedData, sortConfig, requestSort } = useSort(flatData);
@@ -677,6 +697,8 @@ function InstallationDesktopTable({
                 <th className="py-3 px-4 text-left font-medium text-muted-foreground"><SortableHeader label="คนปิดงาน" sortKey="_closer" sortConfig={sortConfig} onSort={requestSort} /></th>
                 <th className="py-3 px-4 text-left font-medium text-muted-foreground"><SortableHeader label="สถานะ" sortKey="_statusLabel" sortConfig={sortConfig} onSort={requestSort} /></th>
                 <th className="py-3 px-4 text-left font-medium text-muted-foreground"><SortableHeader label="สถานะติดตั้ง" sortKey="_installationStatus" sortConfig={sortConfig} onSort={requestSort} /></th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground"><SortableHeader label="ทีมช่าง" sortKey="_installerTeam" sortConfig={sortConfig} onSort={requestSort} /></th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground"><SortableHeader label="ส่งมอบงาน" sortKey="_deliveryStatus" sortConfig={sortConfig} onSort={requestSort} /></th>
               </tr>
             </thead>
             <tbody>
@@ -730,6 +752,16 @@ function InstallationDesktopTable({
                         onChanged={() => {}}
                       />
                     </td>
+                    <td className="py-3 px-4 text-xs">
+                      {item.installerTeam ? (
+                        <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full flex items-center gap-1 w-fit">
+                          <HardHat className="h-3 w-3" />{item.installerTeam.name}
+                        </span>
+                      ) : <span className="text-muted-foreground">-</span>}
+                    </td>
+                    <td className="py-3 px-4">
+                      <DeliveryStatusBadge status={item.survey.deliveryStatus} />
+                    </td>
                   </tr>
                 );
               })}
@@ -738,5 +770,24 @@ function InstallationDesktopTable({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+const DELIVERY_STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: any }> = {
+  pending: { label: "รอส่งมอบ", color: "text-gray-600", bg: "bg-gray-50", icon: Clock },
+  submitted: { label: "รออนุมัติ", color: "text-amber-700", bg: "bg-amber-50", icon: Package },
+  approved: { label: "อนุมัติแล้ว", color: "text-green-700", bg: "bg-green-50", icon: CheckCircle2 },
+  rejected: { label: "ถูกปฏิเสธ", color: "text-red-700", bg: "bg-red-50", icon: AlertTriangle },
+};
+
+function DeliveryStatusBadge({ status }: { status: string | null }) {
+  if (!status) return <span className="text-xs text-muted-foreground">-</span>;
+  const info = DELIVERY_STATUS_MAP[status] || DELIVERY_STATUS_MAP.pending;
+  const Icon = info.icon;
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${info.bg} ${info.color}`}>
+      <Icon className="h-3 w-3" />
+      {info.label}
+    </span>
   );
 }

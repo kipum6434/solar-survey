@@ -258,6 +258,7 @@ const surveyRouter = router({
       statusId: z.number().nullable().optional(),
       installationDate: z.number().nullable().optional(),
       installationStatus: z.enum(["waiting", "in_progress", "completed", "delivered"]).nullable().optional(),
+      installerTeamId: z.number().nullable().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const { id, surveyorIds, ...data } = input;
@@ -933,6 +934,7 @@ const installationRouter = router({
       province: z.string().optional(),
       surveyorId: z.number().optional(),
       closerId: z.number().optional(),
+      installerTeamId: z.number().optional(),
       installationStatus: z.enum(['all', 'upcoming', 'today', 'overdue', 'completed']).optional(),
     }))
     .query(async ({ input, ctx }) => {
@@ -1067,6 +1069,64 @@ const installationPhotoRouter = router({
       return db.getInstallationPhotos(input.surveyId);
     }),
 
+  // Public list for share link
+  publicList: publicProcedure
+    .input(z.object({ token: z.string(), surveyId: z.number() }))
+    .query(async ({ input }) => {
+      const link = await db.getShareLinkByToken(input.token);
+      if (!link || !link.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
+      if (link.expiresAt && link.expiresAt < Date.now()) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์หมดอายุ" });
+      if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
+      return db.getInstallationPhotos(input.surveyId);
+    }),
+
+  // Public upload for share link (no login required)
+  publicUpload: publicProcedure
+    .input(z.object({
+      token: z.string(),
+      surveyId: z.number(),
+      fileName: z.string(),
+      fileData: z.string(), // base64
+      category: z.string().default("other"),
+      caption: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const link = await db.getShareLinkByToken(input.token);
+      if (!link || !link.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
+      if (link.expiresAt && link.expiresAt < Date.now()) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์หมดอายุ" });
+      if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
+      const buffer = Buffer.from(input.fileData, "base64");
+      const ext = input.fileName.split(".").pop() || "jpg";
+      const key = `installations/${input.surveyId}/photos/${Date.now()}_${nanoid(8)}.${ext}`;
+      const contentType = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+      const { url } = await storagePut(key, buffer, contentType);
+      const result = await db.createInstallationPhoto({
+        surveyId: input.surveyId,
+        url,
+        fileKey: key,
+        fileName: input.fileName,
+        category: input.category,
+        fileSize: buffer.length,
+        caption: input.caption || null,
+        uploadedBy: null,
+      });
+      return { id: result.id, url, fileKey: key };
+    }),
+
+  // Public delete for share link
+  publicDelete: publicProcedure
+    .input(z.object({ token: z.string(), surveyId: z.number(), id: z.number() }))
+    .mutation(async ({ input }) => {
+      const link = await db.getShareLinkByToken(input.token);
+      if (!link || !link.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
+      if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
+      const photo = await db.deleteInstallationPhoto(input.id);
+      if (photo) {
+        try { await storageDelete(photo.fileKey); } catch (e) { console.warn("Failed to delete from S3:", e); }
+      }
+      return { success: true };
+    }),
+
   upload: protectedProcedure
     .input(z.object({
       surveyId: z.number(),
@@ -1107,11 +1167,67 @@ const installationPhotoRouter = router({
     }),
 });
 
+// ==================== INSTALLER TEAM ROUTER ====================
+const installerTeamRouter = router({
+  list: protectedProcedure
+    .input(z.object({ onlyActive: z.boolean().optional() }).optional())
+    .query(({ input }) => db.getInstallerTeams(input?.onlyActive)),
+
+  listActive: publicProcedure
+    .query(() => db.getInstallerTeams(true)),
+
+  create: adminProcedure
+    .input(z.object({
+      name: z.string().min(1),
+      phone: z.string().optional(),
+      note: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await db.createInstallerTeam(input);
+      await db.logActivity({ userId: ctx.user.id, action: "create", entityType: "installer_team", entityId: result.id, details: `สร้างทีมช่าง: ${input.name}` });
+      return result;
+    }),
+
+  update: adminProcedure
+    .input(z.object({
+      id: z.number(),
+      name: z.string().min(1).optional(),
+      phone: z.string().optional(),
+      note: z.string().optional(),
+      isActive: z.boolean().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const { id, ...data } = input;
+      const result = await db.updateInstallerTeam(id, data);
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "installer_team", entityId: id, details: `แก้ไขทีมช่าง ID: ${id}` });
+      return result;
+    }),
+
+  delete: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await db.deleteInstallerTeam(input.id);
+      await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "installer_team", entityId: input.id, details: `ลบทีมช่าง ID: ${input.id}` });
+      return result;
+    }),
+});
+
 // ==================== DELIVERY ROUTER ====================
 const deliveryRouter = router({
   info: protectedProcedure
     .input(z.object({ surveyId: z.number() }))
     .query(async ({ input }) => {
+      return db.getDeliveryInfo(input.surveyId);
+    }),
+
+  // Public info for share link
+  publicInfo: publicProcedure
+    .input(z.object({ token: z.string(), surveyId: z.number() }))
+    .query(async ({ input }) => {
+      const link = await db.getShareLinkByToken(input.token);
+      if (!link || !link.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
+      if (link.expiresAt && link.expiresAt < Date.now()) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์หมดอายุ" });
+      if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
       return db.getDeliveryInfo(input.surveyId);
     }),
 
@@ -1126,6 +1242,21 @@ const deliveryRouter = router({
       const result = await db.submitDelivery(input.surveyId, ctx.user.id);
       await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "delivery", entityId: input.surveyId, details: `ส่งมอบงานติดตั้ง surveyId: ${input.surveyId}` });
       return result;
+    }),
+
+  // Public submit for share link (no login required)
+  publicSubmit: publicProcedure
+    .input(z.object({ token: z.string(), surveyId: z.number() }))
+    .mutation(async ({ input }) => {
+      const link = await db.getShareLinkByToken(input.token);
+      if (!link || !link.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
+      if (link.expiresAt && link.expiresAt < Date.now()) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์หมดอายุ" });
+      if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
+      const photos = await db.getInstallationPhotos(input.surveyId);
+      if (photos.length === 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "กรุณาอัปโหลดรูปติดตั้งก่อนส่งมอบงาน" });
+      }
+      return db.submitDelivery(input.surveyId, null);
     }),
 
   approve: adminProcedure
@@ -1179,6 +1310,7 @@ export const appRouter = router({
   installation: installationRouter,
   installationPhoto: installationPhotoRouter,
   installationPhotoCategory: installationPhotoCategoryRouter,
+  installerTeam: installerTeamRouter,
   delivery: deliveryRouter,
   photoCategory: photoCategoryRouter,
   documentCategory: documentCategoryRouter,

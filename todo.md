@@ -495,3 +495,21 @@
 - [x] Frontend: หน้าจัดการหมวดหมู่รูปติดตั้ง ในหน้าจัดการสถานะ (เพิ่ม/ลบ/แก้ไข categories)
 - [x] Frontend: เพิ่ม tabs หมวดหมู่รูปสำรวจ + หมวดหมู่เอกสาร ในหน้าจัดการสถานะ
 - [x] เขียน vitest ทดสอบ delivery + installation photo + categories (17 tests ผ่าน)
+
+## User Request - Round 33: ระบบทีมช่างติดตั้ง + ส่งมอบงานผ่าน Share Link
+
+- [x] Schema: สร้างตาราง installer_teams (id, name, phone, note, isActive, createdAt)
+- [x] Schema: เพิ่ม installerTeamId ใน surveys table
+- [x] Migration: generate + apply SQL (migration 0016)
+- [x] Backend: CRUD installer_teams (list, listActive, create, update, delete) — admin only
+- [x] Backend: อัปเดต survey.update รองรับ installerTeamId
+- [x] Backend: delivery publicSubmit ผ่าน share link (public procedure, ไม่ต้อง login)
+- [x] Backend: installation photo publicUpload/publicList/publicDelete ผ่าน share link (public procedure)
+- [x] Backend: delivery publicInfo ผ่าน share link
+- [x] Frontend: หน้าจัดการทีมช่าง InstallerTeams.tsx (เพิ่ม/ลบ/แก้ไข/ปิด-เปิด) ใน sidebar
+- [x] Frontend: InstallerTeamSelect dropdown ใน TechInfoCard ของ SurveyDetail
+- [x] Frontend: แสดงชื่อทีมช่าง + สถานะส่งมอบ (DeliveryStatusBadge) ในตารางงานติดตั้ง
+- [x] Frontend: เพิ่ม filter ทีมช่างในหน้างานติดตั้ง
+- [x] Frontend: PublicDeliverySection ในหน้า SharedSurvey (อัปโหลดรูปตามหมวดหมู่ + กดส่งมอบ + ลบรูป ไม่ต้อง login)
+- [x] Mobile-friendly: รองรับ responsive grid ทั้ง desktop + mobile
+- [x] เขียน vitest ทดสอบ installer team (9 tests) + delivery (17 tests) — 201 tests ผ่านทั้งหมด

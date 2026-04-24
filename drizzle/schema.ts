@@ -97,6 +97,7 @@ export const surveys = mysqlTable("surveys", {
   deliveryApprovedAt: bigint("deliveryApprovedAt", { mode: "number" }),
   deliveryApprovedBy: int("deliveryApprovedBy"),
   deliveryRejectionReason: text("deliveryRejectionReason"),
+  installerTeamId: int("installerTeamId"),
   createdBy: int("createdBy"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -294,6 +295,20 @@ export const documentCategories = mysqlTable("document_categories", {
 
 export type DocumentCategory = typeof documentCategories.$inferSelect;
 export type InsertDocumentCategory = typeof documentCategories.$inferInsert;
+
+// ==================== INSTALLER TEAMS ====================
+export const installerTeams = mysqlTable("installer_teams", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 50 }),
+  note: text("note"),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type InstallerTeam = typeof installerTeams.$inferSelect;
+export type InsertInstallerTeam = typeof installerTeams.$inferInsert;
 
 // ==================== INSTALLATION PHOTO CATEGORIES ====================
 export const installationPhotoCategories = mysqlTable("installation_photo_categories", {

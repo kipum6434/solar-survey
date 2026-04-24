@@ -241,7 +241,7 @@ export default function SurveyDetail() {
         )}
 
         {/* Technical Info Card - Always Editable (click to edit each field) */}
-        <TechInfoCard survey={s} surveyId={surveyId} updateSurvey={updateSurvey} />
+        <TechInfoCard survey={s} surveyId={surveyId} updateSurvey={updateSurvey} onRefetch={refetch} />
 
         {/* Customer Info Card - Always Editable */}
         <CustomerInfoCard customer={c} updateCustomer={updateCustomer} />
@@ -1026,7 +1026,7 @@ function AddFollowUpDialog({ open, onOpenChange, surveyId, customerId, surveyors
 }
 
 /* ==================== TECH INFO CARD - Always Editable ==================== */
-function TechInfoCard({ survey: s, surveyId, updateSurvey }: { survey: any; surveyId: number; updateSurvey: any }) {
+function TechInfoCard({ survey: s, surveyId, updateSurvey, onRefetch }: { survey: any; surveyId: number; updateSurvey: any; onRefetch?: () => void }) {
   const [form, setForm] = useState<any>(null);
   const [dirty, setDirty] = useState(false);
 
@@ -1119,6 +1119,7 @@ function TechInfoCard({ survey: s, surveyId, updateSurvey }: { survey: any; surv
               </SelectContent>
             </Select>
           </div>
+          <InstallerTeamSelect surveyId={surveyId} currentTeamId={s.installerTeamId} onChanged={onRefetch} />
         </div>
         <div className="mt-3">
           <EditableField label="หมายเหตุ" value={form.surveyNotes} onChange={(v) => updateField("surveyNotes", v)} placeholder="หมายเหตุเพิ่มเติม..." multiline />
@@ -1395,5 +1396,34 @@ function TeamCard({ data, surveyId, teamAdminSenders, teamSurveyors, teamClosers
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/* ==================== INSTALLER TEAM SELECT ==================== */
+function InstallerTeamSelect({ surveyId, currentTeamId, onChanged }: { surveyId: number; currentTeamId: number | null; onChanged?: () => void }) {
+  const { data: teams = [] } = trpc.installerTeam.listActive.useQuery();
+  const updateSurvey = trpc.survey.update.useMutation({
+    onSuccess: () => { toast.success("อัพเดททีมช่างสำเร็จ"); onChanged?.(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const handleChange = (val: string) => {
+    const teamId = val === "none" ? null : Number(val);
+    updateSurvey.mutate({ id: surveyId, installerTeamId: teamId });
+  };
+
+  return (
+    <div className="space-y-1 col-span-2 md:col-span-1">
+      <label className="text-xs text-muted-foreground flex items-center gap-1">
+        <Wrench className="h-3 w-3" /> ทีมช่างติดตั้ง
+      </label>
+      <Select value={currentTeamId ? String(currentTeamId) : "none"} onValueChange={handleChange} disabled={updateSurvey.isPending}>
+        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="เลือกทีมช่าง" /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">ยังไม่ได้กำหนด</SelectItem>
+          {teams.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
