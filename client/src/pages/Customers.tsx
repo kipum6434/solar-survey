@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import { SourceCombobox } from "@/components/SourceCombobox";
 import { useState, useMemo, useCallback } from "react";
+import { useSort } from "@/hooks/useSort";
+import { SortableHeader } from "@/components/SortableHeader";
 import { StatusDropdown } from "@/components/StatusDropdown";
 import { useLocation } from "wouter";
 import {
@@ -488,6 +490,8 @@ interface TableViewProps {
 }
 
 function CustomerTableView({ data, onRowClick, onEdit, onDelete, selectedIds, onToggleSelect, onToggleSelectAll, allSelected, someSelected, onRefetch }: TableViewProps) {
+  const { sortedData, sortConfig, requestSort } = useSort(data);
+
   return (
     <div className="border rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
@@ -501,24 +505,24 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete, selectedIds, on
                   aria-label="เลือกทั้งหมด"
                 />
               </th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">ชื่อลูกค้า</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">เบอร์โทร</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell">ที่อยู่</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell">โลเคชั่น</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell">ช่องทาง</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">เขต/อำเภอ</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">จังหวัด</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">ค่าไฟ/เดือน</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">ประเภทหลังคา</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">ระบบไฟ</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">หมายเหตุ</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">วันที่สร้าง</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">สถานะ</th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap"><SortableHeader label="ชื่อลูกค้า" sortKey="name" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap"><SortableHeader label="เบอร์โทร" sortKey="phone" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell"><SortableHeader label="ที่อยู่" sortKey="fullAddress" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell"><SortableHeader label="โลเคชั่น" sortKey="address" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell"><SortableHeader label="ช่องทาง" sortKey="source" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell"><SortableHeader label="เขต/อำเภอ" sortKey="district" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell"><SortableHeader label="จังหวัด" sortKey="province" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell"><SortableHeader label="ค่าไฟ/เดือน" sortKey="electricityBill" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell"><SortableHeader label="ประเภทหลังคา" sortKey="roofType" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell"><SortableHeader label="ระบบไฟ" sortKey="phaseType" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell"><SortableHeader label="หมายเหตุ" sortKey="notes" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell"><SortableHeader label="วันที่สร้าง" sortKey="createdAt" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap"><SortableHeader label="สถานะ" sortKey="surveyStatus" sortConfig={sortConfig} onSort={requestSort} /></th>
               <th className="text-right px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap w-10"></th>
             </tr>
           </thead>
           <tbody>
-            {data.map((c: any) => {
+            {sortedData.map((c: any) => {
               const isSelected = selectedIds.has(c.id);
               return (
                 <tr

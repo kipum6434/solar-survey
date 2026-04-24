@@ -1,4 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
+import { useSort } from "@/hooks/useSort";
+import { SortableHeader } from "@/components/SortableHeader";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -560,91 +562,17 @@ export default function Installations() {
             </div>
 
             {/* Desktop Table View */}
-            <Card className="hidden sm:block">
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-muted/30">
-                        <th className="py-3 px-4 w-10">
-                          <Checkbox
-                            checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                            onCheckedChange={toggleSelectAll}
-                            aria-label="เลือกทั้งหมด"
-                          />
-                        </th>
-                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">วันนัดติดตั้ง</th>
-                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">ชื่อลูกค้า</th>
-                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">เบอร์โทร</th>
-                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">เขต/จังหวัด</th>
-                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">ขนาดระบบ</th>
-                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">คนสำรวจ</th>
-                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">คนปิดงาน</th>
-                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">สถานะ</th>
-                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">สถานะติดตั้ง</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.map((item: any) => {
-                        const surveyor = item.assignments?.find((a: any) => a.role === "surveyor");
-                        const closer = item.assignments?.find((a: any) => a.role === "closer");
-                        const daysUntil = getDaysUntil(item.survey.installationDate);
-                        const isSelected = selectedIds.has(item.survey.id);
-                        return (
-                          <tr
-                            key={item.survey.id}
-                            className={`border-b last:border-0 hover:bg-muted/50 cursor-pointer transition-colors ${isSelected ? "bg-destructive/5" : ""}`}
-                            onClick={() => setLocation(`/surveys/${item.survey.id}`)}
-                          >
-                            <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
-                              <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={() => toggleSelect(item.survey.id)}
-                                aria-label={`เลือก ${item.customer.name}`}
-                              />
-                            </td>
-                            <td className="py-3 px-4">
-                              <div className="flex flex-col">
-                                <span className="font-medium text-primary">{formatDate(item.survey.installationDate)}</span>
-                                {daysUntil && !item.survey.completedAt && (
-                                  <span className="text-xs text-muted-foreground">{daysUntil}</span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 font-medium max-w-[180px] truncate">{item.customer.name}</td>
-                            <td className="py-3 px-4 text-muted-foreground">{item.customer.phone || "-"}</td>
-                            <td className="py-3 px-4 text-muted-foreground text-xs">
-                              {[item.customer.district, item.customer.province].filter(Boolean).join(", ") || "-"}
-                            </td>
-                            <td className="py-3 px-4">
-                              {item.survey.systemSize ? (
-                                <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded text-xs font-medium">{item.survey.systemSize} kW</span>
-                              ) : "-"}
-                            </td>
-                            <td className="py-3 px-4 text-xs">{surveyor?.userName || "-"}</td>
-                            <td className="py-3 px-4 text-xs">{closer?.userName || "-"}</td>
-                            <td className="py-3 px-4">
-                              {item.customStatus ? (
-                                <Badge variant="secondary" className="text-xs border-0" style={{ backgroundColor: item.customStatus.bgColor, color: item.customStatus.color }}>
-                                  {item.customStatus.label}
-                                </Badge>
-                              ) : "-"}
-                            </td>
-                            <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
-                              <InstallationStatusBadge
-                                status={item.survey.installationStatus}
-                                surveyId={item.survey.id}
-                                onChanged={() => {}}
-                              />
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+            <InstallationDesktopTable
+              items={items}
+              allSelected={allSelected}
+              someSelected={someSelected}
+              toggleSelectAll={toggleSelectAll}
+              selectedIds={selectedIds}
+              toggleSelect={toggleSelect}
+              formatDate={formatDate}
+              getDaysUntil={getDaysUntil}
+              onRowClick={(id: number) => setLocation(`/surveys/${id}`)}
+            />
 
             {/* Pagination */}
             {totalPages > 1 && (
@@ -690,5 +618,125 @@ export default function Installations() {
         </AlertDialog>
       </div>
     </DashboardLayout>
+  );
+}
+
+/* ==================== DESKTOP TABLE VIEW (with sortable headers) ==================== */
+interface InstallationDesktopTableProps {
+  items: any[];
+  allSelected: boolean;
+  someSelected: boolean;
+  toggleSelectAll: () => void;
+  selectedIds: Set<number>;
+  toggleSelect: (id: number) => void;
+  formatDate: (ts: number | null) => string;
+  getDaysUntil: (ts: number | null) => string | null;
+  onRowClick: (id: number) => void;
+}
+
+function InstallationDesktopTable({
+  items, allSelected, someSelected, toggleSelectAll, selectedIds, toggleSelect,
+  formatDate, getDaysUntil, onRowClick,
+}: InstallationDesktopTableProps) {
+  // Flatten data for sorting
+  const flatData = useMemo(() => items.map((item: any) => ({
+    ...item,
+    _installationDate: item.survey.installationDate,
+    _customerName: item.customer.name,
+    _phone: item.customer.phone,
+    _districtProvince: [item.customer.district, item.customer.province].filter(Boolean).join(", "),
+    _systemSize: item.survey.systemSize ? Number(item.survey.systemSize) : null,
+    _surveyor: item.assignments?.find((a: any) => a.role === "surveyor")?.userName || "",
+    _closer: item.assignments?.find((a: any) => a.role === "closer")?.userName || "",
+    _statusLabel: item.customStatus?.label || "",
+    _installationStatus: item.survey.installationStatus || "waiting",
+  })), [items]);
+
+  const { sortedData, sortConfig, requestSort } = useSort(flatData);
+
+  return (
+    <Card className="hidden sm:block">
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/30">
+                <th className="py-3 px-4 w-10">
+                  <Checkbox
+                    checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="เลือกทั้งหมด"
+                  />
+                </th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground"><SortableHeader label="วันนัดติดตั้ง" sortKey="_installationDate" sortConfig={sortConfig} onSort={requestSort} /></th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground"><SortableHeader label="ชื่อลูกค้า" sortKey="_customerName" sortConfig={sortConfig} onSort={requestSort} /></th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground"><SortableHeader label="เบอร์โทร" sortKey="_phone" sortConfig={sortConfig} onSort={requestSort} /></th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground"><SortableHeader label="เขต/จังหวัด" sortKey="_districtProvince" sortConfig={sortConfig} onSort={requestSort} /></th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground"><SortableHeader label="ขนาดระบบ" sortKey="_systemSize" sortConfig={sortConfig} onSort={requestSort} /></th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground"><SortableHeader label="คนสำรวจ" sortKey="_surveyor" sortConfig={sortConfig} onSort={requestSort} /></th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground"><SortableHeader label="คนปิดงาน" sortKey="_closer" sortConfig={sortConfig} onSort={requestSort} /></th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground"><SortableHeader label="สถานะ" sortKey="_statusLabel" sortConfig={sortConfig} onSort={requestSort} /></th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground"><SortableHeader label="สถานะติดตั้ง" sortKey="_installationStatus" sortConfig={sortConfig} onSort={requestSort} /></th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedData.map((item: any) => {
+                const daysUntil = getDaysUntil(item.survey.installationDate);
+                const isSelected = selectedIds.has(item.survey.id);
+                return (
+                  <tr
+                    key={item.survey.id}
+                    className={`border-b last:border-0 hover:bg-muted/50 cursor-pointer transition-colors ${isSelected ? "bg-destructive/5" : ""}`}
+                    onClick={() => onRowClick(item.survey.id)}
+                  >
+                    <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleSelect(item.survey.id)}
+                        aria-label={`เลือก ${item.customer.name}`}
+                      />
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex flex-col">
+                        <span className="font-medium text-primary">{formatDate(item.survey.installationDate)}</span>
+                        {daysUntil && !item.survey.completedAt && (
+                          <span className="text-xs text-muted-foreground">{daysUntil}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 font-medium max-w-[180px] truncate">{item.customer.name}</td>
+                    <td className="py-3 px-4 text-muted-foreground">{item.customer.phone || "-"}</td>
+                    <td className="py-3 px-4 text-muted-foreground text-xs">
+                      {item._districtProvince || "-"}
+                    </td>
+                    <td className="py-3 px-4">
+                      {item.survey.systemSize ? (
+                        <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded text-xs font-medium">{item.survey.systemSize} kW</span>
+                      ) : "-"}
+                    </td>
+                    <td className="py-3 px-4 text-xs">{item._surveyor || "-"}</td>
+                    <td className="py-3 px-4 text-xs">{item._closer || "-"}</td>
+                    <td className="py-3 px-4">
+                      {item.customStatus ? (
+                        <Badge variant="secondary" className="text-xs border-0" style={{ backgroundColor: item.customStatus.bgColor, color: item.customStatus.color }}>
+                          {item.customStatus.label}
+                        </Badge>
+                      ) : "-"}
+                    </td>
+                    <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                      <InstallationStatusBadge
+                        status={item.survey.installationStatus}
+                        surveyId={item.survey.id}
+                        onChanged={() => {}}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

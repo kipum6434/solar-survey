@@ -443,3 +443,12 @@
 - [x] dropdown เอกสาร: เปลี่ยนเป็น custom dropdown + ปุ่มลบ + เพิ่มประเภทใหม่
 - [x] แก้ไข logic: ลบได้ทุกประเภทยกเว้น key === 'other'
 - [x] แก้ไข dropdown เอกสารเป็น custom dropdown เหมือนรูปภาพ + ขยายไอคอนลบให้ใหญ่ขึ้น
+
+## User Request - Round 28: Sortable Table Headers ทุกตาราง
+
+- [x] สร้าง reusable useSort hook สำหรับจัดเรียงข้อมูลในตาราง
+- [x] สร้าง SortableHeader component ที่แสดงลูกศรเรียงลำดับ (asc/desc)
+- [x] หน้าลูกค้า (Customers): เพิ่ม sortable headers ทุกคอลัมน์
+- [x] หน้างานสำรวจ (Surveys): เพิ่ม sortable headers ทุกคอลัมน์
+- [x] หน้างานติดตั้ง (Installation): เพิ่ม sortable headers ทุกคอลัมน์
+- [x] เขียน tests สำหรับ sort logic (11 tests ผ่าน, รวม 167 tests ผ่าน)

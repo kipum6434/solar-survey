@@ -11,6 +11,8 @@ import { trpc } from "@/lib/trpc";
 import { SURVEY_STATUS_MAP } from "@/lib/constants";
 import { StatusDropdown } from "@/components/StatusDropdown";
 import { useState, useMemo, useCallback } from "react";
+import { useSort } from "@/hooks/useSort";
+import { SortableHeader } from "@/components/SortableHeader";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -651,6 +653,24 @@ interface SurveyViewProps {
 
 /* ==================== TABLE VIEW ==================== */
 function SurveyTableView({ data, onRowClick, onRefetch, onUpdateInstallationDate, onUpdateScheduledDate, selectedIds, onToggleSelect, onToggleSelectAll, allSelected, someSelected }: SurveyViewProps) {
+  // Flatten data for sorting: merge survey + customer fields
+  const flatData = useMemo(() => data.map((item: any) => ({
+    ...item,
+    _scheduledDate: item.survey.scheduledDate,
+    _scheduledTime: item.survey.scheduledTime,
+    _customerName: item.customer.name,
+    _phone: item.customer.phone,
+    _source: item.customer.source,
+    _districtProvince: [item.customer.district, item.customer.province].filter(Boolean).join(", "),
+    _surveyors: (item.assignments || []).filter((a: any) => a.role === "surveyor").map((a: any) => a.userName).filter(Boolean).join(", ") || item.assignedUser?.name || "",
+    _senders: (item.assignments || []).filter((a: any) => a.role === "admin_sender").map((a: any) => a.userName).filter(Boolean).join(", "),
+    _closers: (item.assignments || []).filter((a: any) => a.role === "closer").map((a: any) => a.userName).filter(Boolean).join(", "),
+    _status: item.survey.status,
+    _installationDate: item.survey.installationDate,
+    _surveyNotes: item.survey.surveyNotes,
+  })), [data]);
+  const { sortedData, sortConfig, requestSort } = useSort(flatData);
+
   return (
     <div className="border rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
@@ -664,29 +684,29 @@ function SurveyTableView({ data, onRowClick, onRefetch, onUpdateInstallationDate
                   aria-label="เลือกทั้งหมด"
                 />
               </th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">วันที่</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">เวลา</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">ชื่อลูกค้า</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">เบอร์โทร</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell">ช่องทาง</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">เขต/จังหวัด</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">เซลล์</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">คนส่งสำรวจ</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">คนปิดการขาย</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">สถานะ</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">วันนัดติดตั้ง</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell">หมายเหตุ</th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap"><SortableHeader label="วันที่" sortKey="_scheduledDate" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap"><SortableHeader label="เวลา" sortKey="_scheduledTime" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap"><SortableHeader label="ชื่อลูกค้า" sortKey="_customerName" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap"><SortableHeader label="เบอร์โทร" sortKey="_phone" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell"><SortableHeader label="ช่องทาง" sortKey="_source" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell"><SortableHeader label="เขต/จังหวัด" sortKey="_districtProvince" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell"><SortableHeader label="เซลล์" sortKey="_surveyors" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell"><SortableHeader label="คนส่งสำรวจ" sortKey="_senders" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell"><SortableHeader label="คนปิดการขาย" sortKey="_closers" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap"><SortableHeader label="สถานะ" sortKey="_status" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell"><SortableHeader label="วันนัดติดตั้ง" sortKey="_installationDate" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell"><SortableHeader label="หมายเหตุ" sortKey="_surveyNotes" sortConfig={sortConfig} onSort={requestSort} /></th>
             </tr>
           </thead>
           <tbody>
-            {data.map((item: any) => {
+            {sortedData.map((item: any) => {
               const s = item.survey;
               const c = item.customer;
               const assigns = item.assignments || [];
               const statusInfo = SURVEY_STATUS_MAP[s.status] || SURVEY_STATUS_MAP.pending;
-              const surveyors = assigns.filter((a: any) => a.role === "surveyor").map((a: any) => a.userName).filter(Boolean).join(", ");
-              const senders = assigns.filter((a: any) => a.role === "admin_sender").map((a: any) => a.userName).filter(Boolean).join(", ");
-              const closers = assigns.filter((a: any) => a.role === "closer").map((a: any) => a.userName).filter(Boolean).join(", ");
+              const surveyors = item._surveyors;
+              const senders = item._senders;
+              const closers = item._closers;
               const isSelected = selectedIds.has(s.id);
               return (
                 <tr
