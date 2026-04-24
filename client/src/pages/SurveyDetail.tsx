@@ -1119,7 +1119,6 @@ function TechInfoCard({ survey: s, surveyId, updateSurvey, onRefetch }: { survey
               </SelectContent>
             </Select>
           </div>
-          <InstallerTeamSelect surveyId={surveyId} currentTeamId={s.installerTeamId} onChanged={onRefetch} />
         </div>
         <div className="mt-3">
           <EditableField label="หมายเหตุ" value={form.surveyNotes} onChange={(v) => updateField("surveyNotes", v)} placeholder="หมายเหตุเพิ่มเติม..." multiline />
@@ -1373,24 +1372,30 @@ function TeamCard({ data, surveyId, teamAdminSenders, teamSurveyors, teamClosers
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-            <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30">
-              <p className="text-xs text-muted-foreground mb-1">แอดมินผู้ส่งงาน</p>
-              <p className="font-medium">{adminSender?.user?.name || "-"}</p>
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30">
+                <p className="text-xs text-muted-foreground mb-1">แอดมินผู้ส่งงาน</p>
+                <p className="font-medium">{adminSender?.user?.name || "-"}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30">
+                <p className="text-xs text-muted-foreground mb-1">ทีมสำรวจ</p>
+                {surveyors.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {surveyors.map((a: any) => (
+                      <Badge key={a.assignment.id} variant="secondary" className="text-xs">{a.user?.name || "-"}</Badge>
+                    ))}
+                  </div>
+                ) : <p className="font-medium">-</p>}
+              </div>
+              <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/30">
+                <p className="text-xs text-muted-foreground mb-1">ผู้ปิดการขาย</p>
+                <p className="font-medium">{closer?.user?.name || "-"}</p>
+              </div>
             </div>
-            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30">
-              <p className="text-xs text-muted-foreground mb-1">ทีมสำรวจ</p>
-              {surveyors.length > 0 ? (
-                <div className="flex flex-wrap gap-1">
-                  {surveyors.map((a: any) => (
-                    <Badge key={a.assignment.id} variant="secondary" className="text-xs">{a.user?.name || "-"}</Badge>
-                  ))}
-                </div>
-              ) : <p className="font-medium">-</p>}
-            </div>
-            <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/30">
-              <p className="text-xs text-muted-foreground mb-1">ผู้ปิดการขาย</p>
-              <p className="font-medium">{closer?.user?.name || "-"}</p>
+            {/* Installer Team - always visible & editable */}
+            <div className="border-t pt-3">
+              <InstallerTeamSelect surveyId={surveyId} currentTeamId={data?.survey?.installerTeamId ?? null} onChanged={refetch} />
             </div>
           </div>
         )}

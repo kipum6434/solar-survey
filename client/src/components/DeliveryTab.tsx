@@ -17,7 +17,7 @@ import {
 import { toast } from "sonner";
 import {
   Upload, Trash2, Camera, CheckCircle2, XCircle, Clock, Send,
-  Image, Eye, X, Package, Plus, AlertTriangle,
+  Image, Eye, X, Package, Plus, AlertTriangle, Download, FolderDown,
 } from "lucide-react";
 
 interface DeliveryTabProps {
@@ -73,6 +73,7 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
   const [rejectReason, setRejectReason] = useState("");
   const [uploadCategory, setUploadCategory] = useState<string>("");
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const deliveryStatus = deliveryInfo?.deliveryStatus || "pending";
@@ -157,6 +158,37 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
     return new Date(ts).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit" });
   };
 
+  const handleDownloadAll = useCallback(async () => {
+    if (!installPhotos || installPhotos.length === 0) return;
+    setIsDownloadingAll(true);
+    try {
+      const JSZip = (await import("jszip")).default;
+      const zip = new JSZip();
+      for (let i = 0; i < installPhotos.length; i++) {
+        const photo = installPhotos[i] as any;
+        try {
+          const resp = await fetch(photo.url);
+          const blob = await resp.blob();
+          const catLabel = categoryLabelMap[photo.category] || photo.category || "other";
+          const ext = photo.url.split(".").pop()?.split("?")[0] || "jpg";
+          zip.file(`${catLabel}/${i + 1}.${ext}`, blob);
+        } catch { /* skip failed */ }
+      }
+      const content = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `installation-photos-${surveyId}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("ดาวน์โหลดรูปทั้งหมดสำเร็จ");
+    } catch {
+      toast.error("ดาวน์โหลดล้มเหลว");
+    } finally {
+      setIsDownloadingAll(false);
+    }
+  }, [installPhotos, categoryLabelMap, surveyId]);
+
   return (
     <div className="space-y-4">
       {/* Delivery Status Card */}
@@ -172,7 +204,20 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
                 {statusInfo.label}
               </Badge>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Download all photos */}
+              {installPhotos && installPhotos.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={handleDownloadAll}
+                  disabled={isDownloadingAll}
+                >
+                  <FolderDown className="h-3.5 w-3.5" />
+                  {isDownloadingAll ? "กำลังดาวน์โหลด..." : `ดาวน์โหลดทั้งหมด (${installPhotos.length})`}
+                </Button>
+              )}
               {/* Submit button - visible when pending/rejected and has photos */}
               {canEdit && (
                 <Button

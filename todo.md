@@ -526,3 +526,10 @@
 - [x] Frontend: สร้างหน้า InstallerTeamReport.tsx — summary cards (5 การ์ด) + ตารางรายละเอียด (desktop) + mobile cards + progress bar + period selector
 - [x] Frontend: เพิ่ม route /installer-team-report + เมนู "สรุปผลงานช่าง" (BarChart3 icon) ใน sidebar
 - [x] เขียน vitest ทดสอบ (8 tests ผ่าน)
+
+## User Request - Round 36: ปรับปรุง UI ส่งมอบงาน + Export รายงาน + มอบหมายทีมช่าง
+
+- [x] Frontend: เพิ่มปุ่ม "ดาวน์โหลดทั้งหมด" + "ดาวน์โหลดรายหมวด" ในหน้าส่งมอบงาน (DeliveryTab) — ดาวน์โหลดเป็น zip แยกโฟลเดอร์ตามหมวดหมู่
+- [x] Frontend: เพิ่มปุ่ม Export Excel (CSV with BOM) ในหน้าสรุปผลงานช่าง (InstallerTeamReport) — รวมแถวสรุปรวม
+- [x] Frontend: ย้าย InstallerTeamSelect จาก TechInfoCard ไปอยู่ใน TeamCard ให้เห็นชัดเจน — แสดงทั้ง view mode + edit mode พร้อม icon HardHat
+- [x] Tests: 209 tests ผ่านทั้งหมด (18 test files)

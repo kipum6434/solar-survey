@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { HardHat, Wrench, CheckCircle2, Clock, Package, TrendingUp, Zap, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { HardHat, Wrench, CheckCircle2, Clock, Package, TrendingUp, Zap, AlertTriangle, FileDown } from "lucide-react";
+import { toast } from "sonner";
 
 const MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 
@@ -40,6 +42,67 @@ export default function InstallerTeamReport() {
     ? `${MONTHS[selectedMonth - 1]} ${selectedYear}`
     : `ปี ${selectedYear}`;
 
+  const handleExportExcel = () => {
+    if (report.length === 0) return;
+    try {
+      // Build CSV with BOM for Thai characters in Excel
+      const headers = ["ทีมช่าง", "เบอร์โทร", "สถานะ", "งานทั้งหมด", "รอติดตั้ง", "กำลังติดตั้ง", "ติดตั้งเสร็จ", "ส่งมอบ", "อนุมัติ", "ปฏิเสธ", "kW รวม", "ความคืบหน้า (%)"];
+      const rows = report.map((team) => {
+        const completionRate = team.totalJobs > 0 ? Math.round((team.completed / team.totalJobs) * 100) : 0;
+        return [
+          team.teamName,
+          team.phone || "-",
+          team.teamId === 0 ? "ยังไม่มอบหมาย" : team.isActive ? "ใช้งาน" : "ปิดใช้งาน",
+          team.totalJobs,
+          team.waiting,
+          team.inProgress,
+          team.completed,
+          team.deliverySubmitted,
+          team.deliveryApproved,
+          team.deliveryRejected,
+          team.totalKw,
+          completionRate,
+        ];
+      });
+
+      // Add summary row
+      rows.push([
+        "รวมทั้งหมด", "", "",
+        totalJobs,
+        report.reduce((s, r) => s + r.waiting, 0),
+        report.reduce((s, r) => s + r.inProgress, 0),
+        totalCompleted,
+        report.reduce((s, r) => s + r.deliverySubmitted, 0),
+        totalApproved,
+        report.reduce((s, r) => s + r.deliveryRejected, 0),
+        totalKw,
+        totalJobs > 0 ? Math.round((totalCompleted / totalJobs) * 100) : 0,
+      ]);
+
+      const escapeCSV = (val: any) => {
+        const str = String(val ?? "");
+        if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      };
+
+      const csvContent = "\uFEFF" + [headers, ...rows].map(row => row.map(escapeCSV).join(",")).join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `รายงานทีมช่าง_${periodLabel.replace(/\s/g, "_")}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("ดาวน์โหลดรายงานเรียบร้อย");
+    } catch {
+      toast.error("ไม่สามารถ export รายงานได้");
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -50,6 +113,17 @@ export default function InstallerTeamReport() {
             <p className="text-muted-foreground text-sm">รายงานจำนวนงานติดตั้งและสถานะงานแยกตามทีมช่าง</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {report.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={handleExportExcel}
+              >
+                <FileDown className="h-4 w-4" />
+                <span className="hidden sm:inline">Export Excel</span>
+              </Button>
+            )}
             <Select value={viewMode} onValueChange={(v) => setViewMode(v as "month" | "year")}>
               <SelectTrigger className="w-[120px]">
                 <SelectValue />
