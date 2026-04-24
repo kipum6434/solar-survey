@@ -1004,11 +1004,11 @@ export async function getInstallations(opts: any) {
   if (district) conditions.push(eq(customers.district, district));
   if (province) conditions.push(eq(customers.province, province));
   if (month && year) {
-    // Filter by installation month/year
-    conditions.push(sql`MONTH(FROM_UNIXTIME(${surveys.installationDate} / 1000)) = ${month}`);
-    conditions.push(sql`YEAR(FROM_UNIXTIME(${surveys.installationDate} / 1000)) = ${year}`);
+    // Filter by installation month/year (UTC+7 Thailand: +25200 seconds)
+    conditions.push(sql`MONTH(FROM_UNIXTIME(${surveys.installationDate} / 1000 + 25200)) = ${month}`);
+    conditions.push(sql`YEAR(FROM_UNIXTIME(${surveys.installationDate} / 1000 + 25200)) = ${year}`);
   } else if (year) {
-    conditions.push(sql`YEAR(FROM_UNIXTIME(${surveys.installationDate} / 1000)) = ${year}`);
+    conditions.push(sql`YEAR(FROM_UNIXTIME(${surveys.installationDate} / 1000 + 25200)) = ${year}`);
   }
   // Filter by surveyor/closer
   if (surveyorId) {
@@ -1435,16 +1435,17 @@ export async function getInstallerTeamReport(opts?: { month?: number; year?: num
     .from(surveys)
     .where(isNotNull(surveys.installationDate));
 
-  // Filter by month/year if provided
+  // Filter by month/year if provided (use UTC+7 Thailand timezone)
   const filtered = allSurveys.filter((s) => {
     if (!s.installationDate) return false;
     if (opts?.month !== undefined && opts?.year !== undefined) {
-      const d = new Date(s.installationDate);
-      return d.getMonth() + 1 === opts.month && d.getFullYear() === opts.year;
+      // Convert to Thailand time by adding 7 hours offset
+      const d = new Date(s.installationDate + 7 * 60 * 60 * 1000);
+      return d.getUTCMonth() + 1 === opts.month && d.getUTCFullYear() === opts.year;
     }
     if (opts?.year !== undefined) {
-      const d = new Date(s.installationDate);
-      return d.getFullYear() === opts.year;
+      const d = new Date(s.installationDate + 7 * 60 * 60 * 1000);
+      return d.getUTCFullYear() === opts.year;
     }
     return true;
   });

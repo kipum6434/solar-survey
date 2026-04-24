@@ -4,6 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { SURVEY_STATUS_MAP, PHOTO_CATEGORY_MAP } from "@/lib/constants";
 import { useParams } from "wouter";
 import { useState, useRef, useCallback } from "react";
+import { compressImage } from "@/lib/imageCompression";
 import {
   Camera, MapPin, Calendar, Phone, Mail, Zap, Home, Gauge,
   X, Image, Sun, Wrench, FolderDown, Download, Upload, Trash2,
@@ -286,27 +287,33 @@ function PublicDeliverySection({ surveyId, token }: { surveyId: number; token: s
     onError: (e: any) => { toast.error(e.message || "ส่งมอบล้มเหลว"); setConfirmSubmit(false); },
   });
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     const category = activeCategory.current;
     setUploadingCategory(category);
 
-    // Upload all selected files
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = (reader.result as string).split(",")[1];
+    // Compress and upload all selected files
+    for (const file of Array.from(files)) {
+      try {
+        const { base64, fileName } = await compressImage(file);
         uploadMutation.mutate({
           token,
           surveyId,
-          fileName: file.name,
+          fileName,
           fileData: base64,
           category,
         });
-      };
-      reader.readAsDataURL(file);
-    });
+      } catch {
+        // Fallback: upload original
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = (reader.result as string).split(",")[1];
+          uploadMutation.mutate({ token, surveyId, fileName: file.name, fileData: base64, category });
+        };
+        reader.readAsDataURL(file);
+      }
+    }
 
     // Reset inputs
     if (fileInputRef.current) fileInputRef.current.value = "";

@@ -14,6 +14,7 @@ import { SURVEY_STATUS_MAP, PHOTO_CATEGORY_MAP, DOC_TYPE_MAP, FOLLOW_UP_METHOD_M
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useParams, useLocation } from "wouter";
 import { useState, useRef, useCallback, useEffect } from "react";
+import { compressImage } from "@/lib/imageCompression";
 import { toast } from "sonner";
 import {
   ArrowLeft, Camera, FileText, PhoneCall, Share2, MapPin, Calendar, User, Pencil,
@@ -133,19 +134,31 @@ export default function SurveyDetail() {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       if (file.size > 10 * 1024 * 1024) { toast.error(`${file.name} ขนาดเกิน 10MB`); continue; }
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = (reader.result as string).split(",")[1];
+      try {
+        const { base64, fileName } = await compressImage(file);
         uploadPhoto.mutate({
           surveyId,
           customerId: data.customer.id,
-          fileName: `${Date.now()}-${file.name}`,
+          fileName: `${Date.now()}-${fileName}`,
           category: photoCategory as any,
           base64Data: base64,
-          mimeType: file.type,
+          mimeType: file.type.startsWith("image/") ? "image/jpeg" : file.type,
         });
-      };
-      reader.readAsDataURL(file);
+      } catch {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = (reader.result as string).split(",")[1];
+          uploadPhoto.mutate({
+            surveyId,
+            customerId: data.customer.id,
+            fileName: `${Date.now()}-${file.name}`,
+            category: photoCategory as any,
+            base64Data: base64,
+            mimeType: file.type,
+          });
+        };
+        reader.readAsDataURL(file);
+      }
     }
     e.target.value = "";
   }, [data, photoCategory, surveyId, uploadPhoto]);

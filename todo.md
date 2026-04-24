@@ -533,3 +533,11 @@
 - [x] Frontend: เพิ่มปุ่ม Export Excel (CSV with BOM) ในหน้าสรุปผลงานช่าง (InstallerTeamReport) — รวมแถวสรุปรวม
 - [x] Frontend: ย้าย InstallerTeamSelect จาก TechInfoCard ไปอยู่ใน TeamCard ให้เห็นชัดเจน — แสดงทั้ง view mode + edit mode พร้อม icon HardHat
 - [x] Tests: 209 tests ผ่านทั้งหมด (18 test files)
+
+## User Request - Round 37: แจ้งเตือน + บีบอัดรูป + แก้ bug filter เดือน
+
+- [x] Bug fix: งานติดตั้ง พ.ค. แต่แสดงในเดือน เม.ย. — แก้ timezone UTC→UTC+7 ใน getInstallations (SQL +25200) + getInstallerTeamReport (JS Date +7h)
+- [x] Backend: เพิ่ม notifyOwner เมื่อช่างส่งมอบงานผ่าน Share Link (publicSubmit) — แจ้ง title + ชื่อลูกค้า + survey ID
+- [x] Frontend: เพิ่มบีบอัดรูปก่อนอัปโหลดใน SharedSurvey (PublicDeliverySection) — compressImage utility (Canvas API, max 1920px, JPEG 0.8)
+- [x] Frontend: เพิ่มบีบอัดรูปก่อนอัปโหลดใน DeliveryTab + SurveyDetail (admin side) — ใช้ compressImage utility เดียวกัน
+- [x] Tests: 209 tests ผ่านทั้งหมด (18 test files)

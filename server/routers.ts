@@ -10,6 +10,7 @@ import bcrypt from "bcryptjs";
 import { storagePut, storageDelete, getS3BucketUsage } from "./storage";
 import * as db from "./db";
 import { getUserScope } from "./dataScope";
+import { notifyOwner } from "./_core/notification";
 
 // ==================== CUSTOMER ROUTER ====================
 const customerRouter = router({
@@ -1260,7 +1261,21 @@ const deliveryRouter = router({
       if (photos.length === 0) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "กรุณาอัปโหลดรูปติดตั้งก่อนส่งมอบงาน" });
       }
-      return db.submitDelivery(input.surveyId, null);
+      const result = await db.submitDelivery(input.surveyId, null);
+
+      // Notify admin when technician submits delivery via share link
+      try {
+        const surveyInfo = await db.getSurveyWithCustomer(input.surveyId);
+        const customerName = surveyInfo?.customer?.name || `งาน #${input.surveyId}`;
+        await notifyOwner({
+          title: "ช่างส่งมอบงานติดตั้ง",
+          content: `ทีมช่างได้ส่งมอบงานติดตั้งของลูกค้า "${customerName}" (ID: ${input.surveyId}) ผ่าน Share Link แล้ว กรุณาตรวจสอบและอนุมัติ`,
+        });
+      } catch (e) {
+        console.warn("[Delivery] Failed to notify owner:", e);
+      }
+
+      return result;
     }),
 
   approve: adminProcedure

@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useMemo } from "react";
+import { compressImage } from "@/lib/imageCompression";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -133,17 +134,28 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       if (file.size > 10 * 1024 * 1024) { toast.error(`${file.name} ขนาดเกิน 10MB`); continue; }
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = (reader.result as string).split(",")[1];
+      try {
+        const { base64, fileName } = await compressImage(file);
         uploadPhoto.mutate({
           surveyId,
-          fileName: `${Date.now()}-${file.name}`,
+          fileName: `${Date.now()}-${fileName}`,
           category: uploadCategory || "other",
           fileData: base64,
         });
-      };
-      reader.readAsDataURL(file);
+      } catch {
+        // Fallback: upload original
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = (reader.result as string).split(",")[1];
+          uploadPhoto.mutate({
+            surveyId,
+            fileName: `${Date.now()}-${file.name}`,
+            category: uploadCategory || "other",
+            fileData: base64,
+          });
+        };
+        reader.readAsDataURL(file);
+      }
     }
     e.target.value = "";
   }, [surveyId, uploadCategory, uploadPhoto]);
