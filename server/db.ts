@@ -1413,3 +1413,99 @@ export async function getInstallerTeamById(id: number) {
   const [team] = await db.select().from(installerTeams).where(eq(installerTeams.id, id));
   return team || null;
 }
+
+// ==================== INSTALLER TEAM REPORT ====================
+export async function getInstallerTeamReport(opts?: { month?: number; year?: number }) {
+  const db = await getDb();
+  if (!db) return [];
+
+  // Get all teams
+  const teams = await db.select().from(installerTeams).orderBy(installerTeams.name);
+
+  // Get all surveys that have installationDate (i.e. assigned to installation)
+  const allSurveys = await db
+    .select({
+      id: surveys.id,
+      installerTeamId: surveys.installerTeamId,
+      installationStatus: surveys.installationStatus,
+      installationDate: surveys.installationDate,
+      deliveryStatus: surveys.deliveryStatus,
+      systemSize: surveys.systemSize,
+    })
+    .from(surveys)
+    .where(isNotNull(surveys.installationDate));
+
+  // Filter by month/year if provided
+  const filtered = allSurveys.filter((s) => {
+    if (!s.installationDate) return false;
+    if (opts?.month !== undefined && opts?.year !== undefined) {
+      const d = new Date(s.installationDate);
+      return d.getMonth() + 1 === opts.month && d.getFullYear() === opts.year;
+    }
+    if (opts?.year !== undefined) {
+      const d = new Date(s.installationDate);
+      return d.getFullYear() === opts.year;
+    }
+    return true;
+  });
+
+  // Build report per team
+  const report = teams.map((team) => {
+    const teamSurveys = filtered.filter((s) => s.installerTeamId === team.id);
+    const waiting = teamSurveys.filter((s) => s.installationStatus === "waiting").length;
+    const inProgress = teamSurveys.filter((s) => s.installationStatus === "in_progress").length;
+    const completed = teamSurveys.filter((s) => s.installationStatus === "completed" || s.installationStatus === "delivered").length;
+    const deliveryPending = teamSurveys.filter((s) => s.deliveryStatus === "pending").length;
+    const deliverySubmitted = teamSurveys.filter((s) => s.deliveryStatus === "submitted").length;
+    const deliveryApproved = teamSurveys.filter((s) => s.deliveryStatus === "approved").length;
+    const deliveryRejected = teamSurveys.filter((s) => s.deliveryStatus === "rejected").length;
+    const totalKw = teamSurveys.reduce((sum, s) => sum + (s.systemSize ? Number(s.systemSize) : 0), 0);
+
+    return {
+      teamId: team.id,
+      teamName: team.name,
+      phone: team.phone,
+      isActive: team.isActive,
+      totalJobs: teamSurveys.length,
+      waiting,
+      inProgress,
+      completed,
+      deliveryPending,
+      deliverySubmitted,
+      deliveryApproved,
+      deliveryRejected,
+      totalKw: Math.round(totalKw * 100) / 100,
+    };
+  });
+
+  // Also add "unassigned" row
+  const unassigned = filtered.filter((s) => !s.installerTeamId);
+  if (unassigned.length > 0) {
+    const waiting = unassigned.filter((s) => s.installationStatus === "waiting").length;
+    const inProgress = unassigned.filter((s) => s.installationStatus === "in_progress").length;
+    const completed = unassigned.filter((s) => s.installationStatus === "completed" || s.installationStatus === "delivered").length;
+    const deliveryPending = unassigned.filter((s) => s.deliveryStatus === "pending").length;
+    const deliverySubmitted = unassigned.filter((s) => s.deliveryStatus === "submitted").length;
+    const deliveryApproved = unassigned.filter((s) => s.deliveryStatus === "approved").length;
+    const deliveryRejected = unassigned.filter((s) => s.deliveryStatus === "rejected").length;
+    const totalKw = unassigned.reduce((sum, s) => sum + (s.systemSize ? Number(s.systemSize) : 0), 0);
+
+    report.push({
+      teamId: 0,
+      teamName: "ยังไม่ได้มอบหมาย",
+      phone: null,
+      isActive: true,
+      totalJobs: unassigned.length,
+      waiting,
+      inProgress,
+      completed,
+      deliveryPending,
+      deliverySubmitted,
+      deliveryApproved,
+      deliveryRejected,
+      totalKw: Math.round(totalKw * 100) / 100,
+    });
+  }
+
+  return report;
+}

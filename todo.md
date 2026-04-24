@@ -519,3 +519,10 @@
 - [x] Frontend: เพิ่มปุ่ม "ถ่ายรูป" (เปิดกล้องโดยตรง) ข้างปุ่ม "เลือกรูป" ในแต่ละหมวดหมู่ของ PublicDeliverySection
 - [x] ใช้ input[type=file] capture="environment" สำหรับเปิดกล้องหลังบนมือถือ
 - [x] Mobile-friendly: ปุ่มขนาดเหมาะสมสำหรับการกดบนมือถือ + ซ่อนข้อความบนมือถือแสดงเฉพาะ icon
+
+## User Request - Round 35: หน้าสรุปผลงานทีมช่างติดตั้ง
+
+- [x] Backend: สร้าง API getInstallerTeamReport (db.ts) + installerTeam.report procedure (routers.ts) — รองรับ filter month/year
+- [x] Frontend: สร้างหน้า InstallerTeamReport.tsx — summary cards (5 การ์ด) + ตารางรายละเอียด (desktop) + mobile cards + progress bar + period selector
+- [x] Frontend: เพิ่ม route /installer-team-report + เมนู "สรุปผลงานช่าง" (BarChart3 icon) ใน sidebar
+- [x] เขียน vitest ทดสอบ (8 tests ผ่าน)

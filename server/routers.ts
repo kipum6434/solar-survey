@@ -1176,6 +1176,10 @@ const installerTeamRouter = router({
   listActive: publicProcedure
     .query(() => db.getInstallerTeams(true)),
 
+  report: protectedProcedure
+    .input(z.object({ month: z.number().optional(), year: z.number().optional() }).optional())
+    .query(({ input }) => db.getInstallerTeamReport(input ?? undefined)),
+
   create: adminProcedure
     .input(z.object({
       name: z.string().min(1),

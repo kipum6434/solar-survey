@@ -39,6 +39,7 @@ import {
   Wrench,
   FolderOpen,
   HardHat,
+  BarChart3,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation, Redirect } from "wouter";
@@ -56,6 +57,7 @@ const baseMenuItems = [
   { icon: Users2, label: "จัดการทีมงาน", path: "/team" },
   { icon: Shield, label: "จัดการผู้ใช้งาน", path: "/users", superadminOnly: true },
   { icon: HardHat, label: "ทีมช่างติดตั้ง", path: "/installer-teams" },
+  { icon: BarChart3, label: "สรุปผลงานช่าง", path: "/installer-team-report" },
   { icon: Tags, label: "จัดการสถานะ", path: "/status-management" },
   { icon: FolderOpen, label: "จัดการไฟล์", path: "/file-management" },
   { icon: CalendarDays, label: "ปฏิทิน", path: "/calendar" },
