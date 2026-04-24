@@ -452,3 +452,11 @@
 - [x] หน้างานสำรวจ (Surveys): เพิ่ม sortable headers ทุกคอลัมน์
 - [x] หน้างานติดตั้ง (Installation): เพิ่ม sortable headers ทุกคอลัมน์
 - [x] เขียน tests สำหรับ sort logic (11 tests ผ่าน, รวม 167 tests ผ่าน)
+
+## User Request - Round 29: เปลี่ยน Storage ไปใช้ AWS S3 ของผู้ใช้
+
+- [x] เพิ่ม AWS credentials (Access Key, Secret Key, Bucket, Region) เป็น secrets
+- [x] ติดตั้ง AWS SDK (@aws-sdk/client-s3)
+- [x] แก้ไข storage layer (server/storage.ts) ให้ใช้ AWS S3 แทน Manus built-in S3
+- [x] ทดสอบ upload/download ผ่าน AWS S3 (5 tests ผ่าน)
+- [x] เขียน vitest ทดสอบ storage functions (รวม 161 tests ผ่าน)
