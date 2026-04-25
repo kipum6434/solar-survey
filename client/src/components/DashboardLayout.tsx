@@ -41,6 +41,7 @@ import {
   HardHat,
   BarChart3,
   ImageIcon,
+  MessageSquare,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation, Redirect } from "wouter";
@@ -63,6 +64,7 @@ const baseMenuItems = [
   { icon: Tags, label: "จัดการสถานะ", path: "/status-management" },
   { icon: FolderOpen, label: "จัดการไฟล์", path: "/file-management" },
   { icon: CalendarDays, label: "ปฏิทิน", path: "/calendar" },
+  { icon: MessageSquare, label: "ตั้งค่า LINE", path: "/line-settings", superadminOnly: true },
   { icon: Bell, label: "แจ้งเตือน", path: "/notifications" },
 ];
 

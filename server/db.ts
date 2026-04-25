@@ -1,6 +1,6 @@
 import { eq, and, or, like, desc, gte, lte, sql, inArray, asc, isNotNull, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory, installerTeams, InsertInstallerTeam, deliveryComments, InsertDeliveryComment } from "../drizzle/schema";
+import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory, installerTeams, InsertInstallerTeam, deliveryComments, InsertDeliveryComment, lineGroups, InsertLineGroup, lineNotificationTargets, InsertLineNotificationTarget } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1885,4 +1885,50 @@ export async function getAlbumPhotosForZip(surveyId: number) {
     .from(installationPhotos)
     .where(eq(installationPhotos.surveyId, surveyId))
     .orderBy(asc(installationPhotos.category), asc(installationPhotos.createdAt));
+}
+
+// ==================== LINE GROUPS ====================
+export async function getLineGroups() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(lineGroups).orderBy(desc(lineGroups.joinedAt));
+}
+
+export async function upsertLineGroup(groupId: string, groupName?: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(lineGroups).values({ groupId, groupName: groupName || null }).onDuplicateKeyUpdate({
+    set: { groupName: groupName || sql`groupName`, isActive: true },
+  });
+}
+
+export async function deleteLineGroup(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(lineGroups).where(eq(lineGroups.id, id));
+}
+
+// ==================== LINE NOTIFICATION TARGETS ====================
+export async function getLineNotificationTargets() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(lineNotificationTargets).orderBy(asc(lineNotificationTargets.id));
+}
+
+export async function addLineNotificationTarget(data: InsertLineNotificationTarget) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(lineNotificationTargets).values(data);
+}
+
+export async function updateLineNotificationTarget(id: number, data: Partial<InsertLineNotificationTarget>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(lineNotificationTargets).set(data).where(eq(lineNotificationTargets.id, id));
+}
+
+export async function deleteLineNotificationTarget(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(lineNotificationTargets).where(eq(lineNotificationTargets.id, id));
 }

@@ -148,6 +148,13 @@
       "when": 1777133454682,
       "tag": "0020_slippery_vermin",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "5",
+      "when": 1777143413931,
+      "tag": "0021_steep_hellion",
+      "breakpoints": true
     }
   ]
 }

@@ -12,6 +12,7 @@ import * as db from "./db";
 import { getUserScope } from "./dataScope";
 import { notifyOwner } from "./_core/notification";
 import { invokeLLM } from "./_core/llm";
+import { sendLineNotification } from "./lineNotify";
 
 // ==================== CUSTOMER ROUTER ====================
 const customerRouter = router({
@@ -347,6 +348,11 @@ const surveyRouter = router({
           title: "สำรวจเสร็จสิ้น",
           content: `งานสำรวจของลูกค้า "${customerName}" (ID: ${input.id}) สำรวจเสร็จสิ้นแล้ว`,
         });
+        // LINE notification
+        await sendLineNotification(
+          "สำรวจเสร็จสิ้น",
+          `งานสำรวจของลูกค้า "${customerName}" (ID: ${input.id}) สำรวจเสร็จสิ้นแล้ว`
+        );
       } catch (e) {
         console.warn("[Survey] Failed to notify owner:", e);
       }
@@ -372,6 +378,11 @@ const surveyRouter = router({
           title: "สำรวจเสร็จสิ้น (Share Link)",
           content: `งานสำรวจของลูกค้า "${customerName}" (ID: ${input.surveyId}) สำรวจเสร็จสิ้นแล้ว (ผ่าน Share Link)`,
         });
+        // LINE notification
+        await sendLineNotification(
+          "สำรวจเสร็จสิ้น (Share Link)",
+          `งานสำรวจของลูกค้า "${customerName}" (ID: ${input.surveyId}) สำรวจเสร็จสิ้นแล้ว (ผ่าน Share Link)`
+        );
       } catch (e) {
         console.warn("[Survey] Failed to notify owner:", e);
       }
@@ -1494,6 +1505,17 @@ const deliveryRouter = router({
         entityId: input.surveyId,
         details: `ติดตั้งเสร็จสิ้น surveyId: ${input.surveyId}`,
       });
+      // LINE notification
+      try {
+        const surveyData = await db.getSurveyWithCustomer(input.surveyId);
+        const customerName = surveyData?.customer?.name || `งาน #${input.surveyId}`;
+        await sendLineNotification(
+          "ติดตั้งเสร็จสิ้น",
+          `งานติดตั้งของลูกค้า "${customerName}" (ID: ${input.surveyId}) ติดตั้งเสร็จสิ้นแล้ว`
+        );
+      } catch (e) {
+        console.warn("[Installation] Failed to send LINE notification:", e);
+      }
       return { success: true };
     }),
 });
@@ -1682,6 +1704,96 @@ const galleryRouter = router({
     }),
 });
 
+// ==================== LINE SETTINGS ROUTER ====================
+const lineSettingsRouter = router({
+  // ดึงรายการ groups ที่ bot ถูกเพิ่มเข้าไป
+  groups: superadminProcedure.query(async () => {
+    return db.getLineGroups();
+  }),
+
+  // ดึงรายการ notification targets
+  targets: superadminProcedure.query(async () => {
+    return db.getLineNotificationTargets();
+  }),
+
+  // เพิ่ม notification target
+  addTarget: superadminProcedure
+    .input(z.object({
+      targetType: z.enum(["user", "group"]),
+      targetId: z.string().min(1),
+      label: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      await db.addLineNotificationTarget({
+        targetType: input.targetType,
+        targetId: input.targetId,
+        label: input.label || null,
+        isEnabled: true,
+      });
+      return { success: true };
+    }),
+
+  // อัปเดต target (เปิด/ปิด)
+  updateTarget: superadminProcedure
+    .input(z.object({
+      id: z.number(),
+      isEnabled: z.boolean().optional(),
+      label: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await db.updateLineNotificationTarget(id, data);
+      return { success: true };
+    }),
+
+  // ลบ target
+  deleteTarget: superadminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await db.deleteLineNotificationTarget(input.id);
+      return { success: true };
+    }),
+
+  // ทดสอบส่งข้อความ LINE
+  testSend: superadminProcedure
+    .input(z.object({
+      targetId: z.string().min(1),
+      message: z.string().default("ทดสอบการส่งข้อความจาก Solar Survey"),
+    }))
+    .mutation(async ({ input }) => {
+      const { sendLineMessage } = await import("./lineNotify");
+      const ok = await sendLineMessage(input.targetId, [
+        { type: "text", text: `🔔 ทดสอบ\n\n${input.message}` },
+      ]);
+      return { success: ok };
+    }),
+
+  // ทดสอบส่งแจ้งเตือนไปทุก target ที่เปิดอยู่
+  testNotifyAll: superadminProcedure
+    .mutation(async () => {
+      const result = await sendLineNotification(
+        "ทดสอบแจ้งเตือน",
+        "นี่คือข้อความทดสอบจากระบบ Solar Survey\nหากได้รับข้อความนี้ แสดงว่าระบบแจ้งเตือน LINE ทำงานปกติ"
+      );
+      return result;
+    }),
+
+  // ดึง bot info
+  botInfo: superadminProcedure.query(async () => {
+    const { ENV } = await import("./_core/env");
+    if (!ENV.lineChannelAccessToken) return null;
+    try {
+      const res = await fetch("https://api.line.me/v2/bot/info", {
+        headers: { Authorization: `Bearer ${ENV.lineChannelAccessToken}` },
+      });
+      if (!res.ok) return null;
+      return res.json();
+    } catch {
+      return null;
+    }
+  }),
+});
+
 // ==================== APP ROUTER ====================
 export const appRouter = router({
   system: systemRouter,
@@ -1718,6 +1830,7 @@ export const appRouter = router({
   photoCategory: photoCategoryRouter,
   documentCategory: documentCategoryRouter,
   lineParser: lineParserRouter,
+  lineSettings: lineSettingsRouter,
   gallery: galleryRouter,
 });
 

@@ -665,3 +665,12 @@
 - [x] Frontend DeliveryTab: เพิ่มปุ่ม "ติดตั้งเสร็จสิ้น"
 - [x] ทดสอบ browser + vitest — 244 passed (4 fail เป็น test เก่า seeded data)
 - [ ] (ลำดับสุดท้าย) แจ้งเตือน LINE เมื่อสำรวจเสร็จ/ติดตั้งเสร็จ
+
+### Feature: LINE Messaging API Integration (Round 52 - แจ้งเตือน LINE)
+- [x] เก็บ LINE_CHANNEL_ACCESS_TOKEN + LINE_USER_ID เป็น secrets — Bot: "Bot Survey Installer" (@026eqmip) ยืนยันสำเร็จ
+- [x] สร้าง DB table line_groups สำหรับเก็บ Group ID ที่ bot ถูกเพิ่มเข้าไป
+- [x] สร้าง LINE helper (sendLineMessage) + สร้าง DB table line_notification_targets
+- [x] สร้าง Webhook endpoint /api/line/webhook จับ Group ID อัตโนมัติ
+- [x] เพิ่ม LINE notification ใน completeSurvey / publicCompleteSurvey / completeInstallation
+- [x] สร้างหน้าตั้งค่า LINE ใน frontend (ดู groups, เลือก target, ทดสอบส่ง) — LineSettings.tsx + route + sidebar menu
+- [x] ทดสอบ TypeScript + vitest — 247 passed (4 fail เป็น test เก่า seeded data)

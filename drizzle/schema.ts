@@ -356,3 +356,25 @@ export const deliveryComments = mysqlTable("delivery_comments", {
 
 export type DeliveryComment = typeof deliveryComments.$inferSelect;
 export type InsertDeliveryComment = typeof deliveryComments.$inferInsert;
+
+// ==================== LINE MESSAGING ====================
+export const lineGroups = mysqlTable("line_groups", {
+  id: int("id").autoincrement().primaryKey(),
+  groupId: varchar("groupId", { length: 64 }).notNull().unique(),
+  groupName: varchar("groupName", { length: 255 }),
+  joinedAt: timestamp("joinedAt").defaultNow().notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+});
+export type LineGroup = typeof lineGroups.$inferSelect;
+export type InsertLineGroup = typeof lineGroups.$inferInsert;
+
+export const lineNotificationTargets = mysqlTable("line_notification_targets", {
+  id: int("id").autoincrement().primaryKey(),
+  targetType: mysqlEnum("targetType", ["user", "group"]).notNull(),
+  targetId: varchar("targetId", { length: 64 }).notNull(),
+  label: varchar("label", { length: 255 }),
+  isEnabled: boolean("isEnabled").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type LineNotificationTarget = typeof lineNotificationTargets.$inferSelect;
+export type InsertLineNotificationTarget = typeof lineNotificationTargets.$inferInsert;
