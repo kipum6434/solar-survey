@@ -22,6 +22,12 @@ export default function SharedSurvey() {
   const { data: photoCategories } = trpc.photoCategory.list.useQuery();
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+  const [showCompleteSurveyConfirm, setShowCompleteSurveyConfirm] = useState(false);
+
+  const completeSurveyMut = trpc.survey.publicCompleteSurvey.useMutation({
+    onSuccess: () => { toast.success("สำรวจเสร็จสิ้นแล้ว"); window.location.reload(); },
+    onError: (e: any) => { toast.error(e.message || "เกิดข้อผิดพลาด"); },
+  });
 
   // Build dynamic category map from DB, fallback to static
   const categoryMap: Record<string, string> = { ...PHOTO_CATEGORY_MAP };
@@ -220,6 +226,42 @@ export default function SharedSurvey() {
 
         {/* Documents section hidden from public share link - only visible to logged-in users in SurveyDetail */}
 
+        {/* ปุ่มสำรวจเสร็จสิ้น — แสดงเมื่อสถานะยังไม่ใช่ surveyed/won */}
+        {s.status !== "surveyed" && s.status !== "won" && s.status !== "lost" && s.status !== "cancelled" && (
+          <Card className="border-0 shadow-sm bg-gradient-to-r from-emerald-50 to-green-50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                  <div>
+                    <p className="text-sm font-medium text-emerald-800">สำรวจเสร็จแล้วหรือยัง?</p>
+                    <p className="text-xs text-emerald-600">กดปุ่มเพื่อยืนยันว่าสำรวจเสร็จสิ้นแล้ว</p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={() => setShowCompleteSurveyConfirm(true)}
+                  disabled={completeSurveyMut.isPending}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  {completeSurveyMut.isPending ? "กำลังดำเนินการ..." : "สำรวจเสร็จสิ้น"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        {s.status === "surveyed" && (
+          <Card className="border-0 shadow-sm bg-emerald-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                <p className="text-sm font-medium text-emerald-700">สำรวจเสร็จสิ้นแล้ว</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Survey Notes */}
         {s.surveyNotes && (
           <Card className="border-0 shadow-sm">
@@ -235,6 +277,32 @@ export default function SharedSurvey() {
           Solar Survey Management System
         </div>
       </div>
+
+      {/* Confirm สำรวจเสร็จสิ้น Dialog */}
+      <AlertDialog open={showCompleteSurveyConfirm} onOpenChange={setShowCompleteSurveyConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ยืนยันสำรวจเสร็จสิ้น</AlertDialogTitle>
+            <AlertDialogDescription>
+              คุณต้องการยืนยันว่าการสำรวจเสร็จสิ้นแล้วหรือไม่?
+              <br />
+              <span className="text-xs mt-1 block">สถานะจะเปลี่ยนเป็น "สำรวจเสร็จ"</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-emerald-600 hover:bg-emerald-700"
+              onClick={() => {
+                completeSurveyMut.mutate({ token: params.token || "", surveyId });
+                setShowCompleteSurveyConfirm(false);
+              }}
+            >
+              <CheckCircle2 className="h-4 w-4 mr-1.5" /> สำรวจเสร็จสิ้น
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Lightbox */}
       {lightboxImg && (

@@ -661,7 +661,7 @@
 - [x] Backend: เพิ่ม procedure "ติดตั้งเสร็จสิ้น" — เปลี่ยนสถานะส่งมอบงาน
 - [x] Frontend SurveyDetail: เพิ่มปุ่ม "สำรวจเสร็จสิ้น" + ตัวเลือก "ปิดหน้างาน → รอการติดตั้ง"
 - [x] Frontend SurveyDetail: แสดง "แก้ไขล่าสุดวันที่..." 
-- [ ] Frontend SharedSurvey: เพิ่มปุ่ม "สำรวจเสร็จสิ้น" ในหน้า share link
+- [x] Frontend SharedSurvey: เพิ่มปุ่ม "สำรวจเสร็จสิ้น" ในหน้า share link — ใช้ publicCompleteSurvey mutation + confirm dialog + แสดงสถานะเมื่อเสร็จแล้ว
 - [x] Frontend DeliveryTab: เพิ่มปุ่ม "ติดตั้งเสร็จสิ้น"
 - [x] ทดสอบ browser + vitest — 244 passed (4 fail เป็น test เก่า seeded data)
 - [ ] (ลำดับสุดท้าย) แจ้งเตือน LINE เมื่อสำรวจเสร็จ/ติดตั้งเสร็จ
