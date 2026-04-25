@@ -319,6 +319,9 @@ export const installationPhotoCategories = mysqlTable("installation_photo_catego
   label: varchar("label", { length: 255 }).notNull(),
   sortOrder: int("sortOrder").default(0).notNull(),
   isDefault: boolean("isDefault").default(false).notNull(),
+  isRequired: boolean("isRequired").default(false).notNull(),
+  isConditional: boolean("isConditional").default(false).notNull(),
+  conditionNote: varchar("conditionNote", { length: 500 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

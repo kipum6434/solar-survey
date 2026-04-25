@@ -28,3 +28,23 @@
 - ✅ ปุ่ม "ส่งมอบงาน" แสดง (disabled เพราะยังไม่มีรูป)
 - ✅ Category filter "ทั้งหมด (0)" แสดง
 - ✅ ข้อความ empty state: "ยังไม่มีรูปติดตั้ง / กดปุ่ม "อัปโหลดรูป" เพื่อเพิ่มรูปถ่ายการติดตั้ง"
+
+## Round 48 - Installation Photo Categories + Validation
+
+### DeliveryTab (Admin View) - /surveys/360001 > ส่งมอบงาน
+- ✅ Progress bar แสดง "รูปที่จำเป็น: 0/12 หมวด 0%"
+- ✅ Missing required categories แสดงเป็น badges สีแดง (12 หมวด)
+- ✅ Conditional categories แสดงเป็น badges สีเหลือง (3 หมวด) พร้อม condition note
+- ✅ Category tabs แสดงทั้ง 16 หมวด + "อื่นๆ"
+- ✅ ปุ่ม "อัปโหลดรูป" + "ส่งมอบงาน" แสดงใน header
+- ✅ ปุ่ม "เพิ่มรูป" + "อัปโหลดรูป" แสดงในแต่ละ category
+- ✅ Required badge (✗ จำเป็น) แสดงสีแดงเมื่อยังไม่มีรูป
+- ✅ Conditional badge (ถ้ามี) แสดงสีเหลืองพร้อม condition note
+
+### Category Grid View (scrolled down)
+- ✅ ภาพถ่าย Top View — 0 รูป — badge "✗ จำเป็น" สีแดง — empty state "จำเป็นต้องอัปโหลด"
+- ✅ หน้าอาคารสถานที่ติดตั้ง — 0 รูป — badge "✗ จำเป็น" — empty state "จำเป็นต้องอัปโหลด"
+- ✅ รูปถ่ายหม้อแปลง — 0 รูป — badge "ถ้าสามารถถ่ายได้" สีเหลือง — empty state "(ถ้าสามารถถ่ายได้)"
+- ✅ รูปถ่ายเมนเบรกเกอร์ — 0 รูป — badge "✗ จำเป็น" — empty state "จำเป็นต้องอัปโหลด"
+- ✅ Nameplate / SN ของแผง Solar — 0 รูป — badge "✗ จำเป็น"
+- ✅ ปุ่ม "เพิ่มรูป" + "อัปโหลดรูป" แสดงในทุก category

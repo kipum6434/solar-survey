@@ -622,3 +622,12 @@
 - [x] แก้ไข DeliveryTab.tsx — เพิ่มปุ่ม "อัปโหลดรูป" ใน header area (เสมอเมื่อ canEdit) + ปุ่มใน empty state ใช้ category "other"
 - [x] แก้ไข SharedSurvey.tsx — เพิ่ม fallback section "รูปติดตั้ง" พร้อมปุ่มถ่ายรูป/เลือกรูป เมื่อไม่มี categories
 - [x] ทดสอบ browser — ปุ่มอัพโหลดแสดงทั้ง header area + empty state, vitest 227 passed (6 fail เป็น test เก่าเรื่อง seeded data)
+
+## User Request - Round 48: เพิ่มหมวดหมู่รูปติดตั้งครบตามข้อกำหนด + บังคับอัพโหลดครบก่อนส่งมอบ
+- [x] Schema: เพิ่ม isRequired, isConditional, conditionNote ใน installation_photo_categories table
+- [x] DB: Seed หมวดหมู่รูปติดตั้งใหม่ 16 หมวด (12 บังคับ, 3 ถ้ามี, 1 อื่นๆ)
+- [x] Backend: อัพเดท installationPhotoCategory router รองรับ isRequired/isConditional + validateForDelivery
+- [x] Backend: อัพเดท delivery.submit + publicSubmit — validate ว่ามีรูปครบทุก required category (admin สามารถ skipValidation ได้)
+- [x] Frontend DeliveryTab: progress bar + checklist required/conditional + badge สีแดง/เหลือง + ปุ่มอัพโหลดทุก category
+- [x] Frontend SharedSurvey: progress bar + required/conditional badges + validation warning ก่อนส่งมอบ
+- [x] ทดสอบ browser — UI ใหม่แสดงถูกต้อง, vitest 244 passed (4 fail เป็น test เก่า documentCategory/photoCategory seeded data)

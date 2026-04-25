@@ -1096,6 +1096,9 @@ const installationPhotoCategoryRouter = router({
       key: z.string().min(1),
       label: z.string().min(1),
       sortOrder: z.number().optional(),
+      isRequired: z.boolean().optional(),
+      isConditional: z.boolean().optional(),
+      conditionNote: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const result = await db.createInstallationPhotoCategory({ ...input, isDefault: false });
@@ -1108,12 +1111,36 @@ const installationPhotoCategoryRouter = router({
       id: z.number(),
       label: z.string().optional(),
       sortOrder: z.number().optional(),
+      isRequired: z.boolean().optional(),
+      isConditional: z.boolean().optional(),
+      conditionNote: z.string().nullable().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const { id, ...data } = input;
       await db.updateInstallationPhotoCategory(id, data);
       await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "installation_photo_category", entityId: id, details: `แก้ไขประเภทรูปติดตั้ง ID: ${id}` });
       return { success: true };
+    }),
+
+  // Validate required categories before delivery submit
+  validateForDelivery: publicProcedure
+    .input(z.object({ surveyId: z.number() }))
+    .query(async ({ input }) => {
+      const categories = await db.getInstallationPhotoCategories();
+      const photos = await db.getInstallationPhotos(input.surveyId);
+      const photoCategoryKeys = new Set(photos.map((p: any) => p.category || "other"));
+      const requiredCategories = categories.filter((c: any) => c.isRequired);
+      const conditionalCategories = categories.filter((c: any) => c.isConditional);
+      const missingRequired = requiredCategories.filter((c: any) => !photoCategoryKeys.has(c.key));
+      const missingConditional = conditionalCategories.filter((c: any) => !photoCategoryKeys.has(c.key));
+      return {
+        totalPhotos: photos.length,
+        requiredCount: requiredCategories.length,
+        completedRequired: requiredCategories.length - missingRequired.length,
+        missingRequired: missingRequired.map((c: any) => ({ key: c.key, label: c.label })),
+        missingConditional: missingConditional.map((c: any) => ({ key: c.key, label: c.label, conditionNote: c.conditionNote })),
+        isComplete: missingRequired.length === 0,
+      };
     }),
 
   delete: protectedProcedure
@@ -1318,12 +1345,22 @@ const deliveryRouter = router({
     }),
 
   submit: protectedProcedure
-    .input(z.object({ surveyId: z.number() }))
+    .input(z.object({ surveyId: z.number(), skipValidation: z.boolean().optional() }))
     .mutation(async ({ input, ctx }) => {
       // Check that there are installation photos
       const photos = await db.getInstallationPhotos(input.surveyId);
       if (photos.length === 0) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "กรุณาอัปโหลดรูปติดตั้งก่อนส่งมอบงาน" });
+      }
+      // Validate required categories (unless admin skips)
+      if (!input.skipValidation) {
+        const categories = await db.getInstallationPhotoCategories();
+        const photoCategoryKeys = new Set(photos.map((p: any) => p.category || "other"));
+        const missingRequired = categories.filter((c: any) => c.isRequired && !photoCategoryKeys.has(c.key));
+        if (missingRequired.length > 0) {
+          const names = missingRequired.map((c: any) => c.label).join(", ");
+          throw new TRPCError({ code: "BAD_REQUEST", message: `ยังขาดรูปหมวดหมู่ที่จำเป็น: ${names}` });
+        }
       }
       const result = await db.submitDelivery(input.surveyId, ctx.user.id);
       await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "delivery", entityId: input.surveyId, details: `ส่งมอบงานติดตั้ง surveyId: ${input.surveyId}` });
@@ -1341,6 +1378,14 @@ const deliveryRouter = router({
       const photos = await db.getInstallationPhotos(input.surveyId);
       if (photos.length === 0) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "กรุณาอัปโหลดรูปติดตั้งก่อนส่งมอบงาน" });
+      }
+      // Validate required categories
+      const categories = await db.getInstallationPhotoCategories();
+      const photoCategoryKeys = new Set(photos.map((p: any) => p.category || "other"));
+      const missingRequired = categories.filter((c: any) => c.isRequired && !photoCategoryKeys.has(c.key));
+      if (missingRequired.length > 0) {
+        const names = missingRequired.map((c: any) => c.label).join(", ");
+        throw new TRPCError({ code: "BAD_REQUEST", message: `ยังขาดรูปหมวดหมู่ที่จำเป็น: ${names}` });
       }
       const result = await db.submitDelivery(input.surveyId, null);
 

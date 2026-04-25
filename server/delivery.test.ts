@@ -67,17 +67,46 @@ describe("Delivery & Installation Photo System", () => {
     it("should list installation photo categories (public)", async () => {
       const categories = await adminCaller.installationPhotoCategory.list();
       expect(Array.isArray(categories)).toBe(true);
-      expect(categories.length).toBeGreaterThanOrEqual(9); // 9 default seeded
+      expect(categories.length).toBeGreaterThanOrEqual(16); // 16 seeded categories
       const keys = categories.map((c: any) => c.key);
-      expect(keys).toContain("inverter");
-      expect(keys).toContain("solar_panel");
-      expect(keys).toContain("meter");
-      expect(keys).toContain("wiring");
-      expect(keys).toContain("roof_mounting");
-      expect(keys).toContain("overview");
-      expect(keys).toContain("before_install");
-      expect(keys).toContain("after_install");
+      // Required categories
+      expect(keys).toContain("top_view");
+      expect(keys).toContain("building_front");
+      expect(keys).toContain("main_breaker");
+      expect(keys).toContain("solar_panel_nameplate");
+      expect(keys).toContain("inverter_nameplate");
+      expect(keys).toContain("inverter_install_point");
+      expect(keys).toContain("dc_equipment");
+      expect(keys).toContain("ac_equipment");
+      expect(keys).toContain("electrical_panel_inside");
+      expect(keys).toContain("zero_export_ct");
+      expect(keys).toContain("grounding");
+      expect(keys).toContain("fusionsolar_firmware");
+      // Conditional categories
+      expect(keys).toContain("transformer");
+      expect(keys).toContain("battery_nameplate");
+      expect(keys).toContain("backup_box");
+      // Always present
       expect(keys).toContain("other");
+    });
+
+    it("should have isRequired/isConditional fields on categories", async () => {
+      const categories = await adminCaller.installationPhotoCategory.list();
+      const topView = categories.find((c: any) => c.key === "top_view");
+      expect(topView).toBeDefined();
+      expect(topView!.isRequired).toBe(true);
+      expect(topView!.isConditional).toBe(false);
+
+      const transformer = categories.find((c: any) => c.key === "transformer");
+      expect(transformer).toBeDefined();
+      expect(transformer!.isRequired).toBe(false);
+      expect(transformer!.isConditional).toBe(true);
+      expect(transformer!.conditionNote).toBeTruthy();
+
+      const other = categories.find((c: any) => c.key === "other");
+      expect(other).toBeDefined();
+      expect(other!.isRequired).toBe(false);
+      expect(other!.isConditional).toBe(false);
     });
 
     it("should return categories sorted by sortOrder", async () => {
@@ -87,11 +116,13 @@ describe("Delivery & Installation Photo System", () => {
       }
     });
 
-    it("should create a new installation photo category", async () => {
+    it("should create a new installation photo category with isRequired", async () => {
       const result = await adminCaller.installationPhotoCategory.create({
         key: `test_inst_cat_${Date.now()}`,
         label: "ทดสอบประเภทรูปติดตั้งใหม่",
         sortOrder: 20,
+        isRequired: true,
+        isConditional: false,
       });
       expect(result).toBeDefined();
       expect(result.id).toBeGreaterThan(0);
@@ -167,6 +198,19 @@ describe("Delivery & Installation Photo System", () => {
     });
   });
 
+  // ==================== Validate For Delivery ====================
+  describe("Validate For Delivery", () => {
+    it("should report missing required categories when no photos uploaded", async () => {
+      const validation = await adminCaller.installationPhotoCategory.validateForDelivery({ surveyId: testSurveyId });
+      expect(validation).toBeDefined();
+      expect(validation.requiredCount).toBeGreaterThanOrEqual(11);
+      expect(validation.completedRequired).toBe(0);
+      expect(validation.isComplete).toBe(false);
+      expect(validation.missingRequired.length).toBeGreaterThanOrEqual(11);
+      expect(validation.missingConditional.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
   // ==================== Delivery Submit ====================
   describe("Delivery Submit", () => {
     it("should reject submission without photos", async () => {
@@ -175,17 +219,25 @@ describe("Delivery & Installation Photo System", () => {
       ).rejects.toThrow("กรุณาอัปโหลดรูปติดตั้งก่อนส่งมอบงาน");
     });
 
-    it("should submit delivery after uploading photos", async () => {
-      // Upload a test photo first
+    it("should reject submission when required categories are missing", async () => {
+      // Upload a photo to just one category
       const base64Pixel = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
       await adminCaller.installationPhoto.upload({
         surveyId: testSurveyId,
-        fileName: `test-delivery-${Date.now()}.png`,
+        fileName: `test-partial-${Date.now()}.png`,
         fileData: base64Pixel,
-        category: "inverter",
+        category: "top_view",
       });
 
-      const result = await userCaller.delivery.submit({ surveyId: testSurveyId });
+      // Should fail because not all required categories have photos
+      await expect(
+        userCaller.delivery.submit({ surveyId: testSurveyId })
+      ).rejects.toThrow("ยังขาดรูปหมวดหมู่ที่จำเป็น");
+    });
+
+    it("should submit delivery with skipValidation flag", async () => {
+      // Admin can skip validation
+      const result = await adminCaller.delivery.submit({ surveyId: testSurveyId, skipValidation: true });
       expect(result).toBeDefined();
       expect(result.deliveryStatus).toBe("submitted");
       expect(result.deliverySubmittedAt).toBeTruthy();
@@ -225,17 +277,17 @@ describe("Delivery & Installation Photo System", () => {
         surveyId: approveTestSurveyId,
         fileName: "approve-test.png",
         fileData: base64Pixel,
-        category: "overview",
+        category: "top_view",
       });
-      await userCaller.delivery.submit({ surveyId: approveTestSurveyId });
+      await adminCaller.delivery.submit({ surveyId: approveTestSurveyId, skipValidation: true });
 
       await adminCaller.installationPhoto.upload({
         surveyId: rejectTestSurveyId,
         fileName: "reject-test.png",
         fileData: base64Pixel,
-        category: "overview",
+        category: "top_view",
       });
-      await userCaller.delivery.submit({ surveyId: rejectTestSurveyId });
+      await adminCaller.delivery.submit({ surveyId: rejectTestSurveyId, skipValidation: true });
     });
 
     it("should approve delivery (admin only)", async () => {
@@ -274,9 +326,9 @@ describe("Delivery & Installation Photo System", () => {
         surveyId: survey.id,
         fileName: "auth-test.png",
         fileData: base64Pixel,
-        category: "overview",
+        category: "top_view",
       });
-      await userCaller.delivery.submit({ surveyId: survey.id });
+      await adminCaller.delivery.submit({ surveyId: survey.id, skipValidation: true });
 
       await expect(
         userCaller.delivery.approve({ surveyId: survey.id })
@@ -294,9 +346,9 @@ describe("Delivery & Installation Photo System", () => {
         surveyId: survey.id,
         fileName: "auth-test-reject.png",
         fileData: base64Pixel,
-        category: "overview",
+        category: "top_view",
       });
-      await userCaller.delivery.submit({ surveyId: survey.id });
+      await adminCaller.delivery.submit({ surveyId: survey.id, skipValidation: true });
 
       await expect(
         userCaller.delivery.reject({ surveyId: survey.id, reason: "test" })
@@ -314,7 +366,7 @@ describe("Delivery & Installation Photo System", () => {
         surveyId: testSurveyId,
         fileName: `crud-test-${Date.now()}.png`,
         fileData: base64Pixel,
-        category: "solar_panel",
+        category: "top_view",
         caption: "ทดสอบอัปโหลด",
       });
       expect(result).toBeDefined();
@@ -329,7 +381,7 @@ describe("Delivery & Installation Photo System", () => {
       expect(photos.length).toBeGreaterThanOrEqual(1);
       const found = photos.find((p: any) => p.id === uploadedPhotoId);
       expect(found).toBeDefined();
-      expect(found!.category).toBe("solar_panel");
+      expect(found!.category).toBe("top_view");
     });
 
     it("should delete an installation photo", async () => {

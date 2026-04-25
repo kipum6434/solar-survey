@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import { compressImage } from "@/lib/imageCompression";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -19,7 +20,7 @@ import { toast } from "sonner";
 import {
   Upload, Trash2, Camera, CheckCircle2, XCircle, Clock, Send,
   Image, Eye, X, Package, Plus, AlertTriangle, Download, FolderDown,
-  MessageSquare, SendHorizontal,
+  MessageSquare, SendHorizontal, CircleAlert, CircleCheck, Info,
 } from "lucide-react";
 
 interface DeliveryTabProps {
@@ -42,14 +43,15 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
   const { data: deliveryInfo, refetch: refetchDelivery } = trpc.delivery.info.useQuery({ surveyId });
   const { data: installPhotos, isLoading: photosLoading, refetch: refetchPhotos } = trpc.installationPhoto.list.useQuery({ surveyId });
   const { data: photoCategories } = trpc.installationPhotoCategory.list.useQuery();
+  const { data: validation, refetch: refetchValidation } = trpc.installationPhotoCategory.validateForDelivery.useQuery({ surveyId });
 
   // Mutations
   const uploadPhoto = trpc.installationPhoto.upload.useMutation({
-    onSuccess: () => { toast.success("อัปโหลดรูปติดตั้งสำเร็จ"); refetchPhotos(); },
+    onSuccess: () => { toast.success("อัปโหลดรูปติดตั้งสำเร็จ"); refetchPhotos(); refetchValidation(); },
     onError: (e) => toast.error(e.message),
   });
   const deletePhotoMut = trpc.installationPhoto.delete.useMutation({
-    onSuccess: () => { toast.success("ลบรูปสำเร็จ"); refetchPhotos(); },
+    onSuccess: () => { toast.success("ลบรูปสำเร็จ"); refetchPhotos(); refetchValidation(); },
     onError: (e) => toast.error(e.message),
   });
   const submitDelivery = trpc.delivery.submit.useMutation({
@@ -74,7 +76,6 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [uploadCategory, setUploadCategory] = useState<string>("");
-  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -108,6 +109,17 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
     return map;
   }, [photoCategories]);
 
+  // Build category metadata map
+  const categoryMetaMap = useMemo(() => {
+    const map: Record<string, { isRequired: boolean; isConditional: boolean; conditionNote: string | null }> = {};
+    if (photoCategories) {
+      for (const cat of photoCategories) {
+        map[cat.key] = { isRequired: cat.isRequired, isConditional: cat.isConditional, conditionNote: cat.conditionNote };
+      }
+    }
+    return map;
+  }, [photoCategories]);
+
   // All categories (from DB + any that photos have)
   const allCategories = useMemo(() => {
     const cats = new Set<string>();
@@ -122,12 +134,12 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
     return Array.from(cats);
   }, [photoCategories, installPhotos]);
 
-  // Filter photos
-  const filteredPhotos = useMemo(() => {
-    if (!installPhotos) return [];
-    if (selectedCategory === "all") return installPhotos;
-    return installPhotos.filter((p: any) => p.category === selectedCategory);
-  }, [installPhotos, selectedCategory]);
+  // Progress calculation
+  const progressPercent = useMemo(() => {
+    if (!validation) return 0;
+    if (validation.requiredCount === 0) return 100;
+    return Math.round((validation.completedRequired / validation.requiredCount) * 100);
+  }, [validation]);
 
   const handlePhotoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -144,7 +156,6 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
           fileData: base64,
         });
       } catch {
-        // Fallback: upload original
         const reader = new FileReader();
         reader.onload = () => {
           const base64 = (reader.result as string).split(",")[1];
@@ -202,6 +213,14 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
     }
   }, [installPhotos, categoryLabelMap, surveyId]);
 
+  const handleSubmitClick = () => {
+    if (validation && !validation.isComplete && !isAdmin) {
+      toast.error("กรุณาอัปโหลดรูปให้ครบทุกหมวดหมู่ที่จำเป็นก่อนส่งมอบงาน");
+      return;
+    }
+    setShowSubmitConfirm(true);
+  };
+
   return (
     <div className="space-y-4">
       {/* Delivery Status Card */}
@@ -243,19 +262,19 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
                   {isDownloadingAll ? "กำลังดาวน์โหลด..." : `ดาวน์โหลดทั้งหมด (${installPhotos.length})`}
                 </Button>
               )}
-              {/* Submit button - visible when pending/rejected and has photos */}
+              {/* Submit button */}
               {canEdit && (
                 <Button
                   size="sm"
                   className="gap-1.5 bg-green-600 hover:bg-green-700"
-                  onClick={() => setShowSubmitConfirm(true)}
+                  onClick={handleSubmitClick}
                   disabled={!installPhotos || installPhotos.length === 0 || submitDelivery.isPending}
                 >
                   <Send className="h-3.5 w-3.5" />
                   {submitDelivery.isPending ? "กำลังส่ง..." : "ส่งมอบงาน"}
                 </Button>
               )}
-              {/* Admin approve/reject - visible when submitted */}
+              {/* Admin approve/reject */}
               {isAdmin && deliveryStatus === "submitted" && (
                 <>
                   <Button
@@ -310,6 +329,51 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
             </div>
           )}
 
+          {/* Progress bar for required categories */}
+          {validation && validation.requiredCount > 0 && (
+            <div className="mb-4 p-3 rounded-lg bg-muted/40 border">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium flex items-center gap-1.5">
+                  {validation.isComplete ? (
+                    <CircleCheck className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <CircleAlert className="h-4 w-4 text-amber-500" />
+                  )}
+                  รูปที่จำเป็น: {validation.completedRequired}/{validation.requiredCount} หมวด
+                </span>
+                <span className="text-xs text-muted-foreground">{progressPercent}%</span>
+              </div>
+              <Progress value={progressPercent} className="h-2" />
+              {validation.missingRequired.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-[11px] text-red-600 font-medium">ยังขาด:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {validation.missingRequired.map((c: any) => (
+                      <Badge key={c.key} variant="outline" className="text-[10px] border-red-200 text-red-600 bg-red-50 gap-1 cursor-pointer hover:bg-red-100"
+                        onClick={() => canEdit && startUpload(c.key)}>
+                        <XCircle className="h-2.5 w-2.5" /> {c.label}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {validation.missingConditional.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-[11px] text-amber-600 font-medium">ถ้ามี (ไม่บังคับ):</p>
+                  <div className="flex flex-wrap gap-1">
+                    {validation.missingConditional.map((c: any) => (
+                      <Badge key={c.key} variant="outline" className="text-[10px] border-amber-200 text-amber-600 bg-amber-50 gap-1 cursor-pointer hover:bg-amber-100"
+                        onClick={() => canEdit && startUpload(c.key)}>
+                        <Info className="h-2.5 w-2.5" /> {c.label}
+                        {c.conditionNote && <span className="text-[9px] opacity-70">({c.conditionNote})</span>}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Category filter */}
           <div className="flex flex-wrap gap-2 mb-4">
             <Button
@@ -322,14 +386,18 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
             </Button>
             {allCategories.map((catKey) => {
               const count = photosByCategory[catKey]?.length || 0;
+              const meta = categoryMetaMap[catKey];
               return (
                 <Button
                   key={catKey}
                   variant={selectedCategory === catKey ? "default" : "outline"}
                   size="sm"
-                  className="text-xs"
+                  className="text-xs gap-1"
                   onClick={() => setSelectedCategory(catKey)}
                 >
+                  {meta?.isRequired && count === 0 && <XCircle className="h-3 w-3 text-red-500" />}
+                  {meta?.isRequired && count > 0 && <CircleCheck className="h-3 w-3 text-green-500" />}
+                  {meta?.isConditional && <Info className="h-3 w-3 text-amber-500" />}
                   {categoryLabelMap[catKey] || catKey} ({count})
                 </Button>
               );
@@ -342,11 +410,11 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
               {[1, 2, 3, 4].map(i => <Skeleton key={i} className="aspect-square rounded-lg" />)}
             </div>
           ) : selectedCategory === "all" ? (
-            // Show grouped by category
             allCategories.length > 0 ? (
               <div className="space-y-6">
                 {allCategories.map((catKey) => {
                   const catPhotos = photosByCategory[catKey] || [];
+                  const meta = categoryMetaMap[catKey];
                   return (
                     <div key={catKey}>
                       <div className="flex items-center justify-between mb-2">
@@ -354,6 +422,16 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
                           <Camera className="h-4 w-4 text-muted-foreground" />
                           {categoryLabelMap[catKey] || catKey}
                           <Badge variant="secondary" className="text-[10px]">{catPhotos.length}</Badge>
+                          {meta?.isRequired && (
+                            <Badge className={`text-[9px] border-0 ${catPhotos.length > 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                              {catPhotos.length > 0 ? "✓ จำเป็น" : "✗ จำเป็น"}
+                            </Badge>
+                          )}
+                          {meta?.isConditional && (
+                            <Badge className="text-[9px] border-0 bg-amber-100 text-amber-700">
+                              {meta.conditionNote || "ถ้ามี"}
+                            </Badge>
+                          )}
                         </h4>
                         {canEdit && (
                           <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => startUpload(catKey)}>
@@ -374,9 +452,18 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
                           ))}
                         </div>
                       ) : (
-                        <div className="text-center py-6 text-muted-foreground bg-muted/30 rounded-lg">
+                        <div className={`text-center py-6 rounded-lg ${meta?.isRequired ? "bg-red-50/50 border border-red-200/50" : "bg-muted/30"}`}>
                           <Image className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                          <p className="text-xs">ยังไม่มีรูปในหมวดนี้</p>
+                          <p className="text-xs text-muted-foreground">
+                            ยังไม่มีรูปในหมวดนี้
+                            {meta?.isRequired && <span className="text-red-500 font-medium"> (จำเป็นต้องอัปโหลด)</span>}
+                            {meta?.isConditional && <span className="text-amber-500"> ({meta.conditionNote || "ถ้ามี"})</span>}
+                          </p>
+                          {canEdit && (
+                            <Button variant="outline" size="sm" className="mt-2 text-xs gap-1" onClick={() => startUpload(catKey)}>
+                              <Upload className="h-3 w-3" /> อัปโหลดรูป
+                            </Button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -404,8 +491,16 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
             // Show filtered category
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-medium">
+                <h4 className="text-sm font-medium flex items-center gap-2">
                   {categoryLabelMap[selectedCategory] || selectedCategory}
+                  {categoryMetaMap[selectedCategory]?.isRequired && (
+                    <Badge className="text-[9px] border-0 bg-red-100 text-red-700">จำเป็น</Badge>
+                  )}
+                  {categoryMetaMap[selectedCategory]?.isConditional && (
+                    <Badge className="text-[9px] border-0 bg-amber-100 text-amber-700">
+                      {categoryMetaMap[selectedCategory]?.conditionNote || "ถ้ามี"}
+                    </Badge>
+                  )}
                 </h4>
                 {canEdit && (
                   <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => startUpload(selectedCategory)}>
@@ -413,9 +508,9 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
                   </Button>
                 )}
               </div>
-              {filteredPhotos.length > 0 ? (
+              {(installPhotos?.filter((p: any) => p.category === selectedCategory) || []).length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  {filteredPhotos.map((photo: any) => (
+                  {(installPhotos?.filter((p: any) => p.category === selectedCategory) || []).map((photo: any) => (
                     <PhotoCard
                       key={photo.id}
                       photo={photo}
@@ -497,6 +592,12 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
               คุณต้องการส่งมอบงานติดตั้งนี้หรือไม่?
               <br />
               <span className="text-xs mt-1 block">มีรูปถ่ายติดตั้ง {installPhotos?.length || 0} รูป — หลังส่งมอบแล้วจะต้องรอแอดมินอนุมัติ</span>
+              {validation && !validation.isComplete && (
+                <span className="text-xs mt-2 block text-amber-600">
+                  ⚠️ ยังขาดรูปหมวดหมู่ที่จำเป็น {validation.missingRequired.length} หมวด
+                  {isAdmin && " (แอดมินสามารถข้ามการตรวจสอบได้)"}
+                </span>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -504,7 +605,10 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
             <AlertDialogAction
               className="bg-green-600 hover:bg-green-700"
               onClick={() => {
-                submitDelivery.mutate({ surveyId });
+                submitDelivery.mutate({
+                  surveyId,
+                  skipValidation: isAdmin && validation && !validation.isComplete ? true : undefined,
+                });
                 setShowSubmitConfirm(false);
               }}
             >

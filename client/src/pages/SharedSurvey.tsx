@@ -3,16 +3,18 @@ import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { SURVEY_STATUS_MAP, PHOTO_CATEGORY_MAP } from "@/lib/constants";
 import { useParams } from "wouter";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { compressImage } from "@/lib/imageCompression";
 import {
   Camera, MapPin, Calendar, Phone, Mail, Zap, Home, Gauge,
   X, Image, Sun, Wrench, FolderDown, Download, Upload, Trash2,
   Package, CheckCircle2, Clock, AlertTriangle, HardHat, Send, Plus,
+  CircleAlert, CircleCheck, Info, XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
 
 export default function SharedSurvey() {
   const params = useParams<{ token: string }>();
@@ -273,13 +275,22 @@ function PublicDeliverySection({ surveyId, token }: { surveyId: number; token: s
     { enabled: !!token && !!surveyId }
   );
   const { data: photoCategories = [] } = trpc.installationPhotoCategory.list.useQuery();
+  const { data: validation, refetch: refetchValidation } = trpc.installationPhotoCategory.validateForDelivery.useQuery(
+    { surveyId },
+    { enabled: !!surveyId }
+  );
+
+  const progressPercent = useMemo(() => {
+    if (!validation || validation.requiredCount === 0) return 100;
+    return Math.round((validation.completedRequired / validation.requiredCount) * 100);
+  }, [validation]);
 
   const uploadMutation = trpc.installationPhoto.publicUpload.useMutation({
-    onSuccess: () => { refetchPhotos(); toast.success("อัปโหลดสำเร็จ"); setUploadingCategory(null); },
+    onSuccess: () => { refetchPhotos(); refetchValidation(); toast.success("อัปโหลดสำเร็จ"); setUploadingCategory(null); },
     onError: (e: any) => { toast.error(e.message || "อัปโหลดล้มเหลว"); setUploadingCategory(null); },
   });
   const deleteMutation = trpc.installationPhoto.publicDelete.useMutation({
-    onSuccess: () => { refetchPhotos(); toast.success("ลบรูปสำเร็จ"); setConfirmDeleteId(null); },
+    onSuccess: () => { refetchPhotos(); refetchValidation(); toast.success("ลบรูปสำเร็จ"); setConfirmDeleteId(null); },
     onError: (e: any) => { toast.error(e.message || "ลบล้มเหลว"); setConfirmDeleteId(null); },
   });
   const submitMutation = trpc.delivery.publicSubmit.useMutation({
@@ -378,19 +389,72 @@ function PublicDeliverySection({ surveyId, token }: { surveyId: number; token: s
           onChange={handleFileSelect}
         />
 
+        {/* Progress bar for required categories */}
+        {validation && validation.requiredCount > 0 && (
+          <div className="p-3 rounded-lg bg-muted/40 border">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium flex items-center gap-1.5">
+                {validation.isComplete ? (
+                  <CircleCheck className="h-4 w-4 text-green-600" />
+                ) : (
+                  <CircleAlert className="h-4 w-4 text-amber-500" />
+                )}
+                รูปที่จำเป็น: {validation.completedRequired}/{validation.requiredCount} หมวด
+              </span>
+              <span className="text-xs text-muted-foreground">{progressPercent}%</span>
+            </div>
+            <Progress value={progressPercent} className="h-2" />
+            {validation.missingRequired.length > 0 && (
+              <div className="mt-2">
+                <p className="text-[11px] text-red-600 font-medium mb-1">ยังขาด:</p>
+                <div className="flex flex-wrap gap-1">
+                  {validation.missingRequired.map((c: any) => (
+                    <Badge key={c.key} variant="outline" className="text-[10px] border-red-200 text-red-600 bg-red-50 gap-1">
+                      <XCircle className="h-2.5 w-2.5" /> {c.label}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {validation.missingConditional.length > 0 && (
+              <div className="mt-2">
+                <p className="text-[11px] text-amber-600 font-medium mb-1">ถ้ามี (ไม่บังคับ):</p>
+                <div className="flex flex-wrap gap-1">
+                  {validation.missingConditional.map((c: any) => (
+                    <Badge key={c.key} variant="outline" className="text-[10px] border-amber-200 text-amber-600 bg-amber-50 gap-1">
+                      <Info className="h-2.5 w-2.5" /> {c.label}
+                      {c.conditionNote && <span className="text-[9px] opacity-70">({c.conditionNote})</span>}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Photo categories grid */}
         <div className="space-y-4">
           {photoCategories.length > 0 ? (
             photoCategories.map((cat: any) => {
               const catPhotos = installPhotos.filter((p: any) => p.category === cat.key);
               return (
-                <div key={cat.key} className="border rounded-lg p-3">
+                <div key={cat.key} className={`border rounded-lg p-3 ${cat.isRequired && catPhotos.length === 0 ? 'border-red-200 bg-red-50/30' : ''}`}>
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-medium flex items-center gap-2">
+                    <h4 className="text-sm font-medium flex items-center gap-2 flex-wrap">
                       <Camera className="h-3.5 w-3.5 text-muted-foreground" />
                       {cat.label}
                       {catPhotos.length > 0 && (
                         <Badge variant="secondary" className="text-xs">{catPhotos.length}</Badge>
+                      )}
+                      {cat.isRequired && (
+                        <Badge className={`text-[9px] border-0 ${catPhotos.length > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                          {catPhotos.length > 0 ? '✓ จำเป็น' : '✗ จำเป็น'}
+                        </Badge>
+                      )}
+                      {cat.isConditional && (
+                        <Badge className="text-[9px] border-0 bg-amber-100 text-amber-700">
+                          {cat.conditionNote || 'ถ้ามี'}
+                        </Badge>
                       )}
                     </h4>
                     {canUpload && (
@@ -440,8 +504,14 @@ function PublicDeliverySection({ surveyId, token }: { surveyId: number; token: s
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-4 text-xs text-muted-foreground bg-muted/30 rounded-lg">
-                      {canUpload ? "กดปุ่ม \"ถ่ายรูป\" หรือ \"เลือกรูป\" เพื่ออัปโหลด" : "ไม่มีรูป"}
+                    <div className={`text-center py-4 text-xs text-muted-foreground rounded-lg ${cat.isRequired ? 'bg-red-50/50' : 'bg-muted/30'}`}>
+                      {canUpload ? (
+                        <>
+                          กดปุ่ม "ถ่ายรูป" หรือ "เลือกรูป" เพื่ออัปโหลด
+                          {cat.isRequired && <span className="text-red-500 font-medium block mt-0.5">จำเป็นต้องอัปโหลด</span>}
+                          {cat.isConditional && <span className="text-amber-500 block mt-0.5">{cat.conditionNote || 'ถ้ามี'}</span>}
+                        </>
+                      ) : "ไม่มีรูป"}
                     </div>
                   )}
                 </div>
@@ -520,7 +590,7 @@ function PublicDeliverySection({ surveyId, token }: { surveyId: number; token: s
             <Button
               className="w-full gap-2"
               size="lg"
-              disabled={!canSubmit || submitMutation.isPending}
+              disabled={!canSubmit || submitMutation.isPending || (validation ? !validation.isComplete : false)}
               onClick={() => setConfirmSubmit(true)}
             >
               <Send className="h-4 w-4" />
@@ -528,6 +598,11 @@ function PublicDeliverySection({ surveyId, token }: { surveyId: number; token: s
             </Button>
             {installPhotos.length === 0 && (
               <p className="text-xs text-muted-foreground text-center mt-2">กรุณาอัปโหลดรูปอย่างน้อย 1 รูปก่อนส่งมอบ</p>
+            )}
+            {validation && !validation.isComplete && installPhotos.length > 0 && (
+              <p className="text-xs text-red-500 text-center mt-2">
+                ยังขาดรูปหมวดหมู่ที่จำเป็น {validation.missingRequired.length} หมวด กรุณาอัปโหลดให้ครบก่อนส่งมอบ
+              </p>
             )}
           </div>
         )}
