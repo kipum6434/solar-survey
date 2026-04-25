@@ -577,3 +577,7 @@
 - [x] Frontend: แสดงสีทีมช่างตาม color ที่กำหนดใน Installations (card+table) + InstallerTeamReport (table+mobile)
 - [x] Bug fix: แก้ sort วันที่+เวลาใน Surveys page — ใช้ _scheduledDateTime combined key (date + time offset) เพื่อเรียงวัน+เวลาพร้อมกัน
 - [x] Tests: 239 tests ผ่านทั้งหมด (22 test files) — เพิ่ม installerTeamColor.test.ts
+
+## User Request - Round 42: ล้างข้อมูลทั้งหมดเตรียมใช้งานจริง
+- [x] ลบข้อมูลทั้งหมด 18 ตาราง (ลูกค้า 7, งานสำรวจ 23, งานติดตั้ง, ผลงานทีม, ไฟล์, comments 15, activity_log 4853 ฯลฯ) ให้เหลือ 0
+- [x] ตรวจสอบว่าข้อมูลทุกตารางเป็น 0 แล้ว (users 4 คนเก็บไว้)
