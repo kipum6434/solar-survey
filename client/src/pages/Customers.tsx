@@ -12,6 +12,7 @@ import { useLocation } from "wouter";
 import {
   Users, Plus, Search, Phone, MapPin, ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Trash2, Eye,
   LayoutList, Table2, Zap, FileUp, Download, ExternalLink, X, MessageSquareText, Sparkles, Loader2, ClipboardPaste,
+  ClipboardCopy, FileText, Check,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +52,7 @@ export default function Customers() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "table">("table");
   const [showImport, setShowImport] = useState(false);
+  const [showTemplate, setShowTemplate] = useState(false);
 
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -200,7 +202,10 @@ export default function Customers() {
             <h1 className="text-2xl font-bold tracking-tight">ลูกค้า</h1>
             <p className="text-sm text-muted-foreground mt-1">จัดการข้อมูลลูกค้าทั้งหมด</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" onClick={() => setShowTemplate(true)} className="gap-2 border-green-300 text-green-700 hover:bg-green-50">
+              <FileText className="h-4 w-4" /> Template ขอข้อมูล
+            </Button>
             <Button variant="outline" onClick={() => setShowImport(true)} className="gap-2">
               <FileUp className="h-4 w-4" /> Import Excel
             </Button>
@@ -431,6 +436,9 @@ export default function Customers() {
         onImport={(customers) => importMutation.mutate({ customers })}
         loading={importMutation.isPending}
       />
+
+      {/* Customer Info Template Dialog */}
+      <CustomerTemplateDialog open={showTemplate} onOpenChange={setShowTemplate} />
 
       {/* Single Delete Confirmation */}
       <Dialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
@@ -1189,6 +1197,107 @@ function ImportExcelDialog({ open, onOpenChange, onImport, loading }: {
             className="gap-2"
           >
             {loading ? "กำลังนำเข้า..." : `นำเข้า ${parsedData.length} รายการ`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
+/* ─── Customer Info Template Dialog ─── */
+function CustomerTemplateDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const [copied, setCopied] = useState(false);
+
+  const TEMPLATE_TEXT = `📋 ข้อมูลลูกค้าใหม่
+ชื่อ : 
+เบอร์ : 
+ที่อยู่ : 
+โลเคชั่น : (วาง Google Maps link)
+ค่าไฟ/เดือน : 
+ประเภทหลังคา : 
+ระบบไฟ : 1 เฟส / 3 เฟส
+แหล่งที่มา : FB เพจ ___ / LINE / แนะนำ
+ชื่อ FB : 
+หมายเหตุ : `;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(TEMPLATE_TEXT);
+      setCopied(true);
+      toast.success("คัดลอก Template แล้ว วางในไลน์/FB ได้เลย!");
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // fallback for older browsers
+      const textarea = document.createElement("textarea");
+      textarea.value = TEMPLATE_TEXT;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setCopied(true);
+      toast.success("คัดลอก Template แล้ว วางในไลน์/FB ได้เลย!");
+      setTimeout(() => setCopied(false), 2500);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-green-600" />
+            Template ขอข้อมูลลูกค้า
+          </DialogTitle>
+          <DialogDescription>
+            Copy ข้อความนี้ไปส่งให้แอดมิน/ทีมงาน เพื่อขอข้อมูลลูกค้าให้ครบถ้วน
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Template Preview */}
+          <div className="relative">
+            <div className="bg-muted/50 border rounded-lg p-4 text-sm whitespace-pre-wrap font-mono leading-relaxed">
+              {TEMPLATE_TEXT}
+            </div>
+          </div>
+
+          {/* Info */}
+          <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3">
+            <p className="text-sm text-green-800 dark:text-green-300 font-medium mb-1">วิธีใช้</p>
+            <ol className="text-xs text-green-700 dark:text-green-400 space-y-1 list-decimal list-inside">
+              <li>กดปุ่ม <strong>"คัดลอก Template"</strong> ด้านล่าง</li>
+              <li>วาง (Paste) ในแชท LINE หรือ Facebook Messenger</li>
+              <li>ให้แอดมินกรอกข้อมูลลูกค้าตาม Template</li>
+              <li>เมื่อได้ข้อมูลกลับมา ใช้ปุ่ม <strong>"วางข้อความจาก LINE"</strong> ในหน้าเพิ่มลูกค้า เพื่อให้ AI กรอกให้อัตโนมัติ</li>
+            </ol>
+          </div>
+
+          {/* Required fields info */}
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p><strong>ข้อมูลที่ต้องมี:</strong> ชื่อ, เบอร์, ที่อยู่, โลเคชั่น</p>
+            <p><strong>ข้อมูลที่ควรมี:</strong> ค่าไฟ/เดือน, ประเภทหลังคา, ระบบไฟ</p>
+            <p><strong>ถ้ามี:</strong> แหล่งที่มา, ชื่อ FB, หมายเหตุ</p>
+          </div>
+        </div>
+
+        <DialogFooter className="flex gap-2 sm:gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            ปิด
+          </Button>
+          <Button
+            onClick={handleCopy}
+            className={`gap-2 min-w-[160px] transition-all ${copied ? "bg-green-600 hover:bg-green-600" : "bg-green-600 hover:bg-green-700"}`}
+          >
+            {copied ? (
+              <>
+                <Check className="h-4 w-4" /> คัดลอกแล้ว!
+              </>
+            ) : (
+              <>
+                <ClipboardCopy className="h-4 w-4" /> คัดลอก Template
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

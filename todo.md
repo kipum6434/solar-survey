@@ -588,3 +588,8 @@
 - [x] AI parse แล้ว auto-fill ข้อมูลลงฟอร์มเพิ่มลูกค้า ให้ตรวจสอบก่อนกด Save
 - [x] เขียน vitest tests สำหรับ LINE parser procedure (6 tests passed)
 - [x] ทดสอบ end-to-end ผ่าน browser
+
+## User Request - Round 44: ปุ่ม Template ขอข้อมูลลูกค้า (copy to clipboard)
+- [x] เพิ่มปุ่ม "Template ขอข้อมูล" ในหน้าลูกค้า พร้อม Dialog แสดง template ข้อความ
+- [x] ปุ่ม Copy ที่กดแล้ว copy ข้อความ template ไปใช้ในไลน์/FB ได้ทันที
+- [x] รองรับ mobile-friendly
