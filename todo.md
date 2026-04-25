@@ -593,3 +593,14 @@
 - [x] เพิ่มปุ่ม "Template ขอข้อมูล" ในหน้าลูกค้า พร้อม Dialog แสดง template ข้อความ
 - [x] ปุ่ม Copy ที่กดแล้ว copy ข้อความ template ไปใช้ในไลน์/FB ได้ทันที
 - [x] รองรับ mobile-friendly
+
+## User Request - Round 45: ทำให้ข้อมูลลูกค้าสอดคล้องกันทุกที่
+- [x] เพิ่ม column ชื่อ FB (facebook_name) ใน database schema + migration
+- [x] อัปเดต server db.ts, routers.ts ให้รองรับ facebook_name
+- [x] อัปเดตฟอร์มเพิ่มลูกค้า — เพิ่มช่อง ชื่อ FB
+- [x] อัปเดต LINE parser — ให้แยก ชื่อ FB ออกมาด้วย
+- [x] อัปเดต Excel Import — เพิ่มคอลัมน์ ชื่อ FB ให้ตรงกับ Template
+- [x] อัปเดต Excel Export — เพิ่มคอลัมน์ ชื่อ FB
+- [x] อัปเดต Template ข้อความให้ตรงกับฟอร์ม
+- [x] อัปเดตหน้าแสดงข้อมูลลูกค้า — แสดง ชื่อ FB (+ edit dialog)
+- [x] ทดสอบ vitest (6 tests passed) + browser test ผ่าน

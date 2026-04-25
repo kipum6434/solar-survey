@@ -58,6 +58,7 @@ const customerRouter = router({
       phaseType: z.enum(["single", "three"]).optional(),
       meterSize: z.string().optional(),
       fullAddress: z.string().optional(),
+      facebookName: z.string().optional(),
       notes: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
@@ -87,6 +88,7 @@ const customerRouter = router({
       phaseType: z.enum(["single", "three"]).optional(),
       meterSize: z.string().optional(),
       fullAddress: z.string().optional(),
+      facebookName: z.string().optional(),
       notes: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
@@ -127,6 +129,7 @@ const customerRouter = router({
         roofType: z.string().optional(),
         phaseType: z.enum(["single", "three"]).optional(),
         meterSize: z.string().optional(),
+        facebookName: z.string().optional(),
         notes: z.string().optional(),
       })),
     }))
@@ -1437,6 +1440,7 @@ const lineParserRouter = router({
 - electricityBill: ค่าไฟต่อเดือน (ตัวเลข)
 - roofType: ประเภทหลังคา
 - phaseType: ระบบไฟ (single หรือ three)
+- facebookName: ชื่อ Facebook ของลูกค้า (ชื่อ FB, ชื่อเฟส, Facebook name)
 - notes: หมายเหตุ/ข้อมูลเพิ่มเติมอื่นๆ
 
 กฎสำคัญ:
@@ -1475,9 +1479,10 @@ const lineParserRouter = router({
                 electricityBill: { type: "string", description: "ค่าไฟต่อเดือน" },
                 roofType: { type: "string", description: "ประเภทหลังคา" },
                 phaseType: { type: "string", description: "ระบบไฟ single/three" },
+                facebookName: { type: "string", description: "ชื่อ Facebook" },
                 notes: { type: "string", description: "หมายเหตุ" },
               },
-              required: ["name", "phone", "fullAddress", "district", "province", "postalCode", "location", "scheduledDate", "scheduledTime", "source", "electricityBill", "roofType", "phaseType", "notes"],
+              required: ["name", "phone", "fullAddress", "district", "province", "postalCode", "location", "scheduledDate", "scheduledTime", "source", "electricityBill", "roofType", "phaseType", "facebookName", "notes"],
               additionalProperties: false,
             },
           },
@@ -1505,6 +1510,7 @@ const lineParserRouter = router({
           electricityBill: string;
           roofType: string;
           phaseType: string;
+          facebookName: string;
           notes: string;
         };
       } catch {

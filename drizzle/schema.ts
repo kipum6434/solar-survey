@@ -48,6 +48,7 @@ export const customers = mysqlTable("customers", {
   meterSize: varchar("meterSize", { length: 50 }),
   fullAddress: text("fullAddress"),
   statusId: int("statusId"),
+  facebookName: varchar("facebookName", { length: 255 }),
   notes: text("notes"),
   createdBy: int("createdBy"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

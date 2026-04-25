@@ -16,7 +16,7 @@ import { useLocation, useParams } from "wouter";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Phone, Mail, MapPin, Zap, Home, Gauge, StickyNote, Plus, ClipboardList, Calendar, User,
+  ArrowLeft, Phone, Mail, MapPin, Zap, Home, Gauge, StickyNote, Plus, ClipboardList, Calendar, User, Globe,
 } from "lucide-react";
 
 export default function CustomerDetail() {
@@ -111,10 +111,10 @@ export default function CustomerDetail() {
                     <a href={`tel:${customer.phone}`} className="text-primary hover:underline">{customer.phone}</a>
                   </div>
                 )}
-                {customer.email && (
+                {customer.facebookName && (
                   <div className="flex items-center gap-3">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>{customer.email}</span>
+                    <Globe className="h-4 w-4 text-blue-500" />
+                    <span>FB: {customer.facebookName}</span>
                   </div>
                 )}
                 {(customer.fullAddress || customer.address) && (
@@ -284,7 +284,7 @@ export default function CustomerDetail() {
                   <Input value={editForm.name || ""} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
                 </div>
                 <div><Label>เบอร์โทร</Label><Input value={editForm.phone || ""} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} /></div>
-                <div><Label>อีเมล</Label><Input value={editForm.email || ""} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} /></div>
+                <div><Label>ชื่อ Facebook</Label><Input value={editForm.facebookName || ""} onChange={(e) => setEditForm({ ...editForm, facebookName: e.target.value })} placeholder="ชื่อ FB ลูกค้า" /></div>
                 <div className="col-span-2"><Label>โลเคชั่น (Google Maps Link)</Label><Input value={editForm.address || ""} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} placeholder="วางลิงก์ Google Maps" /></div>
                 <div className="col-span-2"><Label>ที่อยู่</Label><Input value={editForm.fullAddress || ""} onChange={(e) => setEditForm({ ...editForm, fullAddress: e.target.value })} placeholder="บ้านเลขที่ หมู่บ้าน ซอย ถนน" /></div>
                 <div><Label>จังหวัด</Label><Input value={editForm.province || ""} onChange={(e) => setEditForm({ ...editForm, province: e.target.value })} /></div>

@@ -50,6 +50,7 @@ describe("LINE Parser Router", () => {
       electricityBill: "3000",
       roofType: "เมทัลชีท",
       phaseType: "single",
+      facebookName: "",
       notes: "",
     };
 
@@ -117,6 +118,7 @@ describe("LINE Parser Router", () => {
       electricityBill: "",
       roofType: "",
       phaseType: "",
+      facebookName: "",
       notes: "",
     };
 

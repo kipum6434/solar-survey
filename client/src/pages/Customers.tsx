@@ -120,7 +120,7 @@ export default function Customers() {
     if (!data?.data || selectedIds.size === 0) return;
     const selected = data.data.filter((c: any) => selectedIds.has(c.id));
     if (selected.length === 0) { toast.error("ไม่พบข้อมูลที่เลือก"); return; }
-    const headers = ["ชื่อลูกค้า", "เบอร์โทร", "ที่อยู่", "โลเคชั่น", "ช่องทาง", "เขต/อำเภอ", "จังหวัด", "ค่าไฟ/เดือน", "ประเภทหลังคา", "ระบบไฟ", "หมายเหตุ", "สถานะ", "วันที่สร้าง"];
+    const headers = ["ชื่อลูกค้า", "เบอร์โทร", "ที่อยู่", "โลเคชั่น", "ช่องทาง", "เขต/อำเภอ", "จังหวัด", "ค่าไฟ/เดือน", "ประเภทหลังคา", "ระบบไฟ", "ชื่อ FB", "หมายเหตุ", "สถานะ", "วันที่สร้าง"];
     const rows = selected.map((c: any) => ({
       "ชื่อลูกค้า": c.name || "",
       "เบอร์โทร": c.phone || "",
@@ -132,6 +132,7 @@ export default function Customers() {
       "ค่าไฟ/เดือน": c.electricityBill || "",
       "ประเภทหลังคา": c.roofType || "",
       "ระบบไฟ": c.phaseType === "single" ? "1 เฟส" : c.phaseType === "three" ? "3 เฟส" : "",
+      "ชื่อ FB": c.facebookName || "",
       "หมายเหตุ": c.notes || "",
       "สถานะ": c.surveyStatus === "no_survey" ? "ยังไม่นัดสำรวจ" : c.surveyStatus === "scheduled" ? "นัดสำรวจแล้ว" : c.surveyStatus === "surveyed" ? "สำรวจเสร็จ" : c.surveyStatus === "won" ? "ปิดการขาย" : c.surveyStatus || "",
       "วันที่สร้าง": c.createdAt ? new Date(c.createdAt).toLocaleDateString("th-TH") : "",
@@ -758,7 +759,7 @@ function CustomerGridView({ data, onRowClick, onEdit, onDelete, selectedIds, onT
 
 /* ==================== ADD CUSTOMER DIALOG ==================== */
 function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: boolean; onOpenChange: (v: boolean) => void; onSubmit: (d: any) => void; loading: boolean }) {
-  const [form, setForm] = useState({ name: "", phone: "", address: "", district: "", province: "", source: "other" as string, notes: "", electricityBill: "", roofType: "", phaseType: "" as string, fullAddress: "" });
+  const [form, setForm] = useState({ name: "", phone: "", address: "", district: "", province: "", source: "other" as string, notes: "", electricityBill: "", roofType: "", phaseType: "" as string, fullAddress: "", facebookName: "" });
   const [showLinePaste, setShowLinePaste] = useState(false);
   const [lineText, setLineText] = useState("");
   const [parsedPreview, setParsedPreview] = useState<any>(null);
@@ -791,6 +792,7 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
       roofType: parsedPreview.roofType || "",
       phaseType: parsedPreview.phaseType === "single" || parsedPreview.phaseType === "three" ? parsedPreview.phaseType : "",
       fullAddress: parsedPreview.fullAddress || "",
+      facebookName: parsedPreview.facebookName || "",
     });
     setShowLinePaste(false);
     setLineText("");
@@ -806,9 +808,10 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
       electricityBill: form.electricityBill || undefined,
       phaseType: form.phaseType || undefined,
       fullAddress: form.fullAddress || undefined,
+      facebookName: form.facebookName || undefined,
       source: form.source as any,
     });
-    setForm({ name: "", phone: "", address: "", district: "", province: "", source: "other", notes: "", electricityBill: "", roofType: "", phaseType: "", fullAddress: "" });
+    setForm({ name: "", phone: "", address: "", district: "", province: "", source: "other", notes: "", electricityBill: "", roofType: "", phaseType: "", fullAddress: "", facebookName: "" });
   };
 
   return (
@@ -878,6 +881,10 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
                   <SelectItem value="three">3 เฟส</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="col-span-2">
+              <Label>ชื่อ Facebook</Label>
+              <Input value={form.facebookName} onChange={(e) => setForm({ ...form, facebookName: e.target.value })} placeholder="ชื่อ FB ลูกค้า" />
             </div>
             <div className="col-span-2">
               <Label>หมายเหตุ</Label>
@@ -956,6 +963,7 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
                   { label: "ค่าไฟ/เดือน", value: parsedPreview.electricityBill },
                   { label: "ประเภทหลังคา", value: parsedPreview.roofType },
                   { label: "ระบบไฟ", value: parsedPreview.phaseType === "single" ? "1 เฟส" : parsedPreview.phaseType === "three" ? "3 เฟส" : parsedPreview.phaseType },
+                  { label: "ชื่อ Facebook", value: parsedPreview.facebookName },
                   { label: "หมายเหตุ", value: parsedPreview.notes },
                 ].map((item, i) => (
                   <div key={i} className={item.label === "ที่อยู่" || item.label === "โลเคชั่น" || item.label === "หมายเหตุ" ? "col-span-1 sm:col-span-2" : ""}>
@@ -1001,6 +1009,7 @@ const COLUMN_MAP: Record<string, string> = {
   "ประเภทหลังคา": "roofType", "หลังคา": "roofType", "roof": "roofType",
   "ระบบไฟฟ้า": "phaseType", "เฟส": "phaseType", "phase": "phaseType",
   "ขนาดมิเตอร์": "meterSize", "มิเตอร์": "meterSize", "meter": "meterSize",
+  "ชื่อ FB": "facebookName", "ชื่อ Facebook": "facebookName", "facebook": "facebookName", "facebookName": "facebookName", "ชื่อเฟส": "facebookName", "fb": "facebookName",
   "หมายเหตุ": "notes", "notes": "notes", "note": "notes",
 };
 
@@ -1086,8 +1095,8 @@ function ImportExcelDialog({ open, onOpenChange, onImport, loading }: {
 
   const downloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet([
-      ["ชื่อลูกค้า", "เบอร์โทร", "โลเคชั่น", "เขต/อำเภอ", "จังหวัด", "แหล่งที่มา", "ค่าไฟ/เดือน", "ประเภทหลังคา", "ระบบไฟฟ้า", "ขนาดมิเตอร์", "หมายเหตุ"],
-      ["สมชาย ใจดี", "0812345678", "https://maps.google.com/...", "บางนา", "กรุงเทพ", "website", "3500", "เมทัลชีท", "3 เฟส", "30/100", "สนใจติดตั้ง 10kW"],
+      ["ชื่อลูกค้า", "เบอร์โทร", "ที่อยู่", "โลเคชั่น", "เขต/อำเภอ", "จังหวัด", "แหล่งที่มา", "ค่าไฟ/เดือน", "ประเภทหลังคา", "ระบบไฟฟ้า", "ชื่อ FB", "หมายเหตุ"],
+      ["สมชาย ใจดี", "0812345678", "48/22 มบ.เมืองประชา ถนนหทัยราษฎร์", "https://maps.google.com/...", "คลองสามวา", "กรุงเทพ", "FB เพจ SET", "3500", "เมทัลชีท", "3 เฟส", "Somchai Jaidi", "สนใจติดตั้ง 10kW"],
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "ลูกค้า");
@@ -1213,6 +1222,8 @@ function CustomerTemplateDialog({ open, onOpenChange }: { open: boolean; onOpenC
 ชื่อ : 
 เบอร์ : 
 ที่อยู่ : 
+เขต/อำเภอ : 
+จังหวัด : 
 โลเคชั่น : (วาง Google Maps link)
 ค่าไฟ/เดือน : 
 ประเภทหลังคา : 
@@ -1276,7 +1287,7 @@ function CustomerTemplateDialog({ open, onOpenChange }: { open: boolean; onOpenC
           {/* Required fields info */}
           <div className="text-xs text-muted-foreground space-y-1">
             <p><strong>ข้อมูลที่ต้องมี:</strong> ชื่อ, เบอร์, ที่อยู่, โลเคชั่น</p>
-            <p><strong>ข้อมูลที่ควรมี:</strong> ค่าไฟ/เดือน, ประเภทหลังคา, ระบบไฟ</p>
+            <p><strong>ข้อมูลที่ควรมี:</strong> เขต/อำเภอ, จังหวัด, ค่าไฟ/เดือน, ประเภทหลังคา, ระบบไฟ</p>
             <p><strong>ถ้ามี:</strong> แหล่งที่มา, ชื่อ FB, หมายเหตุ</p>
           </div>
         </div>

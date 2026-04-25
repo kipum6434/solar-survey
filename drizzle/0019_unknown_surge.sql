@@ -1,0 +1,1 @@
+ALTER TABLE `customers` ADD `facebookName` varchar(255);
