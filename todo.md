@@ -664,7 +664,7 @@
 - [x] Frontend SharedSurvey: เพิ่มปุ่ม "สำรวจเสร็จสิ้น" ในหน้า share link — ใช้ publicCompleteSurvey mutation + confirm dialog + แสดงสถานะเมื่อเสร็จแล้ว
 - [x] Frontend DeliveryTab: เพิ่มปุ่ม "ติดตั้งเสร็จสิ้น"
 - [x] ทดสอบ browser + vitest — 244 passed (4 fail เป็น test เก่า seeded data)
-- [ ] (ลำดับสุดท้าย) แจ้งเตือน LINE เมื่อสำรวจเสร็จ/ติดตั้งเสร็จ
+- [x] (ลำดับสุดท้าย) แจ้งเตือน LINE เมื่อสำรวจเสร็จ/ติดตั้งเสร็จ — เสร็จสิ้นใน LINE Integration section
 
 ### Feature: LINE Messaging API Integration (Round 52 - แจ้งเตือน LINE)
 - [x] เก็บ LINE_CHANNEL_ACCESS_TOKEN + LINE_USER_ID เป็น secrets — Bot: "Bot Survey Installer" (@026eqmip) ยืนยันสำเร็จ
