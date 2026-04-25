@@ -581,3 +581,10 @@
 ## User Request - Round 42: ล้างข้อมูลทั้งหมดเตรียมใช้งานจริง
 - [x] ลบข้อมูลทั้งหมด 18 ตาราง (ลูกค้า 7, งานสำรวจ 23, งานติดตั้ง, ผลงานทีม, ไฟล์, comments 15, activity_log 4853 ฯลฯ) ให้เหลือ 0
 - [x] ตรวจสอบว่าข้อมูลทุกตารางเป็น 0 แล้ว (users 4 คนเก็บไว้)
+
+## User Request - Round 43: วางข้อความจาก LINE เพื่อเพิ่มลูกค้าอัตโนมัติ
+- [x] สร้าง tRPC procedure (parseLineMessage) ฝั่ง server ใช้ LLM แยกข้อมูลจากข้อความ LINE (ชื่อ, เบอร์, ที่อยู่, วันนัด, เวลา, Google Maps link, หมายเหตุ)
+- [x] สร้าง UI — ปุ่ม "วางข้อความจาก LINE" ในหน้าเพิ่มลูกค้า + Dialog สำหรับวาง text
+- [x] AI parse แล้ว auto-fill ข้อมูลลงฟอร์มเพิ่มลูกค้า ให้ตรวจสอบก่อนกด Save
+- [x] เขียน vitest tests สำหรับ LINE parser procedure (6 tests passed)
+- [x] ทดสอบ end-to-end ผ่าน browser

@@ -11,6 +11,7 @@ import { storagePut, storageDelete, getS3BucketUsage } from "./storage";
 import * as db from "./db";
 import { getUserScope } from "./dataScope";
 import { notifyOwner } from "./_core/notification";
+import { invokeLLM } from "./_core/llm";
 
 // ==================== CUSTOMER ROUTER ====================
 const customerRouter = router({
@@ -1416,6 +1417,102 @@ const deliveryCommentRouter = router({
     }),
 });
 
+// ==================== LINE PARSER ROUTER ====================
+const lineParserRouter = router({
+  parse: protectedProcedure
+    .input(z.object({ text: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const systemPrompt = `คุณเป็น AI ที่ช่วยแยกข้อมูลลูกค้าจากข้อความ LINE chat ภาษาไทย
+ให้แยกข้อมูลต่อไปนี้จากข้อความที่ได้รับ:
+- name: ชื่อลูกค้า (อาจมีคำนำหน้า คุณ/นาย/นาง/นางสาว)
+- phone: เบอร์โทรศัพท์ (ตัวเลข 9-10 หลัก)
+- fullAddress: ที่อยู่เต็ม (บ้านเลขที่ ซอย ถนน แขวง/ตำบล)
+- district: เขต/อำเภอ
+- province: จังหวัด
+- postalCode: รหัสไปรษณีย์
+- location: ลิงก์ Google Maps หรือพิกัด GPS
+- scheduledDate: วันที่นัดสำรวจ (แปลงเป็น DD/MM/YYYY)
+- scheduledTime: เวลานัดสำรวจ (แปลงเป็น HH:MM)
+- source: แหล่งที่มา/ช่องทาง
+- electricityBill: ค่าไฟต่อเดือน (ตัวเลข)
+- roofType: ประเภทหลังคา
+- phaseType: ระบบไฟ (single หรือ three)
+- notes: หมายเหตุ/ข้อมูลเพิ่มเติมอื่นๆ
+
+กฎสำคัญ:
+1. ถ้าไม่พบข้อมูลใดให้ใส่ค่าว่าง ""
+2. เบอร์โทร: ลบเครื่องหมาย - ออก เก็บเฉพาะตัวเลข
+3. ที่อยู่: รวมข้อมูลที่อยู่ทั้งหมดเป็นข้อความเดียว
+4. ลิงก์ Google Maps: ดึง URL ที่ขึ้นต้นด้วย https://maps.app.goo.gl/ หรือ https://goo.gl/maps/ หรือ https://www.google.com/maps/
+5. วันที่: แปลงจากรูปแบบต่างๆ เช่น 26/03/2026, 26 มี.ค. 2026 เป็น DD/MM/YYYY
+6. ข้อความที่ขึ้นต้นด้วย ! หรือ save อาจเป็นรูปแบบเฉพาะของทีม ให้พยายามแยกข้อมูลจากบรรทัดเหล่านั้น
+7. ถ้ามีพิกัด GPS (เช่น 13°47'14.5"N 100°29'29.7"E) ให้ใส่ใน location
+8. ข้อมูลที่ไม่สามารถจัดหมวดหมู่ได้ ให้ใส่ใน notes`;
+
+      const result = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `แยกข้อมูลลูกค้าจากข้อความ LINE นี้:\n\n${input.text}` },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "line_customer_data",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                name: { type: "string", description: "ชื่อลูกค้า" },
+                phone: { type: "string", description: "เบอร์โทรศัพท์" },
+                fullAddress: { type: "string", description: "ที่อยู่เต็ม" },
+                district: { type: "string", description: "เขต/อำเภอ" },
+                province: { type: "string", description: "จังหวัด" },
+                postalCode: { type: "string", description: "รหัสไปรษณีย์" },
+                location: { type: "string", description: "ลิงก์ Google Maps หรือพิกัด" },
+                scheduledDate: { type: "string", description: "วันที่นัดสำรวจ DD/MM/YYYY" },
+                scheduledTime: { type: "string", description: "เวลานัดสำรวจ HH:MM" },
+                source: { type: "string", description: "แหล่งที่มา" },
+                electricityBill: { type: "string", description: "ค่าไฟต่อเดือน" },
+                roofType: { type: "string", description: "ประเภทหลังคา" },
+                phaseType: { type: "string", description: "ระบบไฟ single/three" },
+                notes: { type: "string", description: "หมายเหตุ" },
+              },
+              required: ["name", "phone", "fullAddress", "district", "province", "postalCode", "location", "scheduledDate", "scheduledTime", "source", "electricityBill", "roofType", "phaseType", "notes"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+
+      const content = result.choices[0]?.message?.content;
+      if (!content || typeof content !== "string") {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "ไม่สามารถแยกข้อมูลได้" });
+      }
+
+      try {
+        const parsed = JSON.parse(content);
+        return parsed as {
+          name: string;
+          phone: string;
+          fullAddress: string;
+          district: string;
+          province: string;
+          postalCode: string;
+          location: string;
+          scheduledDate: string;
+          scheduledTime: string;
+          source: string;
+          electricityBill: string;
+          roofType: string;
+          phaseType: string;
+          notes: string;
+        };
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "ไม่สามารถแปลงข้อมูลที่ AI ตอบกลับได้" });
+      }
+    }),
+});
+
 // ==================== APP ROUTER ====================
 export const appRouter = router({
   system: systemRouter,
@@ -1451,6 +1548,7 @@ export const appRouter = router({
   deliveryComment: deliveryCommentRouter,
   photoCategory: photoCategoryRouter,
   documentCategory: documentCategoryRouter,
+  lineParser: lineParserRouter,
 });
 
 export type AppRouter = typeof appRouter;

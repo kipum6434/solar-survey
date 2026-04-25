@@ -11,7 +11,7 @@ import { StatusDropdown } from "@/components/StatusDropdown";
 import { useLocation } from "wouter";
 import {
   Users, Plus, Search, Phone, MapPin, ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Trash2, Eye,
-  LayoutList, Table2, Zap, FileUp, Download, ExternalLink, X,
+  LayoutList, Table2, Zap, FileUp, Download, ExternalLink, X, MessageSquareText, Sparkles, Loader2, ClipboardPaste,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Badge } from "@/components/ui/badge";
@@ -751,6 +751,45 @@ function CustomerGridView({ data, onRowClick, onEdit, onDelete, selectedIds, onT
 /* ==================== ADD CUSTOMER DIALOG ==================== */
 function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: boolean; onOpenChange: (v: boolean) => void; onSubmit: (d: any) => void; loading: boolean }) {
   const [form, setForm] = useState({ name: "", phone: "", address: "", district: "", province: "", source: "other" as string, notes: "", electricityBill: "", roofType: "", phaseType: "" as string, fullAddress: "" });
+  const [showLinePaste, setShowLinePaste] = useState(false);
+  const [lineText, setLineText] = useState("");
+  const [parsedPreview, setParsedPreview] = useState<any>(null);
+
+  const parseMutation = trpc.lineParser.parse.useMutation({
+    onSuccess: (data) => {
+      setParsedPreview(data);
+      toast.success("AI แยกข้อมูลสำเร็จ! ตรวจสอบแล้วกดยืนยัน");
+    },
+    onError: (e) => toast.error("ไม่สามารถแยกข้อมูลได้: " + e.message),
+  });
+
+  const handleParseLine = () => {
+    if (!lineText.trim()) { toast.error("กรุณาวางข้อความจาก LINE"); return; }
+    setParsedPreview(null);
+    parseMutation.mutate({ text: lineText.trim() });
+  };
+
+  const handleApplyParsed = () => {
+    if (!parsedPreview) return;
+    setForm({
+      name: parsedPreview.name || "",
+      phone: parsedPreview.phone || "",
+      address: parsedPreview.location || "",
+      district: parsedPreview.district || "",
+      province: parsedPreview.province || "",
+      source: parsedPreview.source || "other",
+      notes: parsedPreview.notes || "",
+      electricityBill: parsedPreview.electricityBill || "",
+      roofType: parsedPreview.roofType || "",
+      phaseType: parsedPreview.phaseType === "single" || parsedPreview.phaseType === "three" ? parsedPreview.phaseType : "",
+      fullAddress: parsedPreview.fullAddress || "",
+    });
+    setShowLinePaste(false);
+    setLineText("");
+    setParsedPreview(null);
+    toast.success("กรอกข้อมูลอัตโนมัติแล้ว ตรวจสอบและกดบันทึก");
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) { toast.error("กรุณาระบุชื่อลูกค้า"); return; }
@@ -765,12 +804,25 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>เพิ่มลูกค้าใหม่</DialogTitle>
           <DialogDescription>กรอกข้อมูลลูกค้าเพื่อเพิ่มเข้าสู่ระบบ</DialogDescription>
         </DialogHeader>
+
+        {/* LINE Paste Button */}
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full gap-2 border-dashed border-green-500 text-green-700 hover:bg-green-50 hover:text-green-800"
+          onClick={() => setShowLinePaste(true)}
+        >
+          <MessageSquareText className="h-4 w-4" />
+          วางข้อความจาก LINE (AI กรอกให้อัตโนมัติ)
+        </Button>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
@@ -831,6 +883,98 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
         </form>
       </DialogContent>
     </Dialog>
+
+    {/* LINE Paste Dialog */}
+    <Dialog open={showLinePaste} onOpenChange={(v) => { setShowLinePaste(v); if (!v) { setParsedPreview(null); } }}>
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <MessageSquareText className="h-5 w-5 text-green-600" />
+            วางข้อความจาก LINE
+          </DialogTitle>
+          <DialogDescription>
+            Copy ข้อความจากแชท LINE แล้ววางที่นี่ AI จะแยกข้อมูลลูกค้าให้อัตโนมัติ
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Input Area */}
+          <div>
+            <Label className="text-sm font-medium">ข้อความจาก LINE</Label>
+            <Textarea
+              value={lineText}
+              onChange={(e) => setLineText(e.target.value)}
+              placeholder={`ตัวอย่าง:\nsave\n!26/03/2026\n!li\n!set\n!Tan\n\n!25/04/2026\n!12:00\n\n!คุณเอนธรรม\n!0816158109\n!85 จรัญสนิทวงศ์ 69 แขวงบางพลัด บางพลัด กรุงเทพมหานคร 10700\n!https://maps.app.goo.gl/...`}
+              rows={8}
+              className="font-mono text-sm mt-1.5"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              วาง (Ctrl+V / Cmd+V) ข้อความจาก LINE ได้เลย ไม่ต้องจัดรูปแบบ
+            </p>
+          </div>
+
+          {/* Parse Button */}
+          <Button
+            onClick={handleParseLine}
+            disabled={parseMutation.isPending || !lineText.trim()}
+            className="w-full gap-2"
+          >
+            {parseMutation.isPending ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> AI กำลังวิเคราะห์...</>
+            ) : (
+              <><Sparkles className="h-4 w-4" /> วิเคราะห์ข้อความด้วย AI</>
+            )}
+          </Button>
+
+          {/* Preview Results */}
+          {parsedPreview && (
+            <div className="rounded-lg border bg-green-50/50 p-4 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-green-700">
+                <Sparkles className="h-4 w-4" />
+                ผลการวิเคราะห์ — ตรวจสอบแล้วกดยืนยัน
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                {[
+                  { label: "ชื่อลูกค้า", value: parsedPreview.name },
+                  { label: "เบอร์โทร", value: parsedPreview.phone },
+                  { label: "ที่อยู่", value: parsedPreview.fullAddress },
+                  { label: "เขต/อำเภอ", value: parsedPreview.district },
+                  { label: "จังหวัด", value: parsedPreview.province },
+                  { label: "รหัสไปรษณีย์", value: parsedPreview.postalCode },
+                  { label: "โลเคชั่น", value: parsedPreview.location },
+                  { label: "วันนัดสำรวจ", value: parsedPreview.scheduledDate },
+                  { label: "เวลา", value: parsedPreview.scheduledTime },
+                  { label: "แหล่งที่มา", value: parsedPreview.source },
+                  { label: "ค่าไฟ/เดือน", value: parsedPreview.electricityBill },
+                  { label: "ประเภทหลังคา", value: parsedPreview.roofType },
+                  { label: "ระบบไฟ", value: parsedPreview.phaseType === "single" ? "1 เฟส" : parsedPreview.phaseType === "three" ? "3 เฟส" : parsedPreview.phaseType },
+                  { label: "หมายเหตุ", value: parsedPreview.notes },
+                ].map((item, i) => (
+                  <div key={i} className={item.label === "ที่อยู่" || item.label === "โลเคชั่น" || item.label === "หมายเหตุ" ? "col-span-1 sm:col-span-2" : ""}>
+                    <span className="text-muted-foreground">{item.label}: </span>
+                    <span className={item.value ? "font-medium" : "text-muted-foreground italic"}>
+                      {item.value || "ไม่พบข้อมูล"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => { setShowLinePaste(false); setParsedPreview(null); }}>
+            ยกเลิก
+          </Button>
+          {parsedPreview && (
+            <Button onClick={handleApplyParsed} className="gap-2">
+              <ClipboardPaste className="h-4 w-4" /> ใช้ข้อมูลนี้
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 
