@@ -646,3 +646,8 @@
 - [x] Frontend: หน้า Gallery — album grid view + feed view + filter + search + lightbox + ZIP download (jszip)
 - [x] เพิ่ม route /gallery + sidebar menu "แกลลอรี่รูปติดตั้ง"
 - [x] ทดสอบ browser — ทั้ง album + feed view ทำงานถูกต้อง, vitest 244 passed (4 fail เป็น test เก่า seeded data)
+
+## User Request - Round 50: เพิ่มปุ่มถ่ายรูปจากกล้องมือถือในหน้ารูปภาพหน้างาน (PhotosTab)
+- [x] ตรวจสอบ PhotosTab component (SurveyDetail.tsx) — พบว่ามีแค่ photoInputRef ไม่มี camera input แยก
+- [x] เพิ่ม cameraInputRef + capture="environment" + ปุ่ม "ถ่ายรูป" (outline) + "เลือกรูป" (primary)
+- [x] ทดสอบ browser — ปุ่มถ่ายรูป + เลือกรูป แสดงถูกต้องในหน้างานสำรวจ

@@ -125,6 +125,7 @@ export default function SurveyDetail() {
   });
 
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const [photoCategory, setPhotoCategory] = useState("other");
 
@@ -367,9 +368,13 @@ export default function SurveyDetail() {
                         </>
                       )}
                     </div>
-                    <Button size="sm" onClick={() => photoInputRef.current?.click()} className="gap-1.5" disabled={uploadPhoto.isPending}>
-                      <Upload className="h-3.5 w-3.5" /> {uploadPhoto.isPending ? "กำลังอัพ..." : "อัพโหลด"}
+                    <Button size="sm" variant="outline" onClick={() => cameraInputRef.current?.click()} className="gap-1.5" disabled={uploadPhoto.isPending}>
+                      <Camera className="h-3.5 w-3.5" /> ถ่ายรูป
                     </Button>
+                    <Button size="sm" onClick={() => photoInputRef.current?.click()} className="gap-1.5" disabled={uploadPhoto.isPending}>
+                      <Upload className="h-3.5 w-3.5" /> {uploadPhoto.isPending ? "กำลังอัพ..." : "เลือกรูป"}
+                    </Button>
+                    <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" hidden onChange={handlePhotoUpload} />
                     <input ref={photoInputRef} type="file" accept="image/*" multiple hidden onChange={handlePhotoUpload} />
                   </div>
                 </div>
