@@ -654,3 +654,14 @@
 
 ## User Request - Round 51: ซ่อนส่วน "กิจกรรมล่าสุด" ไม่ให้ผู้ใช้ทั่วไปเห็น
 - [x] แก้ไข Dashboard/Home page — ซ่อนส่วนกิจกรรมล่าสุดสำหรับ role: user ให้เฉพาะ admin/superadmin เห็น (ใช้ useAuth + isAdmin condition)
+
+## User Request - Round 52: ปุ่มสำรวจเสร็จสิ้น/ติดตั้งเสร็จสิ้น + แก้ไขล่าสุด + แจ้งเตือน LINE
+- [x] Backend: เพิ่ม procedure "สำรวจเสร็จสิ้น" — เปลี่ยนสถานะเป็น "รอติดตาม" (follow_up) อัตโนมัติ
+- [x] Backend: เพิ่ม procedure "ปิดหน้างาน" — เปลี่ยนสถานะเป็น "รอการติดตั้ง" (กดเอง)
+- [x] Backend: เพิ่ม procedure "ติดตั้งเสร็จสิ้น" — เปลี่ยนสถานะส่งมอบงาน
+- [x] Frontend SurveyDetail: เพิ่มปุ่ม "สำรวจเสร็จสิ้น" + ตัวเลือก "ปิดหน้างาน → รอการติดตั้ง"
+- [x] Frontend SurveyDetail: แสดง "แก้ไขล่าสุดวันที่..." 
+- [ ] Frontend SharedSurvey: เพิ่มปุ่ม "สำรวจเสร็จสิ้น" ในหน้า share link
+- [x] Frontend DeliveryTab: เพิ่มปุ่ม "ติดตั้งเสร็จสิ้น"
+- [x] ทดสอบ browser + vitest — 244 passed (4 fail เป็น test เก่า seeded data)
+- [ ] (ลำดับสุดท้าย) แจ้งเตือน LINE เมื่อสำรวจเสร็จ/ติดตั้งเสร็จ

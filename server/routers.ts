@@ -330,6 +330,64 @@ const surveyRouter = router({
       await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "survey", entityId: input.ids[0], details: `ลบงานสำรวจ ${input.ids.length} รายการ (IDs: ${input.ids.join(", ")})` });
       return result;
     }),
+
+  // สำรวจเสร็จสิ้น → เปลี่ยนสถานะเป็น "surveyed" (สำรวจเสร็จ)
+  completeSurvey: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const survey = await db.getSurveyById(input.id);
+      if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบงานสำรวจ" });
+      await db.updateSurvey(input.id, { status: "surveyed", completedAt: Date.now() } as any);
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "survey", entityId: input.id, details: `สำรวจเสร็จสิ้น ID: ${input.id}` });
+      // Notify owner
+      try {
+        const surveyData = await db.getSurveyWithCustomer(input.id);
+        const customerName = surveyData?.customer?.name || `งาน #${input.id}`;
+        await notifyOwner({
+          title: "สำรวจเสร็จสิ้น",
+          content: `งานสำรวจของลูกค้า "${customerName}" (ID: ${input.id}) สำรวจเสร็จสิ้นแล้ว`,
+        });
+      } catch (e) {
+        console.warn("[Survey] Failed to notify owner:", e);
+      }
+      return { success: true };
+    }),
+
+  // Public สำรวจเสร็จสิ้น (share link)
+  publicCompleteSurvey: publicProcedure
+    .input(z.object({ token: z.string(), surveyId: z.number() }))
+    .mutation(async ({ input }) => {
+      const link = await db.getShareLinkByToken(input.token);
+      if (!link || !link.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
+      if (link.expiresAt && link.expiresAt < Date.now()) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์หมดอายุ" });
+      if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
+      const survey = await db.getSurveyById(input.surveyId);
+      if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบงานสำรวจ" });
+      await db.updateSurvey(input.surveyId, { status: "surveyed", completedAt: Date.now() } as any);
+      // Notify owner
+      try {
+        const surveyData = await db.getSurveyWithCustomer(input.surveyId);
+        const customerName = surveyData?.customer?.name || `งาน #${input.surveyId}`;
+        await notifyOwner({
+          title: "สำรวจเสร็จสิ้น (Share Link)",
+          content: `งานสำรวจของลูกค้า "${customerName}" (ID: ${input.surveyId}) สำรวจเสร็จสิ้นแล้ว (ผ่าน Share Link)`,
+        });
+      } catch (e) {
+        console.warn("[Survey] Failed to notify owner:", e);
+      }
+      return { success: true };
+    }),
+
+  // ปิดหน้างาน → เปลี่ยนสถานะเป็น "won" + installationStatus "waiting" (รอการติดตั้ง)
+  closeToInstallation: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const survey = await db.getSurveyById(input.id);
+      if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบงานสำรวจ" });
+      await db.updateSurvey(input.id, { status: "won", installationStatus: "waiting", completedAt: Date.now() } as any);
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "survey", entityId: input.id, details: `ปิดหน้างาน → รอการติดตั้ง ID: ${input.id}` });
+      return { success: true };
+    }),
 });
 
 // ==================== PHOTO ROUTER ====================
@@ -1422,6 +1480,21 @@ const deliveryRouter = router({
       const result = await db.rejectDelivery(input.surveyId, ctx.user.id, input.reason);
       await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "delivery", entityId: input.surveyId, details: `ปฏิเสธส่งมอบงาน surveyId: ${input.surveyId} เหตุผล: ${input.reason || '-'}` });
       return result;
+    }),
+
+  completeInstallation: protectedProcedure
+    .input(z.object({ surveyId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      // เปลี่ยนสถานะติดตั้งเป็น completed
+      await db.updateInstallationStatus(input.surveyId, "completed");
+      await db.logActivity({
+        userId: ctx.user.id,
+        action: "update",
+        entityType: "installation",
+        entityId: input.surveyId,
+        details: `ติดตั้งเสร็จสิ้น surveyId: ${input.surveyId}`,
+      });
+      return { success: true };
     }),
 });
 

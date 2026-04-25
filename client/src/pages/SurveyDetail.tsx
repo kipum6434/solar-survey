@@ -13,7 +13,7 @@ import { trpc } from "@/lib/trpc";
 import { SURVEY_STATUS_MAP, PHOTO_CATEGORY_MAP, DOC_TYPE_MAP, FOLLOW_UP_METHOD_MAP } from "@/lib/constants";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useParams, useLocation } from "wouter";
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { compressImage } from "@/lib/imageCompression";
 import { toast } from "sonner";
 import {
@@ -123,6 +123,17 @@ export default function SurveyDetail() {
   const revokeShareLink = trpc.shareLink.revoke.useMutation({
     onSuccess: () => { toast.success("ยกเลิกลิงก์สำเร็จ"); refetchLinks(); },
   });
+
+  const completeSurvey = trpc.survey.completeSurvey.useMutation({
+    onSuccess: () => { toast.success("สำรวจเสร็จสิ้นแล้ว"); refetch(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const closeToInstallation = trpc.survey.closeToInstallation.useMutation({
+    onSuccess: () => { toast.success("ปิดหน้างาน — เปลี่ยนเป็นรอการติดตั้ง"); refetch(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const [showCompleteSurveyConfirm, setShowCompleteSurveyConfirm] = useState(false);
+  const [showCloseToInstallConfirm, setShowCloseToInstallConfirm] = useState(false);
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -236,6 +247,53 @@ export default function SurveyDetail() {
             </Button>
           </div>
         </div>
+
+        {/* แก้ไขล่าสุด + ปุ่มสำรวจเสร็จ/ปิดหน้างาน */}
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="text-xs text-muted-foreground">
+                <Clock className="h-3.5 w-3.5 inline mr-1" />
+                แก้ไขล่าสุด: {s.updatedAt ? new Date(s.updatedAt).toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "ไม่มีข้อมูล"}
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {/* ปุ่มสำรวจเสร็จสิ้น — แสดงเมื่อสถานะยังไม่ใช่ surveyed/won */}
+                {s.status !== "surveyed" && s.status !== "won" && s.status !== "lost" && s.status !== "cancelled" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 border-green-300 text-green-700 hover:bg-green-50"
+                    onClick={() => setShowCompleteSurveyConfirm(true)}
+                    disabled={completeSurvey.isPending}
+                  >
+                    <CheckCircle2 className="h-4 w-4" /> สำรวจเสร็จสิ้น
+                  </Button>
+                )}
+                {/* ปุ่มปิดหน้างาน — แสดงเมื่อสำรวจเสร็จแล้ว + ยังไม่ได้ปิด */}
+                {(s.status === "surveyed" || s.status === "quoted" || s.status === "negotiating") && (
+                  <Button
+                    size="sm"
+                    className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={() => setShowCloseToInstallConfirm(true)}
+                    disabled={closeToInstallation.isPending}
+                  >
+                    <Wrench className="h-4 w-4" /> ปิดหน้างาน → รอติดตั้ง
+                  </Button>
+                )}
+                {s.status === "surveyed" && (
+                  <Badge variant="secondary" className="bg-green-100 text-green-700 border-0">
+                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> สำรวจเสร็จแล้ว
+                  </Badge>
+                )}
+                {s.status === "won" && (
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-0">
+                    <Wrench className="h-3.5 w-3.5 mr-1" /> รอการติดตั้ง
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Location link */}
         {(c.latitude && c.longitude || (c.address && c.address.startsWith('http'))) && (
@@ -811,6 +869,48 @@ export default function SurveyDetail() {
 
       {/* Add Follow-up Dialog */}
       <AddFollowUpDialog open={showAddFollowUp} onOpenChange={setShowAddFollowUp} surveyId={surveyId} customerId={c.id} surveyors={teamSurveyors || []} onSubmit={(d: any) => createFollowUp.mutate(d)} loading={createFollowUp.isPending} />
+
+      {/* Confirm สำรวจเสร็จสิ้น Dialog */}
+      <AlertDialog open={showCompleteSurveyConfirm} onOpenChange={setShowCompleteSurveyConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ยืนยันสำรวจเสร็จสิ้น</AlertDialogTitle>
+            <AlertDialogDescription>
+              สถานะจะเปลี่ยนเป็น "สำรวจเสร็จ" รูปและข้อมูลยังสามารถแก้ไขได้ตลอด
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-green-600 hover:bg-green-700 text-white"
+              onClick={() => { completeSurvey.mutate({ id: surveyId }); setShowCompleteSurveyConfirm(false); }}
+            >
+              <CheckCircle2 className="h-4 w-4 mr-1.5" /> สำรวจเสร็จสิ้น
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm ปิดหน้างาน Dialog */}
+      <AlertDialog open={showCloseToInstallConfirm} onOpenChange={setShowCloseToInstallConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ยืนยันปิดหน้างาน</AlertDialogTitle>
+            <AlertDialogDescription>
+              สถานะจะเปลี่ยนเป็น "ปิดการขาย" และสถานะติดตั้งจะเปลี่ยนเป็น "รอการติดตั้ง" อัตโนมัติ
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => { closeToInstallation.mutate({ id: surveyId }); setShowCloseToInstallConfirm(false); }}
+            >
+              <Wrench className="h-4 w-4 mr-1.5" /> ปิดหน้างาน
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }

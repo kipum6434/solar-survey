@@ -66,6 +66,11 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
     onSuccess: () => { toast.success("ปฏิเสธส่งมอบงานสำเร็จ"); refetchDelivery(); setShowRejectDialog(false); setRejectReason(""); },
     onError: (e) => toast.error(e.message),
   });
+  const completeInstallation = trpc.delivery.completeInstallation.useMutation({
+    onSuccess: () => { toast.success("ติดตั้งเสร็จสิ้นแล้ว!"); refetchDelivery(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const [showCompleteInstallConfirm, setShowCompleteInstallConfirm] = useState(false);
 
   // State
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -285,6 +290,23 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
                   <Send className="h-3.5 w-3.5" />
                   {submitDelivery.isPending ? "กำลังส่ง..." : "ส่งมอบงาน"}
                 </Button>
+              )}
+              {/* ติดตั้งเสร็จสิ้น button — แสดงเมื่อ installationStatus เป็น in_progress หรือ waiting */}
+              {(installationStatus === "in_progress" || installationStatus === "waiting") && (
+                <Button
+                  size="sm"
+                  className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={() => setShowCompleteInstallConfirm(true)}
+                  disabled={completeInstallation.isPending}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  ติดตั้งเสร็จสิ้น
+                </Button>
+              )}
+              {installationStatus === "completed" && (
+                <Badge className="bg-emerald-50 text-emerald-700 border-0 text-xs gap-1">
+                  <CheckCircle2 className="h-3 w-3" /> ติดตั้งเสร็จแล้ว
+                </Badge>
               )}
               {/* Admin approve/reject */}
               {isAdmin && deliveryStatus === "submitted" && (
@@ -708,6 +730,31 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Confirm Complete Installation */}
+      <AlertDialog open={showCompleteInstallConfirm} onOpenChange={setShowCompleteInstallConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ยืนยันติดตั้งเสร็จสิ้น</AlertDialogTitle>
+            <AlertDialogDescription>
+              คุณต้องการยืนยันว่าการติดตั้งเสร็จสิ้นแล้วหรือไม่?
+              <br />
+              <span className="text-xs mt-1 block">สถานะจะเปลี่ยนเป็น "ติดตั้งเสร็จ" — สามารถดำเนินการส่งมอบงานต่อได้</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-emerald-600 hover:bg-emerald-700"
+              onClick={() => {
+                completeInstallation.mutate({ surveyId });
+                setShowCompleteInstallConfirm(false);
+              }}
+            >
+              ยืนยันติดตั้งเสร็จ
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -906,6 +953,7 @@ function DeliveryCommentSection({ surveyId, isAdmin, currentUserId }: {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
     </Card>
   );
 }
