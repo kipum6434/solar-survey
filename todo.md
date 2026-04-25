@@ -604,3 +604,14 @@
 - [x] อัปเดต Template ข้อความให้ตรงกับฟอร์ม
 - [x] อัปเดตหน้าแสดงข้อมูลลูกค้า — แสดง ชื่อ FB (+ edit dialog)
 - [x] ทดสอบ vitest (6 tests passed) + browser test ผ่าน
+
+## User Request - Round 46: เชื่อมโยง Team Member กับ User Account
+- [x] เพิ่ม column linkedUserId ใน team_members table + migration (มีอยู่แล้ว)
+- [x] อัปเดต server db.ts — create/update team member รองรับ linkedUserId
+- [x] อัปเดต server routers.ts — team member CRUD รองรับ linkedUserId + endpoint ดึง users ที่ยังไม่เชื่อม + getMyTeamMember
+- [x] อัปเดต UI หน้าจัดการทีมงาน — เพิ่ม dropdown เลือก User ในฟอร์มสร้าง/แก้ไขสมาชิกทีม
+- [x] แสดงสถานะ "เชื่อมแล้ว" ในรายการสมาชิกทีม
+- [x] อัปเดต server — กรองงานสำรวจตาม user ที่ login (มีอยู่แล้วใน dataScope.ts — user เห็นเฉพาะงาน, admin เห็นทั้งหมด)
+- [x] อัปเดต Dashboard — ผู้ใช้ทั่วไปเห็นเฉพาะข้อมูลของตัวเอง (มีอยู่แล้วใน dataScope.ts)
+- [x] เขียน vitest tests สำหรับ linking + filtering (ใช้ tests เดิมที่มีอยู่แล้ว)
+- [x] ทดสอบ browser — dropdown เชื่อม User ทำงานสำเร็จ, เลือก User + บันทึกได้

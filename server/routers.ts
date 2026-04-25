@@ -835,12 +835,22 @@ const teamMemberRouter = router({
 
   listAll: protectedProcedure.query(() => db.getAllTeamMembers()),
 
+  availableUsers: protectedProcedure
+    .input(z.object({ currentTeamMemberId: z.number().optional() }).optional())
+    .query(({ input }) => db.getAvailableUsersForLinking(input?.currentTeamMemberId)),
+
+  getMyTeamMember: protectedProcedure
+    .query(async ({ ctx }) => {
+      return db.getTeamMemberByUserId(ctx.user.id);
+    }),
+
   create: protectedProcedure
     .input(z.object({
       name: z.string().min(1),
       phone: z.string().optional(),
       email: z.string().optional(),
       role: z.enum(["admin_sender", "surveyor", "closer"]),
+      linkedUserId: z.number().nullable().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const result = await db.createTeamMember(input);
@@ -856,6 +866,7 @@ const teamMemberRouter = router({
       email: z.string().optional(),
       role: z.enum(["admin_sender", "surveyor", "closer"]).optional(),
       isActive: z.boolean().optional(),
+      linkedUserId: z.number().nullable().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const { id, ...data } = input;

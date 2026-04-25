@@ -870,17 +870,43 @@ export async function getAllTeamMembers() {
   return db.select().from(teamMembers).orderBy(teamMembers.role, teamMembers.name);
 }
 
-export async function createTeamMember(data: { name: string; phone?: string; email?: string; role: "admin_sender" | "surveyor" | "closer" }) {
+export async function createTeamMember(data: { name: string; phone?: string; email?: string; role: "admin_sender" | "surveyor" | "closer"; linkedUserId?: number | null }) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   const result = await db.insert(teamMembers).values(data);
   return { id: result[0].insertId, ...data };
 }
 
-export async function updateTeamMember(id: number, data: { name?: string; phone?: string; email?: string; role?: "admin_sender" | "surveyor" | "closer"; isActive?: boolean }) {
+export async function updateTeamMember(id: number, data: { name?: string; phone?: string; email?: string; role?: "admin_sender" | "surveyor" | "closer"; isActive?: boolean; linkedUserId?: number | null }) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.update(teamMembers).set(data).where(eq(teamMembers.id, id));
+}
+
+export async function getTeamMemberByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(teamMembers).where(and(eq(teamMembers.linkedUserId, userId), eq(teamMembers.isActive, true))).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getAvailableUsersForLinking(currentTeamMemberId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  // Get all user IDs that are already linked to a team member
+  const linkedRows = await db.select({ linkedUserId: teamMembers.linkedUserId }).from(teamMembers).where(and(isNotNull(teamMembers.linkedUserId), eq(teamMembers.isActive, true)));
+  const linkedUserIds = linkedRows.map(r => r.linkedUserId!).filter(Boolean);
+  // If editing, exclude current team member's linked user from the "taken" list
+  if (currentTeamMemberId) {
+    const currentMember = await db.select().from(teamMembers).where(eq(teamMembers.id, currentTeamMemberId)).limit(1);
+    if (currentMember[0]?.linkedUserId) {
+      const idx = linkedUserIds.indexOf(currentMember[0].linkedUserId);
+      if (idx > -1) linkedUserIds.splice(idx, 1);
+    }
+  }
+  // Get all users, mark which are available
+  const allUsers = await db.select({ id: users.id, name: users.name, username: users.username, role: users.role }).from(users).orderBy(users.name);
+  return allUsers.map(u => ({ ...u, isLinked: linkedUserIds.includes(u.id) }));
 }
 
 export async function deleteTeamMember(id: number) {

@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Users2, UserCheck, Phone, Mail } from "lucide-react";
+import { Plus, Pencil, Trash2, Users2, UserCheck, Phone, Mail, Link2, Unlink } from "lucide-react";
 
 const ROLE_OPTIONS = [
   { value: "admin_sender", label: "แอดมินผู้ส่งงาน", color: "bg-amber-100 text-amber-800" },
@@ -249,6 +249,17 @@ export default function TeamManagement() {
                                 {member.email}
                               </span>
                             )}
+                            {member.linkedUserId ? (
+                              <span className="flex items-center gap-1 text-emerald-600">
+                                <Link2 className="h-3 w-3" />
+                                เชื่อมกับ User แล้ว
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1 text-orange-500">
+                                <Unlink className="h-3 w-3" />
+                                ยังไม่เชื่อม User
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -336,15 +347,21 @@ export default function TeamManagement() {
 function TeamMemberDialog({ open, onClose, onSave, isLoading, title, defaultValues }: {
   open: boolean;
   onClose: () => void;
-  onSave: (data: { name: string; phone?: string; email?: string; role: "admin_sender" | "surveyor" | "closer" }) => void;
+  onSave: (data: { name: string; phone?: string; email?: string; role: "admin_sender" | "surveyor" | "closer"; linkedUserId?: number | null }) => void;
   isLoading: boolean;
   title: string;
-  defaultValues?: { name: string; phone?: string; email?: string; role: string };
+  defaultValues?: { id?: number; name: string; phone?: string; email?: string; role: string; linkedUserId?: number | null };
 }) {
   const [name, setName] = useState(defaultValues?.name || "");
   const [phone, setPhone] = useState(defaultValues?.phone || "");
   const [email, setEmail] = useState(defaultValues?.email || "");
   const [role, setRole] = useState(defaultValues?.role || "surveyor");
+  const [linkedUserId, setLinkedUserId] = useState<string>(defaultValues?.linkedUserId ? String(defaultValues.linkedUserId) : "none");
+
+  const { data: availableUsers = [] } = trpc.teamMember.availableUsers.useQuery(
+    { currentTeamMemberId: defaultValues?.id },
+    { enabled: open }
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -357,6 +374,7 @@ function TeamMemberDialog({ open, onClose, onSave, isLoading, title, defaultValu
       phone: phone.trim() || undefined,
       email: email.trim() || undefined,
       role: role as "admin_sender" | "surveyor" | "closer",
+      linkedUserId: linkedUserId === "none" ? null : Number(linkedUserId),
     });
   };
 
@@ -390,6 +408,23 @@ function TeamMemberDialog({ open, onClose, onSave, isLoading, title, defaultValu
               <SelectContent>
                 {ROLE_OPTIONS.map(r => (
                   <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>เชื่อมกับ User Account</Label>
+            <p className="text-xs text-muted-foreground mb-1">เลือก User ที่จะ login เข้ามาดูข้อมูลของสมาชิกทีมคนนี้</p>
+            <Select value={linkedUserId} onValueChange={setLinkedUserId}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="ไม่เชื่อม" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">ไม่เชื่อม User</SelectItem>
+                {availableUsers.filter((u: any) => !u.isLinked).map((u: any) => (
+                  <SelectItem key={u.id} value={String(u.id)}>
+                    {u.name || u.username || `User #${u.id}`} {u.username ? `(@${u.username})` : ""} — {u.role}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
