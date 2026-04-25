@@ -8,7 +8,7 @@ import { compressImage } from "@/lib/imageCompression";
 import {
   Camera, MapPin, Calendar, Phone, Mail, Zap, Home, Gauge,
   X, Image, Sun, Wrench, FolderDown, Download, Upload, Trash2,
-  Package, CheckCircle2, Clock, AlertTriangle, HardHat, Send,
+  Package, CheckCircle2, Clock, AlertTriangle, HardHat, Send, Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -380,72 +380,138 @@ function PublicDeliverySection({ surveyId, token }: { surveyId: number; token: s
 
         {/* Photo categories grid */}
         <div className="space-y-4">
-          {photoCategories.map((cat: any) => {
-            const catPhotos = installPhotos.filter((p: any) => p.category === cat.key);
-            return (
-              <div key={cat.key} className="border rounded-lg p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-medium flex items-center gap-2">
-                    <Camera className="h-3.5 w-3.5 text-muted-foreground" />
-                    {cat.label}
-                    {catPhotos.length > 0 && (
-                      <Badge variant="secondary" className="text-xs">{catPhotos.length}</Badge>
+          {photoCategories.length > 0 ? (
+            photoCategories.map((cat: any) => {
+              const catPhotos = installPhotos.filter((p: any) => p.category === cat.key);
+              return (
+                <div key={cat.key} className="border rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-medium flex items-center gap-2">
+                      <Camera className="h-3.5 w-3.5 text-muted-foreground" />
+                      {cat.label}
+                      {catPhotos.length > 0 && (
+                        <Badge variant="secondary" className="text-xs">{catPhotos.length}</Badge>
+                      )}
+                    </h4>
+                    {canUpload && (
+                      <div className="flex gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs gap-1 px-2.5"
+                          onClick={() => triggerCamera(cat.key)}
+                          disabled={uploadingCategory === cat.key}
+                        >
+                          <Camera className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">ถ่ายรูป</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs gap-1 px-2.5"
+                          onClick={() => triggerUpload(cat.key)}
+                          disabled={uploadingCategory === cat.key}
+                        >
+                          <Upload className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">{uploadingCategory === cat.key ? "อัปโหลด..." : "เลือกรูป"}</span>
+                        </Button>
+                      </div>
                     )}
-                  </h4>
-                  {canUpload && (
-                    <div className="flex gap-1.5">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-xs gap-1 px-2.5"
-                        onClick={() => triggerCamera(cat.key)}
-                        disabled={uploadingCategory === cat.key}
-                      >
-                        <Camera className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">ถ่ายรูป</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-xs gap-1 px-2.5"
-                        onClick={() => triggerUpload(cat.key)}
-                        disabled={uploadingCategory === cat.key}
-                      >
-                        <Upload className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">{uploadingCategory === cat.key ? "อัปโหลด..." : "เลือกรูป"}</span>
-                      </Button>
+                  </div>
+                  {catPhotos.length > 0 ? (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                      {catPhotos.map((photo: any) => (
+                        <div key={photo.id} className="relative rounded-lg overflow-hidden bg-muted aspect-square group">
+                          <img
+                            src={photo.url}
+                            alt={photo.caption || cat.label}
+                            className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform"
+                            onClick={() => setLightboxImg(photo.url)}
+                          />
+                          {canUpload && (
+                            <button
+                              className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(photo.id); }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 text-xs text-muted-foreground bg-muted/30 rounded-lg">
+                      {canUpload ? "กดปุ่ม \"ถ่ายรูป\" หรือ \"เลือกรูป\" เพื่ออัปโหลด" : "ไม่มีรูป"}
                     </div>
                   )}
                 </div>
-                {catPhotos.length > 0 ? (
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                    {catPhotos.map((photo: any) => (
-                      <div key={photo.id} className="relative rounded-lg overflow-hidden bg-muted aspect-square group">
-                        <img
-                          src={photo.url}
-                          alt={photo.caption || cat.label}
-                          className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform"
-                          onClick={() => setLightboxImg(photo.url)}
-                        />
-                        {canUpload && (
-                          <button
-                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(photo.id); }}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-4 text-xs text-muted-foreground bg-muted/30 rounded-lg">
-                    {canUpload ? "กดปุ่ม \"ถ่ายรูป\" หรือ \"เลือกรูป\" เพื่ออัปโหลด" : "ไม่มีรูป"}
+              );
+            })
+          ) : (
+            /* Fallback when no photo categories are configured */
+            <div className="border rounded-lg p-3">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-medium flex items-center gap-2">
+                  <Camera className="h-3.5 w-3.5 text-muted-foreground" />
+                  รูปติดตั้ง
+                  {installPhotos.length > 0 && (
+                    <Badge variant="secondary" className="text-xs">{installPhotos.length}</Badge>
+                  )}
+                </h4>
+                {canUpload && (
+                  <div className="flex gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs gap-1 px-2.5"
+                      onClick={() => triggerCamera("other")}
+                      disabled={uploadingCategory === "other"}
+                    >
+                      <Camera className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">ถ่ายรูป</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs gap-1 px-2.5"
+                      onClick={() => triggerUpload("other")}
+                      disabled={uploadingCategory === "other"}
+                    >
+                      <Upload className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">{uploadingCategory === "other" ? "อัปโหลด..." : "เลือกรูป"}</span>
+                    </Button>
                   </div>
                 )}
               </div>
-            );
-          })}
+              {installPhotos.length > 0 ? (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {installPhotos.map((photo: any) => (
+                    <div key={photo.id} className="relative rounded-lg overflow-hidden bg-muted aspect-square group">
+                      <img
+                        src={photo.url}
+                        alt={photo.caption || "รูปติดตั้ง"}
+                        className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform"
+                        onClick={() => setLightboxImg(photo.url)}
+                      />
+                      {canUpload && (
+                        <button
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(photo.id); }}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-xs text-muted-foreground bg-muted/30 rounded-lg">
+                  <Camera className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  {canUpload ? "กดปุ่ม \"ถ่ายรูป\" หรือ \"เลือกรูป\" เพื่ออัปโหลดรูปติดตั้ง" : "ยังไม่มีรูปติดตั้ง"}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Submit button */}

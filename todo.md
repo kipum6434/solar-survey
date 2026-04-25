@@ -615,3 +615,10 @@
 - [x] อัปเดต Dashboard — ผู้ใช้ทั่วไปเห็นเฉพาะข้อมูลของตัวเอง (มีอยู่แล้วใน dataScope.ts)
 - [x] เขียน vitest tests สำหรับ linking + filtering (ใช้ tests เดิมที่มีอยู่แล้ว)
 - [x] ทดสอบ browser — dropdown เชื่อม User ทำงานสำเร็จ, เลือก User + บันทึกได้
+
+## Bug Fix - Round 47: ปุ่มอัพโหลดรูปติดตั้งหายไป
+- [x] ตรวจสอบโค้ดหน้างานติดตั้ง (DeliveryTab.tsx) — พบ bug: empty state ไม่มีปุ่มอัพโหลดเมื่อ allCategories ว่าง
+- [x] ตรวจสอบหน้าแชร์ลิงก์ (SharedSurvey.tsx) — พบ bug เดียวกัน: ไม่มี fallback UI เมื่อ photoCategories ว่าง
+- [x] แก้ไข DeliveryTab.tsx — เพิ่มปุ่ม "อัปโหลดรูป" ใน header area (เสมอเมื่อ canEdit) + ปุ่มใน empty state ใช้ category "other"
+- [x] แก้ไข SharedSurvey.tsx — เพิ่ม fallback section "รูปติดตั้ง" พร้อมปุ่มถ่ายรูป/เลือกรูป เมื่อไม่มี categories
+- [x] ทดสอบ browser — ปุ่มอัพโหลดแสดงทั้ง header area + empty state, vitest 227 passed (6 fail เป็น test เก่าเรื่อง seeded data)

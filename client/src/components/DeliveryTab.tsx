@@ -218,6 +218,18 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
               </Badge>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
+              {/* Upload button - always visible when canEdit */}
+              {canEdit && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() => startUpload(allCategories.length > 0 ? allCategories[0] : "other")}
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  อัปโหลดรูป
+                </Button>
+              )}
               {/* Download all photos */}
               {installPhotos && installPhotos.length > 0 && (
                 <Button
@@ -375,7 +387,17 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
               <div className="text-center py-12 text-muted-foreground">
                 <Camera className="h-12 w-12 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">ยังไม่มีรูปติดตั้ง</p>
-                <p className="text-xs mt-1">เลือกหมวดหมู่แล้วอัปโหลดรูปถ่ายการติดตั้ง</p>
+                <p className="text-xs mt-1">กดปุ่ม "อัปโหลดรูป" เพื่อเพิ่มรูปถ่ายการติดตั้ง</p>
+                {canEdit && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-4 gap-1.5 text-xs"
+                    onClick={() => startUpload("other")}
+                  >
+                    <Upload className="h-3.5 w-3.5" /> อัปโหลดรูปติดตั้ง
+                  </Button>
+                )}
               </div>
             )
           ) : (
