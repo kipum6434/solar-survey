@@ -1,0 +1,1 @@
+ALTER TABLE `installer_teams` ADD `color` varchar(20);

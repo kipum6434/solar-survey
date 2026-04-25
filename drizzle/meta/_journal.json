@@ -127,6 +127,13 @@
       "when": 1777042260223,
       "tag": "0017_foamy_smasher",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1777087419874,
+      "tag": "0018_great_peter_parker",
+      "breakpoints": true
     }
   ]
 }

@@ -213,6 +213,9 @@ export default function InstallerTeamReport() {
                           <tr key={team.teamId} className="border-b last:border-0 hover:bg-muted/30">
                             <td className="py-3 pr-4">
                               <div className="flex items-center gap-2">
+                                {team.teamColor && (
+                                  <span className="inline-block w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: team.teamColor }} />
+                                )}
                                 <span className="font-medium">{team.teamName}</span>
                                 {!team.isActive && (
                                   <Badge variant="outline" className="text-xs text-muted-foreground">ปิดใช้งาน</Badge>
@@ -285,7 +288,11 @@ export default function InstallerTeamReport() {
                     <CardContent className="p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <HardHat className="h-4 w-4 text-muted-foreground" />
+                          {team.teamColor ? (
+                            <span className="inline-block w-3.5 h-3.5 rounded-full shrink-0" style={{ backgroundColor: team.teamColor }} />
+                          ) : (
+                            <HardHat className="h-4 w-4 text-muted-foreground" />
+                          )}
                           <span className="font-semibold">{team.teamName}</span>
                         </div>
                         <Badge variant="secondary" className="text-xs">{team.totalJobs} งาน</Badge>

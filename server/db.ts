@@ -1085,11 +1085,11 @@ export async function getInstallations(opts: any) {
 
   // Fetch installer teams
   const installerTeamIds = data.map(d => d.survey.installerTeamId).filter(Boolean) as number[];
-  let installerTeamMap: Record<number, { id: number; name: string; phone: string | null }> = {};
+  let installerTeamMap: Record<number, { id: number; name: string; phone: string | null; color: string | null }> = {};
   if (installerTeamIds.length > 0) {
     const teamData = await db.select().from(installerTeams).where(inArray(installerTeams.id, installerTeamIds));
     for (const t of teamData) {
-      installerTeamMap[t.id] = { id: t.id, name: t.name, phone: t.phone };
+      installerTeamMap[t.id] = { id: t.id, name: t.name, phone: t.phone, color: t.color ?? null };
     }
   }
 
@@ -1538,6 +1538,7 @@ export async function getInstallerTeamReport(opts?: { month?: number; year?: num
     return {
       teamId: team.id,
       teamName: team.name,
+      teamColor: team.color,
       phone: team.phone,
       isActive: team.isActive,
       totalJobs: teamSurveys.length,
@@ -1567,6 +1568,7 @@ export async function getInstallerTeamReport(opts?: { month?: number; year?: num
     report.push({
       teamId: 0,
       teamName: "ยังไม่ได้มอบหมาย",
+      teamColor: null,
       phone: null,
       isActive: true,
       totalJobs: unassigned.length,

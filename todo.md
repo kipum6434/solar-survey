@@ -568,3 +568,12 @@
 - [x] Frontend: เพิ่ม Drag & Drop ใน StatusList (สถานะลูกค้า + สถานะงานสำรวจ) — SortableStatusRow + GripVertical handle
 - [x] Frontend: เพิ่ม Drag & Drop ใน CategoryList (หมวดหมู่รูปสำรวจ + เอกสาร + รูปติดตั้ง) — SortableCategoryRow
 - [x] Tests: 234 tests ผ่านทั้งหมด (21 test files) — เพิ่ม reorder.test.ts
+
+## User Request - Round 41: สีทีมช่าง + Sort วันที่+เวลา
+
+- [x] Schema: เพิ่ม color field ใน installer_teams table + migration 0018
+- [x] Backend: อัปเดต create/update procedures ให้รับ color parameter (optional hex) + return team color ใน getInstallations + getInstallerTeamReport
+- [x] Frontend: เพิ่ม color picker ในหน้าจัดการทีมช่าง (InstallerTeams.tsx) — 12 สี preset + custom input
+- [x] Frontend: แสดงสีทีมช่างตาม color ที่กำหนดใน Installations (card+table) + InstallerTeamReport (table+mobile)
+- [x] Bug fix: แก้ sort วันที่+เวลาใน Surveys page — ใช้ _scheduledDateTime combined key (date + time offset) เพื่อเรียงวัน+เวลาพร้อมกัน
+- [x] Tests: 239 tests ผ่านทั้งหมด (22 test files) — เพิ่ม installerTeamColor.test.ts

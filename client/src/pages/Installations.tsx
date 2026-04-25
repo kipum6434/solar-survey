@@ -552,7 +552,7 @@ export default function Installations() {
                         <div className="flex flex-wrap gap-2 text-xs">
                           {surveyor && <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">สำรวจ: {surveyor.userName}</span>}
                           {closer && <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded-full">ปิดงาน: {closer.userName}</span>}
-                          {item.installerTeam && <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full flex items-center gap-1"><HardHat className="h-3 w-3" />{item.installerTeam.name}</span>}
+                          {item.installerTeam && <span className="px-2 py-0.5 rounded-full flex items-center gap-1" style={item.installerTeam.color ? { backgroundColor: item.installerTeam.color + '18', color: item.installerTeam.color } : { backgroundColor: 'rgb(243 232 255)', color: 'rgb(126 34 206)' }}><HardHat className="h-3 w-3" />{item.installerTeam.name}</span>}
                         </div>
                       )}
 
@@ -754,7 +754,7 @@ function InstallationDesktopTable({
                     </td>
                     <td className="py-3 px-4 text-xs">
                       {item.installerTeam ? (
-                        <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full flex items-center gap-1 w-fit">
+                        <span className="px-2 py-0.5 rounded-full flex items-center gap-1 w-fit" style={item.installerTeam.color ? { backgroundColor: item.installerTeam.color + '18', color: item.installerTeam.color } : { backgroundColor: 'rgb(243 232 255)', color: 'rgb(126 34 206)' }}>
                           <HardHat className="h-3 w-3" />{item.installerTeam.name}
                         </span>
                       ) : <span className="text-muted-foreground">-</span>}

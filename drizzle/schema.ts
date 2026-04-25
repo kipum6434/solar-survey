@@ -302,6 +302,7 @@ export const installerTeams = mysqlTable("installer_teams", {
   name: varchar("name", { length: 255 }).notNull(),
   phone: varchar("phone", { length: 50 }),
   note: text("note"),
+  color: varchar("color", { length: 20 }),
   isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

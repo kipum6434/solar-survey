@@ -1250,6 +1250,7 @@ const installerTeamRouter = router({
       name: z.string().min(1),
       phone: z.string().optional(),
       note: z.string().optional(),
+      color: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const result = await db.createInstallerTeam(input);
@@ -1263,6 +1264,7 @@ const installerTeamRouter = router({
       name: z.string().min(1).optional(),
       phone: z.string().optional(),
       note: z.string().optional(),
+      color: z.string().optional(),
       isActive: z.boolean().optional(),
     }))
     .mutation(async ({ input, ctx }) => {

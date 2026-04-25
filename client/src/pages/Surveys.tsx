@@ -658,6 +658,16 @@ function SurveyTableView({ data, onRowClick, onRefetch, onUpdateInstallationDate
     ...item,
     _scheduledDate: item.survey.scheduledDate,
     _scheduledTime: item.survey.scheduledTime,
+    _scheduledDateTime: (() => {
+      const d = item.survey.scheduledDate;
+      if (!d) return null;
+      const t = item.survey.scheduledTime;
+      if (t) {
+        const [h, m] = t.split(":").map(Number);
+        return d + ((h || 0) * 60 + (m || 0)) * 60 * 1000;
+      }
+      return d;
+    })(),
     _customerName: item.customer.name,
     _phone: item.customer.phone,
     _source: item.customer.source,
@@ -684,7 +694,7 @@ function SurveyTableView({ data, onRowClick, onRefetch, onUpdateInstallationDate
                   aria-label="เลือกทั้งหมด"
                 />
               </th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap"><SortableHeader label="วันที่" sortKey="_scheduledDate" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap"><SortableHeader label="วันที่" sortKey="_scheduledDateTime" sortConfig={sortConfig} onSort={requestSort} /></th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap"><SortableHeader label="เวลา" sortKey="_scheduledTime" sortConfig={sortConfig} onSort={requestSort} /></th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap"><SortableHeader label="ชื่อลูกค้า" sortKey="_customerName" sortConfig={sortConfig} onSort={requestSort} /></th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap"><SortableHeader label="เบอร์โทร" sortKey="_phone" sortConfig={sortConfig} onSort={requestSort} /></th>
