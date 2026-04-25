@@ -560,3 +560,11 @@
 - [x] Frontend: เพิ่ม checkbox multi-select ทุก tab (สถานะลูกค้า, สถานะงานสำรวจ, หมวดหมู่รูป, หมวดหมู่เอกสาร, หมวดหมู่รูปติดตั้ง) + เลือกทั้งหมด
 - [x] Frontend: เพิ่มปุ่ม "ลบที่เลือก" พร้อม confirm dialog สำหรับ bulk delete (แสดงจำนวนที่เลือก)
 - [x] Tests: 228 tests ผ่านทั้งหมด (20 test files) — เพิ่ม statusBulkDelete.test.ts
+
+## User Request - Round 40: Drag & Drop จัดลำดับสถานะและหมวดหมู่
+- [x] ติดตั้ง @dnd-kit/core + @dnd-kit/sortable + @dnd-kit/utilities
+- [x] Backend: เพิ่ม reorder procedure สำหรับ customStatus (bulk update sortOrder ด้วย SQL CASE)
+- [x] Backend: เพิ่ม reorder procedure สำหรับ photoCategory, documentCategory, installationPhotoCategory
+- [x] Frontend: เพิ่ม Drag & Drop ใน StatusList (สถานะลูกค้า + สถานะงานสำรวจ) — SortableStatusRow + GripVertical handle
+- [x] Frontend: เพิ่ม Drag & Drop ใน CategoryList (หมวดหมู่รูปสำรวจ + เอกสาร + รูปติดตั้ง) — SortableCategoryRow
+- [x] Tests: 234 tests ผ่านทั้งหมด (21 test files) — เพิ่ม reorder.test.ts

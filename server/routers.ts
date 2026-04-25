@@ -628,6 +628,14 @@ const customStatusRouter = router({
       return result;
     }),
 
+  reorder: protectedProcedure
+    .input(z.object({ items: z.array(z.object({ id: z.number(), sortOrder: z.number() })).min(1).max(500) }))
+    .mutation(async ({ input, ctx }) => {
+      await db.reorderCustomStatuses(input.items);
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "custom_status", entityId: input.items[0].id, details: `จัดลำดับสถานะใหม่ (${input.items.length} รายการ)` });
+      return { success: true };
+    }),
+
   updateCustomerStatus: protectedProcedure
     .input(z.object({ customerId: z.number(), statusId: z.number().nullable() }))
     .mutation(async ({ input, ctx }) => {
@@ -998,6 +1006,14 @@ const documentCategoryRouter = router({
       await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "document_category", entityId: input.ids[0], details: `ลบหมวดหมู่เอกสาร ${input.ids.length} รายการ` });
       return result;
     }),
+
+  reorder: protectedProcedure
+    .input(z.object({ items: z.array(z.object({ id: z.number(), sortOrder: z.number() })).min(1).max(500) }))
+    .mutation(async ({ input, ctx }) => {
+      await db.reorderDocumentCategories(input.items);
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "document_category", entityId: input.items[0].id, details: `จัดลำดับหมวดหมู่เอกสารใหม่ (${input.items.length} รายการ)` });
+      return { success: true };
+    }),
 });
 
 // ==================== PHOTO CATEGORY ROUTER ==
@@ -1045,6 +1061,14 @@ const photoCategoryRouter = router({
       await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "photo_category", entityId: input.ids[0], details: `ลบหมวดหมู่รูปสำรวจ ${input.ids.length} รายการ` });
       return result;
     }),
+
+  reorder: protectedProcedure
+    .input(z.object({ items: z.array(z.object({ id: z.number(), sortOrder: z.number() })).min(1).max(500) }))
+    .mutation(async ({ input, ctx }) => {
+      await db.reorderPhotoCategories(input.items);
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "photo_category", entityId: input.items[0].id, details: `จัดลำดับหมวดหมู่รูปสำรวจใหม่ (${input.items.length} รายการ)` });
+      return { success: true };
+    }),
 });
 
 // ==================== INSTALLATION PHOTO CATEGORY ROUTER ====================
@@ -1091,6 +1115,14 @@ const installationPhotoCategoryRouter = router({
       const result = await db.bulkDeleteInstallationPhotoCategories(input.ids);
       await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "installation_photo_category", entityId: input.ids[0], details: `ลบหมวดหมู่รูปติดตั้ง ${input.ids.length} รายการ` });
       return result;
+    }),
+
+  reorder: protectedProcedure
+    .input(z.object({ items: z.array(z.object({ id: z.number(), sortOrder: z.number() })).min(1).max(500) }))
+    .mutation(async ({ input, ctx }) => {
+      await db.reorderInstallationPhotoCategories(input.items);
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "installation_photo_category", entityId: input.items[0].id, details: `จัดลำดับหมวดหมู่รูปติดตั้งใหม่ (${input.items.length} รายการ)` });
+      return { success: true };
     }),
 });
 

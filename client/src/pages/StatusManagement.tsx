@@ -1,10 +1,10 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -13,10 +13,28 @@ import {
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
 } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Tags, Camera, FileText, Wrench } from "lucide-react";
+import { Plus, Pencil, Trash2, Tags, Camera, FileText, Wrench, GripVertical } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 const PRESET_COLORS = [
   { color: "#78716c", bg: "#f5f5f4", name: "เทา" },
@@ -52,27 +70,77 @@ export default function StatusManagement() {
             <TabsTrigger value="docCategory" className="gap-1"><FileText className="h-3.5 w-3.5" /> หมวดหมู่เอกสาร</TabsTrigger>
             <TabsTrigger value="installPhotoCategory" className="gap-1"><Wrench className="h-3.5 w-3.5" /> หมวดหมู่รูปติดตั้ง</TabsTrigger>
           </TabsList>
-          <TabsContent value="customer">
-            <StatusList type="customer" />
-          </TabsContent>
-          <TabsContent value="survey">
-            <StatusList type="survey" />
-          </TabsContent>
-          <TabsContent value="photoCategory">
-            <CategoryList categoryType="photo" />
-          </TabsContent>
-          <TabsContent value="docCategory">
-            <CategoryList categoryType="document" />
-          </TabsContent>
-          <TabsContent value="installPhotoCategory">
-            <CategoryList categoryType="installationPhoto" />
-          </TabsContent>
+          <TabsContent value="customer"><StatusList type="customer" /></TabsContent>
+          <TabsContent value="survey"><StatusList type="survey" /></TabsContent>
+          <TabsContent value="photoCategory"><CategoryList categoryType="photo" /></TabsContent>
+          <TabsContent value="docCategory"><CategoryList categoryType="document" /></TabsContent>
+          <TabsContent value="installPhotoCategory"><CategoryList categoryType="installationPhoto" /></TabsContent>
         </Tabs>
       </div>
     </DashboardLayout>
   );
 }
 
+/* ========== Sortable Row for Status ========== */
+function SortableStatusRow({ item, isSelected, onToggleSelect, onEdit, onDelete }: {
+  item: any;
+  isSelected: boolean;
+  onToggleSelect: (id: number) => void;
+  onEdit: (item: any) => void;
+  onDelete: (id: number) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.8 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-2 px-3 py-2 hover:bg-muted/20 transition-colors ${isSelected ? "bg-primary/5" : ""} ${isDragging ? "shadow-lg bg-background rounded-lg border" : ""}`}
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing touch-none p-0.5 text-muted-foreground hover:text-foreground"
+        tabIndex={-1}
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <Checkbox
+        checked={isSelected}
+        onCheckedChange={() => onToggleSelect(item.id)}
+        className="h-4 w-4"
+      />
+      <div className="flex-1 flex items-center gap-2 min-w-0 flex-wrap">
+        <span
+          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
+          style={{ color: item.color, backgroundColor: item.bgColor, borderColor: item.color + "30" }}
+        >
+          {item.label}
+        </span>
+        {item.isDefault && (
+          <Badge variant="secondary" className="text-[10px] py-0">ค่าเริ่มต้น</Badge>
+        )}
+      </div>
+      <span className="w-12 text-center text-xs text-muted-foreground hidden sm:block">{item.sortOrder}</span>
+      <div className="flex items-center gap-0.5">
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(item)}>
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onDelete(item.id)}>
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/* ========== StatusList with DnD ========== */
 function StatusList({ type }: { type: "customer" | "survey" }) {
   const { data: statuses, isLoading, refetch } = trpc.customStatus.list.useQuery({ type });
   const [showAdd, setShowAdd] = useState(false);
@@ -80,6 +148,12 @@ function StatusList({ type }: { type: "customer" | "survey" }) {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [showBulkDelete, setShowBulkDelete] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   const createMutation = trpc.customStatus.create.useMutation({
     onSuccess: () => { toast.success("เพิ่มสถานะสำเร็จ"); setShowAdd(false); refetch(); },
@@ -102,6 +176,10 @@ function StatusList({ type }: { type: "customer" | "survey" }) {
     },
     onError: (e) => toast.error(e.message),
   });
+  const reorderMutation = trpc.customStatus.reorder.useMutation({
+    onSuccess: () => { toast.success("จัดลำดับสำเร็จ"); refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
 
   const toggleSelect = useCallback((id: number) => {
     setSelectedIds(prev => {
@@ -119,6 +197,21 @@ function StatusList({ type }: { type: "customer" | "survey" }) {
       setSelectedIds(new Set(statuses.map((s: any) => s.id)));
     }
   }, [statuses, selectedIds.size]);
+
+  const itemIds = useMemo(() => (statuses || []).map((s: any) => s.id), [statuses]);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !statuses) return;
+
+    const oldIndex = statuses.findIndex((s: any) => s.id === active.id);
+    const newIndex = statuses.findIndex((s: any) => s.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove([...statuses], oldIndex, newIndex);
+    const items = reordered.map((s: any, i: number) => ({ id: s.id, sortOrder: i }));
+    reorderMutation.mutate({ items });
+  }, [statuses, reorderMutation]);
 
   if (isLoading) {
     return (
@@ -141,14 +234,8 @@ function StatusList({ type }: { type: "customer" | "survey" }) {
         </p>
         <div className="flex items-center gap-2">
           {selectedIds.size > 0 && (
-            <Button
-              size="sm"
-              variant="destructive"
-              className="gap-1.5 text-xs"
-              onClick={() => setShowBulkDelete(true)}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              ลบที่เลือก ({selectedIds.size})
+            <Button size="sm" variant="destructive" className="gap-1.5 text-xs" onClick={() => setShowBulkDelete(true)}>
+              <Trash2 className="h-3.5 w-3.5" /> ลบที่เลือก ({selectedIds.size})
             </Button>
           )}
           <Button size="sm" onClick={() => setShowAdd(true)} className="gap-1.5">
@@ -160,50 +247,29 @@ function StatusList({ type }: { type: "customer" | "survey" }) {
       {statuses && statuses.length > 0 ? (
         <Card className="border shadow-sm overflow-hidden">
           <div className="divide-y">
-            {/* Header row */}
-            <div className="flex items-center gap-3 px-3 py-2 bg-muted/30 text-xs text-muted-foreground font-medium">
-              <Checkbox
-                checked={allSelected}
-                onCheckedChange={toggleSelectAll}
-                className="h-4 w-4"
-              />
+            {/* Header */}
+            <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 text-xs text-muted-foreground font-medium">
+              <span className="w-5" /> {/* grip placeholder */}
+              <Checkbox checked={allSelected} onCheckedChange={toggleSelectAll} className="h-4 w-4" />
               <span className="flex-1">สถานะ</span>
-              <span className="w-16 text-center hidden sm:block">ลำดับ</span>
-              <span className="w-20 text-right">จัดการ</span>
+              <span className="w-12 text-center hidden sm:block">ลำดับ</span>
+              <span className="w-[68px] text-right">จัดการ</span>
             </div>
-            {/* Data rows */}
-            {statuses.map((s: any) => (
-              <div
-                key={s.id}
-                className={`flex items-center gap-3 px-3 py-2 hover:bg-muted/20 transition-colors ${selectedIds.has(s.id) ? "bg-primary/5" : ""}`}
-              >
-                <Checkbox
-                  checked={selectedIds.has(s.id)}
-                  onCheckedChange={() => toggleSelect(s.id)}
-                  className="h-4 w-4"
-                />
-                <div className="flex-1 flex items-center gap-2 min-w-0 flex-wrap">
-                  <span
-                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
-                    style={{ color: s.color, backgroundColor: s.bgColor, borderColor: s.color + "30" }}
-                  >
-                    {s.label}
-                  </span>
-                  {s.isDefault && (
-                    <Badge variant="secondary" className="text-[10px] py-0">ค่าเริ่มต้น</Badge>
-                  )}
-                </div>
-                <span className="w-16 text-center text-xs text-muted-foreground hidden sm:block">{s.sortOrder}</span>
-                <div className="w-20 flex items-center justify-end gap-0.5">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditItem(s)}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeleteId(s.id)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+            {/* Sortable rows */}
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+                {statuses.map((s: any) => (
+                  <SortableStatusRow
+                    key={s.id}
+                    item={s}
+                    isSelected={selectedIds.has(s.id)}
+                    onToggleSelect={toggleSelect}
+                    onEdit={setEditItem}
+                    onDelete={setDeleteId}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
           </div>
         </Card>
       ) : (
@@ -237,44 +303,32 @@ function StatusList({ type }: { type: "customer" | "survey" }) {
         />
       )}
 
-      {/* Delete Single Confirmation */}
+      {/* Delete Single */}
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>ยืนยันการลบสถานะ</AlertDialogTitle>
-            <AlertDialogDescription>
-              ลูกค้าหรืองานสำรวจที่ใช้สถานะนี้อยู่จะถูกเปลี่ยนเป็นไม่มีสถานะ
-            </AlertDialogDescription>
+            <AlertDialogDescription>ลูกค้าหรืองานสำรวจที่ใช้สถานะนี้อยู่จะถูกเปลี่ยนเป็นไม่มีสถานะ</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => deleteId && deleteMutation.mutate({ id: deleteId })}
-              disabled={deleteMutation.isPending}
-            >
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => deleteId && deleteMutation.mutate({ id: deleteId })} disabled={deleteMutation.isPending}>
               {deleteMutation.isPending ? "กำลังลบ..." : "ลบ"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Bulk Delete Confirmation */}
+      {/* Bulk Delete */}
       <AlertDialog open={showBulkDelete} onOpenChange={setShowBulkDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>ยืนยันการลบสถานะ {selectedIds.size} รายการ</AlertDialogTitle>
-            <AlertDialogDescription>
-              ลูกค้าหรืองานสำรวจที่ใช้สถานะเหล่านี้อยู่จะถูกเปลี่ยนเป็นไม่มีสถานะ การดำเนินการนี้ไม่สามารถย้อนกลับได้
-            </AlertDialogDescription>
+            <AlertDialogDescription>ลูกค้าหรืองานสำรวจที่ใช้สถานะเหล่านี้อยู่จะถูกเปลี่ยนเป็นไม่มีสถานะ การดำเนินการนี้ไม่สามารถย้อนกลับได้</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => bulkDeleteMutation.mutate({ ids: Array.from(selectedIds) })}
-              disabled={bulkDeleteMutation.isPending}
-            >
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => bulkDeleteMutation.mutate({ ids: Array.from(selectedIds) })} disabled={bulkDeleteMutation.isPending}>
               {bulkDeleteMutation.isPending ? "กำลังลบ..." : `ลบ ${selectedIds.size} รายการ`}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -284,6 +338,7 @@ function StatusList({ type }: { type: "customer" | "survey" }) {
   );
 }
 
+/* ========== StatusFormDialog ========== */
 function StatusFormDialog({ open, onOpenChange, onSubmit, loading, title, defaultValues }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -316,12 +371,7 @@ function StatusFormDialog({ open, onOpenChange, onSubmit, loading, title, defaul
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label>ชื่อสถานะ *</Label>
-            <Input
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder="เช่น รอดำเนินการ, ปิดการขาย"
-              autoFocus
-            />
+            <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="เช่น รอดำเนินการ, ปิดการขาย" autoFocus />
           </div>
           <div>
             <Label>สี</Label>
@@ -330,15 +380,10 @@ function StatusFormDialog({ open, onOpenChange, onSubmit, loading, title, defaul
                 <button
                   key={i}
                   type="button"
-                  className={`flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-all ${
-                    selectedColor === i ? "border-primary shadow-sm" : "border-transparent hover:border-muted"
-                  }`}
+                  className={`flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-all ${selectedColor === i ? "border-primary shadow-sm" : "border-transparent hover:border-muted"}`}
                   onClick={() => setSelectedColor(i)}
                 >
-                  <span
-                    className="w-6 h-6 rounded-full border"
-                    style={{ backgroundColor: preset.bg, borderColor: preset.color + "40" }}
-                  >
+                  <span className="w-6 h-6 rounded-full border" style={{ backgroundColor: preset.bg, borderColor: preset.color + "40" }}>
                     <span className="block w-3 h-3 rounded-full mx-auto mt-1.5" style={{ backgroundColor: preset.color }} />
                   </span>
                   <span className="text-[10px] text-muted-foreground">{preset.name}</span>
@@ -367,6 +412,64 @@ function StatusFormDialog({ open, onOpenChange, onSubmit, loading, title, defaul
   );
 }
 
+/* ========== Sortable Row for Category ========== */
+function SortableCategoryRow({ item, isSelected, isSelectable, onToggleSelect, onEdit, onDelete }: {
+  item: any;
+  isSelected: boolean;
+  isSelectable: boolean;
+  onToggleSelect: (id: number) => void;
+  onEdit: (item: any) => void;
+  onDelete: (id: number) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.8 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-2 px-3 py-2 hover:bg-muted/20 transition-colors ${isSelected ? "bg-primary/5" : ""} ${isDragging ? "shadow-lg bg-background rounded-lg border" : ""}`}
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing touch-none p-0.5 text-muted-foreground hover:text-foreground"
+        tabIndex={-1}
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <Checkbox
+        checked={isSelected}
+        onCheckedChange={() => isSelectable && onToggleSelect(item.id)}
+        className="h-4 w-4"
+        disabled={!isSelectable}
+      />
+      <div className="flex-1 flex items-center gap-2 min-w-0 flex-wrap">
+        <Badge variant="secondary" className="text-xs">{item.label}</Badge>
+        {item.isDefault && <Badge variant="outline" className="text-[10px] py-0">ค่าเริ่มต้น</Badge>}
+      </div>
+      <span className="w-20 text-xs text-muted-foreground font-mono truncate hidden sm:block">{item.key}</span>
+      <span className="w-12 text-center text-xs text-muted-foreground hidden sm:block">{item.sortOrder}</span>
+      <div className="flex items-center gap-0.5">
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(item)}>
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+        {isSelectable && (
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onDelete(item.id)}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ========== CategoryList with DnD ========== */
 function CategoryList({ categoryType }: { categoryType: "photo" | "document" | "installationPhoto" }) {
   const trpcUtils = trpc.useUtils();
   const labels: Record<string, { title: string; desc: string }> = {
@@ -389,6 +492,12 @@ function CategoryList({ categoryType }: { categoryType: "photo" | "document" | "
   const [editLabel, setEditLabel] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [showBulkDelete, setShowBulkDelete] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   const invalidateList = useCallback(() => {
     if (categoryType === "photo") trpcUtils.photoCategory.list.invalidate();
@@ -420,11 +529,17 @@ function CategoryList({ categoryType }: { categoryType: "photo" | "document" | "
     ? trpc.documentCategory.bulkDelete.useMutation({ onSuccess: (r) => { toast.success(`ลบหมวดหมู่ ${r.deleted} รายการสำเร็จ`); setSelectedIds(new Set()); setShowBulkDelete(false); invalidateList(); }, onError: (e) => toast.error(e.message) })
     : trpc.installationPhotoCategory.bulkDelete.useMutation({ onSuccess: (r) => { toast.success(`ลบหมวดหมู่ ${r.deleted} รายการสำเร็จ`); setSelectedIds(new Set()); setShowBulkDelete(false); invalidateList(); }, onError: (e) => toast.error(e.message) });
 
+  const reorderMutation = categoryType === "photo"
+    ? trpc.photoCategory.reorder.useMutation({ onSuccess: () => { toast.success("จัดลำดับสำเร็จ"); invalidateList(); }, onError: (e) => toast.error(e.message) })
+    : categoryType === "document"
+    ? trpc.documentCategory.reorder.useMutation({ onSuccess: () => { toast.success("จัดลำดับสำเร็จ"); invalidateList(); }, onError: (e) => toast.error(e.message) })
+    : trpc.installationPhotoCategory.reorder.useMutation({ onSuccess: () => { toast.success("จัดลำดับสำเร็จ"); invalidateList(); }, onError: (e) => toast.error(e.message) });
+
   const { data: categories, isLoading } = listQuery;
   const info = labels[categoryType];
 
-  // Selectable items: exclude 'other' and isDefault
   const selectableItems = categories?.filter((c: any) => c.key !== "other" && !c.isDefault) || [];
+  const itemIds = useMemo(() => (categories || []).map((c: any) => c.id), [categories]);
 
   const toggleSelect = useCallback((id: number) => {
     setSelectedIds(prev => {
@@ -441,6 +556,19 @@ function CategoryList({ categoryType }: { categoryType: "photo" | "document" | "
       setSelectedIds(new Set(selectableItems.map((c: any) => c.id)));
     }
   }, [selectableItems, selectedIds.size]);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !categories) return;
+
+    const oldIndex = categories.findIndex((c: any) => c.id === active.id);
+    const newIndex = categories.findIndex((c: any) => c.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove([...categories], oldIndex, newIndex);
+    const items = reordered.map((c: any, i: number) => ({ id: c.id, sortOrder: i }));
+    reorderMutation.mutate({ items });
+  }, [categories, reorderMutation]);
 
   if (isLoading) {
     return (
@@ -475,14 +603,8 @@ function CategoryList({ categoryType }: { categoryType: "photo" | "document" | "
         </div>
         <div className="flex items-center gap-2">
           {selectedIds.size > 0 && (
-            <Button
-              size="sm"
-              variant="destructive"
-              className="gap-1.5 text-xs"
-              onClick={() => setShowBulkDelete(true)}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              ลบที่เลือก ({selectedIds.size})
+            <Button size="sm" variant="destructive" className="gap-1.5 text-xs" onClick={() => setShowBulkDelete(true)}>
+              <Trash2 className="h-3.5 w-3.5" /> ลบที่เลือก ({selectedIds.size})
             </Button>
           )}
           <Button size="sm" onClick={() => setShowAdd(true)} className="gap-1.5">
@@ -494,55 +616,34 @@ function CategoryList({ categoryType }: { categoryType: "photo" | "document" | "
       {categories && categories.length > 0 ? (
         <Card className="border shadow-sm overflow-hidden">
           <div className="divide-y">
-            {/* Header row */}
-            <div className="flex items-center gap-3 px-3 py-2 bg-muted/30 text-xs text-muted-foreground font-medium">
-              <Checkbox
-                checked={allSelected}
-                onCheckedChange={toggleSelectAll}
-                className="h-4 w-4"
-                disabled={selectableItems.length === 0}
-              />
+            {/* Header */}
+            <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 text-xs text-muted-foreground font-medium">
+              <span className="w-5" /> {/* grip placeholder */}
+              <Checkbox checked={allSelected} onCheckedChange={toggleSelectAll} className="h-4 w-4" disabled={selectableItems.length === 0} />
               <span className="flex-1">หมวดหมู่</span>
-              <span className="w-24 hidden sm:block">Key</span>
-              <span className="w-16 text-center hidden sm:block">ลำดับ</span>
-              <span className="w-20 text-right">จัดการ</span>
+              <span className="w-20 hidden sm:block">Key</span>
+              <span className="w-12 text-center hidden sm:block">ลำดับ</span>
+              <span className="w-[68px] text-right">จัดการ</span>
             </div>
-            {/* Data rows */}
-            {categories.map((cat: any) => {
-              const isProtected = cat.isDefault || cat.key === "other";
-              const isSelectable = !isProtected;
-              return (
-                <div
-                  key={cat.id}
-                  className={`flex items-center gap-3 px-3 py-2 hover:bg-muted/20 transition-colors ${selectedIds.has(cat.id) ? "bg-primary/5" : ""}`}
-                >
-                  <Checkbox
-                    checked={selectedIds.has(cat.id)}
-                    onCheckedChange={() => isSelectable && toggleSelect(cat.id)}
-                    className="h-4 w-4"
-                    disabled={!isSelectable}
-                  />
-                  <div className="flex-1 flex items-center gap-2 min-w-0 flex-wrap">
-                    <Badge variant="secondary" className="text-xs">{cat.label}</Badge>
-                    {cat.isDefault && (
-                      <Badge variant="outline" className="text-[10px] py-0">ค่าเริ่มต้น</Badge>
-                    )}
-                  </div>
-                  <span className="w-24 text-xs text-muted-foreground font-mono truncate hidden sm:block">{cat.key}</span>
-                  <span className="w-16 text-center text-xs text-muted-foreground hidden sm:block">{cat.sortOrder}</span>
-                  <div className="w-20 flex items-center justify-end gap-0.5">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditItem(cat); setEditLabel(cat.label); }}>
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    {isSelectable && (
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeleteId(cat.id)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            {/* Sortable rows */}
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+                {categories.map((cat: any) => {
+                  const isProtected = cat.isDefault || cat.key === "other";
+                  return (
+                    <SortableCategoryRow
+                      key={cat.id}
+                      item={cat}
+                      isSelected={selectedIds.has(cat.id)}
+                      isSelectable={!isProtected}
+                      onToggleSelect={toggleSelect}
+                      onEdit={(item) => { setEditItem(item); setEditLabel(item.label); }}
+                      onDelete={setDeleteId}
+                    />
+                  );
+                })}
+              </SortableContext>
+            </DndContext>
           </div>
         </Card>
       ) : (
@@ -608,44 +709,32 @@ function CategoryList({ categoryType }: { categoryType: "photo" | "document" | "
         </DialogContent>
       </Dialog>
 
-      {/* Delete Single Confirmation */}
+      {/* Delete Single */}
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>ยืนยันการลบหมวดหมู่</AlertDialogTitle>
-            <AlertDialogDescription>
-              รูปภาพ/เอกสารที่ใช้หมวดหมู่นี้อยู่จะถูกเปลี่ยนเป็น "อื่นๆ"
-            </AlertDialogDescription>
+            <AlertDialogDescription>รูปภาพ/เอกสารที่ใช้หมวดหมู่นี้อยู่จะถูกเปลี่ยนเป็น "อื่นๆ"</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => deleteId && deleteMutation.mutate({ id: deleteId })}
-              disabled={deleteMutation.isPending}
-            >
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => deleteId && deleteMutation.mutate({ id: deleteId })} disabled={deleteMutation.isPending}>
               {deleteMutation.isPending ? "กำลังลบ..." : "ลบ"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Bulk Delete Confirmation */}
+      {/* Bulk Delete */}
       <AlertDialog open={showBulkDelete} onOpenChange={setShowBulkDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>ยืนยันการลบหมวดหมู่ {selectedIds.size} รายการ</AlertDialogTitle>
-            <AlertDialogDescription>
-              รูปภาพ/เอกสารที่ใช้หมวดหมู่เหล่านี้อยู่จะถูกเปลี่ยนเป็น "อื่นๆ" การดำเนินการนี้ไม่สามารถย้อนกลับได้
-            </AlertDialogDescription>
+            <AlertDialogDescription>รูปภาพ/เอกสารที่ใช้หมวดหมู่เหล่านี้อยู่จะถูกเปลี่ยนเป็น "อื่นๆ" การดำเนินการนี้ไม่สามารถย้อนกลับได้</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => bulkDeleteMutation.mutate({ ids: Array.from(selectedIds) })}
-              disabled={bulkDeleteMutation.isPending}
-            >
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => bulkDeleteMutation.mutate({ ids: Array.from(selectedIds) })} disabled={bulkDeleteMutation.isPending}>
               {bulkDeleteMutation.isPending ? "กำลังลบ..." : `ลบ ${selectedIds.size} รายการ`}
             </AlertDialogAction>
           </AlertDialogFooter>

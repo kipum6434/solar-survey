@@ -947,6 +947,14 @@ export async function updateCustomStatus(id: number, data: { label?: string; col
   await db.update(customStatuses).set(updateSet).where(eq(customStatuses.id, id));
 }
 
+export async function reorderCustomStatuses(items: { id: number; sortOrder: number }[]) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  for (const item of items) {
+    await db.update(customStatuses).set({ sortOrder: item.sortOrder }).where(eq(customStatuses.id, item.id));
+  }
+}
+
 export async function deleteCustomStatus(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
@@ -1244,6 +1252,14 @@ export async function deletePhotoCategory(id: number) {
 }
 
 
+export async function reorderPhotoCategories(items: { id: number; sortOrder: number }[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  for (const item of items) {
+    await db.update(photoCategories).set({ sortOrder: item.sortOrder }).where(eq(photoCategories.id, item.id));
+  }
+}
+
 export async function bulkDeletePhotoCategories(ids: number[]) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -1287,6 +1303,14 @@ export async function deleteDocumentCategory(id: number) {
   return cat;
 }
 
+export async function reorderDocumentCategories(items: { id: number; sortOrder: number }[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  for (const item of items) {
+    await db.update(documentCategories).set({ sortOrder: item.sortOrder }).where(eq(documentCategories.id, item.id));
+  }
+}
+
 export async function bulkDeleteDocumentCategories(ids: number[]) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -1326,6 +1350,14 @@ export async function deleteInstallationPhotoCategory(id: number) {
   if (cat.key === 'other') throw new Error("Cannot delete the 'other' category");
   await db.delete(installationPhotoCategories).where(eq(installationPhotoCategories.id, id));
   return cat;
+}
+
+export async function reorderInstallationPhotoCategories(items: { id: number; sortOrder: number }[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  for (const item of items) {
+    await db.update(installationPhotoCategories).set({ sortOrder: item.sortOrder }).where(eq(installationPhotoCategories.id, item.id));
+  }
 }
 
 export async function bulkDeleteInstallationPhotoCategories(ids: number[]) {
