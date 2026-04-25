@@ -1,18 +1,19 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
 } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, GripVertical, Tags, Camera, FileText, Wrench } from "lucide-react";
+import { Plus, Pencil, Trash2, Tags, Camera, FileText, Wrench } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -77,6 +78,8 @@ function StatusList({ type }: { type: "customer" | "survey" }) {
   const [showAdd, setShowAdd] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
 
   const createMutation = trpc.customStatus.create.useMutation({
     onSuccess: () => { toast.success("เพิ่มสถานะสำเร็จ"); setShowAdd(false); refetch(); },
@@ -90,61 +93,119 @@ function StatusList({ type }: { type: "customer" | "survey" }) {
     onSuccess: () => { toast.success("ลบสถานะสำเร็จ"); setDeleteId(null); refetch(); },
     onError: (e) => toast.error(e.message),
   });
+  const bulkDeleteMutation = trpc.customStatus.bulkDelete.useMutation({
+    onSuccess: (result) => {
+      toast.success(`ลบสถานะ ${result.deleted} รายการสำเร็จ`);
+      setSelectedIds(new Set());
+      setShowBulkDelete(false);
+      refetch();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const toggleSelect = useCallback((id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    if (!statuses) return;
+    if (selectedIds.size === statuses.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(statuses.map((s: any) => s.id)));
+    }
+  }, [statuses, selectedIds.size]);
 
   if (isLoading) {
     return (
-      <div className="space-y-3 mt-4">
+      <div className="space-y-2 mt-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full rounded-lg" />
+          <Skeleton key={i} className="h-10 w-full rounded-lg" />
         ))}
       </div>
     );
   }
 
+  const allSelected = statuses && statuses.length > 0 && selectedIds.size === statuses.length;
+
   return (
-    <div className="space-y-4 mt-4">
-      <div className="flex justify-between items-center">
+    <div className="space-y-3 mt-4">
+      <div className="flex justify-between items-center flex-wrap gap-2">
         <p className="text-sm text-muted-foreground">
           {type === "customer" ? "สถานะที่ใช้ในหน้าลูกค้า" : "สถานะที่ใช้ในหน้างานสำรวจ"}
           {statuses && ` (${statuses.length} รายการ)`}
         </p>
-        <Button size="sm" onClick={() => setShowAdd(true)} className="gap-1.5">
-          <Plus className="h-4 w-4" /> เพิ่มสถานะ
-        </Button>
+        <div className="flex items-center gap-2">
+          {selectedIds.size > 0 && (
+            <Button
+              size="sm"
+              variant="destructive"
+              className="gap-1.5 text-xs"
+              onClick={() => setShowBulkDelete(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              ลบที่เลือก ({selectedIds.size})
+            </Button>
+          )}
+          <Button size="sm" onClick={() => setShowAdd(true)} className="gap-1.5">
+            <Plus className="h-4 w-4" /> เพิ่มสถานะ
+          </Button>
+        </div>
       </div>
 
       {statuses && statuses.length > 0 ? (
-        <div className="space-y-2">
-          {statuses.map((s: any) => (
-            <Card key={s.id} className="border shadow-sm">
-              <CardContent className="p-4 flex items-center gap-4">
-                <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0" />
-                <div className="flex-1 flex items-center gap-3 min-w-0">
+        <Card className="border shadow-sm overflow-hidden">
+          <div className="divide-y">
+            {/* Header row */}
+            <div className="flex items-center gap-3 px-3 py-2 bg-muted/30 text-xs text-muted-foreground font-medium">
+              <Checkbox
+                checked={allSelected}
+                onCheckedChange={toggleSelectAll}
+                className="h-4 w-4"
+              />
+              <span className="flex-1">สถานะ</span>
+              <span className="w-16 text-center hidden sm:block">ลำดับ</span>
+              <span className="w-20 text-right">จัดการ</span>
+            </div>
+            {/* Data rows */}
+            {statuses.map((s: any) => (
+              <div
+                key={s.id}
+                className={`flex items-center gap-3 px-3 py-2 hover:bg-muted/20 transition-colors ${selectedIds.has(s.id) ? "bg-primary/5" : ""}`}
+              >
+                <Checkbox
+                  checked={selectedIds.has(s.id)}
+                  onCheckedChange={() => toggleSelect(s.id)}
+                  className="h-4 w-4"
+                />
+                <div className="flex-1 flex items-center gap-2 min-w-0 flex-wrap">
                   <span
-                    className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border"
+                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
                     style={{ color: s.color, backgroundColor: s.bgColor, borderColor: s.color + "30" }}
                   >
                     {s.label}
                   </span>
-                  <span className="text-xs text-muted-foreground hidden sm:inline">
-                    ลำดับ: {s.sortOrder}
-                  </span>
                   {s.isDefault && (
-                    <Badge variant="secondary" className="text-[10px]">ค่าเริ่มต้น</Badge>
+                    <Badge variant="secondary" className="text-[10px] py-0">ค่าเริ่มต้น</Badge>
                   )}
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditItem(s)}>
-                    <Pencil className="h-4 w-4" />
+                <span className="w-16 text-center text-xs text-muted-foreground hidden sm:block">{s.sortOrder}</span>
+                <div className="w-20 flex items-center justify-end gap-0.5">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditItem(s)}>
+                    <Pencil className="h-3.5 w-3.5" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(s.id)}>
-                    <Trash2 className="h-4 w-4" />
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeleteId(s.id)}>
+                    <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              </div>
+            ))}
+          </div>
+        </Card>
       ) : (
         <div className="text-center py-12 text-muted-foreground">
           <Tags className="h-10 w-10 mx-auto mb-3 opacity-30" />
@@ -176,7 +237,7 @@ function StatusList({ type }: { type: "customer" | "survey" }) {
         />
       )}
 
-      {/* Delete Confirmation */}
+      {/* Delete Single Confirmation */}
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -193,6 +254,28 @@ function StatusList({ type }: { type: "customer" | "survey" }) {
               disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending ? "กำลังลบ..." : "ลบ"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={showBulkDelete} onOpenChange={setShowBulkDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ยืนยันการลบสถานะ {selectedIds.size} รายการ</AlertDialogTitle>
+            <AlertDialogDescription>
+              ลูกค้าหรืองานสำรวจที่ใช้สถานะเหล่านี้อยู่จะถูกเปลี่ยนเป็นไม่มีสถานะ การดำเนินการนี้ไม่สามารถย้อนกลับได้
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => bulkDeleteMutation.mutate({ ids: Array.from(selectedIds) })}
+              disabled={bulkDeleteMutation.isPending}
+            >
+              {bulkDeleteMutation.isPending ? "กำลังลบ..." : `ลบ ${selectedIds.size} รายการ`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -292,7 +375,6 @@ function CategoryList({ categoryType }: { categoryType: "photo" | "document" | "
     installationPhoto: { title: "หมวดหมู่รูปติดตั้ง", desc: "จัดการหมวดหมู่สำหรับรูปภาพงานติดตั้ง (เพิ่ม/ลบได้)" },
   };
 
-  // Select the correct tRPC procedures based on categoryType
   const listQuery = categoryType === "photo"
     ? trpc.photoCategory.list.useQuery()
     : categoryType === "document"
@@ -305,33 +387,66 @@ function CategoryList({ categoryType }: { categoryType: "photo" | "document" | "
   const [newLabel, setNewLabel] = useState("");
   const [newKey, setNewKey] = useState("");
   const [editLabel, setEditLabel] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
+
+  const invalidateList = useCallback(() => {
+    if (categoryType === "photo") trpcUtils.photoCategory.list.invalidate();
+    else if (categoryType === "document") trpcUtils.documentCategory.list.invalidate();
+    else trpcUtils.installationPhotoCategory.list.invalidate();
+  }, [categoryType, trpcUtils]);
 
   const createMutation = categoryType === "photo"
-    ? trpc.photoCategory.create.useMutation({ onSuccess: () => { toast.success("เพิ่มหมวดหมู่สำเร็จ"); setShowAdd(false); setNewLabel(""); setNewKey(""); trpcUtils.photoCategory.list.invalidate(); } })
+    ? trpc.photoCategory.create.useMutation({ onSuccess: () => { toast.success("เพิ่มหมวดหมู่สำเร็จ"); setShowAdd(false); setNewLabel(""); setNewKey(""); invalidateList(); } })
     : categoryType === "document"
-    ? trpc.documentCategory.create.useMutation({ onSuccess: () => { toast.success("เพิ่มหมวดหมู่สำเร็จ"); setShowAdd(false); setNewLabel(""); setNewKey(""); trpcUtils.documentCategory.list.invalidate(); } })
-    : trpc.installationPhotoCategory.create.useMutation({ onSuccess: () => { toast.success("เพิ่มหมวดหมู่สำเร็จ"); setShowAdd(false); setNewLabel(""); setNewKey(""); trpcUtils.installationPhotoCategory.list.invalidate(); } });
+    ? trpc.documentCategory.create.useMutation({ onSuccess: () => { toast.success("เพิ่มหมวดหมู่สำเร็จ"); setShowAdd(false); setNewLabel(""); setNewKey(""); invalidateList(); } })
+    : trpc.installationPhotoCategory.create.useMutation({ onSuccess: () => { toast.success("เพิ่มหมวดหมู่สำเร็จ"); setShowAdd(false); setNewLabel(""); setNewKey(""); invalidateList(); } });
 
   const updateMutation = categoryType === "photo"
-    ? trpc.photoCategory.update.useMutation({ onSuccess: () => { toast.success("แก้ไขหมวดหมู่สำเร็จ"); setEditItem(null); trpcUtils.photoCategory.list.invalidate(); } })
+    ? trpc.photoCategory.update.useMutation({ onSuccess: () => { toast.success("แก้ไขหมวดหมู่สำเร็จ"); setEditItem(null); invalidateList(); } })
     : categoryType === "document"
-    ? trpc.documentCategory.update.useMutation({ onSuccess: () => { toast.success("แก้ไขหมวดหมู่สำเร็จ"); setEditItem(null); trpcUtils.documentCategory.list.invalidate(); } })
-    : trpc.installationPhotoCategory.update.useMutation({ onSuccess: () => { toast.success("แก้ไขหมวดหมู่สำเร็จ"); setEditItem(null); trpcUtils.installationPhotoCategory.list.invalidate(); } });
+    ? trpc.documentCategory.update.useMutation({ onSuccess: () => { toast.success("แก้ไขหมวดหมู่สำเร็จ"); setEditItem(null); invalidateList(); } })
+    : trpc.installationPhotoCategory.update.useMutation({ onSuccess: () => { toast.success("แก้ไขหมวดหมู่สำเร็จ"); setEditItem(null); invalidateList(); } });
 
   const deleteMutation = categoryType === "photo"
-    ? trpc.photoCategory.delete.useMutation({ onSuccess: () => { toast.success("ลบหมวดหมู่สำเร็จ"); setDeleteId(null); trpcUtils.photoCategory.list.invalidate(); } })
+    ? trpc.photoCategory.delete.useMutation({ onSuccess: () => { toast.success("ลบหมวดหมู่สำเร็จ"); setDeleteId(null); invalidateList(); } })
     : categoryType === "document"
-    ? trpc.documentCategory.delete.useMutation({ onSuccess: () => { toast.success("ลบหมวดหมู่สำเร็จ"); setDeleteId(null); trpcUtils.documentCategory.list.invalidate(); } })
-    : trpc.installationPhotoCategory.delete.useMutation({ onSuccess: () => { toast.success("ลบหมวดหมู่สำเร็จ"); setDeleteId(null); trpcUtils.installationPhotoCategory.list.invalidate(); } });
+    ? trpc.documentCategory.delete.useMutation({ onSuccess: () => { toast.success("ลบหมวดหมู่สำเร็จ"); setDeleteId(null); invalidateList(); } })
+    : trpc.installationPhotoCategory.delete.useMutation({ onSuccess: () => { toast.success("ลบหมวดหมู่สำเร็จ"); setDeleteId(null); invalidateList(); } });
+
+  const bulkDeleteMutation = categoryType === "photo"
+    ? trpc.photoCategory.bulkDelete.useMutation({ onSuccess: (r) => { toast.success(`ลบหมวดหมู่ ${r.deleted} รายการสำเร็จ`); setSelectedIds(new Set()); setShowBulkDelete(false); invalidateList(); }, onError: (e) => toast.error(e.message) })
+    : categoryType === "document"
+    ? trpc.documentCategory.bulkDelete.useMutation({ onSuccess: (r) => { toast.success(`ลบหมวดหมู่ ${r.deleted} รายการสำเร็จ`); setSelectedIds(new Set()); setShowBulkDelete(false); invalidateList(); }, onError: (e) => toast.error(e.message) })
+    : trpc.installationPhotoCategory.bulkDelete.useMutation({ onSuccess: (r) => { toast.success(`ลบหมวดหมู่ ${r.deleted} รายการสำเร็จ`); setSelectedIds(new Set()); setShowBulkDelete(false); invalidateList(); }, onError: (e) => toast.error(e.message) });
 
   const { data: categories, isLoading } = listQuery;
   const info = labels[categoryType];
 
+  // Selectable items: exclude 'other' and isDefault
+  const selectableItems = categories?.filter((c: any) => c.key !== "other" && !c.isDefault) || [];
+
+  const toggleSelect = useCallback((id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    if (selectedIds.size === selectableItems.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(selectableItems.map((c: any) => c.id)));
+    }
+  }, [selectableItems, selectedIds.size]);
+
   if (isLoading) {
     return (
-      <div className="space-y-3 mt-4">
+      <div className="space-y-2 mt-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full rounded-lg" />
+          <Skeleton key={i} className="h-10 w-full rounded-lg" />
         ))}
       </div>
     );
@@ -349,46 +464,87 @@ function CategoryList({ categoryType }: { categoryType: "photo" | "document" | "
     updateMutation.mutate({ id: editItem.id, label: editLabel.trim() });
   };
 
+  const allSelected = selectableItems.length > 0 && selectedIds.size === selectableItems.length;
+
   return (
-    <div className="space-y-4 mt-4">
-      <div className="flex justify-between items-center">
+    <div className="space-y-3 mt-4">
+      <div className="flex justify-between items-center flex-wrap gap-2">
         <div>
           <p className="text-sm font-medium">{info.title}</p>
           <p className="text-xs text-muted-foreground">{info.desc} ({categories?.length || 0} รายการ)</p>
         </div>
-        <Button size="sm" onClick={() => setShowAdd(true)} className="gap-1.5">
-          <Plus className="h-4 w-4" /> เพิ่มหมวดหมู่
-        </Button>
+        <div className="flex items-center gap-2">
+          {selectedIds.size > 0 && (
+            <Button
+              size="sm"
+              variant="destructive"
+              className="gap-1.5 text-xs"
+              onClick={() => setShowBulkDelete(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              ลบที่เลือก ({selectedIds.size})
+            </Button>
+          )}
+          <Button size="sm" onClick={() => setShowAdd(true)} className="gap-1.5">
+            <Plus className="h-4 w-4" /> เพิ่มหมวดหมู่
+          </Button>
+        </div>
       </div>
 
       {categories && categories.length > 0 ? (
-        <div className="space-y-2">
-          {categories.map((cat: any) => (
-            <Card key={cat.id} className="border shadow-sm">
-              <CardContent className="p-4 flex items-center gap-4">
-                <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0" />
-                <div className="flex-1 flex items-center gap-3 min-w-0">
-                  <Badge variant="secondary" className="text-xs">{cat.label}</Badge>
-                  <span className="text-xs text-muted-foreground font-mono">{cat.key}</span>
-                  <span className="text-xs text-muted-foreground hidden sm:inline">ลำดับ: {cat.sortOrder}</span>
-                  {cat.isDefault && (
-                    <Badge variant="outline" className="text-[10px]">ค่าเริ่มต้น</Badge>
-                  )}
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditItem(cat); setEditLabel(cat.label); }}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  {!cat.isDefault && cat.key !== "other" && (
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(cat.id)}>
-                      <Trash2 className="h-4 w-4" />
+        <Card className="border shadow-sm overflow-hidden">
+          <div className="divide-y">
+            {/* Header row */}
+            <div className="flex items-center gap-3 px-3 py-2 bg-muted/30 text-xs text-muted-foreground font-medium">
+              <Checkbox
+                checked={allSelected}
+                onCheckedChange={toggleSelectAll}
+                className="h-4 w-4"
+                disabled={selectableItems.length === 0}
+              />
+              <span className="flex-1">หมวดหมู่</span>
+              <span className="w-24 hidden sm:block">Key</span>
+              <span className="w-16 text-center hidden sm:block">ลำดับ</span>
+              <span className="w-20 text-right">จัดการ</span>
+            </div>
+            {/* Data rows */}
+            {categories.map((cat: any) => {
+              const isProtected = cat.isDefault || cat.key === "other";
+              const isSelectable = !isProtected;
+              return (
+                <div
+                  key={cat.id}
+                  className={`flex items-center gap-3 px-3 py-2 hover:bg-muted/20 transition-colors ${selectedIds.has(cat.id) ? "bg-primary/5" : ""}`}
+                >
+                  <Checkbox
+                    checked={selectedIds.has(cat.id)}
+                    onCheckedChange={() => isSelectable && toggleSelect(cat.id)}
+                    className="h-4 w-4"
+                    disabled={!isSelectable}
+                  />
+                  <div className="flex-1 flex items-center gap-2 min-w-0 flex-wrap">
+                    <Badge variant="secondary" className="text-xs">{cat.label}</Badge>
+                    {cat.isDefault && (
+                      <Badge variant="outline" className="text-[10px] py-0">ค่าเริ่มต้น</Badge>
+                    )}
+                  </div>
+                  <span className="w-24 text-xs text-muted-foreground font-mono truncate hidden sm:block">{cat.key}</span>
+                  <span className="w-16 text-center text-xs text-muted-foreground hidden sm:block">{cat.sortOrder}</span>
+                  <div className="w-20 flex items-center justify-end gap-0.5">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditItem(cat); setEditLabel(cat.label); }}>
+                      <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                  )}
+                    {isSelectable && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeleteId(cat.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        </Card>
       ) : (
         <div className="text-center py-12 text-muted-foreground">
           <Tags className="h-10 w-10 mx-auto mb-3 opacity-30" />
@@ -452,7 +608,7 @@ function CategoryList({ categoryType }: { categoryType: "photo" | "document" | "
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
+      {/* Delete Single Confirmation */}
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -469,6 +625,28 @@ function CategoryList({ categoryType }: { categoryType: "photo" | "document" | "
               disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending ? "กำลังลบ..." : "ลบ"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={showBulkDelete} onOpenChange={setShowBulkDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ยืนยันการลบหมวดหมู่ {selectedIds.size} รายการ</AlertDialogTitle>
+            <AlertDialogDescription>
+              รูปภาพ/เอกสารที่ใช้หมวดหมู่เหล่านี้อยู่จะถูกเปลี่ยนเป็น "อื่นๆ" การดำเนินการนี้ไม่สามารถย้อนกลับได้
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => bulkDeleteMutation.mutate({ ids: Array.from(selectedIds) })}
+              disabled={bulkDeleteMutation.isPending}
+            >
+              {bulkDeleteMutation.isPending ? "กำลังลบ..." : `ลบ ${selectedIds.size} รายการ`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

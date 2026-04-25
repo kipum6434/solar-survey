@@ -551,3 +551,12 @@
 - [x] Frontend: ฟอร์มเพิ่ม comment ใน DeliveryTab (textarea + ปุ่มส่ง) — responsive mobile-friendly
 - [x] Frontend: ปุ่มลบ comment (เฉพาะ admin หรือเจ้าของ comment) + confirm dialog
 - [x] Tests: 12 delivery comment tests ผ่าน — 221 tests ทั้งหมดผ่าน (19 test files)
+
+## User Request - Round 39: ปรับปรุงหน้าจัดการสถานะ + multi-select delete
+
+- [x] Backend: เพิ่ม bulk delete procedure สำหรับ customStatus (ลบหลายรายการพร้อมกัน + clear references)
+- [x] Backend: เพิ่ม bulk delete procedure สำหรับ photoCategory, documentCategory, installationPhotoCategory (ป้องกัน 'other' category)
+- [x] Frontend: ปรับ UI หน้าจัดการสถานะให้ compact ขึ้น — เปลี่ยนจาก card เป็น table/list style พร้อม header row
+- [x] Frontend: เพิ่ม checkbox multi-select ทุก tab (สถานะลูกค้า, สถานะงานสำรวจ, หมวดหมู่รูป, หมวดหมู่เอกสาร, หมวดหมู่รูปติดตั้ง) + เลือกทั้งหมด
+- [x] Frontend: เพิ่มปุ่ม "ลบที่เลือก" พร้อม confirm dialog สำหรับ bulk delete (แสดงจำนวนที่เลือก)
+- [x] Tests: 228 tests ผ่านทั้งหมด (20 test files) — เพิ่ม statusBulkDelete.test.ts

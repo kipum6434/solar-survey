@@ -620,6 +620,14 @@ const customStatusRouter = router({
       return { success: true };
     }),
 
+  bulkDelete: adminProcedure
+    .input(z.object({ ids: z.array(z.number()).min(1).max(200) }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await db.bulkDeleteCustomStatuses(input.ids);
+      await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "custom_status", entityId: input.ids[0], details: `ลบสถานะ ${input.ids.length} รายการ (IDs: ${input.ids.join(", ")})` });
+      return result;
+    }),
+
   updateCustomerStatus: protectedProcedure
     .input(z.object({ customerId: z.number(), statusId: z.number().nullable() }))
     .mutation(async ({ input, ctx }) => {
@@ -982,6 +990,14 @@ const documentCategoryRouter = router({
       await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "document_category", entityId: input.id, details: `ลบประเภทเอกสาร ID: ${input.id}` });
       return { success: true };
     }),
+
+  bulkDelete: adminProcedure
+    .input(z.object({ ids: z.array(z.number()).min(1).max(200) }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await db.bulkDeleteDocumentCategories(input.ids);
+      await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "document_category", entityId: input.ids[0], details: `ลบหมวดหมู่เอกสาร ${input.ids.length} รายการ` });
+      return result;
+    }),
 });
 
 // ==================== PHOTO CATEGORY ROUTER ==
@@ -1021,6 +1037,14 @@ const photoCategoryRouter = router({
       await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "photo_category", entityId: input.id, details: `ลบประเภทรูปภาพ ID: ${input.id}` });
       return { success: true };
     }),
+
+  bulkDelete: adminProcedure
+    .input(z.object({ ids: z.array(z.number()).min(1).max(200) }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await db.bulkDeletePhotoCategories(input.ids);
+      await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "photo_category", entityId: input.ids[0], details: `ลบหมวดหมู่รูปสำรวจ ${input.ids.length} รายการ` });
+      return result;
+    }),
 });
 
 // ==================== INSTALLATION PHOTO CATEGORY ROUTER ====================
@@ -1059,6 +1083,14 @@ const installationPhotoCategoryRouter = router({
       await db.deleteInstallationPhotoCategory(input.id);
       await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "installation_photo_category", entityId: input.id, details: `ลบประเภทรูปติดตั้ง ID: ${input.id}` });
       return { success: true };
+    }),
+
+  bulkDelete: adminProcedure
+    .input(z.object({ ids: z.array(z.number()).min(1).max(200) }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await db.bulkDeleteInstallationPhotoCategories(input.ids);
+      await db.logActivity({ userId: ctx.user.id, action: "delete", entityType: "installation_photo_category", entityId: input.ids[0], details: `ลบหมวดหมู่รูปติดตั้ง ${input.ids.length} รายการ` });
+      return result;
     }),
 });
 

@@ -956,6 +956,16 @@ export async function deleteCustomStatus(id: number) {
   await db.delete(customStatuses).where(eq(customStatuses.id, id));
 }
 
+export async function bulkDeleteCustomStatuses(ids: number[]) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  // Clear references in customers and surveys
+  await db.update(customers).set({ statusId: null }).where(inArray(customers.statusId, ids));
+  await db.update(surveys).set({ statusId: null }).where(inArray(surveys.statusId, ids));
+  await db.delete(customStatuses).where(inArray(customStatuses.id, ids));
+  return { deleted: ids.length };
+}
+
 export async function updateCustomerStatus(customerId: number, statusId: number | null) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
@@ -1234,6 +1244,17 @@ export async function deletePhotoCategory(id: number) {
 }
 
 
+export async function bulkDeletePhotoCategories(ids: number[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // Protect 'other' category
+  const cats = await db.select().from(photoCategories).where(inArray(photoCategories.id, ids));
+  const safeIds = cats.filter(c => c.key !== 'other').map(c => c.id);
+  if (safeIds.length === 0) return { deleted: 0 };
+  await db.delete(photoCategories).where(inArray(photoCategories.id, safeIds));
+  return { deleted: safeIds.length };
+}
+
 // ==================== Document Categories ====================
 
 export async function getDocumentCategories() {
@@ -1266,6 +1287,16 @@ export async function deleteDocumentCategory(id: number) {
   return cat;
 }
 
+export async function bulkDeleteDocumentCategories(ids: number[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const cats = await db.select().from(documentCategories).where(inArray(documentCategories.id, ids));
+  const safeIds = cats.filter(c => c.key !== 'other').map(c => c.id);
+  if (safeIds.length === 0) return { deleted: 0 };
+  await db.delete(documentCategories).where(inArray(documentCategories.id, safeIds));
+  return { deleted: safeIds.length };
+}
+
 // ==================== Installation Photo Categories ====================
 
 export async function getInstallationPhotoCategories() {
@@ -1295,6 +1326,16 @@ export async function deleteInstallationPhotoCategory(id: number) {
   if (cat.key === 'other') throw new Error("Cannot delete the 'other' category");
   await db.delete(installationPhotoCategories).where(eq(installationPhotoCategories.id, id));
   return cat;
+}
+
+export async function bulkDeleteInstallationPhotoCategories(ids: number[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const cats = await db.select().from(installationPhotoCategories).where(inArray(installationPhotoCategories.id, ids));
+  const safeIds = cats.filter(c => c.key !== 'other').map(c => c.id);
+  if (safeIds.length === 0) return { deleted: 0 };
+  await db.delete(installationPhotoCategories).where(inArray(installationPhotoCategories.id, safeIds));
+  return { deleted: safeIds.length };
 }
 
 // ==================== Installation Photos ====================
