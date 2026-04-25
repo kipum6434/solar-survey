@@ -20,13 +20,16 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Home() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin" || user?.role === "superadmin";
   const { data: stats, isLoading: statsLoading } = trpc.dashboard.stats.useQuery();
-  const { data: activities, isLoading: activitiesLoading } = trpc.dashboard.recentActivities.useQuery({ limit: 10 });
+  const { data: activities, isLoading: activitiesLoading } = trpc.dashboard.recentActivities.useQuery({ limit: 10 }, { enabled: isAdmin });
   const { data: upcomingSurveys } = trpc.survey.list.useQuery({ limit: 5, status: "scheduled" });
   const { data: storageStats } = trpc.storage.stats.useQuery();
   const { data: s3Usage } = trpc.storage.s3Usage.useQuery(undefined, { refetchInterval: 60000 });
@@ -236,6 +239,7 @@ export default function Home() {
             </CardContent>
           </Card>
 
+          {isAdmin && (
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
@@ -278,6 +282,7 @@ export default function Home() {
               )}
             </CardContent>
           </Card>
+          )}
         </div>
       </div>
     </DashboardLayout>

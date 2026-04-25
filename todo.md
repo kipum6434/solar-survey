@@ -651,3 +651,6 @@
 - [x] ตรวจสอบ PhotosTab component (SurveyDetail.tsx) — พบว่ามีแค่ photoInputRef ไม่มี camera input แยก
 - [x] เพิ่ม cameraInputRef + capture="environment" + ปุ่ม "ถ่ายรูป" (outline) + "เลือกรูป" (primary)
 - [x] ทดสอบ browser — ปุ่มถ่ายรูป + เลือกรูป แสดงถูกต้องในหน้างานสำรวจ
+
+## User Request - Round 51: ซ่อนส่วน "กิจกรรมล่าสุด" ไม่ให้ผู้ใช้ทั่วไปเห็น
+- [x] แก้ไข Dashboard/Home page — ซ่อนส่วนกิจกรรมล่าสุดสำหรับ role: user ให้เฉพาะ admin/superadmin เห็น (ใช้ useAuth + isAdmin condition)
