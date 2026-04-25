@@ -77,7 +77,9 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
   const [rejectReason, setRejectReason] = useState("");
   const [uploadCategory, setUploadCategory] = useState<string>("");
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+  const [showUploadOptions, setShowUploadOptions] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const deliveryStatus = deliveryInfo?.deliveryStatus || "pending";
   const statusInfo = DELIVERY_STATUS_MAP[deliveryStatus] || DELIVERY_STATUS_MAP.pending;
@@ -174,7 +176,17 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
 
   const startUpload = (categoryKey: string) => {
     setUploadCategory(categoryKey);
+    setShowUploadOptions(true);
+  };
+
+  const startGalleryUpload = () => {
+    setShowUploadOptions(false);
     setTimeout(() => photoInputRef.current?.click(), 50);
+  };
+
+  const startCameraUpload = () => {
+    setShowUploadOptions(false);
+    setTimeout(() => cameraInputRef.current?.click(), 50);
   };
 
   const formatDate = (ts: number | null | undefined) => {
@@ -539,7 +551,7 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
       {/* Delivery Comments Section */}
       <DeliveryCommentSection surveyId={surveyId} isAdmin={isAdmin} currentUserId={user?.id} />
 
-      {/* Hidden file input */}
+      {/* Hidden file input (gallery/file picker) */}
       <input
         ref={photoInputRef}
         type="file"
@@ -548,6 +560,32 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
         hidden
         onChange={handlePhotoUpload}
       />
+      {/* Hidden camera input (direct capture for mobile) */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        onChange={handlePhotoUpload}
+      />
+
+      {/* Upload options dialog (camera vs gallery) */}
+      <Dialog open={showUploadOptions} onOpenChange={setShowUploadOptions}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="text-center text-sm">เลือกวิธีอัปโหลดรูป</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 py-2">
+            <Button variant="outline" className="w-full gap-2 h-12" onClick={startCameraUpload}>
+              <Camera className="h-5 w-5" /> ถ่ายรูปจากกล้อง
+            </Button>
+            <Button variant="outline" className="w-full gap-2 h-12" onClick={startGalleryUpload}>
+              <Image className="h-5 w-5" /> เลือกรูปจากแกลเลอรี
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Lightbox */}
       {lightboxImg && (

@@ -21,6 +21,7 @@ import Installations from "./pages/Installations";
 import FileManagement from "./pages/FileManagement";
 import InstallerTeams from "./pages/InstallerTeams";
 import InstallerTeamReport from "./pages/InstallerTeamReport";
+import Gallery from "./pages/Gallery";
 
 function Router() {
   return (
@@ -41,6 +42,7 @@ function Router() {
       <Route path={"/file-management"} component={FileManagement} />
       <Route path={"/installer-teams"} component={InstallerTeams} />
       <Route path={"/installer-team-report"} component={InstallerTeamReport} />
+      <Route path={"/gallery"} component={Gallery} />
       <Route path={"/share/:token"} component={SharedSurvey} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />

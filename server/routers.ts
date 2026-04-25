@@ -1575,6 +1575,40 @@ const lineParserRouter = router({
     }),
 });
 
+// ==================== GALLERY ROUTER ====================
+const galleryRouter = router({
+  albums: protectedProcedure
+    .input(z.object({
+      search: z.string().optional(),
+      teamId: z.number().optional(),
+      deliveryStatus: z.string().optional(),
+      page: z.number().default(1),
+      limit: z.number().default(20),
+    }))
+    .query(async ({ input }) => {
+      return db.getGalleryAlbums(input);
+    }),
+
+  allPhotos: protectedProcedure
+    .input(z.object({
+      search: z.string().optional(),
+      teamId: z.number().optional(),
+      deliveryStatus: z.string().optional(),
+      category: z.string().optional(),
+      page: z.number().default(1),
+      limit: z.number().default(40),
+    }))
+    .query(async ({ input }) => {
+      return db.getGalleryAllPhotos(input);
+    }),
+
+  albumPhotos: protectedProcedure
+    .input(z.object({ surveyId: z.number() }))
+    .query(async ({ input }) => {
+      return db.getAlbumPhotosForZip(input.surveyId);
+    }),
+});
+
 // ==================== APP ROUTER ====================
 export const appRouter = router({
   system: systemRouter,
@@ -1611,6 +1645,7 @@ export const appRouter = router({
   photoCategory: photoCategoryRouter,
   documentCategory: documentCategoryRouter,
   lineParser: lineParserRouter,
+  gallery: galleryRouter,
 });
 
 export type AppRouter = typeof appRouter;

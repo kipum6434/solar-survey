@@ -48,3 +48,21 @@
 - ✅ รูปถ่ายเมนเบรกเกอร์ — 0 รูป — badge "✗ จำเป็น" — empty state "จำเป็นต้องอัปโหลด"
 - ✅ Nameplate / SN ของแผง Solar — 0 รูป — badge "✗ จำเป็น"
 - ✅ ปุ่ม "เพิ่มรูป" + "อัปโหลดรูป" แสดงในทุก category
+
+## Round 49 - Gallery Page + Android Camera Fix
+
+### Gallery Page - /gallery
+- ✅ Header: "แกลลอรี่รูปติดตั้ง" + subtitle
+- ✅ View toggle: อัลบั้ม / ทั้งหมด buttons
+- ✅ Filters: search, team, status dropdowns
+- ✅ Sidebar: "แกลลอรี่รูปติดตั้ง" menu item with ImageIcon
+- ✅ Loading: skeleton cards showing (data loading)
+- ✅ No TypeScript errors
+- ✅ Album grid shows loading state then data
+
+### Gallery Page - After SQL Fix
+- ✅ Album view: Working - shows empty state "ไม่พบอัลบั้มรูปติดตั้ง" (correct, no photos yet)
+- ✅ Feed view: Working - shows empty state "ไม่พบรูปถ่าย" with category filter dropdown
+- ✅ No console errors
+- ✅ SQL fix: Changed `survey_id` → `surveyId` and `created_at` → `createdAt` in subqueries (camelCase column names)
+- ✅ Filters visible: search, team, status, category (in feed view)

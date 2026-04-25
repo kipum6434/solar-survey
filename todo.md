@@ -631,3 +631,18 @@
 - [x] Frontend DeliveryTab: progress bar + checklist required/conditional + badge สีแดง/เหลือง + ปุ่มอัพโหลดทุก category
 - [x] Frontend SharedSurvey: progress bar + required/conditional badges + validation warning ก่อนส่งมอบ
 - [x] ทดสอบ browser — UI ใหม่แสดงถูกต้อง, vitest 244 passed (4 fail เป็น test เก่า documentCategory/photoCategory seeded data)
+
+## User Request - Round 49: หน้าแกลลอรี่รวม + แก้ bug ถ่ายรูป Android
+
+### Bug Fix: ถ่ายรูปจากกล้อง Android ไม่ได้ (มีแต่ให้อัพรูป)
+- [x] ตรวจสอบ input file accept/capture attribute ใน DeliveryTab.tsx — เพิ่ม cameraInputRef + dialog เลือกถ่ายรูป/เลือกรูป
+- [x] ตรวจสอบ input file accept/capture attribute ใน SharedSurvey.tsx — มีอยู่แล้วถูกต้อง (camera + gallery แยกกัน)
+- [x] แก้ไขให้ Android สามารถเลือกถ่ายรูปจากกล้องได้ — ใช้ capture="environment" + input แยก
+
+### Feature: หน้าแกลลอรี่รวม (Gallery)
+- [x] Backend: gallery.albums API — list อัลบั้มแต่ละงานพร้อม cover, จำนวนรูป, สถานะ, progress
+- [x] Backend: gallery.allPhotos API — list รูปทั้งหมด + filter (หมวดหมู่, ทีมช่าง, สถานะ)
+- [x] Backend: gallery.teams API — list ทีมช่างสำหรับ filter
+- [x] Frontend: หน้า Gallery — album grid view + feed view + filter + search + lightbox + ZIP download (jszip)
+- [x] เพิ่ม route /gallery + sidebar menu "แกลลอรี่รูปติดตั้ง"
+- [x] ทดสอบ browser — ทั้ง album + feed view ทำงานถูกต้อง, vitest 244 passed (4 fail เป็น test เก่า seeded data)

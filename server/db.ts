@@ -1653,3 +1653,236 @@ export async function getDeliveryCommentById(id: number) {
   const rows = await db.select().from(deliveryComments).where(eq(deliveryComments.id, id));
   return rows[0] || null;
 }
+
+// ==================== Gallery ====================
+
+export async function getGalleryAlbums(opts: {
+  search?: string;
+  teamId?: number;
+  deliveryStatus?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const db = await getDb();
+  if (!db) return { albums: [], total: 0 };
+
+  const conditions: any[] = [];
+  // Only show surveys that have installation photos or are in installation status
+  conditions.push(isNotNull(surveys.installationStatus));
+
+  if (opts.search) {
+    conditions.push(
+      or(
+        like(customers.name, `%${opts.search}%`),
+        like(customers.phone, `%${opts.search}%`),
+        like(customers.address, `%${opts.search}%`)
+      )
+    );
+  }
+  if (opts.teamId) {
+    conditions.push(eq(surveys.installerTeamId, opts.teamId));
+  }
+  if (opts.deliveryStatus) {
+    conditions.push(eq(surveys.deliveryStatus, opts.deliveryStatus as any));
+  }
+
+  const page = opts.page || 1;
+  const limit = opts.limit || 20;
+  const offset = (page - 1) * limit;
+
+  // Count total
+  const [countResult] = await db
+    .select({ count: sql<number>`count(distinct ${surveys.id})` })
+    .from(surveys)
+    .innerJoin(customers, eq(surveys.customerId, customers.id))
+    .where(and(...conditions));
+
+  const total = countResult?.count || 0;
+
+  // Get albums — avoid GROUP BY issues with ONLY_FULL_GROUP_BY by using subqueries
+  const albumRows = await db
+    .select({
+      surveyId: surveys.id,
+      customerName: customers.name,
+      customerPhone: customers.phone,
+      customerAddress: customers.address,
+      province: customers.province,
+      installationDate: surveys.installationDate,
+      installationStatus: surveys.installationStatus,
+      deliveryStatus: surveys.deliveryStatus,
+      installerTeamId: surveys.installerTeamId,
+      photoCount: sql<number>`(SELECT COUNT(*) FROM installation_photos WHERE installation_photos.surveyId = ${surveys.id})`,
+      latestPhotoAt: sql<number>`(SELECT MAX(UNIX_TIMESTAMP(installation_photos.createdAt)) * 1000 FROM installation_photos WHERE installation_photos.surveyId = ${surveys.id})`,
+    })
+    .from(surveys)
+    .innerJoin(customers, eq(surveys.customerId, customers.id))
+    .where(and(...conditions))
+    .orderBy(
+      desc(sql`(SELECT MAX(UNIX_TIMESTAMP(installation_photos.createdAt)) FROM installation_photos WHERE installation_photos.surveyId = ${surveys.id})`),
+      desc(surveys.installationDate)
+    )
+    .limit(limit)
+    .offset(offset);
+
+  // Get cover photos (first photo of each album)
+  const surveyIds = albumRows.map(a => a.surveyId);
+  let coverMap: Record<number, string> = {};
+  if (surveyIds.length > 0) {
+    const covers = await db
+      .select({
+        surveyId: installationPhotos.surveyId,
+        url: installationPhotos.url,
+        id: installationPhotos.id,
+      })
+      .from(installationPhotos)
+      .where(inArray(installationPhotos.surveyId, surveyIds))
+      .orderBy(asc(installationPhotos.createdAt));
+    
+    for (const c of covers) {
+      if (!coverMap[c.surveyId]) {
+        coverMap[c.surveyId] = c.url;
+      }
+    }
+  }
+
+  // Get team names
+  let teamMap: Record<number, { name: string; color: string | null }> = {};
+  const teamIds = Array.from(new Set(albumRows.map(a => a.installerTeamId).filter((id): id is number => id !== null && id !== undefined)));
+  if (teamIds.length > 0) {
+    const teams = await db
+      .select({ id: installerTeams.id, name: installerTeams.name, color: installerTeams.color })
+      .from(installerTeams)
+      .where(inArray(installerTeams.id, teamIds));
+    for (const t of teams) {
+      teamMap[t.id] = { name: t.name, color: t.color };
+    }
+  }
+
+  const albums = albumRows.map(a => ({
+    surveyId: a.surveyId,
+    customerName: a.customerName,
+    customerPhone: a.customerPhone,
+    customerAddress: a.customerAddress,
+    province: a.province,
+    installationDate: a.installationDate,
+    installationStatus: a.installationStatus,
+    deliveryStatus: a.deliveryStatus,
+    installerTeamId: a.installerTeamId,
+    teamName: a.installerTeamId ? teamMap[a.installerTeamId]?.name || null : null,
+    teamColor: a.installerTeamId ? teamMap[a.installerTeamId]?.color || null : null,
+    photoCount: Number(a.photoCount) || 0,
+    latestPhotoAt: a.latestPhotoAt ? Number(a.latestPhotoAt) : null,
+    coverUrl: coverMap[a.surveyId] || null,
+  }));
+
+  return { albums, total };
+}
+
+export async function getGalleryAllPhotos(opts: {
+  search?: string;
+  teamId?: number;
+  deliveryStatus?: string;
+  category?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const db = await getDb();
+  if (!db) return { photos: [], total: 0 };
+
+  const conditions: any[] = [];
+
+  if (opts.search) {
+    conditions.push(
+      or(
+        like(customers.name, `%${opts.search}%`),
+        like(customers.phone, `%${opts.search}%`)
+      )
+    );
+  }
+  if (opts.teamId) {
+    conditions.push(eq(surveys.installerTeamId, opts.teamId));
+  }
+  if (opts.deliveryStatus) {
+    conditions.push(eq(surveys.deliveryStatus, opts.deliveryStatus as any));
+  }
+  if (opts.category) {
+    conditions.push(eq(installationPhotos.category, opts.category));
+  }
+
+  const page = opts.page || 1;
+  const limit = opts.limit || 40;
+  const offset = (page - 1) * limit;
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const [countResult] = await db
+    .select({ count: sql<number>`count(${installationPhotos.id})` })
+    .from(installationPhotos)
+    .innerJoin(surveys, eq(installationPhotos.surveyId, surveys.id))
+    .innerJoin(customers, eq(surveys.customerId, customers.id))
+    .where(whereClause);
+
+  const total = countResult?.count || 0;
+
+  const photos = await db
+    .select({
+      id: installationPhotos.id,
+      surveyId: installationPhotos.surveyId,
+      url: installationPhotos.url,
+      fileKey: installationPhotos.fileKey,
+      fileName: installationPhotos.fileName,
+      category: installationPhotos.category,
+      fileSize: installationPhotos.fileSize,
+      caption: installationPhotos.caption,
+      createdAt: installationPhotos.createdAt,
+      customerName: customers.name,
+      customerPhone: customers.phone,
+      province: customers.province,
+      deliveryStatus: surveys.deliveryStatus,
+      installerTeamId: surveys.installerTeamId,
+    })
+    .from(installationPhotos)
+    .innerJoin(surveys, eq(installationPhotos.surveyId, surveys.id))
+    .innerJoin(customers, eq(surveys.customerId, customers.id))
+    .where(whereClause)
+    .orderBy(desc(installationPhotos.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  // Get team names
+  const teamIds = Array.from(new Set(photos.map(p => p.installerTeamId).filter((id): id is number => id !== null && id !== undefined)));
+  let teamMap: Record<number, string> = {};
+  if (teamIds.length > 0) {
+    const teams = await db
+      .select({ id: installerTeams.id, name: installerTeams.name })
+      .from(installerTeams)
+      .where(inArray(installerTeams.id, teamIds));
+    for (const t of teams) {
+      teamMap[t.id] = t.name;
+    }
+  }
+
+  return {
+    photos: photos.map(p => ({
+      ...p,
+      teamName: p.installerTeamId ? teamMap[p.installerTeamId] || null : null,
+    })),
+    total,
+  };
+}
+
+export async function getAlbumPhotosForZip(surveyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: installationPhotos.id,
+      url: installationPhotos.url,
+      fileKey: installationPhotos.fileKey,
+      fileName: installationPhotos.fileName,
+      category: installationPhotos.category,
+    })
+    .from(installationPhotos)
+    .where(eq(installationPhotos.surveyId, surveyId))
+    .orderBy(asc(installationPhotos.category), asc(installationPhotos.createdAt));
+}
