@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
+import { formatPhone } from "@/lib/formatPhone";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -227,7 +228,7 @@ export default function InstallerTeamReport() {
                                 )}
                               </div>
                               {team.phone && (
-                                <span className="text-xs text-muted-foreground">{team.phone}</span>
+                                <span className="text-xs text-muted-foreground">{formatPhone(team.phone)}</span>
                               )}
                             </td>
                             <td className="py-3 px-2 text-center font-semibold">{team.totalJobs}</td>
@@ -298,7 +299,7 @@ export default function InstallerTeamReport() {
                         <Badge variant="secondary" className="text-xs">{team.totalJobs} งาน</Badge>
                       </div>
                       {team.phone && (
-                        <p className="text-xs text-muted-foreground">{team.phone}</p>
+                        <p className="text-xs text-muted-foreground">{formatPhone(team.phone)}</p>
                       )}
 
                       {/* Status Grid */}

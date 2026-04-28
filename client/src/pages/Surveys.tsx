@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { trpc } from "@/lib/trpc";
 import { SURVEY_STATUS_MAP } from "@/lib/constants";
+import { formatPhone } from "@/lib/formatPhone";
 import { StatusDropdown } from "@/components/StatusDropdown";
 import { useState, useMemo, useCallback } from "react";
 import { useSort } from "@/hooks/useSort";
@@ -748,7 +749,7 @@ function SurveyTableView({ data, onRowClick, onRefetch, onUpdateInstallationDate
                     <span className="text-muted-foreground text-xs ml-1">#{s.id}</span>
                   </td>
                   <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
-                    {c.phone || "-"}
+                    {formatPhone(c.phone)}
                   </td>
                   <td className="px-3 py-2.5 whitespace-nowrap hidden md:table-cell">
                     {c.source ? (
@@ -875,7 +876,7 @@ function SurveyListView({ data, onRowClick, onRefetch, onUpdateInstallationDate,
                     {c.phone && (
                       <span className="flex items-center gap-1">
                         <Phone className="h-3 w-3" />
-                        {c.phone}
+                        {formatPhone(c.phone)}
                       </span>
                     )}
                     {(c.province || c.address) && (

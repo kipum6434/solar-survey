@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
 import { SURVEY_STATUS_MAP } from "@/lib/constants";
+import { formatPhone, formatPhoneInput } from "@/lib/formatPhone";
 import { SourceCombobox } from "@/components/SourceCombobox";
 import { MultiUserSelect } from "@/components/MultiUserSelect";
 import { useLocation, useParams } from "wouter";
@@ -108,7 +109,7 @@ export default function CustomerDetail() {
                 {customer.phone && (
                   <div className="flex items-center gap-3">
                     <Phone className="h-4 w-4 text-muted-foreground" />
-                    <a href={`tel:${customer.phone}`} className="text-primary hover:underline">{customer.phone}</a>
+                    <a href={`tel:${customer.phone}`} className="text-primary hover:underline">{formatPhone(customer.phone)}</a>
                   </div>
                 )}
                 {customer.facebookName && (
@@ -283,7 +284,7 @@ export default function CustomerDetail() {
                   <Label>ชื่อ</Label>
                   <Input value={editForm.name || ""} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
                 </div>
-                <div><Label>เบอร์โทร</Label><Input value={editForm.phone || ""} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} /></div>
+                <div><Label>เบอร์โทร</Label><Input value={editForm.phone || ""} onChange={(e) => setEditForm({ ...editForm, phone: formatPhoneInput(e.target.value) })} /></div>
                 <div><Label>ชื่อ Facebook</Label><Input value={editForm.facebookName || ""} onChange={(e) => setEditForm({ ...editForm, facebookName: e.target.value })} placeholder="ชื่อ FB ลูกค้า" /></div>
                 <div className="col-span-2"><Label>โลเคชั่น (Google Maps Link)</Label><Input value={editForm.address || ""} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} placeholder="วางลิงก์ Google Maps" /></div>
                 <div className="col-span-2"><Label>ที่อยู่</Label><Input value={editForm.fullAddress || ""} onChange={(e) => setEditForm({ ...editForm, fullAddress: e.target.value })} placeholder="บ้านเลขที่ หมู่บ้าน ซอย ถนน" /></div>

@@ -6,6 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { SourceCombobox } from "@/components/SourceCombobox";
 import { useState, useMemo, useCallback } from "react";
 import { useSort } from "@/hooks/useSort";
+import { formatPhone, formatPhoneInput } from "@/lib/formatPhone";
 import { SortableHeader } from "@/components/SortableHeader";
 import { StatusDropdown } from "@/components/StatusDropdown";
 import { useLocation } from "wouter";
@@ -550,7 +551,7 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete, selectedIds, on
                     {c.name}
                   </td>
                   <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
-                    {c.phone || "-"}
+                    {formatPhone(c.phone)}
                   </td>
                   <td className="px-3 py-2.5 max-w-[180px] truncate hidden md:table-cell text-muted-foreground">
                     {c.fullAddress || "-"}
@@ -723,7 +724,7 @@ function CustomerGridView({ data, onRowClick, onEdit, onDelete, selectedIds, onT
                 </div>
                 <div className="space-y-1.5 text-xs text-muted-foreground">
                   {customer.phone && (
-                    <div className="flex items-center gap-2"><Phone className="h-3 w-3" />{customer.phone}</div>
+                    <div className="flex items-center gap-2"><Phone className="h-3 w-3" />{formatPhone(customer.phone)}</div>
                   )}
                   {customer.address && (
                     <div className="flex items-center gap-2">
@@ -842,7 +843,7 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
             </div>
             <div>
               <Label>เบอร์โทร</Label>
-              <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="0xx-xxx-xxxx" />
+              <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: formatPhoneInput(e.target.value) })} placeholder="0xx-xxx-xxxx" />
             </div>
             <div>
               <Label>โลเคชั่น (Google Maps Link)</Label>
@@ -1179,7 +1180,7 @@ function ImportExcelDialog({ open, onOpenChange, onImport, loading }: {
                         <tr key={i} className="border-b last:border-0">
                           <td className="px-2 py-1.5 text-muted-foreground">{i + 1}</td>
                           <td className="px-2 py-1.5 font-medium">{row.name}</td>
-                          <td className="px-2 py-1.5">{row.phone || "-"}</td>
+                          <td className="px-2 py-1.5">{formatPhone(row.phone)}</td>
                           <td className="px-2 py-1.5 max-w-[150px] truncate">{row.address || "-"}</td>
                           <td className="px-2 py-1.5">{row.province || "-"}</td>
                           <td className="px-2 py-1.5">{row.source || "-"}</td>

@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
 import { SURVEY_STATUS_MAP, PHOTO_CATEGORY_MAP, DOC_TYPE_MAP, FOLLOW_UP_METHOD_MAP } from "@/lib/constants";
+import { formatPhone } from "@/lib/formatPhone";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useParams, useLocation } from "wouter";
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
@@ -236,7 +237,7 @@ export default function SurveyDetail() {
               {s.scheduledDate && (
                 <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{new Date(s.scheduledDate).toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" })}{s.scheduledTime ? ` ${s.scheduledTime} น.` : ""}</span>
               )}
-              {c.phone && <span className="flex items-center gap-1"><User className="h-3.5 w-3.5" />{c.phone}</span>}
+              {c.phone && <span className="flex items-center gap-1"><User className="h-3.5 w-3.5" />{formatPhone(c.phone)}</span>}
               {c.address && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{c.province || c.address}</span>}
               {s.installationDate && (
                 <span className="flex items-center gap-1 text-green-700">

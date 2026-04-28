@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { SURVEY_STATUS_MAP, PHOTO_CATEGORY_MAP } from "@/lib/constants";
+import { formatPhone } from "@/lib/formatPhone";
 import { useParams } from "wouter";
 import { useState, useRef, useCallback, useMemo } from "react";
 import { compressImages } from "@/lib/imageCompression";
@@ -121,7 +122,7 @@ export default function SharedSurvey() {
                   </Badge>
                 </div>
               )}
-              {c.phone && <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" />{c.phone}</div>}
+              {c.phone && <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" />{formatPhone(c.phone)}</div>}
               {c.email && <div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" />{c.email}</div>}
               {c.fullAddress && (
                 <div className="flex items-start gap-2">

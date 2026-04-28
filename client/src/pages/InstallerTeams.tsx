@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
+import { formatPhone, formatPhoneInput } from "@/lib/formatPhone";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -206,7 +207,7 @@ export default function InstallerTeams() {
                             {team.phone && (
                               <span className="flex items-center gap-1">
                                 <Phone className="h-3 w-3" />
-                                {team.phone}
+                                {formatPhone(team.phone)}
                               </span>
                             )}
                             {team.note && (
@@ -318,7 +319,7 @@ function InstallerTeamDialog({ open, onClose, onSave, isLoading, title, defaultV
           </div>
           <div>
             <Label>เบอร์โทร</Label>
-            <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="0xx-xxx-xxxx" className="mt-1" />
+            <Input value={phone} onChange={e => setPhone(formatPhoneInput(e.target.value))} placeholder="0xx-xxx-xxxx" className="mt-1" />
           </div>
           <div>
             <Label className="flex items-center gap-1.5">

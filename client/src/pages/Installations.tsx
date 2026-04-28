@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useSort } from "@/hooks/useSort";
 import { SortableHeader } from "@/components/SortableHeader";
 import { trpc } from "@/lib/trpc";
+import { formatPhone } from "@/lib/formatPhone";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -521,7 +522,7 @@ export default function Installations() {
                             <p className="font-semibold truncate">{item.customer.name}</p>
                             {item.customer.phone && (
                               <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                                <Phone className="h-3 w-3" />{item.customer.phone}
+                                <Phone className="h-3 w-3" />{formatPhone(item.customer.phone)}
                               </p>
                             )}
                           </div>
@@ -727,7 +728,7 @@ function InstallationDesktopTable({
                       </div>
                     </td>
                     <td className="py-3 px-4 font-medium max-w-[180px] truncate">{item.customer.name}</td>
-                    <td className="py-3 px-4 text-muted-foreground">{item.customer.phone || "-"}</td>
+                    <td className="py-3 px-4 text-muted-foreground">{formatPhone(item.customer.phone)}</td>
                     <td className="py-3 px-4 text-muted-foreground text-xs">
                       {item._districtProvince || "-"}
                     </td>

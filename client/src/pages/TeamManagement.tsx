@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
+import { formatPhone, formatPhoneInput } from "@/lib/formatPhone";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -240,7 +241,7 @@ export default function TeamManagement() {
                             {member.phone && (
                               <span className="flex items-center gap-1">
                                 <Phone className="h-3 w-3" />
-                                {member.phone}
+                                {formatPhone(member.phone)}
                               </span>
                             )}
                             {member.email && (
@@ -392,7 +393,7 @@ function TeamMemberDialog({ open, onClose, onSave, isLoading, title, defaultValu
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>เบอร์โทร</Label>
-              <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="0xx-xxx-xxxx" className="mt-1" />
+              <Input value={phone} onChange={e => setPhone(formatPhoneInput(e.target.value))} placeholder="0xx-xxx-xxxx" className="mt-1" />
             </div>
             <div>
               <Label>อีเมล</Label>

@@ -704,3 +704,7 @@
 
 ### Bug: แก้ไขลูกค้าที่ import จาก Excel ไม่ได้ — "expected string, received null"
 - [x] แก้ไข customer.update Zod schema ให้รับ null fields ได้ — เพิ่ม .nullable() + convert null→undefined ก่อนส่ง DB
+
+### Feature: Format เบอร์โทรเป็นรูปแบบมาตรฐาน
+- [x] สร้าง utility formatPhone (10 หลัก → xxx-xxx-xxxx, 9 หลัก → xx-xxx-xxxx)
+- [x] ใส่ formatPhone ในทุกที่ที่แสดงเบอร์โทร (11 ไฟล์: Customers, CustomerDetail, Surveys, SurveyDetail, Installations, SharedSurvey, SharedSurveyField, InstallerTeamReport, InstallerTeams, TeamManagement) + input mask ตอนกรอก
