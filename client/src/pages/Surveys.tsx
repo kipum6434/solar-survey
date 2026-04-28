@@ -10,6 +10,7 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import { trpc } from "@/lib/trpc";
 import { SURVEY_STATUS_MAP } from "@/lib/constants";
 import { formatPhone } from "@/lib/formatPhone";
+import { Pagination } from "@/components/Pagination";
 import { StatusDropdown } from "@/components/StatusDropdown";
 import { useState, useMemo, useCallback } from "react";
 import { useSort } from "@/hooks/useSort";
@@ -460,17 +461,7 @@ export default function Surveys() {
                 someSelected={someSelected}
               />
             )}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 pt-4">
-                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm text-muted-foreground">หน้า {page} / {totalPages}</span>
-                <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
+            <Pagination page={page} totalPages={totalPages} onPageChange={setPage} totalItems={data?.total} />
           </>
         ) : (
           <div className="text-center py-16">

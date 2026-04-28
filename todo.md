@@ -708,3 +708,7 @@
 ### Feature: Format เบอร์โทรเป็นรูปแบบมาตรฐาน
 - [x] สร้าง utility formatPhone (10 หลัก → xxx-xxx-xxxx, 9 หลัก → xx-xxx-xxxx)
 - [x] ใส่ formatPhone ในทุกที่ที่แสดงเบอร์โทร (11 ไฟล์: Customers, CustomerDetail, Surveys, SurveyDetail, Installations, SharedSurvey, SharedSurveyField, InstallerTeamReport, InstallerTeams, TeamManagement) + input mask ตอนกรอก
+
+### Feature: Pagination แบบมีปุ่มเลขหน้า
+- [x] สร้าง Pagination component ที่มีปุ่มเลขหน้า + ลูกศรหน้าแรก/สุดท้าย + ellipsis
+- [x] ใส่ใน 4 หน้า: Customers, Surveys, Installations, Gallery (2 จุด)

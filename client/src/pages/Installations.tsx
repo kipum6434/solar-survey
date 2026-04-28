@@ -3,6 +3,7 @@ import { useSort } from "@/hooks/useSort";
 import { SortableHeader } from "@/components/SortableHeader";
 import { trpc } from "@/lib/trpc";
 import { formatPhone } from "@/lib/formatPhone";
+import { Pagination } from "@/components/Pagination";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -594,21 +595,7 @@ export default function Installations() {
             />
 
             {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  หน้า {page} จาก {totalPages} ({total} รายการ)
-                </p>
-                <div className="flex gap-1">
-                  <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
+            <Pagination page={page} totalPages={totalPages} onPageChange={setPage} totalItems={total} />
           </>
         )}
 

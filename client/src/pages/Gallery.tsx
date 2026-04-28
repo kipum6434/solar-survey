@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
+import { Pagination } from "@/components/Pagination";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -432,19 +433,7 @@ export default function Gallery() {
                   })}
                 </div>
                 {/* Pagination */}
-                {albumTotalPages > 1 && (
-                  <div className="flex items-center justify-center gap-2 pt-2">
-                    <Button variant="outline" size="sm" disabled={albumPage <= 1} onClick={() => setAlbumPage(p => p - 1)}>
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-sm text-muted-foreground">
-                      หน้า {albumPage} / {albumTotalPages}
-                    </span>
-                    <Button variant="outline" size="sm" disabled={albumPage >= albumTotalPages} onClick={() => setAlbumPage(p => p + 1)}>
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
+                <Pagination page={albumPage} totalPages={albumTotalPages} onPageChange={setAlbumPage} />
               </>
             )}
           </>
@@ -506,19 +495,7 @@ export default function Gallery() {
                   ))}
                 </div>
                 {/* Pagination */}
-                {feedTotalPages > 1 && (
-                  <div className="flex items-center justify-center gap-2 pt-2">
-                    <Button variant="outline" size="sm" disabled={feedPage <= 1} onClick={() => setFeedPage(p => p - 1)}>
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-sm text-muted-foreground">
-                      หน้า {feedPage} / {feedTotalPages}
-                    </span>
-                    <Button variant="outline" size="sm" disabled={feedPage >= feedTotalPages} onClick={() => setFeedPage(p => p + 1)}>
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
+                <Pagination page={feedPage} totalPages={feedTotalPages} onPageChange={setFeedPage} totalItems={feedQuery.data?.total} itemLabel="รูป" />
               </>
             )}
           </>
