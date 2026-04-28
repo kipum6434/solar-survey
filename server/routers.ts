@@ -1677,6 +1677,8 @@ const galleryRouter = router({
       search: z.string().optional(),
       teamId: z.number().optional(),
       deliveryStatus: z.string().optional(),
+      month: z.number().optional(),
+      year: z.number().optional(),
       page: z.number().default(1),
       limit: z.number().default(20),
     }))
@@ -1690,6 +1692,8 @@ const galleryRouter = router({
       teamId: z.number().optional(),
       deliveryStatus: z.string().optional(),
       category: z.string().optional(),
+      month: z.number().optional(),
+      year: z.number().optional(),
       page: z.number().default(1),
       limit: z.number().default(40),
     }))

@@ -1661,6 +1661,8 @@ export async function getGalleryAlbums(opts: {
   search?: string;
   teamId?: number;
   deliveryStatus?: string;
+  month?: number;
+  year?: number;
   page?: number;
   limit?: number;
 }) {
@@ -1685,6 +1687,13 @@ export async function getGalleryAlbums(opts: {
   }
   if (opts.deliveryStatus) {
     conditions.push(eq(surveys.deliveryStatus, opts.deliveryStatus as any));
+  }
+  if (opts.month && opts.year) {
+    // Filter by installationDate (stored as Unix timestamp ms) with UTC+7 Thailand timezone
+    conditions.push(sql`MONTH(FROM_UNIXTIME(${surveys.installationDate} / 1000 + 25200)) = ${opts.month}`);
+    conditions.push(sql`YEAR(FROM_UNIXTIME(${surveys.installationDate} / 1000 + 25200)) = ${opts.year}`);
+  } else if (opts.year) {
+    conditions.push(sql`YEAR(FROM_UNIXTIME(${surveys.installationDate} / 1000 + 25200)) = ${opts.year}`);
   }
 
   const page = opts.page || 1;
@@ -1784,6 +1793,8 @@ export async function getGalleryAllPhotos(opts: {
   teamId?: number;
   deliveryStatus?: string;
   category?: string;
+  month?: number;
+  year?: number;
   page?: number;
   limit?: number;
 }) {
@@ -1808,6 +1819,12 @@ export async function getGalleryAllPhotos(opts: {
   }
   if (opts.category) {
     conditions.push(eq(installationPhotos.category, opts.category));
+  }
+  if (opts.month && opts.year) {
+    conditions.push(sql`MONTH(FROM_UNIXTIME(${surveys.installationDate} / 1000 + 25200)) = ${opts.month}`);
+    conditions.push(sql`YEAR(FROM_UNIXTIME(${surveys.installationDate} / 1000 + 25200)) = ${opts.year}`);
+  } else if (opts.year) {
+    conditions.push(sql`YEAR(FROM_UNIXTIME(${surveys.installationDate} / 1000 + 25200)) = ${opts.year}`);
   }
 
   const page = opts.page || 1;

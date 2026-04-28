@@ -36,6 +36,8 @@ export default function Gallery() {
   const [teamFilter, setTeamFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [monthFilter, setMonthFilter] = useState<string>("all");
+  const [yearFilter, setYearFilter] = useState<string>("all");
   const [albumPage, setAlbumPage] = useState(1);
   const [feedPage, setFeedPage] = useState(1);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
@@ -64,6 +66,8 @@ export default function Gallery() {
     search: debouncedSearch || undefined,
     teamId: teamFilter !== "all" ? parseInt(teamFilter) : undefined,
     deliveryStatus: statusFilter !== "all" ? statusFilter : undefined,
+    month: monthFilter !== "all" ? parseInt(monthFilter) : undefined,
+    year: yearFilter !== "all" ? parseInt(yearFilter) : undefined,
     page: albumPage,
     limit: 20,
   }, { enabled: viewMode === "albums" });
@@ -73,6 +77,8 @@ export default function Gallery() {
     teamId: teamFilter !== "all" ? parseInt(teamFilter) : undefined,
     deliveryStatus: statusFilter !== "all" ? statusFilter : undefined,
     category: categoryFilter !== "all" ? categoryFilter : undefined,
+    month: monthFilter !== "all" ? parseInt(monthFilter) : undefined,
+    year: yearFilter !== "all" ? parseInt(yearFilter) : undefined,
     page: feedPage,
     limit: 40,
   }, { enabled: viewMode === "feed" });
@@ -224,6 +230,37 @@ export default function Gallery() {
                   <SelectItem value="submitted">ส่งมอบแล้ว</SelectItem>
                   <SelectItem value="approved">อนุมัติแล้ว</SelectItem>
                   <SelectItem value="rejected">ถูกปฏิเสธ</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={monthFilter} onValueChange={(v) => { setMonthFilter(v); setAlbumPage(1); setFeedPage(1); }}>
+                <SelectTrigger className="w-[130px] h-9">
+                  <SelectValue placeholder="เดือน" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">ทุกเดือน</SelectItem>
+                  <SelectItem value="1">ม.ค.</SelectItem>
+                  <SelectItem value="2">ก.พ.</SelectItem>
+                  <SelectItem value="3">มี.ค.</SelectItem>
+                  <SelectItem value="4">เม.ย.</SelectItem>
+                  <SelectItem value="5">พ.ค.</SelectItem>
+                  <SelectItem value="6">มิ.ย.</SelectItem>
+                  <SelectItem value="7">ก.ค.</SelectItem>
+                  <SelectItem value="8">ส.ค.</SelectItem>
+                  <SelectItem value="9">ก.ย.</SelectItem>
+                  <SelectItem value="10">ต.ค.</SelectItem>
+                  <SelectItem value="11">พ.ย.</SelectItem>
+                  <SelectItem value="12">ธ.ค.</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={yearFilter} onValueChange={(v) => { setYearFilter(v); setAlbumPage(1); setFeedPage(1); }}>
+                <SelectTrigger className="w-[120px] h-9">
+                  <SelectValue placeholder="ปี" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">ทุกปี</SelectItem>
+                  {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                    <SelectItem key={y} value={String(y)}>{y + 543}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               {viewMode === "feed" && (
