@@ -1,0 +1,2 @@
+ALTER TABLE `surveys` MODIFY COLUMN `status` enum('pending','scheduled','in_progress','surveyed','follow_up','quoted','negotiating','won','lost','cancelled') NOT NULL DEFAULT 'pending';--> statement-breakpoint
+ALTER TABLE `share_links` ADD `linkType` varchar(32) DEFAULT 'installation' NOT NULL;

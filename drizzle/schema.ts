@@ -209,6 +209,7 @@ export const shareLinks = mysqlTable("share_links", {
   id: int("id").autoincrement().primaryKey(),
   surveyId: int("surveyId").notNull(),
   token: varchar("token", { length: 64 }).notNull().unique(),
+  linkType: varchar("linkType", { length: 32 }).default("installation").notNull(),
   expiresAt: bigint("expiresAt", { mode: "number" }),
   isActive: boolean("isActive").default(true).notNull(),
   allowPhotos: boolean("allowPhotos").default(true).notNull(),

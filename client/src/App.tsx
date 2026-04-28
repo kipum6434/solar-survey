@@ -12,6 +12,7 @@ import SurveyDetail from "./pages/SurveyDetail";
 import CalendarPage from "./pages/CalendarPage";
 import Notifications from "./pages/Notifications";
 import SharedSurvey from "./pages/SharedSurvey";
+import SharedSurveyField from "./pages/SharedSurveyField";
 import TeamManagement from "./pages/TeamManagement";
 import UserManagement from "./pages/UserManagement";
 import TeamPerformance from "./pages/TeamPerformance";
@@ -46,6 +47,7 @@ function Router() {
       <Route path={"/gallery"} component={Gallery} />
       <Route path={"/line-settings"} component={LineSettings} />
       <Route path={"/share/:token"} component={SharedSurvey} />
+      <Route path={"/survey-field/:token"} component={SharedSurveyField} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

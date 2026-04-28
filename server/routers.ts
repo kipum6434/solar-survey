@@ -565,9 +565,14 @@ const shareLinkRouter = router({
     .input(z.object({ surveyId: z.number() }))
     .query(({ input }) => db.getShareLinksBySurvey(input.surveyId)),
 
+  listByType: protectedProcedure
+    .input(z.object({ surveyId: z.number(), linkType: z.enum(["survey", "installation"]) }))
+    .query(({ input }) => db.getShareLinksBySurveyByType(input.surveyId, input.linkType)),
+
   create: protectedProcedure
     .input(z.object({
       surveyId: z.number(),
+      linkType: z.enum(["survey", "installation"]).default("installation"),
       expiresInDays: z.number().default(7),
       allowPhotos: z.boolean().default(true),
       allowDocuments: z.boolean().default(true),
@@ -578,13 +583,15 @@ const shareLinkRouter = router({
       const id = await db.createShareLink({
         surveyId: input.surveyId,
         token,
+        linkType: input.linkType,
         expiresAt,
         allowPhotos: input.allowPhotos,
         allowDocuments: input.allowDocuments,
         createdBy: ctx.user.id,
       });
-      await db.logActivity({ userId: ctx.user.id, action: "create_share_link", entityType: "survey", entityId: input.surveyId, details: `สร้างลิงก์แชร์สำหรับงาน #${input.surveyId}` });
-      return { id, token };
+      const typeLabel = input.linkType === "survey" ? "สำรวจ" : "ติดตั้ง";
+      await db.logActivity({ userId: ctx.user.id, action: "create_share_link", entityType: "survey", entityId: input.surveyId, details: `สร้างลิงก์แชร์ (${typeLabel}) สำหรับงาน #${input.surveyId}` });
+      return { id, token, linkType: input.linkType };
     }),
 
   revoke: protectedProcedure
@@ -605,7 +612,84 @@ const shareLinkRouter = router({
       if (!surveyData) return { error: "ไม่พบข้อมูลงานสำรวจ" };
       const photos = link.allowPhotos ? await db.getSurveyPhotos(link.surveyId) : [];
       const documents = link.allowDocuments ? await db.getSurveyDocuments(link.surveyId) : [];
-      return { survey: surveyData.survey, customer: surveyData.customer, photos, documents };
+      return { survey: surveyData.survey, customer: surveyData.customer, photos, documents, linkType: link.linkType };
+    }),
+
+  // Public upload survey photo (ลิงก์สำรวจ — อัพรูปหน้างาน)
+  publicUploadSurveyPhoto: publicProcedure
+    .input(z.object({
+      token: z.string(),
+      surveyId: z.number(),
+      fileName: z.string(),
+      base64Data: z.string(),
+      category: z.string().default("other"),
+      caption: z.string().optional(),
+      mimeType: z.string().default("image/jpeg"),
+    }))
+    .mutation(async ({ input }) => {
+      const link = await db.getShareLinkByToken(input.token);
+      if (!link || !link.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
+      if (link.linkType !== "survey") throw new TRPCError({ code: "FORBIDDEN", message: "ลิงก์นี้ไม่ใช่ลิงก์สำรวจ" });
+      if (link.expiresAt && link.expiresAt < Date.now()) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์หมดอายุ" });
+      if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
+      const survey = await db.getSurveyById(input.surveyId);
+      if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบงานสำรวจ" });
+      const buffer = Buffer.from(input.base64Data, "base64");
+      const fileKey = `surveys/${input.surveyId}/photos/${Date.now()}-${input.fileName}`;
+      const { url, key } = await storagePut(fileKey, buffer, input.mimeType);
+      const id = await db.createSurveyPhoto({
+        surveyId: input.surveyId,
+        customerId: survey.customerId,
+        url,
+        fileKey: key,
+        fileName: input.fileName,
+        category: input.category || "other",
+        fileSize: buffer.length,
+        caption: input.caption,
+        uploadedBy: null,
+      });
+      return { id, url };
+    }),
+
+  // Public delete survey photo (ลิงก์สำรวจ)
+  publicDeleteSurveyPhoto: publicProcedure
+    .input(z.object({ token: z.string(), surveyId: z.number(), id: z.number() }))
+    .mutation(async ({ input }) => {
+      const link = await db.getShareLinkByToken(input.token);
+      if (!link || !link.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
+      if (link.linkType !== "survey") throw new TRPCError({ code: "FORBIDDEN", message: "ลิงก์นี้ไม่ใช่ลิงก์สำรวจ" });
+      if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
+      const photo = await db.getSurveyPhotoById(input.id);
+      if (photo?.fileKey) {
+        try { await storageDelete(photo.fileKey); } catch (e) { console.warn("Failed to delete from S3:", e); }
+      }
+      await db.deleteSurveyPhoto(input.id);
+      return { success: true };
+    }),
+
+  // Public update survey technical data (ลิงก์สำรวจ — กรอกข้อมูลเทคนิค)
+  publicUpdateSurveyTechnical: publicProcedure
+    .input(z.object({
+      token: z.string(),
+      surveyId: z.number(),
+      systemSize: z.string().optional(),
+      panelCount: z.number().optional(),
+      inverterModel: z.string().optional(),
+      panelBrand: z.string().optional(),
+      needBattery: z.string().optional(),
+      needOptimizer: z.string().optional(),
+      systemType: z.enum(["string", "micro", "both"]).optional(),
+      surveyNotes: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const link = await db.getShareLinkByToken(input.token);
+      if (!link || !link.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
+      if (link.linkType !== "survey") throw new TRPCError({ code: "FORBIDDEN", message: "ลิงก์นี้ไม่ใช่ลิงก์สำรวจ" });
+      if (link.expiresAt && link.expiresAt < Date.now()) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์หมดอายุ" });
+      if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
+      const { token, surveyId, ...data } = input;
+      await db.updateSurvey(surveyId, data);
+      return { success: true };
     }),
 });
 

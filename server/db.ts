@@ -458,6 +458,12 @@ export async function getShareLinksBySurvey(surveyId: number) {
   return db.select().from(shareLinks).where(eq(shareLinks.surveyId, surveyId)).orderBy(desc(shareLinks.createdAt));
 }
 
+export async function getShareLinksBySurveyByType(surveyId: number, linkType: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(shareLinks).where(and(eq(shareLinks.surveyId, surveyId), eq(shareLinks.linkType, linkType))).orderBy(desc(shareLinks.createdAt));
+}
+
 export async function createShareLink(data: InsertShareLink) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");

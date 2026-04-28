@@ -43,6 +43,8 @@ export default function SurveyDetail() {
   const { data: documents, refetch: refetchDocs } = trpc.document.list.useQuery({ surveyId });
   const { data: followUps, refetch: refetchFollowUps } = trpc.followUp.list.useQuery({ surveyId });
   const { data: shareLinks, refetch: refetchLinks } = trpc.shareLink.list.useQuery({ surveyId });
+  const { data: surveyShareLinks, refetch: refetchSurveyLinks } = trpc.shareLink.listByType.useQuery({ surveyId, linkType: "survey" });
+  const { data: installShareLinks, refetch: refetchInstallLinks } = trpc.shareLink.listByType.useQuery({ surveyId, linkType: "installation" });
   const { data: teamAdminSenders } = trpc.teamMember.list.useQuery({ role: "admin_sender" });
   const { data: teamSurveyors } = trpc.teamMember.list.useQuery({ role: "surveyor" });
   const { data: teamClosers } = trpc.teamMember.list.useQuery({ role: "closer" });
@@ -117,11 +119,11 @@ export default function SurveyDetail() {
   });
 
   const createShareLink = trpc.shareLink.create.useMutation({
-    onSuccess: () => { toast.success("สร้างลิงก์แชร์สำเร็จ"); refetchLinks(); },
+    onSuccess: () => { toast.success("สร้างลิงก์แชร์สำเร็จ"); refetchLinks(); refetchSurveyLinks(); refetchInstallLinks(); },
   });
 
   const revokeShareLink = trpc.shareLink.revoke.useMutation({
-    onSuccess: () => { toast.success("ยกเลิกลิงก์สำเร็จ"); refetchLinks(); },
+    onSuccess: () => { toast.success("ยกเลิกลิงก์สำเร็จ"); refetchLinks(); refetchSurveyLinks(); refetchInstallLinks(); },
   });
 
   const completeSurvey = trpc.survey.completeSurvey.useMutation({
@@ -639,58 +641,42 @@ export default function SurveyDetail() {
           </TabsContent>
 
           {/* Share Tab */}
-          <TabsContent value="share" className="mt-4">
-            <Card className="border-0 shadow-sm">
+          <TabsContent value="share" className="mt-4 space-y-4">
+            {/* Survey Link Section */}
+            <Card className="border-0 shadow-sm border-l-4 border-l-blue-500">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-semibold">ลิงก์แชร์</CardTitle>
-                  <Button size="sm" onClick={() => createShareLink.mutate({ surveyId, expiresInDays: 7 })} className="gap-1.5" disabled={createShareLink.isPending}>
-                    <Link2 className="h-3.5 w-3.5" /> สร้างลิงก์ใหม่
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <Camera className="h-4 w-4 text-blue-500" /> ลิงก์สำรวจ
+                    <Badge variant="secondary" className="text-[10px] bg-blue-50 text-blue-700">สำหรับเจ้าหน้าที่สำรวจ</Badge>
+                  </CardTitle>
+                  <Button size="sm" onClick={() => createShareLink.mutate({ surveyId, linkType: "survey", expiresInDays: 3 })} className="gap-1.5 bg-blue-600 hover:bg-blue-700" disabled={createShareLink.isPending}>
+                    <Link2 className="h-3.5 w-3.5" /> สร้างลิงก์สำรวจ
                   </Button>
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">เจ้าหน้าที่สำรวจสามารถอัพรูปหน้างาน + กรอกข้อมูลเทคนิค + กดสำรวจเสร็จสิ้นได้</p>
               </CardHeader>
               <CardContent>
-                {shareLinks && shareLinks.length > 0 ? (
-                  <div className="space-y-3">
-                    {shareLinks.map((link: any) => {
-                      const shareUrl = `${window.location.origin}/share/${link.token}`;
-                      const isExpired = link.expiresAt && link.expiresAt < Date.now();
-                      return (
-                        <div key={link.id} className={`p-4 rounded-lg border ${!link.isActive || isExpired ? "opacity-50" : ""}`}>
-                          <div className="flex items-center gap-2 mb-2">
-                            <Badge variant={link.isActive && !isExpired ? "default" : "secondary"} className="text-[10px]">
-                              {!link.isActive ? "ยกเลิกแล้ว" : isExpired ? "หมดอายุ" : "ใช้งานได้"}
-                            </Badge>
-                            <span className="text-[10px] text-muted-foreground">ดู {link.viewCount} ครั้ง</span>
-                            {link.expiresAt && (
-                              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                หมดอายุ {new Date(link.expiresAt).toLocaleDateString("th-TH")}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Input value={shareUrl} readOnly className="text-xs h-8 bg-muted/50" />
-                            <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={() => { navigator.clipboard.writeText(shareUrl); toast.success("คัดลอกลิงก์แล้ว"); }}>
-                              <Copy className="h-3.5 w-3.5" />
-                            </Button>
-                            {link.isActive && !isExpired && (
-                              <Button variant="outline" size="sm" className="h-8 shrink-0 text-destructive hover:bg-red-50" onClick={() => revokeShareLink.mutate({ id: link.id })}>
-                                <X className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Share2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                    <p className="text-sm">ยังไม่มีลิงก์แชร์</p>
-                    <p className="text-xs mt-1">สร้างลิงก์เพื่อแชร์ข้อมูลให้ผู้ติดตั้ง</p>
-                  </div>
-                )}
+                <ShareLinkList links={surveyShareLinks || []} linkType="survey" onRevoke={(id) => revokeShareLink.mutate({ id })} />
+              </CardContent>
+            </Card>
+
+            {/* Installation Link Section */}
+            <Card className="border-0 shadow-sm border-l-4 border-l-amber-500">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <Wrench className="h-4 w-4 text-amber-500" /> ลิงก์ติดตั้ง
+                    <Badge variant="secondary" className="text-[10px] bg-amber-50 text-amber-700">สำหรับช่างติดตั้ง</Badge>
+                  </CardTitle>
+                  <Button size="sm" onClick={() => createShareLink.mutate({ surveyId, linkType: "installation", expiresInDays: 14 })} className="gap-1.5 bg-amber-600 hover:bg-amber-700" disabled={createShareLink.isPending}>
+                    <Link2 className="h-3.5 w-3.5" /> สร้างลิงก์ติดตั้ง
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">ช่างติดตั้งสามารถอัพรูปติดตั้ง + กดส่งมอบงานได้</p>
+              </CardHeader>
+              <CardContent>
+                <ShareLinkList links={installShareLinks || []} linkType="installation" onRevoke={(id) => revokeShareLink.mutate({ id })} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -1553,6 +1539,57 @@ function InstallerTeamSelect({ surveyId, currentTeamId, onChanged }: { surveyId:
           {teams.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
         </SelectContent>
       </Select>
+    </div>
+  );
+}
+
+
+function ShareLinkList({ links, linkType, onRevoke }: { links: any[]; linkType: string; onRevoke: (id: number) => void }) {
+  if (!links || links.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <Share2 className="h-10 w-10 mx-auto mb-2 opacity-30" />
+        <p className="text-sm">ยังไม่มีลิงก์{linkType === "survey" ? "สำรวจ" : "ติดตั้ง"}</p>
+        <p className="text-xs mt-1">กดปุ่มด้านบนเพื่อสร้างลิงก์ใหม่</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {links.map((link: any) => {
+        const shareUrl = linkType === "survey"
+          ? `${window.location.origin}/survey-field/${link.token}`
+          : `${window.location.origin}/share/${link.token}`;
+        const isExpired = link.expiresAt && link.expiresAt < Date.now();
+        return (
+          <div key={link.id} className={`p-4 rounded-lg border ${!link.isActive || isExpired ? "opacity-50" : ""}`}>
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant={link.isActive && !isExpired ? "default" : "secondary"} className="text-[10px]">
+                {!link.isActive ? "ยกเลิกแล้ว" : isExpired ? "หมดอายุ" : "ใช้งานได้"}
+              </Badge>
+              <span className="text-[10px] text-muted-foreground">ดู {link.viewCount} ครั้ง</span>
+              {link.expiresAt && (
+                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  หมดอายุ {new Date(link.expiresAt).toLocaleDateString("th-TH")}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Input value={shareUrl} readOnly className="text-xs h-8 bg-muted/50" />
+              <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={() => { navigator.clipboard.writeText(shareUrl); toast.success("คัดลอกลิงก์แล้ว"); }}>
+                <Copy className="h-3.5 w-3.5" />
+              </Button>
+              {link.isActive && !isExpired && (
+                <Button variant="outline" size="sm" className="h-8 shrink-0 text-destructive hover:bg-red-50" onClick={() => onRevoke(link.id)}>
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

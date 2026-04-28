@@ -692,3 +692,12 @@
 
 ### Performance: อัพโหลดรูปช้า (สำรวจ + ติดตั้ง)
 - [x] วิเคราะห์และแก้ไขปัญหาอัพโหลดรูปช้า — compress ก่อนส่ง (threshold 200KB, quality 0.7, max 1600px) / parallel upload (chunks of 3) / progress indicator "อัพ X/Y" — แก้ไขใน SurveyDetail.tsx, DeliveryTab.tsx, SharedSurvey.tsx
+
+### Feature: ลิงก์สำรวจแยกจากลิงก์ติดตั้ง (แนวทาง A)
+- [x] DB: เพิ่ม linkType column ใน share_links table (survey/installation, default installation)
+- [x] Backend: เพิ่ม listByType procedure + publicUploadSurveyPhoto + publicDeleteSurveyPhoto + publicUpdateSurveyTechnical
+- [x] Frontend: สร้าง SharedSurveyField.tsx — หน้า public สำหรับเจ้าหน้าที่สำรวจ (อัพรูปหน้างาน + กรอกข้อมูลเทคนิค + กดสำรวจเสร็จสิ้น)
+- [x] Frontend: อัปเดต SurveyDetail share tab — แยกเป็น 2 sections (ลิงก์สำรวจ สีฟ้า / ลิงก์ติดตั้ง สีส้ม)
+- [x] Frontend: เพิ่ม route /survey-field/:token ใน App.tsx
+- [x] Frontend: สร้าง ShareLinkList component ใน SurveyDetail.tsx
+- [x] Vitest: 8 tests passed — getByToken, listByType, publicUpload/Delete/UpdateTech, auth required, publicCompleteSurvey
