@@ -718,3 +718,5 @@
 
 ### Bug: Pagination ข้อมูลซ้ำระหว่างหน้า
 - [x] เพิ่ม secondary ORDER BY (id DESC) ในทุก list query (customers, surveys, installations, gallery photos/docs) เพื่อป้องกันข้อมูลซ้ำระหว่างหน้า
+
+<!-- Checkpoint refresh: 2026-04-29 -->
