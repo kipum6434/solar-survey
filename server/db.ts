@@ -804,10 +804,11 @@ export async function getSurveysWithCustomer(opts: { status?: string; assignedTo
   if (district) conditions.push(eq(customers.district, district));
   if (province) conditions.push(eq(customers.province, province));
   if (month && year) {
-    conditions.push(sql`MONTH(${surveys.createdAt}) = ${month}`);
-    conditions.push(sql`YEAR(${surveys.createdAt}) = ${year}`);
+    // Filter by scheduledDate (stored as Unix timestamp ms) with UTC+7 Thailand timezone
+    conditions.push(sql`MONTH(FROM_UNIXTIME(${surveys.scheduledDate} / 1000 + 25200)) = ${month}`);
+    conditions.push(sql`YEAR(FROM_UNIXTIME(${surveys.scheduledDate} / 1000 + 25200)) = ${year}`);
   } else if (year) {
-    conditions.push(sql`YEAR(${surveys.createdAt}) = ${year}`);
+    conditions.push(sql`YEAR(FROM_UNIXTIME(${surveys.scheduledDate} / 1000 + 25200)) = ${year}`);
   }
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
   const data = await db.select({

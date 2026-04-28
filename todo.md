@@ -680,3 +680,6 @@
 - [x] Backend: completeSurvey/publicCompleteSurvey เปลี่ยนสถานะเป็น follow_up แทน surveyed
 - [x] Frontend: เพิ่ม follow_up ใน SURVEY_STATUS_MAP
 - [x] ทดสอบ + save checkpoint — 247 passed
+
+### Bug: ฟิลเตอร์เดือนแสดงข้อมูลผิดเดือน
+- [x] แก้ไข: ฟิลเตอร์เดือนเมษายนแต่แสดงงานสำรวจเดือนพฤษภาคม — เปลี่ยนจาก createdAt เป็น scheduledDate
