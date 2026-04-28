@@ -73,29 +73,33 @@ const customerRouter = router({
     .input(z.object({
       id: z.number(),
       name: z.string().min(1).optional(),
-      phone: z.string().optional(),
-      email: z.string().optional(),
-      address: z.string().optional(),
-      province: z.string().optional(),
-      district: z.string().optional(),
-      subDistrict: z.string().optional(),
-      postalCode: z.string().optional(),
-      latitude: z.string().optional(),
-      longitude: z.string().optional(),
-      source: z.string().optional(),
-      electricityBill: z.string().optional(),
-      roofType: z.string().optional(),
-      roofArea: z.string().optional(),
-      phaseType: z.enum(["single", "three"]).optional(),
-      meterSize: z.string().optional(),
-      fullAddress: z.string().optional(),
-      facebookName: z.string().optional(),
-      notes: z.string().optional(),
+      phone: z.string().nullable().optional(),
+      email: z.string().nullable().optional(),
+      address: z.string().nullable().optional(),
+      province: z.string().nullable().optional(),
+      district: z.string().nullable().optional(),
+      subDistrict: z.string().nullable().optional(),
+      postalCode: z.string().nullable().optional(),
+      latitude: z.string().nullable().optional(),
+      longitude: z.string().nullable().optional(),
+      source: z.string().nullable().optional(),
+      electricityBill: z.string().nullable().optional(),
+      roofType: z.string().nullable().optional(),
+      roofArea: z.string().nullable().optional(),
+      phaseType: z.enum(["single", "three"]).nullable().optional(),
+      meterSize: z.string().nullable().optional(),
+      fullAddress: z.string().nullable().optional(),
+      facebookName: z.string().nullable().optional(),
+      notes: z.string().nullable().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const { id, ...data } = input;
-      if (data.source) await db.getOrCreateSource(data.source);
-      await db.updateCustomer(id, data);
+      // Convert null values to undefined so Drizzle skips them
+      const cleanData = Object.fromEntries(
+        Object.entries(data).map(([k, v]) => [k, v === null ? undefined : v])
+      );
+      if (cleanData.source) await db.getOrCreateSource(cleanData.source as string);
+      await db.updateCustomer(id, cleanData);
       await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "customer", entityId: id, details: `แก้ไขลูกค้า ID: ${id}` });
       return { success: true };
     }),

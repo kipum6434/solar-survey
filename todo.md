@@ -701,3 +701,6 @@
 - [x] Frontend: เพิ่ม route /survey-field/:token ใน App.tsx
 - [x] Frontend: สร้าง ShareLinkList component ใน SurveyDetail.tsx
 - [x] Vitest: 8 tests passed — getByToken, listByType, publicUpload/Delete/UpdateTech, auth required, publicCompleteSurvey
+
+### Bug: แก้ไขลูกค้าที่ import จาก Excel ไม่ได้ — "expected string, received null"
+- [x] แก้ไข customer.update Zod schema ให้รับ null fields ได้ — เพิ่ม .nullable() + convert null→undefined ก่อนส่ง DB
