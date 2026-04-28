@@ -94,9 +94,16 @@ const customerRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const { id, ...data } = input;
-      // Convert null values to undefined so Drizzle skips them
+      // Filter out null/undefined/empty-string values so Drizzle doesn't send them as NULL/empty to DB
+      // Keep 'name' even if empty (it's required)
+      const keepFields = new Set(["name"]);
       const cleanData = Object.fromEntries(
-        Object.entries(data).map(([k, v]) => [k, v === null ? undefined : v])
+        Object.entries(data).filter(([k, v]) => {
+          if (keepFields.has(k)) return v !== null && v !== undefined;
+          if (v === null || v === undefined) return false;
+          if (typeof v === "string" && v.trim() === "") return false;
+          return true;
+        })
       );
       if (cleanData.source) await db.getOrCreateSource(cleanData.source as string);
       await db.updateCustomer(id, cleanData);
@@ -272,24 +279,31 @@ const surveyRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const { id, surveyorIds, ...rawData } = input;
-      // Convert null values to undefined so they don't overwrite DB with null
+      // Remove null/undefined/empty-string values so they don't get sent to DB
+      // Keep scheduledTime even if empty, keep status/scheduledDate always
+      const keepEvenIfEmpty = new Set(["status", "scheduledDate", "scheduledTime", "adminSenderId"]);
       const data = Object.fromEntries(
-        Object.entries(rawData).map(([k, v]) => [k, v === null ? undefined : v])
-      ) as typeof rawData;
+        Object.entries(rawData).filter(([k, v]) => {
+          if (keepEvenIfEmpty.has(k)) return v !== null && v !== undefined;
+          if (v === null || v === undefined) return false;
+          if (typeof v === "string" && v.trim() === "") return false;
+          return true;
+        })
+      ) as Partial<typeof rawData>;
       const oldSurvey = await db.getSurveyById(id);
       if (data.status === "surveyed" || data.status === "won") {
         (data as any).completedAt = Date.now();
       }
       await db.updateSurvey(id, data);
-      // Update assignments if surveyorIds provided
-      if (surveyorIds !== undefined || data.adminSenderId !== undefined || data.closerId !== undefined) {
+      // Update assignments if surveyorIds provided — use rawData for null checks
+      if (surveyorIds !== undefined || rawData.adminSenderId !== undefined || rawData.closerId !== undefined) {
         const currentAssignments = await db.getSurveyAssignments(id);
         const assignments: { userId: number; role: "admin_sender" | "surveyor" | "closer" }[] = [];
         // Admin sender - null means remove, undefined means keep existing
-        if (data.adminSenderId === null) {
+        if (rawData.adminSenderId === null) {
           // explicitly removed
         } else {
-          const adminId = data.adminSenderId || currentAssignments.find(a => a.assignment.role === "admin_sender")?.assignment.userId;
+          const adminId = rawData.adminSenderId || currentAssignments.find(a => a.assignment.role === "admin_sender")?.assignment.userId;
           if (adminId) assignments.push({ userId: adminId, role: "admin_sender" });
         }
         // Surveyors - empty array means remove all
@@ -300,10 +314,10 @@ const surveyRouter = router({
           existingSurveyors.forEach(a => assignments.push({ userId: a.assignment.userId, role: "surveyor" }));
         }
         // Closer - null means remove, undefined means keep existing
-        if (data.closerId === null) {
+        if (rawData.closerId === null) {
           // explicitly removed
         } else {
-          const closerIdVal = data.closerId || currentAssignments.find(a => a.assignment.role === "closer")?.assignment.userId;
+          const closerIdVal = rawData.closerId || currentAssignments.find(a => a.assignment.role === "closer")?.assignment.userId;
           if (closerIdVal) assignments.push({ userId: closerIdVal, role: "closer" });
         }
         await db.setSurveyAssignments(id, assignments);
