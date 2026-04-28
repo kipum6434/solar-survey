@@ -127,6 +127,29 @@ const customerRouter = router({
       return result;
     }),
 
+  checkDuplicate: protectedProcedure
+    .input(z.object({
+      phone: z.string(),
+      excludeId: z.number().optional(),
+    }))
+    .query(async ({ input }) => {
+      const matches = await db.checkDuplicateByPhone(input.phone, input.excludeId);
+      return { duplicates: matches };
+    }),
+
+  checkDuplicateBatch: protectedProcedure
+    .input(z.object({
+      phones: z.array(z.string()),
+    }))
+    .mutation(async ({ input }) => {
+      const dupMap = await db.checkDuplicatePhones(input.phones);
+      const result: { phone: string; matches: { id: number; name: string; phone: string | null }[] }[] = [];
+      for (const [phone, matches] of Array.from(dupMap.entries())) {
+        result.push({ phone, matches });
+      }
+      return { duplicates: result };
+    }),
+
   importBatch: protectedProcedure
     .input(z.object({
       customers: z.array(z.object({
@@ -144,8 +167,32 @@ const customerRouter = router({
         facebookName: z.string().optional(),
         notes: z.string().optional(),
       })),
+      skipDuplicateCheck: z.boolean().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
+      // Check for duplicates first (unless skipped)
+      if (!input.skipDuplicateCheck) {
+        const phones = input.customers.map(c => c.phone).filter((p): p is string => !!p && p.length >= 3);
+        if (phones.length > 0) {
+          const dupMap = await db.checkDuplicatePhones(phones);
+          if (dupMap.size > 0) {
+            const duplicateWarnings: { phone: string; existingCustomer: string; existingId: number }[] = [];
+            for (const [phone, matches] of Array.from(dupMap.entries())) {
+              for (const m of matches) {
+                duplicateWarnings.push({ phone, existingCustomer: m.name, existingId: m.id });
+              }
+            }
+            return {
+              successCount: 0,
+              errorCount: 0,
+              errors: [] as string[],
+              hasDuplicates: true,
+              duplicateWarnings,
+            };
+          }
+        }
+      }
+
       let successCount = 0;
       let errorCount = 0;
       const errors: string[] = [];
@@ -160,7 +207,7 @@ const customerRouter = router({
         }
       }
       await db.logActivity({ userId: ctx.user.id, action: "create", entityType: "customer", entityId: 0, details: `Import ลูกค้า ${successCount} รายการ (ผิดพลาด ${errorCount})` });
-      return { successCount, errorCount, errors: errors.slice(0, 10) };
+      return { successCount, errorCount, errors: errors.slice(0, 10), hasDuplicates: false, duplicateWarnings: [] as { phone: string; existingCustomer: string; existingId: number }[] };
     }),
 });
 

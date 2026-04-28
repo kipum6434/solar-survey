@@ -22,6 +22,7 @@ import {
   Search, ClipboardList, Calendar, User, ChevronLeft, ChevronRight, Filter,
   LayoutList, Table2, Phone, MapPin, Download, Trash2,
 } from "lucide-react";
+import { StickyScrollbar } from "@/components/StickyScrollbar";
 
 const THAI_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -676,7 +677,7 @@ function SurveyTableView({ data, onRowClick, onRefetch, onUpdateInstallationDate
 
   return (
     <div className="border rounded-lg overflow-hidden">
-      <div className="overflow-x-auto">
+      <StickyScrollbar>
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-muted/50 border-b">
@@ -789,7 +790,7 @@ function SurveyTableView({ data, onRowClick, onRefetch, onUpdateInstallationDate
             })}
           </tbody>
         </table>
-      </div>
+      </StickyScrollbar>
     </div>
   );
 }

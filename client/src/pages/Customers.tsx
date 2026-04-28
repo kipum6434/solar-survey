@@ -14,8 +14,9 @@ import { useLocation } from "wouter";
 import {
   Users, Plus, Search, Phone, MapPin, ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Trash2, Eye,
   LayoutList, Table2, Zap, FileUp, Download, ExternalLink, X, MessageSquareText, Sparkles, Loader2, ClipboardPaste,
-  ClipboardCopy, FileText, Check,
+  ClipboardCopy, FileText, Check, AlertTriangle,
 } from "lucide-react";
+import { StickyScrollbar } from "@/components/StickyScrollbar";
 import * as XLSX from "xlsx";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -59,14 +60,24 @@ export default function Customers() {
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [showBulkDelete, setShowBulkDelete] = useState(false);
+  const [importDuplicates, setImportDuplicates] = useState<{ phone: string; existingCustomer: string; existingId: number }[]>([]);
+  const [pendingImportData, setPendingImportData] = useState<any[] | null>(null);
 
   const importMutation = trpc.customer.importBatch.useMutation({
     onSuccess: (result) => {
+      if (result.hasDuplicates && result.duplicateWarnings.length > 0) {
+        // Show duplicate warnings, don't close dialog
+        setImportDuplicates(result.duplicateWarnings);
+        toast.warning(`พบเบอร์โทรซ้ำ ${result.duplicateWarnings.length} รายการ`);
+        return;
+      }
       toast.success(`นำเข้าสำเร็จ ${result.successCount} รายการ` + (result.errorCount > 0 ? ` (ผิดพลาด ${result.errorCount})` : ""));
       if (result.errors.length > 0) {
         result.errors.forEach(e => toast.error(e));
       }
       setShowImport(false);
+      setImportDuplicates([]);
+      setPendingImportData(null);
       refetch();
     },
     onError: (e) => toast.error(e.message),
@@ -425,9 +436,11 @@ export default function Customers() {
       {/* Import Excel Dialog */}
       <ImportExcelDialog
         open={showImport}
-        onOpenChange={setShowImport}
-        onImport={(customers) => importMutation.mutate({ customers })}
+        onOpenChange={(v) => { setShowImport(v); if (!v) { setImportDuplicates([]); setPendingImportData(null); } }}
+        onImport={(customers) => { setPendingImportData(customers); importMutation.mutate({ customers }); }}
+        onForceImport={() => { if (pendingImportData) importMutation.mutate({ customers: pendingImportData, skipDuplicateCheck: true }); }}
         loading={importMutation.isPending}
+        duplicateWarnings={importDuplicates}
       />
 
       {/* Customer Info Template Dialog */}
@@ -495,7 +508,7 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete, selectedIds, on
 
   return (
     <div className="border rounded-lg overflow-hidden">
-      <div className="overflow-x-auto">
+      <StickyScrollbar>
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-muted/50 border-b">
@@ -626,7 +639,7 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete, selectedIds, on
             })}
           </tbody>
         </table>
-      </div>
+      </StickyScrollbar>
     </div>
   );
 }
@@ -755,6 +768,27 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
   const [showLinePaste, setShowLinePaste] = useState(false);
   const [lineText, setLineText] = useState("");
   const [parsedPreview, setParsedPreview] = useState<any>(null);
+  const [duplicateWarning, setDuplicateWarning] = useState<{ id: number; name: string; phone: string | null }[] | null>(null);
+  const [checkingDuplicate, setCheckingDuplicate] = useState(false);
+  const checkDupQuery = trpc.customer.checkDuplicate.useQuery(
+    { phone: form.phone.replace(/[\s\-\.]/g, "") },
+    { enabled: false }
+  );
+
+  const handlePhoneBlur = async () => {
+    const raw = form.phone.replace(/[\s\-\.]/g, "");
+    if (raw.length < 3) { setDuplicateWarning(null); return; }
+    setCheckingDuplicate(true);
+    try {
+      const result = await checkDupQuery.refetch();
+      if (result.data && result.data.duplicates.length > 0) {
+        setDuplicateWarning(result.data.duplicates);
+      } else {
+        setDuplicateWarning(null);
+      }
+    } catch { setDuplicateWarning(null); }
+    setCheckingDuplicate(false);
+  };
 
   const parseMutation = trpc.lineParser.parse.useMutation({
     onSuccess: (data) => {
@@ -804,6 +838,7 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
       source: form.source as any,
     });
     setForm({ name: "", phone: "", address: "", district: "", province: "", source: "other", notes: "", electricityBill: "", roofType: "", phaseType: "", fullAddress: "", facebookName: "" });
+    setDuplicateWarning(null);
   };
 
   return (
@@ -834,7 +869,23 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
             </div>
             <div>
               <Label>เบอร์โทร</Label>
-              <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: formatPhoneInput(e.target.value) })} placeholder="0xx-xxx-xxxx" />
+              <Input value={form.phone} onChange={(e) => { setForm({ ...form, phone: formatPhoneInput(e.target.value) }); setDuplicateWarning(null); }} onBlur={handlePhoneBlur} placeholder="0xx-xxx-xxxx" />
+              {checkingDuplicate && <p className="text-xs text-muted-foreground mt-1">กำลังตรวจสอบ...</p>}
+              {duplicateWarning && duplicateWarning.length > 0 && (
+                <div className="mt-1.5 p-2 bg-amber-50 border border-amber-200 rounded-md">
+                  <div className="flex items-center gap-1.5 text-amber-700 text-xs font-medium mb-1">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    พบลูกค้าที่มีเบอร์นี้แล้ว!
+                  </div>
+                  {duplicateWarning.map((d) => (
+                    <div key={d.id} className="flex items-center gap-2 text-xs text-amber-800">
+                      <span>{d.name} ({d.phone || '-'})</span>
+                      <button type="button" className="text-primary underline" onClick={() => window.open(`/customers/${d.id}`, '_blank')}>ดูข้อมูล</button>
+                    </div>
+                  ))}
+                  <p className="text-[10px] text-amber-600 mt-1">คุณยังสามารถกดบันทึกเพื่อเพิ่มซ้ำได้</p>
+                </div>
+              )}
             </div>
             <div>
               <Label>โลเคชั่น (Google Maps Link)</Label>
@@ -1013,11 +1064,13 @@ function normalizePhaseType(val: string): "single" | "three" | undefined {
   return undefined;
 }
 
-function ImportExcelDialog({ open, onOpenChange, onImport, loading }: {
+function ImportExcelDialog({ open, onOpenChange, onImport, onForceImport, loading, duplicateWarnings }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onImport: (customers: any[]) => void;
+  onForceImport: () => void;
   loading: boolean;
+  duplicateWarnings: { phone: string; existingCustomer: string; existingId: number }[];
 }) {
   const [parsedData, setParsedData] = useState<any[]>([]);
   const [fileName, setFileName] = useState("");
@@ -1190,15 +1243,44 @@ function ImportExcelDialog({ open, onOpenChange, onImport, loading }: {
           )}
         </div>
 
+        {/* Duplicate Warnings */}
+        {duplicateWarnings.length > 0 && (
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-center gap-1.5 text-amber-700 text-sm font-medium mb-2">
+              <AlertTriangle className="h-4 w-4" />
+              พบเบอร์โทรซ้ำกับลูกค้าที่มีอยู่แล้ว {duplicateWarnings.length} รายการ
+            </div>
+            <div className="space-y-1 max-h-[120px] overflow-y-auto">
+              {duplicateWarnings.map((d, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs text-amber-800">
+                  <span>เบอร์ {d.phone} → {d.existingCustomer}</span>
+                  <button type="button" className="text-primary underline" onClick={() => window.open(`/customers/${d.existingId}`, '_blank')}>ดูข้อมูล</button>
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-amber-600 mt-2">กด "นำเข้าทั้งหมด" เพื่อ import ต่อโดยข้ามการตรวจซ้ำ</p>
+          </div>
+        )}
+
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={handleClose}>ยกเลิก</Button>
-          <Button
-            onClick={() => onImport(parsedData)}
-            disabled={parsedData.length === 0 || loading}
-            className="gap-2"
-          >
-            {loading ? "กำลังนำเข้า..." : `นำเข้า ${parsedData.length} รายการ`}
-          </Button>
+          {duplicateWarnings.length > 0 ? (
+            <Button
+              onClick={onForceImport}
+              disabled={loading}
+              className="gap-2 bg-amber-600 hover:bg-amber-700"
+            >
+              {loading ? "กำลังนำเข้า..." : `นำเข้าทั้งหมด ${parsedData.length} รายการ`}
+            </Button>
+          ) : (
+            <Button
+              onClick={() => onImport(parsedData)}
+              disabled={parsedData.length === 0 || loading}
+              className="gap-2"
+            >
+              {loading ? "กำลังนำเข้า..." : `นำเข้า ${parsedData.length} รายการ`}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

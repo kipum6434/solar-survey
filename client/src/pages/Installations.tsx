@@ -19,6 +19,7 @@ import {
   MapPin, Phone, Clock, AlertTriangle, CheckCircle2, Trash2,
   Download, Package, Truck, HardHat,
 } from "lucide-react";
+import { StickyScrollbar } from "@/components/StickyScrollbar";
 
 const THAI_MONTHS_SHORT = [
   "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
@@ -665,7 +666,7 @@ function InstallationDesktopTable({
   return (
     <Card className="hidden sm:block">
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
+        <StickyScrollbar>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/30">
@@ -755,7 +756,7 @@ function InstallationDesktopTable({
               })}
             </tbody>
           </table>
-        </div>
+        </StickyScrollbar>
       </CardContent>
     </Card>
   );

@@ -1956,3 +1956,88 @@ export async function deleteLineNotificationTarget(id: number) {
   if (!db) return;
   await db.delete(lineNotificationTargets).where(eq(lineNotificationTargets.id, id));
 }
+
+// ==================== DUPLICATE CUSTOMER DETECTION ====================
+
+/**
+ * Normalize phone: strip dashes, spaces, dots
+ */
+function normalizePhone(phone: string): string {
+  return phone.replace(/[\s\-\.]/g, "");
+}
+
+/**
+ * Check if a phone number already exists in the customers table.
+ * Returns the matching customer(s) if found.
+ * @param phone - The phone number to check
+ * @param excludeId - Optional customer ID to exclude (for edit mode)
+ */
+export async function checkDuplicateByPhone(phone: string, excludeId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const normalized = normalizePhone(phone);
+  if (!normalized || normalized.length < 3) return [];
+
+  // Search for phone numbers that match after normalization
+  const rows = await db
+    .select({
+      id: customers.id,
+      name: customers.name,
+      phone: customers.phone,
+    })
+    .from(customers)
+    .where(
+      sql`REPLACE(REPLACE(REPLACE(${customers.phone}, '-', ''), ' ', ''), '.', '') = ${normalized}`
+    );
+
+  // Exclude the current customer if editing
+  if (excludeId) {
+    return rows.filter((r) => r.id !== excludeId);
+  }
+  return rows;
+}
+
+/**
+ * Check multiple phone numbers for duplicates in batch.
+ * Returns a map of phone -> matching customers.
+ */
+export async function checkDuplicatePhones(phones: string[]) {
+  const db = await getDb();
+  if (!db) return new Map<string, { id: number; name: string; phone: string | null }[]>();
+
+  const result = new Map<string, { id: number; name: string; phone: string | null }[]>();
+  const normalizedPhones = phones
+    .map((p) => ({ original: p, normalized: normalizePhone(p) }))
+    .filter((p) => p.normalized.length >= 3);
+
+  if (normalizedPhones.length === 0) return result;
+
+  // Get all customers with phones
+  const allCustomersWithPhone = await db
+    .select({
+      id: customers.id,
+      name: customers.name,
+      phone: customers.phone,
+    })
+    .from(customers)
+    .where(isNotNull(customers.phone));
+
+  // Build a map of normalized phone -> customer rows
+  const existingMap = new Map<string, { id: number; name: string; phone: string | null }[]>();
+  for (const c of allCustomersWithPhone) {
+    if (!c.phone) continue;
+    const norm = normalizePhone(c.phone);
+    if (!existingMap.has(norm)) existingMap.set(norm, []);
+    existingMap.get(norm)!.push(c);
+  }
+
+  // Check each input phone
+  for (const { original, normalized } of normalizedPhones) {
+    const matches = existingMap.get(normalized);
+    if (matches && matches.length > 0) {
+      result.set(original, matches);
+    }
+  }
+
+  return result;
+}

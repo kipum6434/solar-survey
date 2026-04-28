@@ -720,3 +720,6 @@
 - [x] เพิ่ม secondary ORDER BY (id DESC) ในทุก list query (customers, surveys, installations, gallery photos/docs) เพื่อป้องกันข้อมูลซ้ำระหว่างหน้า
 
 <!-- Checkpoint refresh: 2026-04-29 -->
+
+### Bug Fix: Sticky Scrollbar ไม่แสดงบนเว็บจริง
+- [x] ตรวจสอบและแก้ไข StickyScrollbar component ให้แสดง scrollbar ลอยด้านล่างจอ

@@ -67,12 +67,14 @@ describe("Round 7 - Team Member CRUD", () => {
 describe("Round 7 - Customer Import Batch", () => {
   it("customer.importBatch imports multiple customers", async () => {
     const caller = createCaller();
+    const ts = Date.now();
     const result = await caller.customer.importBatch({
       customers: [
-        { name: "Import Customer A " + Date.now(), phone: "0811111111", province: "Bangkok" },
-        { name: "Import Customer B " + Date.now(), phone: "0822222222", province: "Chiang Mai", source: "website" },
-        { name: "Import Customer C " + Date.now(), email: "test@import.com", district: "บางนา" },
+        { name: "Import Customer A " + ts, phone: "081-" + ts.toString().slice(-7), province: "Bangkok" },
+        { name: "Import Customer B " + ts, phone: "082-" + ts.toString().slice(-7), province: "Chiang Mai", source: "website" },
+        { name: "Import Customer C " + ts, email: "test@import.com", district: "บางนา" },
       ],
+      skipDuplicateCheck: true,
     });
     expect(result.successCount).toBe(3);
     expect(result.errorCount).toBe(0);

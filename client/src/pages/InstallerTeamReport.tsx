@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { HardHat, Wrench, CheckCircle2, Clock, Package, TrendingUp, Zap, AlertTriangle, FileDown } from "lucide-react";
 import { toast } from "sonner";
+import { StickyScrollbar } from "@/components/StickyScrollbar";
 
 const MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 
@@ -189,7 +190,7 @@ export default function InstallerTeamReport() {
                 <CardTitle className="text-lg">รายละเอียดผลงานทีมช่าง — {periodLabel}</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
+                <StickyScrollbar>
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left text-muted-foreground">
@@ -274,7 +275,7 @@ export default function InstallerTeamReport() {
                       })}
                     </tbody>
                   </table>
-                </div>
+                </StickyScrollbar>
               </CardContent>
             </Card>
 
