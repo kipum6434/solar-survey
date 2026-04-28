@@ -686,3 +686,6 @@
 
 ### Feature: เพิ่ม filter เดือน/ปี ในหน้าแกลลอรี่รูปติดตั้ง
 - [x] เพิ่ม filter เดือน/ปี ในหน้าแกลลอรี่รูปติดตั้ง (InstallationGallery) — filter ตาม installationDate
+
+### UI: เปลี่ยน filter เดือน/ปี ในแกลลอรี่ให้เป็น month tabs แบบเดียวกับหน้างานสำรวจ
+- [x] เปลี่ยน dropdown เดือน/ปี เป็นแถบเดือน (month tabs) + dropdown ปี แบบเดียวกับ Surveys.tsx

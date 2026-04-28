@@ -19,6 +19,16 @@ import {
 import { useLocation } from "wouter";
 import JSZip from "jszip";
 
+const THAI_MONTHS_SHORT = [
+  "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
+  "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค.",
+];
+
+const THAI_MONTHS = [
+  "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+  "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
+];
+
 const DELIVERY_STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: any }> = {
   pending: { label: "รอส่งมอบ", color: "text-amber-700", bg: "bg-amber-50", icon: Clock },
   submitted: { label: "ส่งมอบแล้ว", color: "text-blue-700", bg: "bg-blue-50", icon: Send },
@@ -36,8 +46,32 @@ export default function Gallery() {
   const [teamFilter, setTeamFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [monthFilter, setMonthFilter] = useState<string>("all");
-  const [yearFilter, setYearFilter] = useState<string>("all");
+
+  // Month/Year filter - like Surveys page
+  const now = useMemo(() => new Date(), []);
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [filterByMonth, setFilterByMonth] = useState(false);
+
+  const yearOptions = useMemo(() => {
+    const years = [];
+    for (let y = now.getFullYear() + 1; y >= now.getFullYear() - 5; y--) {
+      years.push(y);
+    }
+    return years;
+  }, [now]);
+
+  const handleMonthNav = useCallback((dir: -1 | 1) => {
+    let m = selectedMonth + dir;
+    let y = selectedYear;
+    if (m < 1) { m = 12; y--; }
+    if (m > 12) { m = 1; y++; }
+    setSelectedMonth(m);
+    setSelectedYear(y);
+    setFilterByMonth(true);
+    setAlbumPage(1);
+    setFeedPage(1);
+  }, [selectedMonth, selectedYear]);
   const [albumPage, setAlbumPage] = useState(1);
   const [feedPage, setFeedPage] = useState(1);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
@@ -66,8 +100,8 @@ export default function Gallery() {
     search: debouncedSearch || undefined,
     teamId: teamFilter !== "all" ? parseInt(teamFilter) : undefined,
     deliveryStatus: statusFilter !== "all" ? statusFilter : undefined,
-    month: monthFilter !== "all" ? parseInt(monthFilter) : undefined,
-    year: yearFilter !== "all" ? parseInt(yearFilter) : undefined,
+    month: filterByMonth ? selectedMonth : undefined,
+    year: filterByMonth ? selectedYear : undefined,
     page: albumPage,
     limit: 20,
   }, { enabled: viewMode === "albums" });
@@ -77,8 +111,8 @@ export default function Gallery() {
     teamId: teamFilter !== "all" ? parseInt(teamFilter) : undefined,
     deliveryStatus: statusFilter !== "all" ? statusFilter : undefined,
     category: categoryFilter !== "all" ? categoryFilter : undefined,
-    month: monthFilter !== "all" ? parseInt(monthFilter) : undefined,
-    year: yearFilter !== "all" ? parseInt(yearFilter) : undefined,
+    month: filterByMonth ? selectedMonth : undefined,
+    year: filterByMonth ? selectedYear : undefined,
     page: feedPage,
     limit: 40,
   }, { enabled: viewMode === "feed" });
@@ -196,6 +230,52 @@ export default function Gallery() {
           </div>
         </div>
 
+        {/* Month Navigation Bar */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <Button
+            variant={!filterByMonth ? "default" : "outline"}
+            size="sm"
+            onClick={() => { setFilterByMonth(false); setAlbumPage(1); setFeedPage(1); }}
+            className="shrink-0"
+          >
+            ทั้งหมด
+          </Button>
+          <div className="h-6 w-px bg-border shrink-0" />
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => handleMonthNav(-1)}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          {THAI_MONTHS_SHORT.map((m, i) => (
+            <Button
+              key={i}
+              variant={filterByMonth && selectedMonth === i + 1 ? "default" : "outline"}
+              size="sm"
+              onClick={() => { setSelectedMonth(i + 1); setFilterByMonth(true); setAlbumPage(1); setFeedPage(1); }}
+              className="shrink-0 text-xs px-2.5"
+            >
+              {m}
+            </Button>
+          ))}
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => handleMonthNav(1)}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Select value={String(selectedYear)} onValueChange={(v) => { setSelectedYear(Number(v)); if (filterByMonth) { setAlbumPage(1); setFeedPage(1); } }}>
+            <SelectTrigger className="w-[100px] h-8 text-xs shrink-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {yearOptions.map((y) => (
+                <SelectItem key={y} value={String(y)}>{y + 543}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {filterByMonth && (
+          <p className="text-sm text-muted-foreground">
+            แสดงงานติดตั้งเดือน <span className="font-semibold text-foreground">{THAI_MONTHS[selectedMonth - 1]} {selectedYear + 543}</span>
+          </p>
+        )}
+
         {/* Filters */}
         <Card className="border-0 shadow-sm">
           <CardContent className="py-3 px-4">
@@ -232,37 +312,7 @@ export default function Gallery() {
                   <SelectItem value="rejected">ถูกปฏิเสธ</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={monthFilter} onValueChange={(v) => { setMonthFilter(v); setAlbumPage(1); setFeedPage(1); }}>
-                <SelectTrigger className="w-[130px] h-9">
-                  <SelectValue placeholder="เดือน" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">ทุกเดือน</SelectItem>
-                  <SelectItem value="1">ม.ค.</SelectItem>
-                  <SelectItem value="2">ก.พ.</SelectItem>
-                  <SelectItem value="3">มี.ค.</SelectItem>
-                  <SelectItem value="4">เม.ย.</SelectItem>
-                  <SelectItem value="5">พ.ค.</SelectItem>
-                  <SelectItem value="6">มิ.ย.</SelectItem>
-                  <SelectItem value="7">ก.ค.</SelectItem>
-                  <SelectItem value="8">ส.ค.</SelectItem>
-                  <SelectItem value="9">ก.ย.</SelectItem>
-                  <SelectItem value="10">ต.ค.</SelectItem>
-                  <SelectItem value="11">พ.ย.</SelectItem>
-                  <SelectItem value="12">ธ.ค.</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={yearFilter} onValueChange={(v) => { setYearFilter(v); setAlbumPage(1); setFeedPage(1); }}>
-                <SelectTrigger className="w-[120px] h-9">
-                  <SelectValue placeholder="ปี" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">ทุกปี</SelectItem>
-                  {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
-                    <SelectItem key={y} value={String(y)}>{y + 543}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
               {viewMode === "feed" && (
                 <Select value={categoryFilter} onValueChange={(v) => { setCategoryFilter(v); setFeedPage(1); }}>
                   <SelectTrigger className="w-[180px] h-9">
