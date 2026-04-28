@@ -712,3 +712,6 @@
 ### Feature: Pagination แบบมีปุ่มเลขหน้า
 - [x] สร้าง Pagination component ที่มีปุ่มเลขหน้า + ลูกศรหน้าแรก/สุดท้าย + ellipsis
 - [x] ใส่ใน 4 หน้า: Customers, Surveys, Installations, Gallery (2 จุด)
+
+### Bug: survey update ส่ง null fields ไป DB ไม่ได้
+- [x] แก้ไข survey.update Zod schema ให้รับ null fields ได้ — เพิ่ม .nullable() + convert null→undefined ก่อนส่ง DB

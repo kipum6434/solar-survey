@@ -251,17 +251,17 @@ const surveyRouter = router({
       id: z.number(),
       status: z.enum(["pending", "scheduled", "in_progress", "surveyed", "follow_up", "quoted", "negotiating", "won", "lost", "cancelled"]).optional(),
       scheduledDate: z.number().optional(),
-      scheduledTime: z.string().optional(),
-      assignedTo: z.number().optional(),
-      surveyNotes: z.string().optional(),
-      systemSize: z.string().optional(),
-      panelCount: z.number().optional(),
-      inverterModel: z.string().optional(),
-      quotedPrice: z.string().optional(),
-      panelBrand: z.string().optional(),
-      needBattery: z.string().optional(),
-      needOptimizer: z.string().optional(),
-      systemType: z.enum(["string", "micro", "both"]).optional(),
+      scheduledTime: z.string().nullable().optional(),
+      assignedTo: z.number().nullable().optional(),
+      surveyNotes: z.string().nullable().optional(),
+      systemSize: z.string().nullable().optional(),
+      panelCount: z.number().nullable().optional(),
+      inverterModel: z.string().nullable().optional(),
+      quotedPrice: z.string().nullable().optional(),
+      panelBrand: z.string().nullable().optional(),
+      needBattery: z.string().nullable().optional(),
+      needOptimizer: z.string().nullable().optional(),
+      systemType: z.enum(["string", "micro", "both"]).nullable().optional(),
       adminSenderId: z.number().nullable().optional(),
       surveyorIds: z.array(z.number()).optional(),
       closerId: z.number().nullable().optional(),
@@ -271,7 +271,11 @@ const surveyRouter = router({
       installerTeamId: z.number().nullable().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const { id, surveyorIds, ...data } = input;
+      const { id, surveyorIds, ...rawData } = input;
+      // Convert null values to undefined so they don't overwrite DB with null
+      const data = Object.fromEntries(
+        Object.entries(rawData).map(([k, v]) => [k, v === null ? undefined : v])
+      ) as typeof rawData;
       const oldSurvey = await db.getSurveyById(id);
       if (data.status === "surveyed" || data.status === "won") {
         (data as any).completedAt = Date.now();
