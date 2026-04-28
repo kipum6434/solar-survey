@@ -3,6 +3,7 @@ export const SURVEY_STATUS_MAP: Record<string, { label: string; color: string; b
   scheduled: { label: "นัดสำรวจแล้ว", color: "text-blue-700", bg: "bg-blue-50" },
   in_progress: { label: "กำลังสำรวจ", color: "text-amber-700", bg: "bg-amber-50" },
   surveyed: { label: "สำรวจเสร็จ", color: "text-emerald-700", bg: "bg-emerald-50" },
+  follow_up: { label: "รอติดตาม", color: "text-cyan-700", bg: "bg-cyan-50" },
   quoted: { label: "เสนอราคาแล้ว", color: "text-purple-700", bg: "bg-purple-50" },
   negotiating: { label: "เจรจาต่อรอง", color: "text-orange-700", bg: "bg-orange-50" },
   won: { label: "ปิดการขาย", color: "text-green-700", bg: "bg-green-100" },

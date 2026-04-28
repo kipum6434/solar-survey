@@ -67,6 +67,7 @@ export const surveys = mysqlTable("surveys", {
     "scheduled",
     "in_progress",
     "surveyed",
+    "follow_up",
     "quoted",
     "negotiating",
     "won",

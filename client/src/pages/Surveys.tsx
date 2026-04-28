@@ -512,6 +512,7 @@ const SURVEY_STATUS_FALLBACK: Record<string, { color: string; bg: string }> = {
   scheduled: { color: "#1d4ed8", bg: "#eff6ff" },
   in_progress: { color: "#d97706", bg: "#fffbeb" },
   surveyed: { color: "#059669", bg: "#ecfdf5" },
+  follow_up: { color: "#0891b2", bg: "#ecfeff" },
   quoted: { color: "#7c3aed", bg: "#f5f3ff" },
   negotiating: { color: "#ea580c", bg: "#fff7ed" },
   won: { color: "#15803d", bg: "#dcfce7" },

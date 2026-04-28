@@ -674,3 +674,9 @@
 - [x] เพิ่ม LINE notification ใน completeSurvey / publicCompleteSurvey / completeInstallation
 - [x] สร้างหน้าตั้งค่า LINE ใน frontend (ดู groups, เลือก target, ทดสอบส่ง) — LineSettings.tsx + route + sidebar menu
 - [x] ทดสอบ TypeScript + vitest — 247 passed (4 fail เป็น test เก่า seeded data)
+
+### Round 53: เพิ่มสถานะ "รอติดตาม" (follow_up) เมื่อสำรวจเสร็จสิ้น
+- [x] DB: เพิ่ม follow_up ใน survey status enum
+- [x] Backend: completeSurvey/publicCompleteSurvey เปลี่ยนสถานะเป็น follow_up แทน surveyed
+- [x] Frontend: เพิ่ม follow_up ใน SURVEY_STATUS_MAP
+- [x] ทดสอบ + save checkpoint — 247 passed

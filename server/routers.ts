@@ -203,7 +203,7 @@ const surveyRouter = router({
       scheduledTime: z.string().optional(),
       assignedTo: z.number().optional(),
       surveyNotes: z.string().optional(),
-      status: z.enum(["pending", "scheduled", "in_progress", "surveyed", "quoted", "negotiating", "won", "lost", "cancelled"]).optional(),
+      status: z.enum(["pending", "scheduled", "in_progress", "surveyed", "follow_up", "quoted", "negotiating", "won", "lost", "cancelled"]).optional(),
       adminSenderId: z.number().optional(),
       surveyorIds: z.array(z.number()).optional(),
       panelBrand: z.string().optional(),
@@ -245,7 +245,7 @@ const surveyRouter = router({
   update: protectedProcedure
     .input(z.object({
       id: z.number(),
-      status: z.enum(["pending", "scheduled", "in_progress", "surveyed", "quoted", "negotiating", "won", "lost", "cancelled"]).optional(),
+      status: z.enum(["pending", "scheduled", "in_progress", "surveyed", "follow_up", "quoted", "negotiating", "won", "lost", "cancelled"]).optional(),
       scheduledDate: z.number().optional(),
       scheduledTime: z.string().optional(),
       assignedTo: z.number().optional(),
@@ -338,7 +338,7 @@ const surveyRouter = router({
     .mutation(async ({ input, ctx }) => {
       const survey = await db.getSurveyById(input.id);
       if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบงานสำรวจ" });
-      await db.updateSurvey(input.id, { status: "surveyed", completedAt: Date.now() } as any);
+      await db.updateSurvey(input.id, { status: "follow_up", completedAt: Date.now() } as any);
       await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "survey", entityId: input.id, details: `สำรวจเสร็จสิ้น ID: ${input.id}` });
       // Notify owner
       try {
@@ -369,7 +369,7 @@ const surveyRouter = router({
       if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
       const survey = await db.getSurveyById(input.surveyId);
       if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบงานสำรวจ" });
-      await db.updateSurvey(input.surveyId, { status: "surveyed", completedAt: Date.now() } as any);
+      await db.updateSurvey(input.surveyId, { status: "follow_up", completedAt: Date.now() } as any);
       // Notify owner
       try {
         const surveyData = await db.getSurveyWithCustomer(input.surveyId);
