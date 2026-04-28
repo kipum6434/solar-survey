@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useCallback } from "react";
-import { compressImage } from "@/lib/imageCompression";
+import { compressImages } from "@/lib/imageCompression";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -148,33 +148,41 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
     return Math.round((validation.completedRequired / validation.requiredCount) * 100);
   }, [validation]);
 
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
+
   const handlePhotoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (file.size > 10 * 1024 * 1024) { toast.error(`${file.name} ขนาดเกิน 10MB`); continue; }
-      try {
-        const { base64, fileName } = await compressImage(file);
-        uploadPhoto.mutate({
-          surveyId,
-          fileName: `${Date.now()}-${fileName}`,
-          category: uploadCategory || "other",
-          fileData: base64,
-        });
-      } catch {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const base64 = (reader.result as string).split(",")[1];
-          uploadPhoto.mutate({
+    const validFiles = Array.from(files).filter(f => {
+      if (f.size > 10 * 1024 * 1024) { toast.error(`${f.name} ขนาดเกิน 10MB`); return false; }
+      return true;
+    });
+    if (validFiles.length === 0) return;
+    setUploadProgress({ current: 0, total: validFiles.length });
+    try {
+      const compressed = await compressImages(validFiles, (done, total) => {
+        setUploadProgress({ current: done, total });
+      });
+      const CHUNK = 3;
+      let uploaded = 0;
+      for (let i = 0; i < compressed.length; i += CHUNK) {
+        const chunk = compressed.slice(i, i + CHUNK);
+        await Promise.all(chunk.map(({ base64, fileName }) =>
+          uploadPhoto.mutateAsync({
             surveyId,
-            fileName: `${Date.now()}-${file.name}`,
+            fileName: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${fileName}`,
             category: uploadCategory || "other",
             fileData: base64,
-          });
-        };
-        reader.readAsDataURL(file);
+          })
+        ));
+        uploaded += chunk.length;
+        setUploadProgress({ current: uploaded, total: compressed.length });
       }
+      toast.success(`อัพโหลดสำเร็จ ${compressed.length} รูป`);
+    } catch (err: any) {
+      toast.error(err?.message || "อัพโหลดล้มเหลว");
+    } finally {
+      setUploadProgress(null);
     }
     e.target.value = "";
   }, [surveyId, uploadCategory, uploadPhoto]);

@@ -14,7 +14,7 @@ import { SURVEY_STATUS_MAP, PHOTO_CATEGORY_MAP, DOC_TYPE_MAP, FOLLOW_UP_METHOD_M
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useParams, useLocation } from "wouter";
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { compressImage } from "@/lib/imageCompression";
+import { compressImages } from "@/lib/imageCompression";
 import { toast } from "sonner";
 import {
   ArrowLeft, Camera, FileText, PhoneCall, Share2, MapPin, Calendar, User, Pencil,
@@ -139,38 +139,44 @@ export default function SurveyDetail() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const [photoCategory, setPhotoCategory] = useState("other");
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
 
   const handlePhotoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || !data) return;
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (file.size > 10 * 1024 * 1024) { toast.error(`${file.name} ขนาดเกิน 10MB`); continue; }
-      try {
-        const { base64, fileName } = await compressImage(file);
-        uploadPhoto.mutate({
-          surveyId,
-          customerId: data.customer.id,
-          fileName: `${Date.now()}-${fileName}`,
-          category: photoCategory as any,
-          base64Data: base64,
-          mimeType: file.type.startsWith("image/") ? "image/jpeg" : file.type,
-        });
-      } catch {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const base64 = (reader.result as string).split(",")[1];
-          uploadPhoto.mutate({
+    const validFiles = Array.from(files).filter(f => {
+      if (f.size > 10 * 1024 * 1024) { toast.error(`${f.name} ขนาดเกิน 10MB`); return false; }
+      return true;
+    });
+    if (validFiles.length === 0) return;
+    setUploadProgress({ current: 0, total: validFiles.length });
+    try {
+      const compressed = await compressImages(validFiles, (done, total) => {
+        setUploadProgress({ current: done, total });
+      });
+      // Upload in parallel chunks of 3
+      const CHUNK = 3;
+      let uploaded = 0;
+      for (let i = 0; i < compressed.length; i += CHUNK) {
+        const chunk = compressed.slice(i, i + CHUNK);
+        await Promise.all(chunk.map(({ base64, fileName, originalFile }) =>
+          uploadPhoto.mutateAsync({
             surveyId,
             customerId: data.customer.id,
-            fileName: `${Date.now()}-${file.name}`,
+            fileName: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${fileName}`,
             category: photoCategory as any,
             base64Data: base64,
-            mimeType: file.type,
-          });
-        };
-        reader.readAsDataURL(file);
+            mimeType: originalFile.type.startsWith("image/") ? "image/jpeg" : originalFile.type,
+          })
+        ));
+        uploaded += chunk.length;
+        setUploadProgress({ current: uploaded, total: compressed.length });
       }
+      toast.success(`อัพโหลดสำเร็จ ${compressed.length} รูป`);
+    } catch (err: any) {
+      toast.error(err?.message || "อัพโหลดล้มเหลว");
+    } finally {
+      setUploadProgress(null);
     }
     e.target.value = "";
   }, [data, photoCategory, surveyId, uploadPhoto]);
@@ -426,11 +432,11 @@ export default function SurveyDetail() {
                         </>
                       )}
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => cameraInputRef.current?.click()} className="gap-1.5" disabled={uploadPhoto.isPending}>
+                    <Button size="sm" variant="outline" onClick={() => cameraInputRef.current?.click()} className="gap-1.5" disabled={!!uploadProgress}>
                       <Camera className="h-3.5 w-3.5" /> ถ่ายรูป
                     </Button>
-                    <Button size="sm" onClick={() => photoInputRef.current?.click()} className="gap-1.5" disabled={uploadPhoto.isPending}>
-                      <Upload className="h-3.5 w-3.5" /> {uploadPhoto.isPending ? "กำลังอัพ..." : "เลือกรูป"}
+                    <Button size="sm" onClick={() => photoInputRef.current?.click()} className="gap-1.5" disabled={!!uploadProgress}>
+                      <Upload className="h-3.5 w-3.5" /> {uploadProgress ? `อัพ ${uploadProgress.current}/${uploadProgress.total}` : "เลือกรูป"}
                     </Button>
                     <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" hidden onChange={handlePhotoUpload} />
                     <input ref={photoInputRef} type="file" accept="image/*" multiple hidden onChange={handlePhotoUpload} />

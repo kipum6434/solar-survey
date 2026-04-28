@@ -689,3 +689,6 @@
 
 ### UI: เปลี่ยน filter เดือน/ปี ในแกลลอรี่ให้เป็น month tabs แบบเดียวกับหน้างานสำรวจ
 - [x] เปลี่ยน dropdown เดือน/ปี เป็นแถบเดือน (month tabs) + dropdown ปี แบบเดียวกับ Surveys.tsx
+
+### Performance: อัพโหลดรูปช้า (สำรวจ + ติดตั้ง)
+- [x] วิเคราะห์และแก้ไขปัญหาอัพโหลดรูปช้า — compress ก่อนส่ง (threshold 200KB, quality 0.7, max 1600px) / parallel upload (chunks of 3) / progress indicator "อัพ X/Y" — แก้ไขใน SurveyDetail.tsx, DeliveryTab.tsx, SharedSurvey.tsx

@@ -4,9 +4,9 @@
  * to reduce file size before uploading to S3
  */
 
-const MAX_DIMENSION = 1920; // Max width or height in pixels
-const JPEG_QUALITY = 0.8; // JPEG quality (0-1)
-const COMPRESSION_THRESHOLD = 500 * 1024; // Only compress files > 500KB
+const MAX_DIMENSION = 1600; // Max width or height in pixels
+const JPEG_QUALITY = 0.7; // JPEG quality (0-1)
+const COMPRESSION_THRESHOLD = 200 * 1024; // Compress files > 200KB
 
 /**
  * Compress an image file using Canvas API
@@ -16,28 +16,12 @@ const COMPRESSION_THRESHOLD = 500 * 1024; // Only compress files > 500KB
 export async function compressImage(file: File): Promise<{ base64: string; fileName: string }> {
   // Skip non-image files
   if (!file.type.startsWith("image/")) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = (reader.result as string).split(",")[1];
-        resolve({ base64, fileName: file.name });
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+    return fileToBase64(file);
   }
 
   // Skip small files (already small enough)
   if (file.size <= COMPRESSION_THRESHOLD) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = (reader.result as string).split(",")[1];
-        resolve({ base64, fileName: file.name });
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+    return fileToBase64(file);
   }
 
   return new Promise((resolve, reject) => {
@@ -85,15 +69,51 @@ export async function compressImage(file: File): Promise<{ base64: string; fileN
     img.onerror = () => {
       URL.revokeObjectURL(url);
       // Fallback: return original file as base64
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = (reader.result as string).split(",")[1];
-        resolve({ base64, fileName: file.name });
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
+      fileToBase64(file).then(resolve).catch(reject);
     };
 
     img.src = url;
+  });
+}
+
+/**
+ * Compress multiple images in parallel (max concurrency 3)
+ * Returns results in order, with progress callback
+ */
+export async function compressImages(
+  files: File[],
+  onProgress?: (completed: number, total: number) => void
+): Promise<{ base64: string; fileName: string; originalFile: File }[]> {
+  const results: { base64: string; fileName: string; originalFile: File }[] = [];
+  let completed = 0;
+  const total = files.length;
+
+  // Process in chunks of 3 for parallel compression
+  const CHUNK_SIZE = 3;
+  for (let i = 0; i < files.length; i += CHUNK_SIZE) {
+    const chunk = files.slice(i, i + CHUNK_SIZE);
+    const chunkResults = await Promise.all(
+      chunk.map(async (file) => {
+        const { base64, fileName } = await compressImage(file);
+        completed++;
+        onProgress?.(completed, total);
+        return { base64, fileName, originalFile: file };
+      })
+    );
+    results.push(...chunkResults);
+  }
+
+  return results;
+}
+
+function fileToBase64(file: File): Promise<{ base64: string; fileName: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(",")[1];
+      resolve({ base64, fileName: file.name });
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
   });
 }

@@ -4,7 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { SURVEY_STATUS_MAP, PHOTO_CATEGORY_MAP } from "@/lib/constants";
 import { useParams } from "wouter";
 import { useState, useRef, useCallback, useMemo } from "react";
-import { compressImage } from "@/lib/imageCompression";
+import { compressImages } from "@/lib/imageCompression";
 import {
   Camera, MapPin, Calendar, Phone, Mail, Zap, Home, Gauge,
   X, Image, Sun, Wrench, FolderDown, Download, Upload, Trash2,
@@ -366,35 +366,37 @@ function PublicDeliverySection({ surveyId, token }: { surveyId: number; token: s
     onError: (e: any) => { toast.error(e.message || "ส่งมอบล้มเหลว"); setConfirmSubmit(false); },
   });
 
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
+
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     const category = activeCategory.current;
     setUploadingCategory(category);
-
-    // Compress and upload all selected files
-    for (const file of Array.from(files)) {
-      try {
-        const { base64, fileName } = await compressImage(file);
-        uploadMutation.mutate({
-          token,
-          surveyId,
-          fileName,
-          fileData: base64,
-          category,
-        });
-      } catch {
-        // Fallback: upload original
-        const reader = new FileReader();
-        reader.onload = () => {
-          const base64 = (reader.result as string).split(",")[1];
-          uploadMutation.mutate({ token, surveyId, fileName: file.name, fileData: base64, category });
-        };
-        reader.readAsDataURL(file);
+    const validFiles = Array.from(files).filter(f => f.size <= 10 * 1024 * 1024);
+    if (validFiles.length === 0) { setUploadingCategory(null); return; }
+    setUploadProgress({ current: 0, total: validFiles.length });
+    try {
+      const compressed = await compressImages(validFiles, (done, total) => {
+        setUploadProgress({ current: done, total });
+      });
+      const CHUNK = 3;
+      let uploaded = 0;
+      for (let i = 0; i < compressed.length; i += CHUNK) {
+        const chunk = compressed.slice(i, i + CHUNK);
+        await Promise.all(chunk.map(({ base64, fileName }) =>
+          uploadMutation.mutateAsync({ token, surveyId, fileName, fileData: base64, category })
+        ));
+        uploaded += chunk.length;
+        setUploadProgress({ current: uploaded, total: compressed.length });
       }
+      toast.success(`อัพโหลดสำเร็จ ${compressed.length} รูป`);
+    } catch (err: any) {
+      toast.error(err?.message || "อัพโหลดล้มเหลว");
+    } finally {
+      setUploadProgress(null);
+      setUploadingCategory(null);
     }
-
-    // Reset inputs
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (cameraInputRef.current) cameraInputRef.current.value = "";
   }, [token, surveyId, uploadMutation]);
