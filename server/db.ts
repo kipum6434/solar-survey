@@ -118,7 +118,7 @@ export async function getCustomers(opts: { search?: string; page?: number; limit
     conditions.push(sql`YEAR(${customers.createdAt}) = ${year}`);
   }
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-  const data = await db.select().from(customers).where(whereClause).orderBy(desc(customers.createdAt)).limit(limit).offset(offset);
+  const data = await db.select().from(customers).where(whereClause).orderBy(desc(customers.createdAt), desc(customers.id)).limit(limit).offset(offset);
   const countQ = whereClause
     ? await db.select({ count: sql<number>`count(*)` }).from(customers).where(whereClause)
     : await db.select({ count: sql<number>`count(*)` }).from(customers);
@@ -300,7 +300,7 @@ export async function getSurveys(opts: { customerId?: number; status?: string; a
   if (startDate) conditions.push(gte(surveys.scheduledDate, startDate));
   if (endDate) conditions.push(lte(surveys.scheduledDate, endDate));
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-  const data = await db.select().from(surveys).where(whereClause).orderBy(desc(surveys.createdAt)).limit(limit).offset(offset);
+  const data = await db.select().from(surveys).where(whereClause).orderBy(desc(surveys.createdAt), desc(surveys.id)).limit(limit).offset(offset);
   const countQ = whereClause
     ? await db.select({ count: sql<number>`count(*)` }).from(surveys).where(whereClause)
     : await db.select({ count: sql<number>`count(*)` }).from(surveys);
@@ -1093,7 +1093,7 @@ export async function getInstallations(opts: any) {
   }).from(surveys)
     .innerJoin(customers, eq(surveys.customerId, customers.id))
     .where(whereClause)
-    .orderBy(asc(surveys.installationDate))
+    .orderBy(asc(surveys.installationDate), desc(surveys.id))
     .limit(limit)
     .offset(offset);
 
@@ -1212,13 +1212,13 @@ export async function getAllFiles(opts: { page?: number; limit?: number; search?
     .where(docConditions.length > 0 ? and(...docConditions) : undefined);
 
   if (fileType === 'photo') {
-    const photos = await photosQuery.orderBy(desc(surveyPhotos.createdAt)).limit(limit).offset(offset);
+    const photos = await photosQuery.orderBy(desc(surveyPhotos.createdAt), desc(surveyPhotos.id)).limit(limit).offset(offset);
     const countQ = await db.select({ count: sql<number>`count(*)` }).from(surveyPhotos)
       .innerJoin(customers, eq(surveyPhotos.customerId, customers.id))
       .where(photoConditions.length > 0 ? and(...photoConditions) : undefined);
     return { data: photos, total: countQ[0]?.count ?? 0 };
   } else if (fileType === 'document') {
-    const docs = await docsQuery.orderBy(desc(surveyDocuments.createdAt)).limit(limit).offset(offset);
+    const docs = await docsQuery.orderBy(desc(surveyDocuments.createdAt), desc(surveyDocuments.id)).limit(limit).offset(offset);
     const countQ = await db.select({ count: sql<number>`count(*)` }).from(surveyDocuments)
       .innerJoin(customers, eq(surveyDocuments.customerId, customers.id))
       .where(docConditions.length > 0 ? and(...docConditions) : undefined);

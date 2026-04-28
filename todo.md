@@ -715,3 +715,6 @@
 
 ### Bug: survey update ส่ง null fields ไป DB ไม่ได้
 - [x] แก้ไข survey.update Zod schema ให้รับ null fields ได้ — เพิ่ม .nullable() + convert null→undefined ก่อนส่ง DB
+
+### Bug: Pagination ข้อมูลซ้ำระหว่างหน้า
+- [x] เพิ่ม secondary ORDER BY (id DESC) ในทุก list query (customers, surveys, installations, gallery photos/docs) เพื่อป้องกันข้อมูลซ้ำระหว่างหน้า
