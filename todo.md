@@ -723,3 +723,6 @@
 
 ### Bug Fix: Sticky Scrollbar ไม่แสดงบนเว็บจริง
 - [x] ตรวจสอบและแก้ไข StickyScrollbar component ให้แสดง scrollbar ลอยด้านล่างจอ
+
+### Bug: ตรวจลูกค้าซ้ำไม่แจ้งเตือนตอนเพิ่มลูกค้าด้วยเบอร์ซ้ำ
+- [ ] แก้ไข AddCustomerDialog ให้ onBlur เบอร์โทรแสดง warning เมื่อเบอร์ซ้ำ
