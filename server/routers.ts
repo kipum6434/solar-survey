@@ -749,6 +749,7 @@ const shareLinkRouter = router({
       needOptimizer: z.string().optional(),
       systemType: z.enum(["string", "micro", "both"]).optional(),
       surveyNotes: z.string().optional(),
+      quotedPrice: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
       const link = await db.getShareLinkByToken(input.token);
@@ -758,6 +759,41 @@ const shareLinkRouter = router({
       if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
       const { token, surveyId, ...data } = input;
       await db.updateSurvey(surveyId, data);
+      return { success: true };
+    }),
+
+  // Public update customer info (ลิงก์สำรวจ — กรอกข้อมูลลูกค้า)
+  publicUpdateCustomerInfo: publicProcedure
+    .input(z.object({
+      token: z.string(),
+      surveyId: z.number(),
+      electricityBill: z.string().optional(),
+      roofType: z.string().optional(),
+      roofArea: z.string().optional(),
+      phaseType: z.enum(["single", "three"]).optional(),
+      meterSize: z.string().optional(),
+      fullAddress: z.string().optional(),
+      subDistrict: z.string().optional(),
+      district: z.string().optional(),
+      province: z.string().optional(),
+      postalCode: z.string().optional(),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const link = await db.getShareLinkByToken(input.token);
+      if (!link || !link.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
+      if (link.linkType !== "survey") throw new TRPCError({ code: "FORBIDDEN", message: "ลิงก์นี้ไม่ใช่ลิงก์สำรวจ" });
+      if (link.expiresAt && link.expiresAt < Date.now()) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์หมดอายุ" });
+      if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
+      const surveyData = await db.getSurveyWithCustomer(link.surveyId);
+      if (!surveyData) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบข้อมูล" });
+      const { token, surveyId, ...custData } = input;
+      const cleanData = Object.fromEntries(
+        Object.entries(custData).filter(([_, v]) => v !== undefined && v !== null && v !== "")
+      );
+      if (Object.keys(cleanData).length > 0) {
+        await db.updateCustomer(surveyData.customer.id, cleanData);
+      }
       return { success: true };
     }),
 });

@@ -9,7 +9,7 @@ import { compressImages } from "@/lib/imageCompression";
 import {
   Camera, MapPin, Calendar, Phone, Zap, Home, Gauge,
   X, Sun, Upload, Trash2, CheckCircle2, Clock,
-  Save, FileText, ChevronDown, ChevronUp, Info,
+  Save, FileText, ChevronDown, ChevronUp, Info, User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,7 @@ export default function SharedSurveyField() {
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const [showCompleteSurveyConfirm, setShowCompleteSurveyConfirm] = useState(false);
   const [showTechnical, setShowTechnical] = useState(true);
+  const [showCustomerInfo, setShowCustomerInfo] = useState(true);
   const [uploadingCategory, setUploadingCategory] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
   const [deletingPhotoId, setDeletingPhotoId] = useState<number | null>(null);
@@ -41,9 +42,27 @@ export default function SharedSurveyField() {
     needOptimizer: string;
     systemType: string;
     surveyNotes: string;
+    quotedPrice: string;
   } | null>(null);
   const [techSaving, setTechSaving] = useState(false);
   const [techDirty, setTechDirty] = useState(false);
+
+  // Customer info form state
+  const [custForm, setCustForm] = useState<{
+    electricityBill: string;
+    roofType: string;
+    roofArea: string;
+    phaseType: string;
+    meterSize: string;
+    fullAddress: string;
+    subDistrict: string;
+    district: string;
+    province: string;
+    postalCode: string;
+    notes: string;
+  } | null>(null);
+  const [custSaving, setCustSaving] = useState(false);
+  const [custDirty, setCustDirty] = useState(false);
 
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -55,6 +74,7 @@ export default function SharedSurveyField() {
   const uploadPhotoMut = trpc.shareLink.publicUploadSurveyPhoto.useMutation();
   const deletePhotoMut = trpc.shareLink.publicDeleteSurveyPhoto.useMutation();
   const updateTechMut = trpc.shareLink.publicUpdateSurveyTechnical.useMutation();
+  const updateCustMut = trpc.shareLink.publicUpdateCustomerInfo.useMutation();
 
   // Build dynamic category map
   const categoryMap: Record<string, string> = useMemo(() => {
@@ -87,6 +107,24 @@ export default function SharedSurveyField() {
       needOptimizer: (s as any).needOptimizer || "",
       systemType: s.systemType || "",
       surveyNotes: s.surveyNotes || "",
+      quotedPrice: s.quotedPrice || "",
+    });
+  }
+
+  // Initialize customer form once
+  if (c && !custForm) {
+    setCustForm({
+      electricityBill: c.electricityBill || "",
+      roofType: c.roofType || "",
+      roofArea: c.roofArea || "",
+      phaseType: c.phaseType || "",
+      meterSize: c.meterSize || "",
+      fullAddress: c.fullAddress || "",
+      subDistrict: c.subDistrict || "",
+      district: c.district || "",
+      province: c.province || "",
+      postalCode: c.postalCode || "",
+      notes: c.notes || "",
     });
   }
 
@@ -158,6 +196,7 @@ export default function SharedSurveyField() {
         needOptimizer: techForm.needOptimizer || undefined,
         systemType: (techForm.systemType as "string" | "micro" | "both") || undefined,
         surveyNotes: techForm.surveyNotes || undefined,
+        quotedPrice: techForm.quotedPrice || undefined,
       });
       toast.success("บันทึกข้อมูลเทคนิคแล้ว");
       setTechDirty(false);
@@ -168,6 +207,36 @@ export default function SharedSurveyField() {
       setTechSaving(false);
     }
   }, [techForm, token, surveyId, updateTechMut, utils]);
+
+  // Save customer info
+  const handleSaveCust = useCallback(async () => {
+    if (!custForm) return;
+    setCustSaving(true);
+    try {
+      await updateCustMut.mutateAsync({
+        token,
+        surveyId,
+        electricityBill: custForm.electricityBill || undefined,
+        roofType: custForm.roofType || undefined,
+        roofArea: custForm.roofArea || undefined,
+        phaseType: (custForm.phaseType as "single" | "three") || undefined,
+        meterSize: custForm.meterSize || undefined,
+        fullAddress: custForm.fullAddress || undefined,
+        subDistrict: custForm.subDistrict || undefined,
+        district: custForm.district || undefined,
+        province: custForm.province || undefined,
+        postalCode: custForm.postalCode || undefined,
+        notes: custForm.notes || undefined,
+      });
+      toast.success("บันทึกข้อมูลลูกค้าแล้ว");
+      setCustDirty(false);
+      utils.shareLink.getByToken.invalidate({ token });
+    } catch (e: any) {
+      toast.error(e.message || "บันทึกล้มเหลว");
+    } finally {
+      setCustSaving(false);
+    }
+  }, [custForm, token, surveyId, updateCustMut, utils]);
 
   // Loading state
   if (isLoading) {
@@ -254,10 +323,10 @@ export default function SharedSurveyField() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-        {/* Customer Info */}
+        {/* Customer Info (read-only summary) */}
         <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold">ข้อมูลลูกค้า</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2"><Phone className="h-4 w-4" /> ข้อมูลลูกค้า</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <div className="flex items-center gap-2 flex-wrap">
@@ -338,11 +407,19 @@ export default function SharedSurveyField() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">อินเวอร์เตอร์</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">รุ่นอินเวอร์เตอร์</label>
                   <Input
                     value={techForm.inverterModel}
                     onChange={(e) => { setTechForm({ ...techForm, inverterModel: e.target.value }); setTechDirty(true); }}
                     placeholder="เช่น Huawei SUN2000"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">ราคาเสนอ (บาท)</label>
+                  <Input
+                    value={techForm.quotedPrice}
+                    onChange={(e) => { setTechForm({ ...techForm, quotedPrice: e.target.value }); setTechDirty(true); }}
+                    placeholder="เช่น 280000"
                   />
                 </div>
                 <div>
@@ -361,19 +438,20 @@ export default function SharedSurveyField() {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">ต้องการแบตเตอรี่</label>
-                  <Select
-                    value={techForm.needBattery || "none"}
-                    onValueChange={(v) => { setTechForm({ ...techForm, needBattery: v === "none" ? "" : v }); setTechDirty(true); }}
-                  >
-                    <SelectTrigger><SelectValue placeholder="เลือก" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">ยังไม่ระบุ</SelectItem>
-                      <SelectItem value="yes">ต้องการ</SelectItem>
-                      <SelectItem value="no">ไม่ต้องการ</SelectItem>
-                      <SelectItem value="maybe">อาจจะ</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">แบตเตอรี่</label>
+                  <Input
+                    value={techForm.needBattery}
+                    onChange={(e) => { setTechForm({ ...techForm, needBattery: e.target.value }); setTechDirty(true); }}
+                    placeholder="เช่น 2 ก้อน Tesla Powerwall"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Optimizer</label>
+                  <Input
+                    value={techForm.needOptimizer}
+                    onChange={(e) => { setTechForm({ ...techForm, needOptimizer: e.target.value }); setTechDirty(true); }}
+                    placeholder="เช่น 12 ตัว Huawei SUN2000"
+                  />
                 </div>
               </div>
               <div>
@@ -393,6 +471,133 @@ export default function SharedSurveyField() {
               >
                 <Save className="h-4 w-4" />
                 {techSaving ? "กำลังบันทึก..." : techDirty ? "บันทึกข้อมูลเทคนิค" : "บันทึกแล้ว"}
+              </Button>
+            </CardContent>
+          )}
+        </Card>
+
+        {/* Customer Info Form (editable) */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-3 cursor-pointer" onClick={() => setShowCustomerInfo(!showCustomerInfo)}>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <User className="h-4 w-4" /> ข้อมูลจากลูกค้า (กรอกได้)
+              </CardTitle>
+              {showCustomerInfo ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </div>
+          </CardHeader>
+          {showCustomerInfo && custForm && (
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">ค่าไฟ/เดือน (บาท)</label>
+                  <Input
+                    value={custForm.electricityBill}
+                    onChange={(e) => { setCustForm({ ...custForm, electricityBill: e.target.value }); setCustDirty(true); }}
+                    placeholder="เช่น 3500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">ประเภทหลังคา</label>
+                  <Input
+                    value={custForm.roofType}
+                    onChange={(e) => { setCustForm({ ...custForm, roofType: e.target.value }); setCustDirty(true); }}
+                    placeholder="เช่น เมทัลชีท"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">พื้นที่หลังคา (ตร.ม.)</label>
+                  <Input
+                    value={custForm.roofArea}
+                    onChange={(e) => { setCustForm({ ...custForm, roofArea: e.target.value }); setCustDirty(true); }}
+                    placeholder="เช่น 50"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">ระบบไฟฟ้า</label>
+                  <Select
+                    value={custForm.phaseType || "none"}
+                    onValueChange={(v) => { setCustForm({ ...custForm, phaseType: v === "none" ? "" : v }); setCustDirty(true); }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="เลือก" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">ยังไม่ระบุ</SelectItem>
+                      <SelectItem value="single">1 เฟส</SelectItem>
+                      <SelectItem value="three">3 เฟส</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">ขนาดมิเตอร์</label>
+                  <Input
+                    value={custForm.meterSize}
+                    onChange={(e) => { setCustForm({ ...custForm, meterSize: e.target.value }); setCustDirty(true); }}
+                    placeholder="เช่น 15(45)A"
+                  />
+                </div>
+              </div>
+              <div className="border-t pt-3 mt-3">
+                <p className="text-xs font-medium text-muted-foreground mb-3">ที่อยู่</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">ที่อยู่ (บ้านเลขที่ หมู่บ้าน ซอย ถนน)</label>
+                    <Input
+                      value={custForm.fullAddress}
+                      onChange={(e) => { setCustForm({ ...custForm, fullAddress: e.target.value }); setCustDirty(true); }}
+                      placeholder="เช่น 123/45 หมู่บ้านสุขสันต์ ซ.5 ถ.รัตนาธิเบศร์"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">ตำบล/แขวง</label>
+                    <Input
+                      value={custForm.subDistrict}
+                      onChange={(e) => { setCustForm({ ...custForm, subDistrict: e.target.value }); setCustDirty(true); }}
+                      placeholder="ตำบล/แขวง"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">อำเภอ/เขต</label>
+                    <Input
+                      value={custForm.district}
+                      onChange={(e) => { setCustForm({ ...custForm, district: e.target.value }); setCustDirty(true); }}
+                      placeholder="อำเภอ/เขต"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">จังหวัด</label>
+                    <Input
+                      value={custForm.province}
+                      onChange={(e) => { setCustForm({ ...custForm, province: e.target.value }); setCustDirty(true); }}
+                      placeholder="จังหวัด"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">รหัสไปรษณีย์</label>
+                    <Input
+                      value={custForm.postalCode}
+                      onChange={(e) => { setCustForm({ ...custForm, postalCode: e.target.value }); setCustDirty(true); }}
+                      placeholder="10xxx"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">หมายเหตุลูกค้า</label>
+                <Textarea
+                  value={custForm.notes}
+                  onChange={(e) => { setCustForm({ ...custForm, notes: e.target.value }); setCustDirty(true); }}
+                  placeholder="หมายเหตุเพิ่มเติม..."
+                  rows={3}
+                />
+              </div>
+              <Button
+                onClick={handleSaveCust}
+                disabled={custSaving || !custDirty}
+                className="w-full gap-2"
+                variant={custDirty ? "default" : "outline"}
+              >
+                <Save className="h-4 w-4" />
+                {custSaving ? "กำลังบันทึก..." : custDirty ? "บันทึกข้อมูลลูกค้า" : "บันทึกแล้ว"}
               </Button>
             </CardContent>
           )}
