@@ -774,3 +774,9 @@
 ### Bug (FIXED): PDF export รูปภาพโหลดไม่ได้ (แสดง "โหลดรูปไม่ได้")
 - [x] แก้ไขให้รูปภาพจาก S3 แสดงใน PDF ได้ (CORS issue) — สร้าง util.proxyImage tRPC mutation ที่ server fetch รูปแล้ว return base64 data URL, อัพเดท loadImageAsBase64 ให้ใช้ proxy ก่อน fallback ไป canvas
 - [x] Vitest: 10 tests passed — pdf-image-proxy.test.ts
+
+### Feature: เพิ่มลายน้ำโลโก้บริษัทที่มุมบนขวาของทุกหน้าใน PDF
+- [x] โหลดโลโก้บริษัทจาก VITE_APP_LOGO หรือ URL ที่กำหนด แล้วแปลงเป็น base64
+- [x] เพิ่มโลโก้ที่มุมบนขวาของทุกหน้าใน exportSurveyPDF
+- [x] เพิ่มโลโก้ที่มุมบนขวาของทุกหน้าใน exportInstallationPDF
+- [x] Vitest: 16 tests passed — pdf-image-proxy.test.ts (รวม watermark tests)

@@ -241,6 +241,46 @@ async function loadImageAsBase64(
   }
 }
 
+// ==================== LOGO WATERMARK ====================
+const LOGO_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APP_LOGO) || '';
+let cachedLogoBase64: string | null = null;
+
+async function loadLogoBase64(proxyFn?: ImageProxyFn): Promise<string | null> {
+  if (cachedLogoBase64) return cachedLogoBase64;
+  if (!LOGO_URL) return null;
+  try {
+    const result = await loadImageAsBase64(LOGO_URL, proxyFn);
+    if (result) {
+      cachedLogoBase64 = result.data;
+      return cachedLogoBase64;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+function addWatermarkToAllPages(doc: jsPDF, logoData: string): void {
+  const pageCount = doc.getNumberOfPages();
+  const LOGO_SIZE = 14; // mm
+  const LOGO_X = PAGE_WIDTH - MARGIN - LOGO_SIZE;
+  const LOGO_Y = 3; // top margin offset
+  
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    try {
+      // Draw semi-transparent background circle for the logo
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(230, 230, 230);
+      doc.setLineWidth(0.2);
+      doc.roundedRect(LOGO_X - 1, LOGO_Y - 1, LOGO_SIZE + 2, LOGO_SIZE + 2, 2, 2, 'FD');
+      
+      // Add the logo image
+      doc.addImage(logoData, 'PNG', LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE);
+    } catch {
+      // Silently skip if logo can't be added to a page
+    }
+  }
+}
+
 // ==================== SURVEY PDF ====================
 export async function exportSurveyPDF(
   survey: SurveyData,
@@ -412,7 +452,13 @@ export async function exportSurveyPDF(
     y += PHOTO_SIZE + 12;
   }
   
-  // ==================== FOOTER ====================
+  // ==================== LOGO WATERMARK + FOOTER ====================
+  onProgress?.("กำลังเพิ่มลายน้ำโลโก้...");
+  const logoData = await loadLogoBase64(imageProxyFn);
+  if (logoData) {
+    addWatermarkToAllPages(doc, logoData);
+  }
+  
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
@@ -601,7 +647,13 @@ export async function exportInstallationPDF(
     doc.text(`วันที่เสร็จ: ${formatDate(survey.completedAt)}`, MARGIN + 4, y + 8);
   }
   
-  // ==================== FOOTER ====================
+  // ==================== LOGO WATERMARK + FOOTER ====================
+  onProgress?.("กำลังเพิ่มลายน้ำโลโก้...");
+  const logoData = await loadLogoBase64(imageProxyFn);
+  if (logoData) {
+    addWatermarkToAllPages(doc, logoData);
+  }
+  
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
