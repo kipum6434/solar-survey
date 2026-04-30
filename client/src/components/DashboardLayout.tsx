@@ -42,6 +42,7 @@ import {
   BarChart3,
   ImageIcon,
   MessageSquare,
+  PhoneCall,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation, Redirect } from "wouter";
@@ -55,6 +56,7 @@ const baseMenuItems = [
   { icon: Users, label: "ลูกค้า", path: "/customers" },
   { icon: ClipboardList, label: "งานสำรวจ", path: "/surveys" },
   { icon: Wrench, label: "งานติดตั้ง", path: "/installations" },
+  { icon: PhoneCall, label: "งานติดตาม", path: "/follow-ups" },
   { icon: TrendingUp, label: "ผลงานทีม", path: "/team-performance" },
   { icon: Users2, label: "จัดการทีมงาน", path: "/team" },
   { icon: Shield, label: "จัดการผู้ใช้งาน", path: "/users", superadminOnly: true },

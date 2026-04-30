@@ -24,6 +24,7 @@ import InstallerTeams from "./pages/InstallerTeams";
 import InstallerTeamReport from "./pages/InstallerTeamReport";
 import Gallery from "./pages/Gallery";
 import LineSettings from "./pages/LineSettings";
+import FollowUps from "./pages/FollowUps";
 
 function Router() {
   return (
@@ -45,6 +46,7 @@ function Router() {
       <Route path={"/installer-teams"} component={InstallerTeams} />
       <Route path={"/installer-team-report"} component={InstallerTeamReport} />
       <Route path={"/gallery"} component={Gallery} />
+      <Route path={"/follow-ups"} component={FollowUps} />
       <Route path={"/line-settings"} component={LineSettings} />
       <Route path={"/share/:token"} component={SharedSurvey} />
       <Route path={"/survey-field/:token"} component={SharedSurveyField} />

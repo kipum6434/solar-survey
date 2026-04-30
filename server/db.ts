@@ -431,6 +431,45 @@ export async function getFollowUps(opts: { surveyId?: number; customerId?: numbe
   return db.select().from(followUps).where(whereClause).orderBy(followUps.dueDate);
 }
 
+export async function getFollowUpsWithDetails(opts: { status?: string; method?: string; startDate?: number; endDate?: number; search?: string }) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions: any[] = [];
+  if (opts.status) conditions.push(eq(followUps.status, opts.status as any));
+  if (opts.method) conditions.push(eq(followUps.method, opts.method as any));
+  if (opts.startDate) conditions.push(gte(followUps.dueDate, opts.startDate));
+  if (opts.endDate) conditions.push(lte(followUps.dueDate, opts.endDate));
+  if (opts.search) {
+    conditions.push(
+      or(
+        like(customers.name, `%${opts.search}%`),
+        like(customers.phone, `%${opts.search}%`),
+        like(followUps.notes, `%${opts.search}%`)
+      )
+    );
+  }
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  return db.select({
+    followUp: followUps,
+    customer: {
+      id: customers.id,
+      name: customers.name,
+      phone: customers.phone,
+      province: customers.province,
+      district: customers.district,
+    },
+    survey: {
+      id: surveys.id,
+      status: surveys.status,
+      systemSize: surveys.systemSize,
+    },
+  }).from(followUps)
+    .innerJoin(customers, eq(followUps.customerId, customers.id))
+    .innerJoin(surveys, eq(followUps.surveyId, surveys.id))
+    .where(whereClause)
+    .orderBy(followUps.dueDate);
+}
+
 export async function createFollowUp(data: InsertFollowUp) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");

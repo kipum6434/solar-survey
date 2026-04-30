@@ -584,6 +584,16 @@ const followUpRouter = router({
     }))
     .query(({ input }) => db.getFollowUps(input)),
 
+  listWithDetails: protectedProcedure
+    .input(z.object({
+      status: z.string().optional(),
+      method: z.string().optional(),
+      startDate: z.number().optional(),
+      endDate: z.number().optional(),
+      search: z.string().optional(),
+    }))
+    .query(({ input }) => db.getFollowUpsWithDetails(input)),
+
   create: protectedProcedure
     .input(z.object({
       surveyId: z.number(),

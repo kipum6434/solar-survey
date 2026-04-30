@@ -742,3 +742,10 @@
 - [x] ตรวจสอบว่า SurveyDetail.tsx แสดง category label อย่างไร — สาเหตุ: dynamicCategoryMap (DB) แทนที่ PHOTO_CATEGORY_MAP ทั้งหมดแทนที่จะ merge
 - [x] ตรวจสอบว่า SharedSurveyField.tsx ส่ง category key อะไรตอนอัพโหลด — ส่ง key ถูกต้อง (เช่น roof_detail)
 - [x] แก้ไข SurveyDetail.tsx: เปลี่ยนจาก ternary (เลือกอันใดอันหนึ่ง) เป็น merge ({ ...PHOTO_CATEGORY_MAP, ...dynamicCategoryMap }) เพื่อให้ key ทุกตัวมี Thai label
+
+### Feature: เพิ่มหน้า "งานติดตาม" (Follow-ups) ใน sidebar
+- [x] ตรวจสอบ data model และ backend procedures ที่มีอยู่สำหรับ follow-ups
+- [x] สร้าง backend procedure followUp.listWithDetails (join customers + surveys) + db.getFollowUpsWithDetails
+- [x] สร้างหน้า FollowUps.tsx: stats cards, month nav bar, status/method/search filters, list+table views
+- [x] เพิ่ม sidebar entry (PhoneCall icon) + route /follow-ups ใน App.tsx
+- [x] Vitest: 8 tests passed — listWithDetails procedure (filters, auth, combined)
