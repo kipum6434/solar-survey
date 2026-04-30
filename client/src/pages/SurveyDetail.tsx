@@ -26,6 +26,8 @@ import { MultiUserSelect } from "@/components/MultiUserSelect";
 import { SourceCombobox } from "@/components/SourceCombobox";
 import { StatusDropdown } from "@/components/StatusDropdown";
 import DeliveryTab from "@/components/DeliveryTab";
+import { exportSurveyPDF } from "@/lib/pdfExport";
+import { FileDown } from "lucide-react";
 
 export default function SurveyDetail() {
   const params = useParams<{ id: string }>();
@@ -249,6 +251,41 @@ export default function SurveyDetail() {
             </div>
           </div>
           <div className="flex gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={async () => {
+                try {
+                  toast.info("กำลังสร้าง PDF...");
+                  await exportSurveyPDF(
+                    {
+                      id: s.id, status: s.status, scheduledDate: s.scheduledDate,
+                      systemSize: s.systemSize, panelCount: s.panelCount,
+                      panelBrand: s.panelBrand, inverterModel: s.inverterModel,
+                      quotedPrice: s.quotedPrice, systemType: s.systemType,
+                      needBattery: s.needBattery, needOptimizer: s.needOptimizer,
+                      surveyNotes: s.surveyNotes,
+                    },
+                    {
+                      name: c.name, phone: c.phone, email: c.email,
+                      fullAddress: c.fullAddress, subDistrict: c.subDistrict,
+                      district: c.district, province: c.province,
+                      postalCode: c.postalCode, electricityBill: c.electricityBill,
+                      roofType: c.roofType, roofArea: c.roofArea,
+                      phaseType: c.phaseType, meterSize: c.meterSize, notes: c.notes,
+                    },
+                    (photos || []).map((p: any) => ({ url: p.url, category: p.category, caption: p.caption })),
+                    categoryMap,
+                  );
+                  toast.success("Export PDF สำเร็จ");
+                } catch (err: any) {
+                  toast.error(err?.message || "Export PDF ล้มเหลว");
+                }
+              }}
+            >
+              <FileDown className="h-3.5 w-3.5" /> Export PDF
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setShowEditStatus(true)} className="gap-1.5">
               <Pencil className="h-3.5 w-3.5" /> แก้ไข
             </Button>
@@ -685,7 +722,7 @@ export default function SurveyDetail() {
 
           {/* Delivery Tab */}
           <TabsContent value="delivery" className="mt-4">
-            <DeliveryTab surveyId={surveyId} installationStatus={s.installationStatus} />
+            <DeliveryTab surveyId={surveyId} installationStatus={s.installationStatus} surveyData={s} customerData={c} />
           </TabsContent>
         </Tabs>
 

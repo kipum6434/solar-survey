@@ -1,0 +1,582 @@
+import jsPDF from "jspdf";
+
+// ==================== TYPES ====================
+interface CustomerData {
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  fullAddress?: string | null;
+  subDistrict?: string | null;
+  district?: string | null;
+  province?: string | null;
+  postalCode?: string | null;
+  electricityBill?: string | number | null;
+  roofType?: string | null;
+  roofArea?: string | number | null;
+  phaseType?: string | null;
+  meterSize?: string | null;
+  notes?: string | null;
+}
+
+interface SurveyData {
+  id: number;
+  status: string;
+  scheduledDate?: number | null;
+  systemSize?: string | number | null;
+  panelCount?: number | null;
+  panelBrand?: string | null;
+  inverterModel?: string | null;
+  quotedPrice?: string | number | null;
+  estimatedCost?: string | number | null;
+  needBattery?: string | null;
+  needOptimizer?: string | null;
+  systemType?: string | null;
+  surveyNotes?: string | null;
+  installationDate?: number | null;
+  installationStatus?: string | null;
+  completedAt?: number | null;
+}
+
+interface PhotoData {
+  url: string;
+  category?: string | null;
+  caption?: string | null;
+}
+
+// ==================== CONSTANTS ====================
+const MARGIN = 15;
+const PAGE_WIDTH = 210; // A4 width in mm
+const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
+const PAGE_HEIGHT = 297; // A4 height in mm
+const LINE_HEIGHT = 6;
+const SECTION_GAP = 8;
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: "รอดำเนินการ",
+  scheduled: "นัดสำรวจแล้ว",
+  in_progress: "กำลังสำรวจ",
+  surveyed: "สำรวจเสร็จ",
+  follow_up: "รอติดตาม",
+  quoted: "เสนอราคาแล้ว",
+  negotiating: "เจรจาต่อรอง",
+  won: "ปิดการขาย",
+  lost: "ไม่สำเร็จ",
+  cancelled: "ยกเลิก",
+};
+
+const INSTALLATION_STATUS_LABELS: Record<string, string> = {
+  waiting: "รอติดตั้ง",
+  in_progress: "กำลังติดตั้ง",
+  completed: "ติดตั้งเสร็จ",
+  delivered: "ส่งมอบแล้ว",
+};
+
+const SYSTEM_TYPE_LABELS: Record<string, string> = {
+  string: "String Inverter",
+  micro: "Micro Inverter",
+  both: "ทั้งสองแบบ",
+};
+
+// ==================== FONT LOADING ====================
+// Use Sarabun font for Thai support
+let fontLoaded = false;
+let fontBase64: string | null = null;
+
+async function loadThaiFont(): Promise<string> {
+  if (fontBase64) return fontBase64;
+  
+  // Load Sarabun Regular from Google Fonts CDN
+  const fontUrl = "https://fonts.gstatic.com/s/sarabun/v15/DtVjJx26TKEr37c9YK5sulwm6gDXvwE.ttf";
+  
+  try {
+    const response = await fetch(fontUrl);
+    const buffer = await response.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    fontBase64 = btoa(binary);
+    return fontBase64;
+  } catch (e) {
+    console.error("Failed to load Thai font:", e);
+    throw new Error("ไม่สามารถโหลดฟอนต์ภาษาไทยได้");
+  }
+}
+
+async function setupFont(doc: jsPDF): Promise<void> {
+  const base64 = await loadThaiFont();
+  doc.addFileToVFS("Sarabun-Regular.ttf", base64);
+  doc.addFont("Sarabun-Regular.ttf", "Sarabun", "normal");
+  doc.setFont("Sarabun");
+  fontLoaded = true;
+}
+
+// ==================== HELPERS ====================
+function formatDate(ts: number | null | undefined): string {
+  if (!ts) return "-";
+  return new Date(ts).toLocaleDateString("th-TH", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function formatNumber(val: string | number | null | undefined): string {
+  if (val === null || val === undefined || val === "") return "-";
+  return Number(val).toLocaleString("th-TH");
+}
+
+function checkPageBreak(doc: jsPDF, y: number, needed: number): number {
+  if (y + needed > PAGE_HEIGHT - MARGIN) {
+    doc.addPage();
+    return MARGIN + 5;
+  }
+  return y;
+}
+
+function drawSectionHeader(doc: jsPDF, y: number, title: string): number {
+  y = checkPageBreak(doc, y, 12);
+  doc.setFillColor(245, 158, 11); // amber-500
+  doc.rect(MARGIN, y, 3, 8, "F");
+  doc.setFontSize(12);
+  doc.setTextColor(30, 30, 30);
+  doc.text(title, MARGIN + 6, y + 6);
+  doc.setFontSize(9);
+  return y + 12;
+}
+
+function drawKeyValue(doc: jsPDF, y: number, key: string, value: string, x?: number): number {
+  y = checkPageBreak(doc, y, LINE_HEIGHT + 2);
+  const startX = x || MARGIN + 4;
+  doc.setTextColor(100, 100, 100);
+  doc.text(key, startX, y);
+  doc.setTextColor(30, 30, 30);
+  const keyWidth = doc.getTextWidth(key + "  ");
+  doc.text(value || "-", startX + keyWidth, y);
+  return y + LINE_HEIGHT;
+}
+
+function drawKeyValueGrid(doc: jsPDF, y: number, items: { key: string; value: string }[]): number {
+  const colWidth = CONTENT_WIDTH / 2;
+  for (let i = 0; i < items.length; i += 2) {
+    y = checkPageBreak(doc, y, LINE_HEIGHT + 2);
+    // Left column
+    doc.setTextColor(100, 100, 100);
+    doc.text(items[i].key, MARGIN + 4, y);
+    doc.setTextColor(30, 30, 30);
+    const kw1 = doc.getTextWidth(items[i].key + "  ");
+    const val1 = items[i].value || "-";
+    doc.text(val1, MARGIN + 4 + kw1, y);
+    
+    // Right column
+    if (i + 1 < items.length) {
+      doc.setTextColor(100, 100, 100);
+      doc.text(items[i + 1].key, MARGIN + colWidth, y);
+      doc.setTextColor(30, 30, 30);
+      const kw2 = doc.getTextWidth(items[i + 1].key + "  ");
+      const val2 = items[i + 1].value || "-";
+      doc.text(val2, MARGIN + colWidth + kw2, y);
+    }
+    y += LINE_HEIGHT;
+  }
+  return y;
+}
+
+async function loadImageAsBase64(url: string): Promise<{ data: string; width: number; height: number } | null> {
+  try {
+    return await new Promise((resolve) => {
+      const img = new window.Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { resolve(null); return; }
+        ctx.drawImage(img, 0, 0);
+        try {
+          const data = canvas.toDataURL("image/jpeg", 0.7);
+          resolve({ data, width: img.naturalWidth, height: img.naturalHeight });
+        } catch {
+          resolve(null);
+        }
+      };
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+  } catch {
+    return null;
+  }
+}
+
+// ==================== SURVEY PDF ====================
+export async function exportSurveyPDF(
+  survey: SurveyData,
+  customer: CustomerData,
+  photos: PhotoData[],
+  categoryMap: Record<string, string>,
+  onProgress?: (step: string) => void,
+): Promise<void> {
+  onProgress?.("กำลังเตรียมเอกสาร...");
+  
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  await setupFont(doc);
+  
+  let y = MARGIN;
+  
+  // ==================== HEADER ====================
+  doc.setFillColor(245, 158, 11);
+  doc.rect(0, 0, PAGE_WIDTH, 28, "F");
+  doc.setFontSize(16);
+  doc.setTextColor(255, 255, 255);
+  doc.text("รายงานการสำรวจ Solar", MARGIN, 12);
+  doc.setFontSize(10);
+  doc.text(`ลูกค้า: ${customer.name}  |  #${survey.id}`, MARGIN, 20);
+  doc.setFontSize(8);
+  const now = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  doc.text(`พิมพ์เมื่อ: ${now}`, PAGE_WIDTH - MARGIN - doc.getTextWidth(`พิมพ์เมื่อ: ${now}`), 20);
+  
+  y = 36;
+  
+  // ==================== STATUS ====================
+  const statusLabel = STATUS_LABELS[survey.status] || survey.status;
+  doc.setFontSize(9);
+  doc.setTextColor(100, 100, 100);
+  doc.text("สถานะ: ", MARGIN + 4, y);
+  doc.setTextColor(30, 30, 30);
+  doc.text(statusLabel, MARGIN + 4 + doc.getTextWidth("สถานะ: "), y);
+  if (survey.scheduledDate) {
+    const dateStr = formatDate(survey.scheduledDate);
+    doc.setTextColor(100, 100, 100);
+    doc.text("  |  วันนัดสำรวจ: ", MARGIN + 4 + doc.getTextWidth("สถานะ: " + statusLabel), y);
+    doc.setTextColor(30, 30, 30);
+    doc.text(dateStr, MARGIN + 4 + doc.getTextWidth("สถานะ: " + statusLabel + "  |  วันนัดสำรวจ: "), y);
+  }
+  y += SECTION_GAP + 2;
+  
+  // ==================== CUSTOMER INFO ====================
+  onProgress?.("กำลังเพิ่มข้อมูลลูกค้า...");
+  y = drawSectionHeader(doc, y, "ข้อมูลลูกค้า");
+  
+  const customerItems: { key: string; value: string }[] = [
+    { key: "ชื่อ:", value: customer.name },
+    { key: "โทรศัพท์:", value: customer.phone || "-" },
+  ];
+  if (customer.email) customerItems.push({ key: "อีเมล:", value: customer.email });
+  if (customer.fullAddress) customerItems.push({ key: "ที่อยู่:", value: customer.fullAddress });
+  if (customer.subDistrict || customer.district || customer.province) {
+    customerItems.push({ key: "พื้นที่:", value: [customer.subDistrict, customer.district, customer.province, customer.postalCode].filter(Boolean).join(", ") });
+  }
+  if (customer.electricityBill) customerItems.push({ key: "ค่าไฟ/เดือน:", value: `${formatNumber(customer.electricityBill)} บาท` });
+  if (customer.roofType) customerItems.push({ key: "ประเภทหลังคา:", value: customer.roofType });
+  if (customer.roofArea) customerItems.push({ key: "พื้นที่หลังคา:", value: `${formatNumber(customer.roofArea)} ตร.ม.` });
+  if (customer.phaseType) customerItems.push({ key: "ระบบไฟ:", value: customer.phaseType === "single" ? "1 เฟส" : "3 เฟส" });
+  if (customer.meterSize) customerItems.push({ key: "ขนาดมิเตอร์:", value: customer.meterSize });
+  if (customer.notes) customerItems.push({ key: "หมายเหตุ:", value: customer.notes });
+  
+  y = drawKeyValueGrid(doc, y, customerItems);
+  y += SECTION_GAP;
+  
+  // ==================== TECHNICAL INFO ====================
+  onProgress?.("กำลังเพิ่มข้อมูลเทคนิค...");
+  y = drawSectionHeader(doc, y, "ข้อมูลทางเทคนิค");
+  
+  const techItems: { key: string; value: string }[] = [];
+  if (survey.systemSize) techItems.push({ key: "ขนาดระบบ:", value: `${survey.systemSize} kW` });
+  if (survey.panelCount) techItems.push({ key: "จำนวนแผง:", value: `${survey.panelCount} แผง` });
+  if (survey.panelBrand) techItems.push({ key: "ยี่ห้อแผง:", value: survey.panelBrand });
+  if (survey.inverterModel) techItems.push({ key: "อินเวอร์เตอร์:", value: survey.inverterModel });
+  if (survey.quotedPrice) techItems.push({ key: "ราคาเสนอ:", value: `${formatNumber(survey.quotedPrice)} บาท` });
+  if (survey.systemType) techItems.push({ key: "ประเภทระบบ:", value: SYSTEM_TYPE_LABELS[survey.systemType] || survey.systemType });
+  if (survey.needBattery) techItems.push({ key: "แบตเตอรี่:", value: survey.needBattery });
+  if (survey.needOptimizer) techItems.push({ key: "Optimizer:", value: survey.needOptimizer });
+  
+  if (techItems.length > 0) {
+    y = drawKeyValueGrid(doc, y, techItems);
+  } else {
+    doc.setTextColor(150, 150, 150);
+    doc.text("ยังไม่มีข้อมูลเทคนิค", MARGIN + 4, y);
+    y += LINE_HEIGHT;
+  }
+  
+  if (survey.surveyNotes) {
+    y += 3;
+    y = checkPageBreak(doc, y, LINE_HEIGHT * 3);
+    doc.setTextColor(100, 100, 100);
+    doc.text("หมายเหตุสำรวจ:", MARGIN + 4, y);
+    y += LINE_HEIGHT;
+    doc.setTextColor(30, 30, 30);
+    const noteLines = doc.splitTextToSize(survey.surveyNotes, CONTENT_WIDTH - 8);
+    for (const line of noteLines) {
+      y = checkPageBreak(doc, y, LINE_HEIGHT);
+      doc.text(line, MARGIN + 4, y);
+      y += LINE_HEIGHT;
+    }
+  }
+  y += SECTION_GAP;
+  
+  // ==================== PHOTOS ====================
+  if (photos.length > 0) {
+    onProgress?.(`กำลังเพิ่มรูปภาพ (${photos.length} รูป)...`);
+    y = drawSectionHeader(doc, y, `รูปภาพหน้างาน (${photos.length} รูป)`);
+    
+    const PHOTO_SIZE = 55; // mm per photo
+    const GAP = 5;
+    const COLS = 3;
+    
+    for (let i = 0; i < photos.length; i++) {
+      const col = i % COLS;
+      if (col === 0 && i > 0) {
+        y += PHOTO_SIZE + 12;
+      }
+      if (col === 0) {
+        y = checkPageBreak(doc, y, PHOTO_SIZE + 15);
+      }
+      
+      const x = MARGIN + col * (PHOTO_SIZE + GAP);
+      
+      onProgress?.(`กำลังโหลดรูปภาพ ${i + 1}/${photos.length}...`);
+      const imgData = await loadImageAsBase64(photos[i].url);
+      
+      if (imgData) {
+        // Calculate aspect ratio
+        const ratio = imgData.width / imgData.height;
+        let imgW = PHOTO_SIZE;
+        let imgH = PHOTO_SIZE;
+        if (ratio > 1) {
+          imgH = PHOTO_SIZE / ratio;
+        } else {
+          imgW = PHOTO_SIZE * ratio;
+        }
+        const offsetX = (PHOTO_SIZE - imgW) / 2;
+        const offsetY = (PHOTO_SIZE - imgH) / 2;
+        
+        // Draw border
+        doc.setDrawColor(220, 220, 220);
+        doc.setLineWidth(0.3);
+        doc.rect(x, y, PHOTO_SIZE, PHOTO_SIZE);
+        
+        doc.addImage(imgData.data, "JPEG", x + offsetX, y + offsetY, imgW, imgH);
+      } else {
+        doc.setDrawColor(220, 220, 220);
+        doc.setFillColor(245, 245, 245);
+        doc.rect(x, y, PHOTO_SIZE, PHOTO_SIZE, "FD");
+        doc.setTextColor(180, 180, 180);
+        doc.setFontSize(8);
+        doc.text("โหลดรูปไม่ได้", x + PHOTO_SIZE / 2, y + PHOTO_SIZE / 2, { align: "center" });
+        doc.setFontSize(9);
+      }
+      
+      // Category label
+      const catLabel = categoryMap[photos[i].category || "other"] || photos[i].category || "อื่นๆ";
+      doc.setFontSize(7);
+      doc.setTextColor(100, 100, 100);
+      doc.text(catLabel, x + PHOTO_SIZE / 2, y + PHOTO_SIZE + 4, { align: "center" });
+      doc.setFontSize(9);
+    }
+    
+    // Move past last row of photos
+    y += PHOTO_SIZE + 12;
+  }
+  
+  // ==================== FOOTER ====================
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7);
+    doc.setTextColor(180, 180, 180);
+    doc.text(`Solar Survey Management System  |  หน้า ${i}/${pageCount}`, PAGE_WIDTH / 2, PAGE_HEIGHT - 8, { align: "center" });
+  }
+  
+  onProgress?.("กำลังบันทึกไฟล์...");
+  doc.save(`สำรวจ-${customer.name}-${survey.id}.pdf`);
+}
+
+// ==================== INSTALLATION/HANDOVER PDF ====================
+export async function exportInstallationPDF(
+  survey: SurveyData,
+  customer: CustomerData,
+  installPhotos: PhotoData[],
+  categoryMap: Record<string, string>,
+  deliveryInfo?: { deliveryStatus?: string; deliverySubmittedAt?: number; deliveryApprovedAt?: number; deliveryRejectionReason?: string } | null,
+  onProgress?: (step: string) => void,
+): Promise<void> {
+  onProgress?.("กำลังเตรียมเอกสาร...");
+  
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  await setupFont(doc);
+  
+  let y = MARGIN;
+  
+  // ==================== HEADER ====================
+  doc.setFillColor(16, 185, 129); // emerald-500
+  doc.rect(0, 0, PAGE_WIDTH, 28, "F");
+  doc.setFontSize(16);
+  doc.setTextColor(255, 255, 255);
+  doc.text("รายงานส่งมอบงานติดตั้ง Solar", MARGIN, 12);
+  doc.setFontSize(10);
+  doc.text(`ลูกค้า: ${customer.name}  |  #${survey.id}`, MARGIN, 20);
+  doc.setFontSize(8);
+  const now = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  doc.text(`พิมพ์เมื่อ: ${now}`, PAGE_WIDTH - MARGIN - doc.getTextWidth(`พิมพ์เมื่อ: ${now}`), 20);
+  
+  y = 36;
+  
+  // ==================== INSTALLATION STATUS ====================
+  const installLabel = survey.installationStatus ? (INSTALLATION_STATUS_LABELS[survey.installationStatus] || survey.installationStatus) : "-";
+  doc.setFontSize(9);
+  doc.setTextColor(100, 100, 100);
+  doc.text("สถานะติดตั้ง: ", MARGIN + 4, y);
+  doc.setTextColor(30, 30, 30);
+  doc.text(installLabel, MARGIN + 4 + doc.getTextWidth("สถานะติดตั้ง: "), y);
+  
+  if (survey.installationDate) {
+    const dateStr = formatDate(survey.installationDate);
+    const offset = doc.getTextWidth("สถานะติดตั้ง: " + installLabel + "  |  ");
+    doc.setTextColor(100, 100, 100);
+    doc.text("  |  วันติดตั้ง: ", MARGIN + 4 + doc.getTextWidth("สถานะติดตั้ง: " + installLabel), y);
+    doc.setTextColor(30, 30, 30);
+    doc.text(dateStr, MARGIN + 4 + doc.getTextWidth("สถานะติดตั้ง: " + installLabel + "  |  วันติดตั้ง: "), y);
+  }
+  y += SECTION_GAP + 2;
+  
+  // ==================== CUSTOMER INFO ====================
+  onProgress?.("กำลังเพิ่มข้อมูลลูกค้า...");
+  y = drawSectionHeader(doc, y, "ข้อมูลลูกค้า");
+  
+  const customerItems: { key: string; value: string }[] = [
+    { key: "ชื่อ:", value: customer.name },
+    { key: "โทรศัพท์:", value: customer.phone || "-" },
+  ];
+  if (customer.fullAddress) customerItems.push({ key: "ที่อยู่:", value: customer.fullAddress });
+  if (customer.subDistrict || customer.district || customer.province) {
+    customerItems.push({ key: "พื้นที่:", value: [customer.subDistrict, customer.district, customer.province, customer.postalCode].filter(Boolean).join(", ") });
+  }
+  
+  y = drawKeyValueGrid(doc, y, customerItems);
+  y += SECTION_GAP;
+  
+  // ==================== TECHNICAL SUMMARY ====================
+  onProgress?.("กำลังเพิ่มข้อมูลเทคนิค...");
+  y = drawSectionHeader(doc, y, "ข้อมูลระบบที่ติดตั้ง");
+  
+  const techItems: { key: string; value: string }[] = [];
+  if (survey.systemSize) techItems.push({ key: "ขนาดระบบ:", value: `${survey.systemSize} kW` });
+  if (survey.panelCount) techItems.push({ key: "จำนวนแผง:", value: `${survey.panelCount} แผง` });
+  if (survey.panelBrand) techItems.push({ key: "ยี่ห้อแผง:", value: survey.panelBrand });
+  if (survey.inverterModel) techItems.push({ key: "อินเวอร์เตอร์:", value: survey.inverterModel });
+  if (survey.systemType) techItems.push({ key: "ประเภทระบบ:", value: SYSTEM_TYPE_LABELS[survey.systemType] || survey.systemType });
+  
+  if (techItems.length > 0) {
+    y = drawKeyValueGrid(doc, y, techItems);
+  }
+  y += SECTION_GAP;
+  
+  // ==================== DELIVERY INFO ====================
+  if (deliveryInfo) {
+    y = drawSectionHeader(doc, y, "ข้อมูลส่งมอบงาน");
+    
+    const deliveryStatusLabels: Record<string, string> = {
+      pending: "รอส่งมอบ",
+      submitted: "รออนุมัติ",
+      approved: "อนุมัติแล้ว",
+      rejected: "ถูกปฏิเสธ",
+    };
+    
+    const delItems: { key: string; value: string }[] = [];
+    if (deliveryInfo.deliveryStatus) delItems.push({ key: "สถานะส่งมอบ:", value: deliveryStatusLabels[deliveryInfo.deliveryStatus] || deliveryInfo.deliveryStatus });
+    if (deliveryInfo.deliverySubmittedAt) delItems.push({ key: "วันส่งมอบ:", value: formatDate(deliveryInfo.deliverySubmittedAt) });
+    if (deliveryInfo.deliveryApprovedAt) delItems.push({ key: "วันอนุมัติ:", value: formatDate(deliveryInfo.deliveryApprovedAt) });
+    if (deliveryInfo.deliveryRejectionReason) delItems.push({ key: "เหตุผลปฏิเสธ:", value: deliveryInfo.deliveryRejectionReason });
+    
+    if (delItems.length > 0) {
+      y = drawKeyValueGrid(doc, y, delItems);
+    }
+    y += SECTION_GAP;
+  }
+  
+  // ==================== INSTALLATION PHOTOS ====================
+  if (installPhotos.length > 0) {
+    onProgress?.(`กำลังเพิ่มรูปติดตั้ง (${installPhotos.length} รูป)...`);
+    y = drawSectionHeader(doc, y, `รูปภาพการติดตั้ง (${installPhotos.length} รูป)`);
+    
+    const PHOTO_SIZE = 55;
+    const GAP = 5;
+    const COLS = 3;
+    
+    for (let i = 0; i < installPhotos.length; i++) {
+      const col = i % COLS;
+      if (col === 0 && i > 0) {
+        y += PHOTO_SIZE + 12;
+      }
+      if (col === 0) {
+        y = checkPageBreak(doc, y, PHOTO_SIZE + 15);
+      }
+      
+      const x = MARGIN + col * (PHOTO_SIZE + GAP);
+      
+      onProgress?.(`กำลังโหลดรูปภาพ ${i + 1}/${installPhotos.length}...`);
+      const imgData = await loadImageAsBase64(installPhotos[i].url);
+      
+      if (imgData) {
+        const ratio = imgData.width / imgData.height;
+        let imgW = PHOTO_SIZE;
+        let imgH = PHOTO_SIZE;
+        if (ratio > 1) {
+          imgH = PHOTO_SIZE / ratio;
+        } else {
+          imgW = PHOTO_SIZE * ratio;
+        }
+        const offsetX = (PHOTO_SIZE - imgW) / 2;
+        const offsetY = (PHOTO_SIZE - imgH) / 2;
+        
+        doc.setDrawColor(220, 220, 220);
+        doc.setLineWidth(0.3);
+        doc.rect(x, y, PHOTO_SIZE, PHOTO_SIZE);
+        doc.addImage(imgData.data, "JPEG", x + offsetX, y + offsetY, imgW, imgH);
+      } else {
+        doc.setDrawColor(220, 220, 220);
+        doc.setFillColor(245, 245, 245);
+        doc.rect(x, y, PHOTO_SIZE, PHOTO_SIZE, "FD");
+        doc.setTextColor(180, 180, 180);
+        doc.setFontSize(8);
+        doc.text("โหลดรูปไม่ได้", x + PHOTO_SIZE / 2, y + PHOTO_SIZE / 2, { align: "center" });
+        doc.setFontSize(9);
+      }
+      
+      const catLabel = categoryMap[installPhotos[i].category || "other"] || installPhotos[i].category || "อื่นๆ";
+      doc.setFontSize(7);
+      doc.setTextColor(100, 100, 100);
+      doc.text(catLabel, x + PHOTO_SIZE / 2, y + PHOTO_SIZE + 4, { align: "center" });
+      doc.setFontSize(9);
+    }
+    
+    y += PHOTO_SIZE + 12;
+  }
+  
+  // ==================== COMPLETION NOTE ====================
+  if (survey.completedAt) {
+    y = checkPageBreak(doc, y, 20);
+    y += 5;
+    doc.setFillColor(240, 253, 244); // green-50
+    doc.rect(MARGIN, y - 4, CONTENT_WIDTH, 14, "F");
+    doc.setFontSize(10);
+    doc.setTextColor(22, 163, 74); // green-600
+    doc.text("✓ ติดตั้งเสร็จสิ้น", MARGIN + 4, y + 2);
+    doc.setFontSize(8);
+    doc.text(`วันที่เสร็จ: ${formatDate(survey.completedAt)}`, MARGIN + 4, y + 8);
+  }
+  
+  // ==================== FOOTER ====================
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7);
+    doc.setTextColor(180, 180, 180);
+    doc.text(`Solar Survey Management System  |  หน้า ${i}/${pageCount}`, PAGE_WIDTH / 2, PAGE_HEIGHT - 8, { align: "center" });
+  }
+  
+  onProgress?.("กำลังบันทึกไฟล์...");
+  doc.save(`ติดตั้ง-${customer.name}-${survey.id}.pdf`);
+}

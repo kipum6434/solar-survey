@@ -20,12 +20,15 @@ import { toast } from "sonner";
 import {
   Upload, Trash2, Camera, CheckCircle2, XCircle, Clock, Send,
   Image, Eye, X, Package, Plus, AlertTriangle, Download, FolderDown,
-  MessageSquare, SendHorizontal, CircleAlert, CircleCheck, Info,
+  MessageSquare, SendHorizontal, CircleAlert, CircleCheck, Info, FileDown,
 } from "lucide-react";
+import { exportInstallationPDF } from "@/lib/pdfExport";
 
 interface DeliveryTabProps {
   surveyId: number;
   installationStatus: string | null;
+  surveyData?: any;
+  customerData?: any;
 }
 
 const DELIVERY_STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: any }> = {
@@ -35,7 +38,7 @@ const DELIVERY_STATUS_MAP: Record<string, { label: string; color: string; bg: st
   rejected: { label: "ถูกปฏิเสธ", color: "text-red-700", bg: "bg-red-50", icon: XCircle },
 };
 
-export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTabProps) {
+export default function DeliveryTab({ surveyId, installationStatus, surveyData, customerData }: DeliveryTabProps) {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
 
@@ -82,6 +85,8 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
   const [rejectReason, setRejectReason] = useState("");
   const [uploadCategory, setUploadCategory] = useState<string>("");
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState<string>("");
   const [showUploadOptions, setShowUploadOptions] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -285,6 +290,61 @@ export default function DeliveryTab({ surveyId, installationStatus }: DeliveryTa
                 >
                   <FolderDown className="h-3.5 w-3.5" />
                   {isDownloadingAll ? "กำลังดาวน์โหลด..." : `ดาวน์โหลดทั้งหมด (${installPhotos.length})`}
+                </Button>
+              )}
+              {/* Export PDF */}
+              {installPhotos && installPhotos.length > 0 && surveyData && customerData && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  disabled={isExportingPDF}
+                  onClick={async () => {
+                    setIsExportingPDF(true);
+                    try {
+                      await exportInstallationPDF(
+                        {
+                          id: surveyData.id,
+                          status: surveyData.status,
+                          systemSize: surveyData.systemSize,
+                          panelCount: surveyData.panelCount,
+                          panelBrand: surveyData.panelBrand,
+                          inverterModel: surveyData.inverterModel,
+                          systemType: surveyData.systemType,
+                          installationDate: surveyData.installationDate,
+                          installationStatus: surveyData.installationStatus,
+                          completedAt: surveyData.completedAt,
+                        },
+                        {
+                          name: customerData.name,
+                          phone: customerData.phone,
+                          fullAddress: customerData.fullAddress,
+                          subDistrict: customerData.subDistrict,
+                          district: customerData.district,
+                          province: customerData.province,
+                          postalCode: customerData.postalCode,
+                        },
+                        installPhotos.map((p: any) => ({ url: p.url, category: p.category, caption: p.caption })),
+                        categoryLabelMap,
+                        deliveryInfo ? {
+                          deliveryStatus: deliveryInfo.deliveryStatus || undefined,
+                          deliverySubmittedAt: deliveryInfo.deliverySubmittedAt || undefined,
+                          deliveryApprovedAt: deliveryInfo.deliveryApprovedAt || undefined,
+                          deliveryRejectionReason: deliveryInfo.deliveryRejectionReason || undefined,
+                        } : null,
+                        (step) => setPdfProgress(step),
+                      );
+                      toast.success("Export PDF สำเร็จ");
+                    } catch (err: any) {
+                      toast.error(err?.message || "Export PDF ล้มเหลว");
+                    } finally {
+                      setIsExportingPDF(false);
+                      setPdfProgress("");
+                    }
+                  }}
+                >
+                  <FileDown className="h-3.5 w-3.5" />
+                  {isExportingPDF ? pdfProgress || "กำลัง Export..." : "Export PDF"}
                 </Button>
               )}
               {/* Submit button */}

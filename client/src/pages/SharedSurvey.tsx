@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
+import { exportSurveyPDF, exportInstallationPDF } from "@/lib/pdfExport";
+import { FileDown } from "lucide-react";
 
 export default function SharedSurvey() {
   const params = useParams<{ token: string }>();
@@ -24,6 +26,8 @@ export default function SharedSurvey() {
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const [showCompleteSurveyConfirm, setShowCompleteSurveyConfirm] = useState(false);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState<string>("");
 
   const completeSurveyMut = trpc.survey.publicCompleteSurvey.useMutation({
     onSuccess: () => { toast.success("สำรวจเสร็จสิ้นแล้ว"); window.location.reload(); },
@@ -87,14 +91,71 @@ export default function SharedSurvey() {
       {/* Header */}
       <div className="bg-white/80 backdrop-blur-sm border-b sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-              <Sun className="h-5 w-5 text-white" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                <Sun className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h1 className="font-bold text-lg">ข้อมูลสำรวจ - {c.name}</h1>
+                <p className="text-xs text-muted-foreground">Solar Survey Report</p>
+              </div>
             </div>
-            <div>
-              <h1 className="font-bold text-lg">ข้อมูลสำรวจ - {c.name}</h1>
-              <p className="text-xs text-muted-foreground">Solar Survey Report</p>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs"
+              disabled={isExportingPDF}
+              onClick={async () => {
+                setIsExportingPDF(true);
+                try {
+                  await exportSurveyPDF(
+                    {
+                      id: s.id,
+                      status: s.status,
+                      scheduledDate: s.scheduledDate,
+                      systemSize: s.systemSize,
+                      panelCount: s.panelCount,
+                      panelBrand: s.panelBrand,
+                      inverterModel: s.inverterModel,
+                      quotedPrice: s.quotedPrice,
+                      systemType: s.systemType,
+                      needBattery: s.needBattery,
+                      needOptimizer: s.needOptimizer,
+                      surveyNotes: s.surveyNotes,
+                    },
+                    {
+                      name: c.name,
+                      phone: c.phone,
+                      email: c.email,
+                      fullAddress: c.fullAddress,
+                      subDistrict: c.subDistrict,
+                      district: c.district,
+                      province: c.province,
+                      postalCode: c.postalCode,
+                      electricityBill: c.electricityBill,
+                      roofType: c.roofType,
+                      roofArea: c.roofArea,
+                      phaseType: c.phaseType,
+                      meterSize: c.meterSize,
+                      notes: c.notes,
+                    },
+                    photosData.map((p: any) => ({ url: p.url, category: p.category, caption: p.caption })),
+                    categoryMap,
+                    (step) => setPdfProgress(step),
+                  );
+                  toast.success("Export PDF สำเร็จ");
+                } catch (err: any) {
+                  toast.error(err?.message || "Export PDF ล้มเหลว");
+                } finally {
+                  setIsExportingPDF(false);
+                  setPdfProgress("");
+                }
+              }}
+            >
+              <FileDown className="h-3.5 w-3.5" />
+              {isExportingPDF ? pdfProgress || "กำลัง Export..." : "Export PDF"}
+            </Button>
           </div>
         </div>
       </div>
@@ -272,7 +333,7 @@ export default function SharedSurvey() {
         )}
 
         {/* Installation Delivery Section */}
-        <PublicDeliverySection surveyId={surveyId} token={token} />
+        <PublicDeliverySection surveyId={surveyId} token={token} surveyData={s} customerData={c} />
 
         <div className="text-center py-6 text-xs text-muted-foreground">
           Solar Survey Management System
@@ -326,7 +387,8 @@ const DELIVERY_STATUS_INFO: Record<string, { label: string; color: string; bg: s
   rejected: { label: "ถูกปฏิเสธ", color: "text-red-700", bg: "bg-red-50", icon: AlertTriangle, description: "งานถูกปฏิเสธ กรุณาแก้ไขแล้วส่งใหม่" },
 };
 
-function PublicDeliverySection({ surveyId, token }: { surveyId: number; token: string }) {
+function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { surveyId: number; token: string; surveyData?: any; customerData?: any }) {
+  const [isExportingInstPDF, setIsExportingInstPDF] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const [uploadingCategory, setUploadingCategory] = useState<string | null>(null);
@@ -425,10 +487,62 @@ function PublicDeliverySection({ surveyId, token }: { surveyId: number; token: s
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
             <HardHat className="h-4 w-4" /> ส่งมอบงานติดตั้ง
           </CardTitle>
-          <Badge variant="secondary" className={`${statusInfo.bg} ${statusInfo.color} text-xs border-0 flex items-center gap-1`}>
-            <StatusIcon className="h-3 w-3" />
-            {statusInfo.label}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {installPhotos.length > 0 && surveyData && customerData && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs"
+                disabled={isExportingInstPDF}
+                onClick={async () => {
+                  setIsExportingInstPDF(true);
+                  try {
+                    const catMap: Record<string, string> = {};
+                    for (const cat of photoCategories) catMap[cat.key] = cat.label;
+                    await exportInstallationPDF(
+                      {
+                        id: surveyData.id, status: surveyData.status,
+                        systemSize: surveyData.systemSize, panelCount: surveyData.panelCount,
+                        panelBrand: surveyData.panelBrand, inverterModel: surveyData.inverterModel,
+                        systemType: surveyData.systemType,
+                        installationDate: surveyData.installationDate,
+                        installationStatus: surveyData.installationStatus,
+                        completedAt: surveyData.completedAt,
+                      },
+                      {
+                        name: customerData.name, phone: customerData.phone,
+                        fullAddress: customerData.fullAddress,
+                        subDistrict: customerData.subDistrict,
+                        district: customerData.district,
+                        province: customerData.province,
+                        postalCode: customerData.postalCode,
+                      },
+                      installPhotos.map((p: any) => ({ url: p.url, category: p.category, caption: p.caption })),
+                      catMap,
+                      deliveryInfo ? {
+                        deliveryStatus: deliveryInfo.deliveryStatus || undefined,
+                        deliverySubmittedAt: deliveryInfo.deliverySubmittedAt || undefined,
+                        deliveryApprovedAt: deliveryInfo.deliveryApprovedAt || undefined,
+                        deliveryRejectionReason: deliveryInfo.deliveryRejectionReason || undefined,
+                      } : null,
+                    );
+                    toast.success("Export PDF สำเร็จ");
+                  } catch (err: any) {
+                    toast.error(err?.message || "Export PDF ล้มเหลว");
+                  } finally {
+                    setIsExportingInstPDF(false);
+                  }
+                }}
+              >
+                <FileDown className="h-3.5 w-3.5" />
+                {isExportingInstPDF ? "กำลัง Export..." : "Export PDF"}
+              </Button>
+            )}
+            <Badge variant="secondary" className={`${statusInfo.bg} ${statusInfo.color} text-xs border-0 flex items-center gap-1`}>
+              <StatusIcon className="h-3 w-3" />
+              {statusInfo.label}
+            </Badge>
+          </div>
         </div>
         <p className="text-xs text-muted-foreground mt-1">{statusInfo.description}</p>
       </CardHeader>

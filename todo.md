@@ -758,3 +758,12 @@
 
 ### UI (FIXED): เรียงลำดับ sidebar ตาม workflow
 - [x] เปลี่ยนลำดับ sidebar: งานสำรวจ → งานติดตาม → งานติดตั้ง (ตาม workflow จริง)
+
+### Feature (DONE): Export PDF สำหรับหน้าสำรวจและหน้าติดตั้งเสร็จ (ส่งมอบงาน)
+- [x] สร้าง client-side PDF generation ด้วย jsPDF (exportSurveyPDF + exportInstallationPDF) — รองรับภาษาไทย THSarabunNew
+- [x] สร้าง PDF รายงานสำรวจ: ข้อมูลลูกค้า + เทคนิค + รูปถ่าย (พร้อม category label)
+- [x] สร้าง PDF รายงานติดตั้ง/ส่งมอบงาน: ข้อมูลลูกค้า + ระบบ + delivery info + รูปติดตั้ง
+- [x] เพิ่มปุ่ม Export PDF ในหน้า SharedSurvey (header + PublicDeliverySection)
+- [x] เพิ่มปุ่ม Export PDF ในหน้า SurveyDetail (header ข้างปุ่มแก้ไข)
+- [x] เพิ่มปุ่ม Export PDF ในหน้า DeliveryTab (ข้างปุ่มดาวน์โหลดทั้งหมด)
+- [x] Vitest: 10 tests passed — PDF data availability, backend data shape, status labels
