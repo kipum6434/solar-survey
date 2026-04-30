@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
-import { exportSurveyPDF, exportInstallationPDF } from "@/lib/pdfExport";
+import { exportSurveyPDF, exportInstallationPDF, type ImageProxyFn } from "@/lib/pdfExport";
 import { FileDown } from "lucide-react";
 
 export default function SharedSurvey() {
@@ -28,6 +28,14 @@ export default function SharedSurvey() {
   const [showCompleteSurveyConfirm, setShowCompleteSurveyConfirm] = useState(false);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [pdfProgress, setPdfProgress] = useState<string>("");
+
+  const proxyImageMut = trpc.util.proxyImage.useMutation();
+  const imageProxyFn: ImageProxyFn = async (url: string) => {
+    try {
+      const result = await proxyImageMut.mutateAsync({ url });
+      return result?.data || null;
+    } catch { return null; }
+  };
 
   const completeSurveyMut = trpc.survey.publicCompleteSurvey.useMutation({
     onSuccess: () => { toast.success("สำรวจเสร็จสิ้นแล้ว"); window.location.reload(); },
@@ -143,6 +151,7 @@ export default function SharedSurvey() {
                     photosData.map((p: any) => ({ url: p.url, category: p.category, caption: p.caption })),
                     categoryMap,
                     (step) => setPdfProgress(step),
+                    imageProxyFn,
                   );
                   toast.success("Export PDF สำเร็จ");
                 } catch (err: any) {
@@ -150,8 +159,7 @@ export default function SharedSurvey() {
                 } finally {
                   setIsExportingPDF(false);
                   setPdfProgress("");
-                }
-              }}
+                }            }}
             >
               <FileDown className="h-3.5 w-3.5" />
               {isExportingPDF ? pdfProgress || "กำลัง Export..." : "Export PDF"}
@@ -397,6 +405,14 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const activeCategory = useRef<string>("");
 
+  const proxyImageMut2 = trpc.util.proxyImage.useMutation();
+  const imageProxyFn: ImageProxyFn = async (url: string) => {
+    try {
+      const result = await proxyImageMut2.mutateAsync({ url });
+      return result?.data || null;
+    } catch { return null; }
+  };
+
   const { data: deliveryInfo, refetch: refetchDelivery } = trpc.delivery.publicInfo.useQuery(
     { token, surveyId },
     { enabled: !!token && !!surveyId }
@@ -525,6 +541,8 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
                         deliveryApprovedAt: deliveryInfo.deliveryApprovedAt || undefined,
                         deliveryRejectionReason: deliveryInfo.deliveryRejectionReason || undefined,
                       } : null,
+                      undefined,
+                      imageProxyFn,
                     );
                     toast.success("Export PDF สำเร็จ");
                   } catch (err: any) {

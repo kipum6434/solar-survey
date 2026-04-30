@@ -2043,6 +2043,27 @@ export const appRouter = router({
   lineParser: lineParserRouter,
   lineSettings: lineSettingsRouter,
   gallery: galleryRouter,
+  util: router({
+    proxyImage: publicProcedure
+      .input(z.object({ url: z.string().url() }))
+      .mutation(async ({ input }) => {
+        try {
+          const response = await fetch(input.url);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const buffer = await response.arrayBuffer();
+          const bytes = new Uint8Array(buffer);
+          let binary = "";
+          for (let i = 0; i < bytes.length; i++) {
+            binary += String.fromCharCode(bytes[i]);
+          }
+          const base64 = Buffer.from(binary, "binary").toString("base64");
+          const contentType = response.headers.get("content-type") || "image/jpeg";
+          return { data: `data:${contentType};base64,${base64}`, width: 0, height: 0 };
+        } catch (e) {
+          return null;
+        }
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

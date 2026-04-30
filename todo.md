@@ -770,3 +770,7 @@
 
 ### Bug (FIXED): Export PDF error - Cannot read properties of undefined (reading 'widths')
 - [x] แก้ไข jsPDF font loading error — สาเหตุ: URL ฟอนต์ Sarabun เดิม return 404 เปลี่ยนเป็น GitHub raw + jsDelivr CDN พร้อม fallback
+
+### Bug (FIXED): PDF export รูปภาพโหลดไม่ได้ (แสดง "โหลดรูปไม่ได้")
+- [x] แก้ไขให้รูปภาพจาก S3 แสดงใน PDF ได้ (CORS issue) — สร้าง util.proxyImage tRPC mutation ที่ server fetch รูปแล้ว return base64 data URL, อัพเดท loadImageAsBase64 ให้ใช้ proxy ก่อน fallback ไป canvas
+- [x] Vitest: 10 tests passed — pdf-image-proxy.test.ts

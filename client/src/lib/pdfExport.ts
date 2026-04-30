@@ -191,8 +191,31 @@ function drawKeyValueGrid(doc: jsPDF, y: number, items: { key: string; value: st
   return y;
 }
 
-async function loadImageAsBase64(url: string): Promise<{ data: string; width: number; height: number } | null> {
+// Type for image proxy function passed from components
+export type ImageProxyFn = (url: string) => Promise<string | null>;
+
+async function loadImageAsBase64(
+  url: string,
+  proxyFn?: ImageProxyFn,
+): Promise<{ data: string; width: number; height: number } | null> {
   try {
+    // Strategy 1: Use server-side proxy if provided (bypasses CORS)
+    if (proxyFn) {
+      const dataUrl = await proxyFn(url);
+      if (dataUrl) {
+        // Get dimensions by loading the data URL into an Image
+        return await new Promise((resolve) => {
+          const img = new window.Image();
+          img.onload = () => {
+            resolve({ data: dataUrl, width: img.naturalWidth, height: img.naturalHeight });
+          };
+          img.onerror = () => resolve(null);
+          img.src = dataUrl;
+        });
+      }
+    }
+    
+    // Strategy 2: Direct canvas approach (works for same-origin or CORS-enabled images)
     return await new Promise((resolve) => {
       const img = new window.Image();
       img.crossOrigin = "anonymous";
@@ -225,6 +248,7 @@ export async function exportSurveyPDF(
   photos: PhotoData[],
   categoryMap: Record<string, string>,
   onProgress?: (step: string) => void,
+  imageProxyFn?: ImageProxyFn,
 ): Promise<void> {
   onProgress?.("กำลังเตรียมเอกสาร...");
   
@@ -345,7 +369,7 @@ export async function exportSurveyPDF(
       const x = MARGIN + col * (PHOTO_SIZE + GAP);
       
       onProgress?.(`กำลังโหลดรูปภาพ ${i + 1}/${photos.length}...`);
-      const imgData = await loadImageAsBase64(photos[i].url);
+      const imgData = await loadImageAsBase64(photos[i].url, imageProxyFn);
       
       if (imgData) {
         // Calculate aspect ratio
@@ -409,6 +433,7 @@ export async function exportInstallationPDF(
   categoryMap: Record<string, string>,
   deliveryInfo?: { deliveryStatus?: string; deliverySubmittedAt?: number; deliveryApprovedAt?: number; deliveryRejectionReason?: string } | null,
   onProgress?: (step: string) => void,
+  imageProxyFn?: ImageProxyFn,
 ): Promise<void> {
   onProgress?.("กำลังเตรียมเอกสาร...");
   
@@ -525,7 +550,7 @@ export async function exportInstallationPDF(
       const x = MARGIN + col * (PHOTO_SIZE + GAP);
       
       onProgress?.(`กำลังโหลดรูปภาพ ${i + 1}/${installPhotos.length}...`);
-      const imgData = await loadImageAsBase64(installPhotos[i].url);
+      const imgData = await loadImageAsBase64(installPhotos[i].url, imageProxyFn);
       
       if (imgData) {
         const ratio = imgData.width / imgData.height;

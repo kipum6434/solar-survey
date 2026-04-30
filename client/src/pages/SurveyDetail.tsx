@@ -26,7 +26,7 @@ import { MultiUserSelect } from "@/components/MultiUserSelect";
 import { SourceCombobox } from "@/components/SourceCombobox";
 import { StatusDropdown } from "@/components/StatusDropdown";
 import DeliveryTab from "@/components/DeliveryTab";
-import { exportSurveyPDF } from "@/lib/pdfExport";
+import { exportSurveyPDF, type ImageProxyFn } from "@/lib/pdfExport";
 import { FileDown } from "lucide-react";
 
 export default function SurveyDetail() {
@@ -40,6 +40,14 @@ export default function SurveyDetail() {
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const [confirmDeletePhoto, setConfirmDeletePhoto] = useState<number | null>(null);
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState<number | null>(null);
+
+  const proxyImageMut = trpc.util.proxyImage.useMutation();
+  const imageProxyFn: ImageProxyFn = async (url: string) => {
+    try {
+      const result = await proxyImageMut.mutateAsync({ url });
+      return result?.data || null;
+    } catch { return null; }
+  };
 
   const { data, isLoading, refetch } = trpc.survey.getById.useQuery({ id: surveyId });
   const { data: photos, refetch: refetchPhotos } = trpc.photo.list.useQuery({ surveyId });
@@ -277,6 +285,8 @@ export default function SurveyDetail() {
                     },
                     (photos || []).map((p: any) => ({ url: p.url, category: p.category, caption: p.caption })),
                     categoryMap,
+                    undefined,
+                    imageProxyFn,
                   );
                   toast.success("Export PDF สำเร็จ");
                 } catch (err: any) {
