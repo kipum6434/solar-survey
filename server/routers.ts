@@ -619,6 +619,14 @@ const followUpRouter = router({
       return { id };
     }),
 
+  surveysForFollowUp: protectedProcedure
+    .input(z.object({
+      search: z.string().optional(),
+      startDate: z.number().optional(),
+      endDate: z.number().optional(),
+    }))
+    .query(({ input }) => db.getSurveysForFollowUp(input)),
+
   update: protectedProcedure
     .input(z.object({
       id: z.number(),

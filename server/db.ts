@@ -431,6 +431,90 @@ export async function getFollowUps(opts: { surveyId?: number; customerId?: numbe
   return db.select().from(followUps).where(whereClause).orderBy(followUps.dueDate);
 }
 
+export async function getSurveysForFollowUp(opts: { search?: string; startDate?: number; endDate?: number }) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions: any[] = [
+    or(
+      eq(surveys.status, "follow_up"),
+      eq(surveys.status, "quoted"),
+      eq(surveys.status, "negotiating")
+    )
+  ];
+  if (opts.search) {
+    conditions.push(
+      or(
+        like(customers.name, `%${opts.search}%`),
+        like(customers.phone, `%${opts.search}%`),
+        like(surveys.surveyNotes, `%${opts.search}%`)
+      )
+    );
+  }
+  if (opts.startDate) conditions.push(gte(surveys.updatedAt, new Date(opts.startDate)));
+  if (opts.endDate) conditions.push(lte(surveys.updatedAt, new Date(opts.endDate)));
+  const whereClause = and(...conditions);
+  const rows = await db.select({
+    survey: surveys,
+    customer: {
+      id: customers.id,
+      name: customers.name,
+      phone: customers.phone,
+      province: customers.province,
+      district: customers.district,
+      source: customers.source,
+    },
+  }).from(surveys)
+    .innerJoin(customers, eq(surveys.customerId, customers.id))
+    .where(whereClause)
+    .orderBy(desc(surveys.updatedAt));
+
+  // Fetch custom status labels for surveys that have statusId
+  const statusIds = rows.map(r => r.survey.statusId).filter(Boolean) as number[];
+  const customStatusMap: Record<number, { id: number; label: string; color: string; bgColor: string }> = {};
+  if (statusIds.length > 0) {
+    const csData = await db.select().from(customStatuses).where(inArray(customStatuses.id, statusIds));
+    for (const cs of csData) {
+      customStatusMap[cs.id] = { id: cs.id, label: cs.label, color: cs.color, bgColor: cs.bgColor };
+    }
+  }
+
+  // Fetch latest follow-up for each survey
+  const surveyIds = rows.map(r => r.survey.id);
+  const followUpMap: Record<number, typeof followUps.$inferSelect> = {};
+  if (surveyIds.length > 0) {
+    const fuRows = await db.select().from(followUps).where(inArray(followUps.surveyId, surveyIds)).orderBy(desc(followUps.dueDate));
+    for (const fu of fuRows) {
+      if (!followUpMap[fu.surveyId]) followUpMap[fu.surveyId] = fu;
+    }
+  }
+
+  // Fetch assignments
+  const assignmentsMap: Record<number, { role: string; name: string }[]> = {};
+  if (surveyIds.length > 0) {
+    const assignRows = await db.select({
+      surveyId: surveyAssignments.surveyId,
+      role: surveyAssignments.role,
+      teamMemberName: teamMembers.name,
+      userName: users.name,
+    }).from(surveyAssignments)
+      .leftJoin(teamMembers, eq(surveyAssignments.userId, teamMembers.id))
+      .leftJoin(users, eq(surveyAssignments.userId, users.id))
+      .where(inArray(surveyAssignments.surveyId, surveyIds));
+    for (const a of assignRows) {
+      if (!assignmentsMap[a.surveyId]) assignmentsMap[a.surveyId] = [];
+      assignmentsMap[a.surveyId].push({ role: a.role, name: a.teamMemberName || a.userName || "" });
+    }
+  }
+
+  return rows.map(r => ({
+    survey: r.survey,
+    customer: r.customer,
+    customStatus: r.survey.statusId ? customStatusMap[r.survey.statusId] || null : null,
+    latestFollowUp: followUpMap[r.survey.id] || null,
+    assignments: assignmentsMap[r.survey.id] || [],
+  }));
+}
+
 export async function getFollowUpsWithDetails(opts: { status?: string; method?: string; startDate?: number; endDate?: number; search?: string }) {
   const db = await getDb();
   if (!db) return [];

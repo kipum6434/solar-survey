@@ -749,3 +749,12 @@
 - [x] สร้างหน้า FollowUps.tsx: stats cards, month nav bar, status/method/search filters, list+table views
 - [x] เพิ่ม sidebar entry (PhoneCall icon) + route /follow-ups ใน App.tsx
 - [x] Vitest: 8 tests passed — listWithDetails procedure (filters, auth, combined)
+
+### Bug (FIXED): หน้างานติดตามไม่แสดงงานที่สถานะ "รอติดตาม"
+- [x] แก้ไขหน้างานติดตามให้ดึงจาก surveys ที่สถานะ follow_up/quoted/negotiating โดยตรง
+- [x] สร้าง db.getSurveysForFollowUp + followUp.surveysForFollowUp procedure
+- [x] เขียน FollowUps.tsx ใหม่: stats cards (ทั้งหมด/รอติดตาม/เสนอราคาแล้ว/เจรจาต่อรอง) + table/list views
+- [x] Vitest: 7 tests passed — surveysForFollowUp procedure
+
+### UI (FIXED): เรียงลำดับ sidebar ตาม workflow
+- [x] เปลี่ยนลำดับ sidebar: งานสำรวจ → งานติดตาม → งานติดตั้ง (ตาม workflow จริง)
