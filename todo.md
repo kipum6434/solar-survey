@@ -737,3 +737,8 @@
 - [x] เพิ่มส่วน "ข้อมูลจากลูกค้า": ค่าไฟ/เดือน, ประเภทหลังคา, พื้นที่หลังคา, ระบบไฟฟ้า, ขนาดมิเตอร์, ที่อยู่, ตำบล, อำเภอ, จังหวัด, รหัสไปรษณีย์, หมายเหตุลูกค้า
 - [x] อัพเดต backend: เพิ่ม quotedPrice ใน publicUpdateSurveyTechnical + สร้าง publicUpdateCustomerInfo procedure ใหม่
 - [x] Vitest: 10 tests passed — publicUpdateSurveyTechnical with quotedPrice (3) + publicUpdateCustomerInfo (7)
+
+### Bug: รูปที่อัพจากมือถือ (ลิงก์แชร์) แสดงชื่อหมวดหมู่เป็นภาษาอังกฤษ (key) แทนภาษาไทย (label)
+- [x] ตรวจสอบว่า SurveyDetail.tsx แสดง category label อย่างไร — สาเหตุ: dynamicCategoryMap (DB) แทนที่ PHOTO_CATEGORY_MAP ทั้งหมดแทนที่จะ merge
+- [x] ตรวจสอบว่า SharedSurveyField.tsx ส่ง category key อะไรตอนอัพโหลด — ส่ง key ถูกต้อง (เช่น roof_detail)
+- [x] แก้ไข SurveyDetail.tsx: เปลี่ยนจาก ternary (เลือกอันใดอันหนึ่ง) เป็น merge ({ ...PHOTO_CATEGORY_MAP, ...dynamicCategoryMap }) เพื่อให้ key ทุกตัวมี Thai label

@@ -73,7 +73,8 @@ export default function SurveyDetail() {
       dynamicCategoryMap[cat.key] = cat.label;
     }
   }
-  const categoryMap = Object.keys(dynamicCategoryMap).length > 0 ? dynamicCategoryMap : PHOTO_CATEGORY_MAP;
+  // Merge both: PHOTO_CATEGORY_MAP (fallback) + dynamicCategoryMap (DB) so all keys resolve to Thai labels
+  const categoryMap = { ...PHOTO_CATEGORY_MAP, ...dynamicCategoryMap };
 
   // Inline edit state for tech card
   const [editingTech, setEditingTech] = useState(false);
