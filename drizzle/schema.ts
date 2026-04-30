@@ -380,3 +380,16 @@ export const lineNotificationTargets = mysqlTable("line_notification_targets", {
 });
 export type LineNotificationTarget = typeof lineNotificationTargets.$inferSelect;
 export type InsertLineNotificationTarget = typeof lineNotificationTargets.$inferInsert;
+
+// ==================== COMPANY SETTINGS ====================
+export const companySettings = mysqlTable("company_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  companyName: varchar("companyName", { length: 255 }),
+  phone: varchar("phone", { length: 100 }),
+  address: text("address"),
+  logoUrl: text("logoUrl"),
+  logoFileKey: varchar("logoFileKey", { length: 500 }),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CompanySettings = typeof companySettings.$inferSelect;
+export type InsertCompanySettings = typeof companySettings.$inferInsert;

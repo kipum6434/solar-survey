@@ -780,3 +780,14 @@
 - [x] เพิ่มโลโก้ที่มุมบนขวาของทุกหน้าใน exportSurveyPDF
 - [x] เพิ่มโลโก้ที่มุมบนขวาของทุกหน้าใน exportInstallationPDF
 - [x] Vitest: 16 tests passed — pdf-image-proxy.test.ts (รวม watermark tests)
+
+### Feature: เพิ่มข้อมูลบริษัทใน header PDF + หน้าตั้งค่าอัพโหลดโลโก้
+- [x] Schema: สร้างตาราง company_settings (companyName, phone, address, logoUrl)
+- [x] Backend: CRUD API สำหรับ company_settings (get, update)
+- [x] Backend: API อัพโหลดโลโก้บริษัท (upload to S3, max 2MB, แนะนำ 512x512px)
+- [x] Frontend: สร้างหน้าตั้งค่าบริษัท (CompanySettings) — ชื่อ, เบอร์โทร, ที่อยู่, อัพโหลดโลโก้
+- [x] Frontend: แสดงขนาดแนะนำโลโก้ (ไม่เกิน 2MB, แนะนำ 512x512px PNG/JPG)
+- [x] Frontend: เพิ่มเมนู "ตั้งค่าบริษัท" ใน sidebar
+- [x] PDF: แก้ไข header ให้แสดงชื่อบริษัท, เบอร์โทร, ที่อยู่
+- [x] PDF: ใช้โลโก้จาก company_settings แทน VITE_APP_LOGO (fallback ไป VITE_APP_LOGO ถ้าไม่มี)
+- [x] Vitest: 9 tests passed — company-settings.test.ts

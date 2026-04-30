@@ -26,7 +26,7 @@ import { MultiUserSelect } from "@/components/MultiUserSelect";
 import { SourceCombobox } from "@/components/SourceCombobox";
 import { StatusDropdown } from "@/components/StatusDropdown";
 import DeliveryTab from "@/components/DeliveryTab";
-import { exportSurveyPDF, type ImageProxyFn } from "@/lib/pdfExport";
+import { exportSurveyPDF, type ImageProxyFn, type CompanyInfo } from "@/lib/pdfExport";
 import { FileDown } from "lucide-react";
 
 export default function SurveyDetail() {
@@ -48,6 +48,14 @@ export default function SurveyDetail() {
       return result?.data || null;
     } catch { return null; }
   };
+
+  const { data: companySettings } = trpc.companySettings.get.useQuery(undefined, { retry: false });
+  const companyInfoForPdf: CompanyInfo | null = companySettings ? {
+    companyName: companySettings.companyName,
+    phone: companySettings.phone,
+    address: companySettings.address,
+    logoUrl: companySettings.logoUrl,
+  } : null;
 
   const { data, isLoading, refetch } = trpc.survey.getById.useQuery({ id: surveyId });
   const { data: photos, refetch: refetchPhotos } = trpc.photo.list.useQuery({ surveyId });
@@ -287,6 +295,7 @@ export default function SurveyDetail() {
                     categoryMap,
                     undefined,
                     imageProxyFn,
+                    companyInfoForPdf,
                   );
                   toast.success("Export PDF สำเร็จ");
                 } catch (err: any) {

@@ -162,6 +162,13 @@
       "when": 1777382254387,
       "tag": "0022_omniscient_norman_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "5",
+      "when": 1777547296785,
+      "tag": "0023_warm_leech",
+      "breakpoints": true
     }
   ]
 }

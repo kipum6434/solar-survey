@@ -43,6 +43,7 @@ import {
   ImageIcon,
   MessageSquare,
   PhoneCall,
+  Building2,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation, Redirect } from "wouter";
@@ -67,6 +68,7 @@ const baseMenuItems = [
   { icon: FolderOpen, label: "จัดการไฟล์", path: "/file-management" },
   { icon: CalendarDays, label: "ปฏิทิน", path: "/calendar" },
   { icon: MessageSquare, label: "ตั้งค่า LINE", path: "/line-settings", superadminOnly: true },
+  { icon: Building2, label: "ตั้งค่าบริษัท", path: "/company-settings" },
   { icon: Bell, label: "แจ้งเตือน", path: "/notifications" },
 ];
 

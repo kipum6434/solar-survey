@@ -43,6 +43,13 @@ interface PhotoData {
   caption?: string | null;
 }
 
+export interface CompanyInfo {
+  companyName?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  logoUrl?: string | null;
+}
+
 // ==================== CONSTANTS ====================
 const MARGIN = 15;
 const PAGE_WIDTH = 210; // A4 width in mm
@@ -245,13 +252,20 @@ async function loadImageAsBase64(
 const LOGO_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APP_LOGO) || '';
 let cachedLogoBase64: string | null = null;
 
-async function loadLogoBase64(proxyFn?: ImageProxyFn): Promise<string | null> {
-  if (cachedLogoBase64) return cachedLogoBase64;
-  if (!LOGO_URL) return null;
+let lastLogoSource: string | null = null;
+
+async function loadLogoBase64(proxyFn?: ImageProxyFn, customLogoUrl?: string | null): Promise<string | null> {
+  const logoSource = customLogoUrl || LOGO_URL;
+  if (!logoSource) return null;
+  
+  // Use cache only if the logo source hasn't changed
+  if (cachedLogoBase64 && lastLogoSource === logoSource) return cachedLogoBase64;
+  
   try {
-    const result = await loadImageAsBase64(LOGO_URL, proxyFn);
+    const result = await loadImageAsBase64(logoSource, proxyFn);
     if (result) {
       cachedLogoBase64 = result.data;
+      lastLogoSource = logoSource;
       return cachedLogoBase64;
     }
   } catch { /* ignore */ }
@@ -289,6 +303,7 @@ export async function exportSurveyPDF(
   categoryMap: Record<string, string>,
   onProgress?: (step: string) => void,
   imageProxyFn?: ImageProxyFn,
+  companyInfo?: CompanyInfo | null,
 ): Promise<void> {
   onProgress?.("กำลังเตรียมเอกสาร...");
   
@@ -298,18 +313,58 @@ export async function exportSurveyPDF(
   let y = MARGIN;
   
   // ==================== HEADER ====================
+  const hasCompanyInfo = companyInfo?.companyName || companyInfo?.phone || companyInfo?.address;
+  const headerHeight = hasCompanyInfo ? 36 : 28;
   doc.setFillColor(245, 158, 11);
-  doc.rect(0, 0, PAGE_WIDTH, 28, "F");
-  doc.setFontSize(16);
-  doc.setTextColor(255, 255, 255);
-  doc.text("รายงานการสำรวจ Solar", MARGIN, 12);
-  doc.setFontSize(10);
-  doc.text(`ลูกค้า: ${customer.name}  |  #${survey.id}`, MARGIN, 20);
-  doc.setFontSize(8);
-  const now = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
-  doc.text(`พิมพ์เมื่อ: ${now}`, PAGE_WIDTH - MARGIN - doc.getTextWidth(`พิมพ์เมื่อ: ${now}`), 20);
+  doc.rect(0, 0, PAGE_WIDTH, headerHeight, "F");
   
-  y = 36;
+  if (hasCompanyInfo) {
+    // Company name as main title
+    doc.setFontSize(14);
+    doc.setTextColor(255, 255, 255);
+    doc.text(companyInfo?.companyName || "รายงานการสำรวจ Solar", MARGIN, 10);
+    
+    // Company contact info
+    doc.setFontSize(7);
+    doc.setTextColor(255, 255, 255);
+    let contactY = 16;
+    const contactParts: string[] = [];
+    if (companyInfo?.phone) contactParts.push(`โทร: ${companyInfo.phone}`);
+    if (companyInfo?.address) contactParts.push(companyInfo.address);
+    if (contactParts.length > 0) {
+      const contactText = contactParts.join("  |  ");
+      // Truncate if too long
+      const maxWidth = PAGE_WIDTH - MARGIN * 2 - 20;
+      let displayText = contactText;
+      if (doc.getTextWidth(displayText) > maxWidth) {
+        while (doc.getTextWidth(displayText + "...") > maxWidth && displayText.length > 0) {
+          displayText = displayText.slice(0, -1);
+        }
+        displayText += "...";
+      }
+      doc.text(displayText, MARGIN, contactY);
+    }
+    
+    // Survey info line
+    doc.setFontSize(10);
+    doc.text("รายงานการสำรวจ Solar", MARGIN, 23);
+    doc.setFontSize(9);
+    doc.text(`ลูกค้า: ${customer.name}  |  #${survey.id}`, MARGIN, 29);
+    doc.setFontSize(8);
+    const now = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    doc.text(`พิมพ์เมื่อ: ${now}`, PAGE_WIDTH - MARGIN - doc.getTextWidth(`พิมพ์เมื่อ: ${now}`), 29);
+  } else {
+    doc.setFontSize(16);
+    doc.setTextColor(255, 255, 255);
+    doc.text("รายงานการสำรวจ Solar", MARGIN, 12);
+    doc.setFontSize(10);
+    doc.text(`ลูกค้า: ${customer.name}  |  #${survey.id}`, MARGIN, 20);
+    doc.setFontSize(8);
+    const now = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    doc.text(`พิมพ์เมื่อ: ${now}`, PAGE_WIDTH - MARGIN - doc.getTextWidth(`พิมพ์เมื่อ: ${now}`), 20);
+  }
+  
+  y = headerHeight + 8;
   
   // ==================== STATUS ====================
   const statusLabel = STATUS_LABELS[survey.status] || survey.status;
@@ -454,17 +509,18 @@ export async function exportSurveyPDF(
   
   // ==================== LOGO WATERMARK + FOOTER ====================
   onProgress?.("กำลังเพิ่มลายน้ำโลโก้...");
-  const logoData = await loadLogoBase64(imageProxyFn);
+  const logoData = await loadLogoBase64(imageProxyFn, companyInfo?.logoUrl);
   if (logoData) {
     addWatermarkToAllPages(doc, logoData);
   }
   
   const pageCount = doc.getNumberOfPages();
+  const footerCompanyName = companyInfo?.companyName || "Solar Survey Management System";
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setFontSize(7);
     doc.setTextColor(180, 180, 180);
-    doc.text(`Solar Survey Management System  |  หน้า ${i}/${pageCount}`, PAGE_WIDTH / 2, PAGE_HEIGHT - 8, { align: "center" });
+    doc.text(`${footerCompanyName}  |  หน้า ${i}/${pageCount}`, PAGE_WIDTH / 2, PAGE_HEIGHT - 8, { align: "center" });
   }
   
   onProgress?.("กำลังบันทึกไฟล์...");
@@ -480,6 +536,7 @@ export async function exportInstallationPDF(
   deliveryInfo?: { deliveryStatus?: string; deliverySubmittedAt?: number; deliveryApprovedAt?: number; deliveryRejectionReason?: string } | null,
   onProgress?: (step: string) => void,
   imageProxyFn?: ImageProxyFn,
+  companyInfo?: CompanyInfo | null,
 ): Promise<void> {
   onProgress?.("กำลังเตรียมเอกสาร...");
   
@@ -489,18 +546,53 @@ export async function exportInstallationPDF(
   let y = MARGIN;
   
   // ==================== HEADER ====================
+  const hasCompanyInfo = companyInfo?.companyName || companyInfo?.phone || companyInfo?.address;
+  const headerHeight = hasCompanyInfo ? 36 : 28;
   doc.setFillColor(16, 185, 129); // emerald-500
-  doc.rect(0, 0, PAGE_WIDTH, 28, "F");
-  doc.setFontSize(16);
-  doc.setTextColor(255, 255, 255);
-  doc.text("รายงานส่งมอบงานติดตั้ง Solar", MARGIN, 12);
-  doc.setFontSize(10);
-  doc.text(`ลูกค้า: ${customer.name}  |  #${survey.id}`, MARGIN, 20);
-  doc.setFontSize(8);
-  const now = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
-  doc.text(`พิมพ์เมื่อ: ${now}`, PAGE_WIDTH - MARGIN - doc.getTextWidth(`พิมพ์เมื่อ: ${now}`), 20);
+  doc.rect(0, 0, PAGE_WIDTH, headerHeight, "F");
   
-  y = 36;
+  if (hasCompanyInfo) {
+    doc.setFontSize(14);
+    doc.setTextColor(255, 255, 255);
+    doc.text(companyInfo?.companyName || "รายงานส่งมอบงานติดตั้ง Solar", MARGIN, 10);
+    
+    doc.setFontSize(7);
+    doc.setTextColor(255, 255, 255);
+    const contactParts: string[] = [];
+    if (companyInfo?.phone) contactParts.push(`โทร: ${companyInfo.phone}`);
+    if (companyInfo?.address) contactParts.push(companyInfo.address);
+    if (contactParts.length > 0) {
+      const contactText = contactParts.join("  |  ");
+      const maxWidth = PAGE_WIDTH - MARGIN * 2 - 20;
+      let displayText = contactText;
+      if (doc.getTextWidth(displayText) > maxWidth) {
+        while (doc.getTextWidth(displayText + "...") > maxWidth && displayText.length > 0) {
+          displayText = displayText.slice(0, -1);
+        }
+        displayText += "...";
+      }
+      doc.text(displayText, MARGIN, 16);
+    }
+    
+    doc.setFontSize(10);
+    doc.text("รายงานส่งมอบงานติดตั้ง Solar", MARGIN, 23);
+    doc.setFontSize(9);
+    doc.text(`ลูกค้า: ${customer.name}  |  #${survey.id}`, MARGIN, 29);
+    doc.setFontSize(8);
+    const now = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    doc.text(`พิมพ์เมื่อ: ${now}`, PAGE_WIDTH - MARGIN - doc.getTextWidth(`พิมพ์เมื่อ: ${now}`), 29);
+  } else {
+    doc.setFontSize(16);
+    doc.setTextColor(255, 255, 255);
+    doc.text("รายงานส่งมอบงานติดตั้ง Solar", MARGIN, 12);
+    doc.setFontSize(10);
+    doc.text(`ลูกค้า: ${customer.name}  |  #${survey.id}`, MARGIN, 20);
+    doc.setFontSize(8);
+    const now = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    doc.text(`พิมพ์เมื่อ: ${now}`, PAGE_WIDTH - MARGIN - doc.getTextWidth(`พิมพ์เมื่อ: ${now}`), 20);
+  }
+  
+  y = headerHeight + 8;
   
   // ==================== INSTALLATION STATUS ====================
   const installLabel = survey.installationStatus ? (INSTALLATION_STATUS_LABELS[survey.installationStatus] || survey.installationStatus) : "-";
@@ -649,17 +741,18 @@ export async function exportInstallationPDF(
   
   // ==================== LOGO WATERMARK + FOOTER ====================
   onProgress?.("กำลังเพิ่มลายน้ำโลโก้...");
-  const logoData = await loadLogoBase64(imageProxyFn);
+  const logoData = await loadLogoBase64(imageProxyFn, companyInfo?.logoUrl);
   if (logoData) {
     addWatermarkToAllPages(doc, logoData);
   }
   
   const pageCount = doc.getNumberOfPages();
+  const footerCompanyName = companyInfo?.companyName || "Solar Survey Management System";
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setFontSize(7);
     doc.setTextColor(180, 180, 180);
-    doc.text(`Solar Survey Management System  |  หน้า ${i}/${pageCount}`, PAGE_WIDTH / 2, PAGE_HEIGHT - 8, { align: "center" });
+    doc.text(`${footerCompanyName}  |  หน้า ${i}/${pageCount}`, PAGE_WIDTH / 2, PAGE_HEIGHT - 8, { align: "center" });
   }
   
   onProgress?.("กำลังบันทึกไฟล์...");

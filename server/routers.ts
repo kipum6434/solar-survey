@@ -2005,6 +2005,62 @@ const lineSettingsRouter = router({
   }),
 });
 
+// ==================== COMPANY SETTINGS ROUTER ====================
+const companySettingsRouter = router({
+  get: protectedProcedure.query(async () => {
+    const settings = await db.getCompanySettings();
+    return settings || { id: 0, companyName: "", phone: "", address: "", logoUrl: null, logoFileKey: null };
+  }),
+
+  update: adminProcedure
+    .input(z.object({
+      companyName: z.string().optional(),
+      phone: z.string().optional(),
+      address: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const result = await db.updateCompanySettings(input);
+      return result;
+    }),
+
+  uploadLogo: adminProcedure
+    .input(z.object({
+      base64Data: z.string(),
+      fileName: z.string(),
+      mimeType: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      // Validate file size (max 2MB)
+      const buffer = Buffer.from(input.base64Data, "base64");
+      if (buffer.length > 2 * 1024 * 1024) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "ไฟล์โลโก้ต้องมีขนาดไม่เกิน 2MB" });
+      }
+      
+      // Delete old logo if exists
+      const existing = await db.getCompanySettings();
+      if (existing?.logoFileKey) {
+        try { await storageDelete(existing.logoFileKey); } catch { /* ignore */ }
+      }
+      
+      const ext = input.fileName.split(".").pop() || "png";
+      const key = `company/logo_${Date.now()}_${nanoid(8)}.${ext}`;
+      const contentType = input.mimeType || "image/png";
+      const { url } = await storagePut(key, buffer, contentType);
+      
+      await db.updateCompanySettings({ logoUrl: url, logoFileKey: key });
+      return { url, key };
+    }),
+
+  deleteLogo: adminProcedure.mutation(async () => {
+    const existing = await db.getCompanySettings();
+    if (existing?.logoFileKey) {
+      try { await storageDelete(existing.logoFileKey); } catch { /* ignore */ }
+    }
+    await db.updateCompanySettings({ logoUrl: null, logoFileKey: null });
+    return { success: true };
+  }),
+});
+
 // ==================== APP ROUTER ====================
 export const appRouter = router({
   system: systemRouter,
@@ -2043,6 +2099,7 @@ export const appRouter = router({
   lineParser: lineParserRouter,
   lineSettings: lineSettingsRouter,
   gallery: galleryRouter,
+  companySettings: companySettingsRouter,
   util: router({
     proxyImage: publicProcedure
       .input(z.object({ url: z.string().url() }))

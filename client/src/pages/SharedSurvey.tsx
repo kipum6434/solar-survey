@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
-import { exportSurveyPDF, exportInstallationPDF, type ImageProxyFn } from "@/lib/pdfExport";
+import { exportSurveyPDF, exportInstallationPDF, type ImageProxyFn, type CompanyInfo } from "@/lib/pdfExport";
 import { FileDown } from "lucide-react";
 
 export default function SharedSurvey() {
@@ -36,6 +36,15 @@ export default function SharedSurvey() {
       return result?.data || null;
     } catch { return null; }
   };
+
+  // Company settings for PDF header
+  const { data: companySettings } = trpc.companySettings.get.useQuery(undefined, { retry: false });
+  const companyInfoForPdf: CompanyInfo | null = companySettings ? {
+    companyName: companySettings.companyName,
+    phone: companySettings.phone,
+    address: companySettings.address,
+    logoUrl: companySettings.logoUrl,
+  } : null;
 
   const completeSurveyMut = trpc.survey.publicCompleteSurvey.useMutation({
     onSuccess: () => { toast.success("สำรวจเสร็จสิ้นแล้ว"); window.location.reload(); },
@@ -152,6 +161,7 @@ export default function SharedSurvey() {
                     categoryMap,
                     (step) => setPdfProgress(step),
                     imageProxyFn,
+                    companyInfoForPdf,
                   );
                   toast.success("Export PDF สำเร็จ");
                 } catch (err: any) {
@@ -413,6 +423,14 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
     } catch { return null; }
   };
 
+  const { data: companySettings2 } = trpc.companySettings.get.useQuery(undefined, { retry: false });
+  const companyInfoForPdf2: CompanyInfo | null = companySettings2 ? {
+    companyName: companySettings2.companyName,
+    phone: companySettings2.phone,
+    address: companySettings2.address,
+    logoUrl: companySettings2.logoUrl,
+  } : null;
+
   const { data: deliveryInfo, refetch: refetchDelivery } = trpc.delivery.publicInfo.useQuery(
     { token, surveyId },
     { enabled: !!token && !!surveyId }
@@ -543,6 +561,7 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
                       } : null,
                       undefined,
                       imageProxyFn,
+                      companyInfoForPdf2,
                     );
                     toast.success("Export PDF สำเร็จ");
                   } catch (err: any) {

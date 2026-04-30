@@ -22,7 +22,7 @@ import {
   Image, Eye, X, Package, Plus, AlertTriangle, Download, FolderDown,
   MessageSquare, SendHorizontal, CircleAlert, CircleCheck, Info, FileDown,
 } from "lucide-react";
-import { exportInstallationPDF, type ImageProxyFn } from "@/lib/pdfExport";
+import { exportInstallationPDF, type ImageProxyFn, type CompanyInfo } from "@/lib/pdfExport";
 
 interface DeliveryTabProps {
   surveyId: number;
@@ -49,6 +49,14 @@ export default function DeliveryTab({ surveyId, installationStatus, surveyData, 
       return result?.data || null;
     } catch { return null; }
   };
+
+  const { data: companySettings } = trpc.companySettings.get.useQuery(undefined, { retry: false });
+  const companyInfoForPdf: CompanyInfo | null = companySettings ? {
+    companyName: companySettings.companyName,
+    phone: companySettings.phone,
+    address: companySettings.address,
+    logoUrl: companySettings.logoUrl,
+  } : null;
 
   // Queries
   const { data: deliveryInfo, refetch: refetchDelivery } = trpc.delivery.info.useQuery({ surveyId });
@@ -342,6 +350,7 @@ export default function DeliveryTab({ surveyId, installationStatus, surveyData, 
                         } : null,
                         (step) => setPdfProgress(step),
                         imageProxyFn,
+                        companyInfoForPdf,
                       );
                       toast.success("Export PDF สำเร็จ");
                     } catch (err: any) {
