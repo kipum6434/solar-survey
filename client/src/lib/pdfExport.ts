@@ -85,23 +85,31 @@ let fontBase64: string | null = null;
 async function loadThaiFont(): Promise<string> {
   if (fontBase64) return fontBase64;
   
-  // Load Sarabun Regular from Google Fonts CDN
-  const fontUrl = "https://fonts.gstatic.com/s/sarabun/v15/DtVjJx26TKEr37c9YK5sulwm6gDXvwE.ttf";
+  // Try multiple font sources for reliability
+  const fontUrls = [
+    "https://raw.githubusercontent.com/google/fonts/main/ofl/sarabun/Sarabun-Regular.ttf",
+    "https://cdn.jsdelivr.net/npm/font-th-sarabun-new@1.0.0/fonts/THSarabunNew-webfont.ttf",
+  ];
   
-  try {
-    const response = await fetch(fontUrl);
-    const buffer = await response.arrayBuffer();
-    const bytes = new Uint8Array(buffer);
-    let binary = "";
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
+  for (const fontUrl of fontUrls) {
+    try {
+      const response = await fetch(fontUrl);
+      if (!response.ok) continue;
+      const buffer = await response.arrayBuffer();
+      if (buffer.byteLength < 1000) continue; // Too small, probably not a valid font
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      fontBase64 = btoa(binary);
+      return fontBase64;
+    } catch (e) {
+      console.warn(`Failed to load font from ${fontUrl}:`, e);
+      continue;
     }
-    fontBase64 = btoa(binary);
-    return fontBase64;
-  } catch (e) {
-    console.error("Failed to load Thai font:", e);
-    throw new Error("ไม่สามารถโหลดฟอนต์ภาษาไทยได้");
   }
+  throw new Error("ไม่สามารถโหลดฟอนต์ภาษาไทยได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต");
 }
 
 async function setupFont(doc: jsPDF): Promise<void> {

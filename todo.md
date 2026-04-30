@@ -767,3 +767,6 @@
 - [x] เพิ่มปุ่ม Export PDF ในหน้า SurveyDetail (header ข้างปุ่มแก้ไข)
 - [x] เพิ่มปุ่ม Export PDF ในหน้า DeliveryTab (ข้างปุ่มดาวน์โหลดทั้งหมด)
 - [x] Vitest: 10 tests passed — PDF data availability, backend data shape, status labels
+
+### Bug (FIXED): Export PDF error - Cannot read properties of undefined (reading 'widths')
+- [x] แก้ไข jsPDF font loading error — สาเหตุ: URL ฟอนต์ Sarabun เดิม return 404 เปลี่ยนเป็น GitHub raw + jsDelivr CDN พร้อม fallback
