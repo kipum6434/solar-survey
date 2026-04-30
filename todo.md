@@ -728,9 +728,9 @@
 - [x] แก้ไข AddCustomerDialog ให้ onBlur เบอร์โทรแสดง warning เมื่อเบอร์ซ้ำ (ทำงานถูกต้องแล้ว — ต้อง Publish ใหม่)
 
 ### Bug: ข้อมูลสำรวจที่กรอกจากมือถือ (ลิงก์แชร์) ไม่แสดงเมื่อเปิดจากคอม (รูปภาพไม่มีปัญหา)
-- [ ] ตรวจสอบ flow การบันทึกข้อมูลสำรวจจากลิงก์แชร์ (shared survey link)
-- [ ] ตรวจสอบว่าข้อมูลถูกบันทึกลง DB จริงหรือไม่
-- [ ] แก้ไขปัญหาที่พบ
+- [x] ตรวจสอบ flow การบันทึกข้อมูลสำรวจจากลิงก์แชร์ (shared survey link) — flow ถูกต้อง: publicUpdateSurveyTechnical → db.updateSurvey, publicUpdateCustomerInfo → db.updateCustomer
+- [x] ตรวจสอบว่าข้อมูลถูกบันทึกลง DB จริงหรือไม่ — ใช่ ข้อมูลถูกบันทึกลง DB ผ่าน Drizzle ORM ปกติ
+- [x] แก้ไขปัญหาที่พบ — สาเหตุ: หน้า SharedSurveyField เดิมมีฟิลด์ไม่ครบ (ไม่มี quotedPrice, ไม่มี customer info form) ตอนนี้เพิ่มครบแล้ว + สร้าง publicUpdateCustomerInfo procedure ใหม่
 
 ### Feature: อัพเดตหน้าลิงก์แชร์สำรวจ (มือถือ) ให้กรอกข้อมูลครบเหมือนคอม
 - [x] เพิ่มฟิลด์เทคนิค: ราคาเสนอ, แบตเตอรี่, Optimizer ในหน้ามือถือ
