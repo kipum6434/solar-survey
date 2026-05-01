@@ -1076,7 +1076,16 @@ export async function getTeamMembers(role?: string) {
   const db = await getDb();
   if (!db) return [];
   if (role) {
-    return db.select().from(teamMembers).where(and(eq(teamMembers.role, role as any), eq(teamMembers.isActive, true))).orderBy(teamMembers.name);
+    // Filter by roles JSON array (new multi-role) OR legacy single role column
+    return db.select().from(teamMembers).where(
+      and(
+        eq(teamMembers.isActive, true),
+        or(
+          sql`JSON_CONTAINS(${teamMembers.roles}, ${JSON.stringify(role)})`,
+          eq(teamMembers.role, role as any)
+        )
+      )
+    ).orderBy(teamMembers.name);
   }
   return db.select().from(teamMembers).where(eq(teamMembers.isActive, true)).orderBy(teamMembers.name);
 }
@@ -1087,17 +1096,26 @@ export async function getAllTeamMembers() {
   return db.select().from(teamMembers).orderBy(teamMembers.role, teamMembers.name);
 }
 
-export async function createTeamMember(data: { name: string; phone?: string; email?: string; role: "admin_sender" | "surveyor" | "closer"; linkedUserId?: number | null }) {
+export async function createTeamMember(data: { name: string; phone?: string; email?: string; role: "admin_sender" | "surveyor" | "closer"; roles?: string[]; linkedUserId?: number | null }) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  const result = await db.insert(teamMembers).values(data);
-  return { id: result[0].insertId, ...data };
+  const { roles: rolesArr, ...rest } = data;
+  const rolesJson = rolesArr && rolesArr.length > 0 ? JSON.stringify(rolesArr) : JSON.stringify([data.role]);
+  const result = await db.insert(teamMembers).values({ ...rest, roles: rolesJson });
+  return { id: result[0].insertId, ...data, roles: rolesJson };
 }
 
-export async function updateTeamMember(id: number, data: { name?: string; phone?: string; email?: string; role?: "admin_sender" | "surveyor" | "closer"; isActive?: boolean; linkedUserId?: number | null }) {
+export async function updateTeamMember(id: number, data: { name?: string; phone?: string; email?: string; role?: "admin_sender" | "surveyor" | "closer"; roles?: string[]; isActive?: boolean; linkedUserId?: number | null }) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  await db.update(teamMembers).set(data).where(eq(teamMembers.id, id));
+  const { roles: rolesArr, ...rest } = data;
+  const updateData: any = { ...rest };
+  if (rolesArr !== undefined) {
+    updateData.roles = JSON.stringify(rolesArr);
+    // Keep legacy role column in sync (use first role)
+    if (rolesArr.length > 0) updateData.role = rolesArr[0];
+  }
+  await db.update(teamMembers).set(updateData).where(eq(teamMembers.id, id));
 }
 
 export async function getTeamMemberByUserId(userId: number) {

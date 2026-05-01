@@ -1138,11 +1138,14 @@ const teamMemberRouter = router({
       phone: z.string().optional(),
       email: z.string().optional(),
       role: z.enum(["admin_sender", "surveyor", "closer"]),
+      roles: z.array(z.enum(["admin_sender", "surveyor", "closer"])).optional(),
       linkedUserId: z.number().nullable().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const result = await db.createTeamMember(input);
-      await db.logActivity({ userId: ctx.user.id, action: "create", entityType: "team_member", entityId: result.id, details: `เพิ่มสมาชิกทีม: ${input.name} (${input.role})` });
+      // If roles array provided, use it; otherwise fall back to single role
+      const rolesArr = input.roles && input.roles.length > 0 ? input.roles : [input.role];
+      const result = await db.createTeamMember({ ...input, roles: rolesArr });
+      await db.logActivity({ userId: ctx.user.id, action: "create", entityType: "team_member", entityId: result.id, details: `เพิ่มสมาชิกทีม: ${input.name} (${rolesArr.join(", ")})` });
       return result;
     }),
 
@@ -1153,11 +1156,16 @@ const teamMemberRouter = router({
       phone: z.string().optional(),
       email: z.string().optional(),
       role: z.enum(["admin_sender", "surveyor", "closer"]).optional(),
+      roles: z.array(z.enum(["admin_sender", "surveyor", "closer"])).optional(),
       isActive: z.boolean().optional(),
       linkedUserId: z.number().nullable().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const { id, ...data } = input;
+      // If roles provided, also update the legacy role column
+      if (data.roles && data.roles.length > 0 && !data.role) {
+        data.role = data.roles[0] as any;
+      }
       await db.updateTeamMember(id, data);
       await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "team_member", entityId: id, details: `แก้ไขสมาชิกทีม ID: ${id}` });
       const members = await db.getTeamMembers();

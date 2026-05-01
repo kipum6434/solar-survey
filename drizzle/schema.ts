@@ -116,6 +116,7 @@ export const teamMembers = mysqlTable("team_members", {
   phone: varchar("phone", { length: 50 }),
   email: varchar("email", { length: 320 }),
   role: mysqlEnum("role", ["admin_sender", "surveyor", "closer"]).notNull(),
+  roles: varchar("roles", { length: 500 }), // JSON array of roles e.g. '["admin_sender","surveyor","closer"]'
   isActive: boolean("isActive").default(true).notNull(),
   linkedUserId: int("linkedUserId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

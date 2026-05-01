@@ -857,3 +857,9 @@
 
 ### Fix: การเรียงวันที่ให้เรียงเวลาภายในวันเดียวกันด้วย
 - [x] เมื่อ sort ตามวันที่ ให้เรียงเวลาภายในวันเดียวกัน (null time ขึ้นก่อน → แล้วเรียงเวลาจากเช้าไปเย็น)
+
+### Feature: ทีมงานมีหลาย role ได้ (Multi-role team members)
+- [x] Schema: เปลี่ยนจาก role เดียว เป็นหลาย role ต่อคน (เช่น admin_sender + surveyor + closer)
+- [x] Backend: อัพเดท API team members ให้รองรับ multi-role
+- [x] Frontend: หน้าจัดการทีมงาน - เปลี่ยนจาก dropdown role เป็น checkbox หลาย role
+- [x] Frontend: dropdown มอบหมายงาน - แสดงคนที่มี role นั้นๆ ทุกคน (via server-side JSON_CONTAINS filter)

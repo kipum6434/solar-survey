@@ -176,6 +176,13 @@
       "when": 1777611789128,
       "tag": "0024_many_slapstick",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1777654266403,
+      "tag": "0025_vengeful_mojo",
+      "breakpoints": true
     }
   ]
 }

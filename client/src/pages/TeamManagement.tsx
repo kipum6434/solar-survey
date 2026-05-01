@@ -82,7 +82,16 @@ export default function TeamManagement() {
     onError: (err) => toast.error(err.message),
   });
 
-  const filteredMembers = filterRole === "all" ? members : members.filter((m: any) => m.role === filterRole);
+  const filteredMembers = filterRole === "all" ? members : members.filter((m: any) => {
+    // Check multi-role (roles JSON) or fall back to legacy single role
+    if (m.roles) {
+      try {
+        const rolesArr = JSON.parse(m.roles);
+        return rolesArr.includes(filterRole);
+      } catch { /* ignore */ }
+    }
+    return m.role === filterRole;
+  });
 
   const filteredIds = useMemo(() => filteredMembers.map((m: any) => m.id), [filteredMembers]);
   const allSelected = filteredIds.length > 0 && filteredIds.every((id: number) => selectedIds.has(id));
@@ -111,7 +120,15 @@ export default function TeamManagement() {
 
   const groupedByRole = ROLE_OPTIONS.map(role => ({
     ...role,
-    members: members.filter((m: any) => m.role === role.value),
+    members: members.filter((m: any) => {
+      if (m.roles) {
+        try {
+          const rolesArr = JSON.parse(m.roles);
+          return rolesArr.includes(role.value);
+        } catch { /* ignore */ }
+      }
+      return m.role === role.value;
+    }),
   }));
 
   return (
@@ -233,9 +250,17 @@ export default function TeamManagement() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium">{member.name}</span>
-                            <Badge variant="secondary" className={`text-xs ${getRoleColor(member.role)}`}>
-                              {getRoleLabel(member.role)}
-                            </Badge>
+                            {(() => {
+                              let rolesArr: string[] = [member.role];
+                              if (member.roles) {
+                                try { rolesArr = JSON.parse(member.roles); } catch { /* ignore */ }
+                              }
+                              return rolesArr.map((r: string) => (
+                                <Badge key={r} variant="secondary" className={`text-xs ${getRoleColor(r)}`}>
+                                  {getRoleLabel(r)}
+                                </Badge>
+                              ));
+                            })()}
                           </div>
                           <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground flex-wrap">
                             {member.phone && (
@@ -348,15 +373,23 @@ export default function TeamManagement() {
 function TeamMemberDialog({ open, onClose, onSave, isLoading, title, defaultValues }: {
   open: boolean;
   onClose: () => void;
-  onSave: (data: { name: string; phone?: string; email?: string; role: "admin_sender" | "surveyor" | "closer"; linkedUserId?: number | null }) => void;
+  onSave: (data: { name: string; phone?: string; email?: string; role: "admin_sender" | "surveyor" | "closer"; roles?: ("admin_sender" | "surveyor" | "closer")[]; linkedUserId?: number | null }) => void;
   isLoading: boolean;
   title: string;
-  defaultValues?: { id?: number; name: string; phone?: string; email?: string; role: string; linkedUserId?: number | null };
+  defaultValues?: { id?: number; name: string; phone?: string; email?: string; role: string; roles?: string | null; linkedUserId?: number | null };
 }) {
+  // Parse existing roles from JSON string or fall back to single role
+  const parseRoles = (): string[] => {
+    if (defaultValues?.roles) {
+      try { return JSON.parse(defaultValues.roles); } catch { /* ignore */ }
+    }
+    return defaultValues?.role ? [defaultValues.role] : ["surveyor"];
+  };
+
   const [name, setName] = useState(defaultValues?.name || "");
   const [phone, setPhone] = useState(defaultValues?.phone || "");
   const [email, setEmail] = useState(defaultValues?.email || "");
-  const [role, setRole] = useState(defaultValues?.role || "surveyor");
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(parseRoles());
   const [linkedUserId, setLinkedUserId] = useState<string>(defaultValues?.linkedUserId ? String(defaultValues.linkedUserId) : "none");
 
   const { data: availableUsers = [] } = trpc.teamMember.availableUsers.useQuery(
@@ -364,17 +397,33 @@ function TeamMemberDialog({ open, onClose, onSave, isLoading, title, defaultValu
     { enabled: open }
   );
 
+  const toggleRole = (roleValue: string) => {
+    setSelectedRoles(prev => {
+      if (prev.includes(roleValue)) {
+        // Don't allow removing the last role
+        if (prev.length <= 1) return prev;
+        return prev.filter(r => r !== roleValue);
+      }
+      return [...prev, roleValue];
+    });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
       toast.error("กรุณากรอกชื่อ");
       return;
     }
+    if (selectedRoles.length === 0) {
+      toast.error("กรุณาเลือกอย่างน้อย 1 บทบาท");
+      return;
+    }
     onSave({
       name: name.trim(),
       phone: phone.trim() || undefined,
       email: email.trim() || undefined,
-      role: role as "admin_sender" | "surveyor" | "closer",
+      role: selectedRoles[0] as "admin_sender" | "surveyor" | "closer",
+      roles: selectedRoles as ("admin_sender" | "surveyor" | "closer")[],
       linkedUserId: linkedUserId === "none" ? null : Number(linkedUserId),
     });
   };
@@ -401,17 +450,18 @@ function TeamMemberDialog({ open, onClose, onSave, isLoading, title, defaultValu
             </div>
           </div>
           <div>
-            <Label>ตำแหน่ง/บทบาท *</Label>
-            <Select value={role} onValueChange={setRole}>
-              <SelectTrigger className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ROLE_OPTIONS.map(r => (
-                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>ตำแหน่ง/บทบาท * <span className="text-xs text-muted-foreground font-normal">(เลือกได้หลายตำแหน่ง)</span></Label>
+            <div className="mt-2 space-y-2">
+              {ROLE_OPTIONS.map(r => (
+                <label key={r.value} className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={selectedRoles.includes(r.value)}
+                    onCheckedChange={() => toggleRole(r.value)}
+                  />
+                  <Badge variant="secondary" className={`text-xs ${r.color}`}>{r.label}</Badge>
+                </label>
+              ))}
+            </div>
           </div>
           <div>
             <Label>เชื่อมกับ User Account</Label>
