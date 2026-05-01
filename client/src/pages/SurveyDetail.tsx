@@ -323,8 +323,8 @@ export default function SurveyDetail() {
                 แก้ไขล่าสุด: {s.updatedAt ? new Date(s.updatedAt).toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "ไม่มีข้อมูล"}
               </div>
               <div className="flex gap-2 flex-wrap">
-                {/* ปุ่มสำรวจเสร็จสิ้น — แสดงเมื่อสถานะยังไม่ใช่ surveyed/won */}
-                {s.status !== "surveyed" && s.status !== "won" && s.status !== "lost" && s.status !== "cancelled" && (
+                {/* ปุ่มสำรวจเสร็จสิ้น — แสดงเฉพาะเมื่อยังไม่ได้สำรวจ (pending/scheduled/in_progress) */}
+                {(s.status === "pending" || s.status === "scheduled" || s.status === "in_progress") && (
                   <Button
                     size="sm"
                     variant="outline"
@@ -335,16 +335,21 @@ export default function SurveyDetail() {
                     <CheckCircle2 className="h-4 w-4" /> สำรวจเสร็จสิ้น
                   </Button>
                 )}
-                {/* ปุ่มปิดหน้างาน — แสดงเมื่อสำรวจเสร็จแล้ว + ยังไม่ได้ปิด */}
-                {(s.status === "surveyed" || s.status === "quoted" || s.status === "negotiating") && (
+                {/* ปุ่มนัดติดตั้ง — แสดงเมื่อสถานะเป็น รอติดตาม/สำรวจเสร็จ/เสนอราคา/เจรจา */}
+                {(s.status === "follow_up" || s.status === "surveyed" || s.status === "quoted" || s.status === "negotiating") && (
                   <Button
                     size="sm"
                     className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
                     onClick={() => setShowCloseToInstallConfirm(true)}
                     disabled={closeToInstallation.isPending}
                   >
-                    <Wrench className="h-4 w-4" /> ปิดหน้างาน → รอติดตั้ง
+                    <Calendar className="h-4 w-4" /> นัดติดตั้ง
                   </Button>
+                )}
+                {s.status === "follow_up" && (
+                  <Badge variant="secondary" className="bg-cyan-100 text-cyan-700 border-0">
+                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> สำรวจเสร็จแล้ว
+                  </Badge>
                 )}
                 {s.status === "surveyed" && (
                   <Badge variant="secondary" className="bg-green-100 text-green-700 border-0">
@@ -941,11 +946,11 @@ export default function SurveyDetail() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Confirm ปิดหน้างาน Dialog */}
+      {/* Confirm นัดติดตั้ง Dialog */}
       <AlertDialog open={showCloseToInstallConfirm} onOpenChange={setShowCloseToInstallConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>ยืนยันปิดหน้างาน</AlertDialogTitle>
+            <AlertDialogTitle>ยืนยันนัดติดตั้ง</AlertDialogTitle>
             <AlertDialogDescription>
               สถานะจะเปลี่ยนเป็น "ปิดการขาย" และสถานะติดตั้งจะเปลี่ยนเป็น "รอการติดตั้ง" อัตโนมัติ
             </AlertDialogDescription>
@@ -956,7 +961,7 @@ export default function SurveyDetail() {
               className="bg-blue-600 hover:bg-blue-700 text-white"
               onClick={() => { closeToInstallation.mutate({ id: surveyId }); setShowCloseToInstallConfirm(false); }}
             >
-              <Wrench className="h-4 w-4 mr-1.5" /> ปิดหน้างาน
+              <Calendar className="h-4 w-4 mr-1.5" /> นัดติดตั้ง
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
