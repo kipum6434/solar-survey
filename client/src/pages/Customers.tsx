@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import { SourceCombobox } from "@/components/SourceCombobox";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useSort } from "@/hooks/useSort";
 import { formatPhone, formatPhoneInput } from "@/lib/formatPhone";
 import { Pagination } from "@/components/Pagination";
@@ -800,21 +800,31 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
   const [duplicateWarning, setDuplicateWarning] = useState<{ id: number; name: string; phone: string | null }[] | null>(null);
   const [checkingDuplicate, setCheckingDuplicate] = useState(false);
   const trpcUtils = trpc.useUtils();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handlePhoneBlur = async () => {
+  // Real-time debounced duplicate phone check (500ms)
+  useEffect(() => {
     const raw = form.phone.replace(/[\s\-\.]/g, "");
-    if (raw.length < 3) { setDuplicateWarning(null); return; }
+    if (raw.length < 3) {
+      setDuplicateWarning(null);
+      setCheckingDuplicate(false);
+      return;
+    }
     setCheckingDuplicate(true);
-    try {
-      const result = await trpcUtils.customer.checkDuplicate.fetch({ phone: raw });
-      if (result && result.duplicates.length > 0) {
-        setDuplicateWarning(result.duplicates);
-      } else {
-        setDuplicateWarning(null);
-      }
-    } catch { setDuplicateWarning(null); }
-    setCheckingDuplicate(false);
-  };
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const result = await trpcUtils.customer.checkDuplicate.fetch({ phone: raw });
+        if (result && result.duplicates.length > 0) {
+          setDuplicateWarning(result.duplicates);
+        } else {
+          setDuplicateWarning(null);
+        }
+      } catch { setDuplicateWarning(null); }
+      setCheckingDuplicate(false);
+    }, 500);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [form.phone]);
 
   const parseMutation = trpc.lineParser.parse.useMutation({
     onSuccess: (data) => {
@@ -851,17 +861,7 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
     setLineText("");
     setParsedPreview(null);
     toast.success("กรอกข้อมูลอัตโนมัติแล้ว ตรวจสอบและกดบันทึก");
-    // Trigger duplicate phone check for parsed phone
-    if (parsedPreview.phone) {
-      const rawPhone = parsedPreview.phone.replace(/[\s\-\.]/g, "");
-      if (rawPhone.length >= 3) {
-        setCheckingDuplicate(true);
-        trpcUtils.customer.checkDuplicate.fetch({ phone: rawPhone }).then((res) => {
-          if (res && res.duplicates.length > 0) setDuplicateWarning(res.duplicates);
-          else setDuplicateWarning(null);
-        }).catch(() => setDuplicateWarning(null)).finally(() => setCheckingDuplicate(false));
-      }
-    }
+    // useEffect will auto-trigger duplicate check when form.phone changes
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -908,7 +908,7 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
             </div>
             <div>
               <Label>เบอร์โทร</Label>
-              <Input value={form.phone} onChange={(e) => { setForm({ ...form, phone: formatPhoneInput(e.target.value) }); setDuplicateWarning(null); }} onBlur={handlePhoneBlur} placeholder="0xx-xxx-xxxx" />
+              <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: formatPhoneInput(e.target.value) })} placeholder="0xx-xxx-xxxx" />
               {checkingDuplicate && <p className="text-xs text-muted-foreground mt-1">กำลังตรวจสอบ...</p>}
               {duplicateWarning && duplicateWarning.length > 0 && (
                 <div className="mt-1.5 p-2 bg-amber-50 border border-amber-200 rounded-md">

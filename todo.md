@@ -820,3 +820,6 @@
 - [x] ตรวจสอบ backend API checkDuplicatePhone ว่ายังทำงานอยู่หรือไม่
 - [x] ตรวจสอบ frontend ว่ายังเรียก check duplicate ก่อนบันทึกหรือไม่
 - [x] แก้ไขให้ระบบเตือนเบอร์ซ้ำกลับมาทำงานปกติ (แสดงข้อมูลลูกค้าที่ซ้ำ) — เปลี่ยนจาก useQuery+refetch เป็น trpc.useUtils().fetch
+
+### Feature: ตรวจสอบเบอร์โทรซ้ำแบบ real-time ขณะพิมพ์
+- [x] เพิ่ม debounce (500ms) ตรวจสอบเบอร์ซ้ำขณะพิมพ์แทนที่จะรอ blur
