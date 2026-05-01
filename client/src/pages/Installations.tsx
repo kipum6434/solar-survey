@@ -126,7 +126,7 @@ export default function Installations() {
 
   const queryInput = useMemo(() => ({
     page,
-    limit: 20,
+    limit: 50,
     search: search || undefined,
     month: filterByMonth ? selectedMonth : undefined,
     year: filterByMonth ? selectedYear - 543 : undefined,
@@ -141,7 +141,7 @@ export default function Installations() {
   const { data, isLoading } = trpc.installation.list.useQuery(queryInput);
   const items = data?.data ?? [];
   const total = data?.total ?? 0;
-  const totalPages = Math.ceil(total / 20);
+  const totalPages = Math.ceil(total / 50);
 
   const bulkDeleteMutation = trpc.installation.bulkDelete.useMutation({
     onSuccess: (result) => {

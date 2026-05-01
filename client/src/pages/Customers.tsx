@@ -101,7 +101,7 @@ export default function Customers() {
   const queryInput = useMemo(() => ({
     search,
     page,
-    limit: 30,
+    limit: 50,
     month: filterByMonth ? selectedMonth : undefined,
     year: filterByMonth ? selectedYear : undefined,
     district: districtFilter || undefined,
@@ -129,7 +129,7 @@ export default function Customers() {
     onError: (e) => toast.error(e.message),
   });
 
-  const totalPages = Math.ceil((data?.total ?? 0) / 30);
+  const totalPages = Math.ceil((data?.total ?? 0) / 50);
 
   // Export selected customers to Excel
   const handleExportSelected = useCallback(() => {

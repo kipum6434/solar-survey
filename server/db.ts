@@ -468,9 +468,11 @@ export async function getFollowUps(opts: { surveyId?: number; customerId?: numbe
   return db.select().from(followUps).where(whereClause).orderBy(followUps.dueDate);
 }
 
-export async function getSurveysForFollowUp(opts: { search?: string; startDate?: number; endDate?: number }) {
+export async function getSurveysForFollowUp(opts: { search?: string; startDate?: number; endDate?: number; page?: number; limit?: number }) {
   const db = await getDb();
-  if (!db) return [];
+  if (!db) return { data: [], total: 0 };
+  const page = opts.page ?? 1;
+  const limit = opts.limit ?? 50;
   const conditions: any[] = [
     or(
       eq(surveys.status, "follow_up"),
@@ -490,6 +492,13 @@ export async function getSurveysForFollowUp(opts: { search?: string; startDate?:
   if (opts.startDate) conditions.push(gte(surveys.updatedAt, new Date(opts.startDate)));
   if (opts.endDate) conditions.push(lte(surveys.updatedAt, new Date(opts.endDate)));
   const whereClause = and(...conditions);
+
+  // Count total
+  const countResult = await db.select({ count: sql<number>`count(*)` }).from(surveys)
+    .innerJoin(customers, eq(surveys.customerId, customers.id))
+    .where(whereClause);
+  const total = Number(countResult[0]?.count ?? 0);
+
   const rows = await db.select({
     survey: surveys,
     customer: {
@@ -503,7 +512,9 @@ export async function getSurveysForFollowUp(opts: { search?: string; startDate?:
   }).from(surveys)
     .innerJoin(customers, eq(surveys.customerId, customers.id))
     .where(whereClause)
-    .orderBy(desc(surveys.updatedAt));
+    .orderBy(desc(surveys.updatedAt))
+    .limit(limit)
+    .offset((page - 1) * limit);
 
   // Fetch custom status labels for surveys that have statusId
   const statusIds = rows.map(r => r.survey.statusId).filter(Boolean) as number[];
@@ -543,13 +554,16 @@ export async function getSurveysForFollowUp(opts: { search?: string; startDate?:
     }
   }
 
-  return rows.map(r => ({
-    survey: r.survey,
-    customer: r.customer,
-    customStatus: r.survey.statusId ? customStatusMap[r.survey.statusId] || null : null,
-    latestFollowUp: followUpMap[r.survey.id] || null,
-    assignments: assignmentsMap[r.survey.id] || [],
-  }));
+  return {
+    data: rows.map(r => ({
+      survey: r.survey,
+      customer: r.customer,
+      customStatus: r.survey.statusId ? customStatusMap[r.survey.statusId] || null : null,
+      latestFollowUp: followUpMap[r.survey.id] || null,
+      assignments: assignmentsMap[r.survey.id] || [],
+    })),
+    total,
+  };
 }
 
 export async function getFollowUpsWithDetails(opts: { status?: string; method?: string; startDate?: number; endDate?: number; search?: string }) {

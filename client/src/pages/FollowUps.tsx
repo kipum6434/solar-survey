@@ -8,6 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { SURVEY_STATUS_MAP } from "@/lib/constants";
 import { formatPhone } from "@/lib/formatPhone";
 import DashboardLayout from "@/components/DashboardLayout";
+import { Pagination } from "@/components/Pagination";
 import { useState, useMemo, useCallback } from "react";
 import { useLocation } from "wouter";
 import {
@@ -27,6 +28,7 @@ const FOLLOW_UP_STATUSES = ["follow_up", "quoted", "negotiating"] as const;
 export default function FollowUps() {
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"list" | "table">("table");
 
@@ -53,6 +55,7 @@ export default function FollowUps() {
       return prev;
     });
     setFilterByMonth(true);
+    setPage(1);
   }, [selectedMonth]);
 
   // Calculate date range for query
@@ -69,26 +72,28 @@ export default function FollowUps() {
       startDate,
       endDate,
       search: search || undefined,
+      page,
+      limit: 50,
     };
-  }, [filterByMonth, selectedMonth, selectedYear, search]);
+  }, [filterByMonth, selectedMonth, selectedYear, search, page]);
 
   const { data, isLoading } = trpc.followUp.surveysForFollowUp.useQuery(queryInput);
-
   // Filter by status on client side
   const filteredData = useMemo(() => {
-    if (!data) return [];
-    if (statusFilter === "all") return data;
-    return data.filter((d: any) => d.survey.status === statusFilter);
+    if (!data?.data) return [];
+    if (statusFilter === "all") return data.data;
+    return data.data.filter((d: any) => d.survey.status === statusFilter);
   }, [data, statusFilter]);
-
+  // Pagination
+  const totalPages = Math.ceil((data?.total ?? 0) / 50);
   // Stats
   const stats = useMemo(() => {
-    if (!data) return { total: 0, follow_up: 0, quoted: 0, negotiating: 0 };
+    if (!data?.data) return { total: 0, follow_up: 0, quoted: 0, negotiating: 0 };
     return {
-      total: data.length,
-      follow_up: data.filter((d: any) => d.survey.status === "follow_up").length,
-      quoted: data.filter((d: any) => d.survey.status === "quoted").length,
-      negotiating: data.filter((d: any) => d.survey.status === "negotiating").length,
+      total: data.total,
+      follow_up: data.data.filter((d: any) => d.survey.status === "follow_up").length,
+      quoted: data.data.filter((d: any) => d.survey.status === "quoted").length,
+      negotiating: data.data.filter((d: any) => d.survey.status === "negotiating").length,
     };
   }, [data]);
 
@@ -141,25 +146,25 @@ export default function FollowUps() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Card className="border-l-4 border-l-blue-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setStatusFilter("all")}>
+          <Card className="border-l-4 border-l-blue-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setStatusFilter("all"); setPage(1); }}>
             <CardContent className="p-3">
               <div className="text-2xl font-bold">{stats.total}</div>
               <div className="text-xs text-muted-foreground">ทั้งหมด</div>
             </CardContent>
           </Card>
-          <Card className="border-l-4 border-l-cyan-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setStatusFilter("follow_up")}>
+          <Card className="border-l-4 border-l-cyan-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setStatusFilter("follow_up"); setPage(1); }}>
             <CardContent className="p-3">
               <div className="text-2xl font-bold">{stats.follow_up}</div>
               <div className="text-xs text-muted-foreground">รอติดตาม</div>
             </CardContent>
           </Card>
-          <Card className="border-l-4 border-l-purple-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setStatusFilter("quoted")}>
+          <Card className="border-l-4 border-l-purple-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setStatusFilter("quoted"); setPage(1); }}>
             <CardContent className="p-3">
               <div className="text-2xl font-bold">{stats.quoted}</div>
               <div className="text-xs text-muted-foreground">เสนอราคาแล้ว</div>
             </CardContent>
           </Card>
-          <Card className="border-l-4 border-l-orange-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setStatusFilter("negotiating")}>
+          <Card className="border-l-4 border-l-orange-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setStatusFilter("negotiating"); setPage(1); }}>
             <CardContent className="p-3">
               <div className="text-2xl font-bold">{stats.negotiating}</div>
               <div className="text-xs text-muted-foreground">เจรจาต่อรอง</div>
@@ -172,7 +177,7 @@ export default function FollowUps() {
           <Button
             variant={!filterByMonth ? "default" : "outline"}
             size="sm"
-            onClick={() => { setFilterByMonth(false); }}
+            onClick={() => { setFilterByMonth(false); setPage(1); }}
             className="shrink-0"
           >
             ทั้งหมด
@@ -186,7 +191,7 @@ export default function FollowUps() {
               key={i}
               variant={filterByMonth && selectedMonth === i + 1 ? "default" : "outline"}
               size="sm"
-              onClick={() => { setSelectedMonth(i + 1); setFilterByMonth(true); }}
+              onClick={() => { setSelectedMonth(i + 1); setFilterByMonth(true); setPage(1); }}
               className="shrink-0 text-xs px-2.5"
             >
               {m}
@@ -214,11 +219,11 @@ export default function FollowUps() {
             <Input
               placeholder="ค้นหาชื่อ, เบอร์โทร..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               className="pl-9 h-9"
             />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
             <SelectTrigger className="w-[170px] h-9">
               <SelectValue placeholder="สถานะ" />
             </SelectTrigger>
@@ -254,12 +259,12 @@ export default function FollowUps() {
           {filterByMonth ? (
             <>
               แสดงงานติดตามเดือน <span className="font-semibold text-foreground">{THAI_MONTHS_SHORT[selectedMonth - 1]} {selectedYear + 543}</span>
-              <span className="ml-2">({filteredData.length} รายการ)</span>
+              <span className="ml-2">({data?.total ?? 0} รายการ)</span>
             </>
           ) : (
             <>
               งานติดตามทั้งหมด
-              <span className="ml-1 font-semibold text-foreground">({filteredData.length} รายการ)</span>
+              <span className="ml-1 font-semibold text-foreground">({data?.total ?? 0} รายการ)</span>
             </>
           )}
         </div>
@@ -440,6 +445,10 @@ export default function FollowUps() {
               </table>
             </div>
           </Card>
+        )}
+        {/* Pagination */}
+        {!isLoading && totalPages > 1 && (
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} totalItems={data?.total} />
         )}
       </div>
     </DashboardLayout>

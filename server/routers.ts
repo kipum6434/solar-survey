@@ -627,6 +627,8 @@ const followUpRouter = router({
       search: z.string().optional(),
       startDate: z.number().optional(),
       endDate: z.number().optional(),
+      page: z.number().default(1),
+      limit: z.number().default(50),
     }))
     .query(({ input }) => db.getSurveysForFollowUp(input)),
 
