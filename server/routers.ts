@@ -675,7 +675,8 @@ const shareLinkRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const token = nanoid(32);
-      const expiresAt = Date.now() + (input.expiresInDays * 24 * 60 * 60 * 1000);
+      // Survey links have no expiry, installation links keep 14-day expiry
+      const expiresAt = input.linkType === "survey" ? null : Date.now() + (input.expiresInDays * 24 * 60 * 60 * 1000);
       const id = await db.createShareLink({
         surveyId: input.surveyId,
         token,

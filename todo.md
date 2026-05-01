@@ -842,3 +842,8 @@
 
 ### Bug: ลิงก์แชร์ /share/... redirect ไป login
 - [x] แก้ไขให้ /share/ routes เข้าถึงได้โดยไม่ต้อง login (สำหรับทีมช่าง) — เปลี่ยน companySettings.get เป็น public + เพิ่ม exclude /share/ ใน redirect logic
+
+### ลิงก์สำรวจไม่มีหมดอายุ
+- [x] แก้ไขให้ลิงก์สำรวจ (survey-field) ไม่มีวันหมดอายุ (expiresAt = null)
+- [x] ลิงก์ติดตั้ง (share) ยังคงหมดอายุ 14 วันเหมือนเดิม
+- [x] อัพเดท UI แสดง "ไม่มีหมดอายุ" สำหรับลิงก์สำรวจ

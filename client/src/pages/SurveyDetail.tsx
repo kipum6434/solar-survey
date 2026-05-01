@@ -1660,12 +1660,17 @@ function ShareLinkList({ links, linkType, onRevoke }: { links: any[]; linkType: 
                 {!link.isActive ? "ยกเลิกแล้ว" : isExpired ? "หมดอายุ" : "ใช้งานได้"}
               </Badge>
               <span className="text-[10px] text-muted-foreground">ดู {link.viewCount} ครั้ง</span>
-              {link.expiresAt && (
+              {link.expiresAt ? (
                 <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                   <Clock className="h-3 w-3" />
                   หมดอายุ {new Date(link.expiresAt).toLocaleDateString("th-TH")}
                 </span>
-              )}
+              ) : link.isActive ? (
+                <span className="text-[10px] text-green-600 flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  ไม่มีหมดอายุ
+                </span>
+              ) : null}
             </div>
             <div className="flex items-center gap-2">
               <Input value={shareUrl} readOnly className="text-xs h-8 bg-muted/50" />
