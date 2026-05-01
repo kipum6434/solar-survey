@@ -377,12 +377,19 @@ export default function Customers() {
         )}
 
         {/* Filter info */}
-        {filterByMonth && (
-          <div className="text-sm text-muted-foreground">
-            แสดงลูกค้าที่สร้างในเดือน <span className="font-semibold text-foreground">{THAI_MONTHS[selectedMonth - 1]} {selectedYear + 543}</span>
-            {data && <span className="ml-2">({data.total} ราย)</span>}
-          </div>
-        )}
+        <div className="text-sm text-muted-foreground">
+          {filterByMonth ? (
+            <>
+              แสดงลูกค้าที่สร้างในเดือน <span className="font-semibold text-foreground">{THAI_MONTHS[selectedMonth - 1]} {selectedYear + 543}</span>
+              {data && <span className="ml-2">({data.total} ราย)</span>}
+            </>
+          ) : (
+            <>
+              ลูกค้าทั้งหมด
+              {data && <span className="ml-1 font-semibold text-foreground">({data.total} ราย)</span>}
+            </>
+          )}
+        </div>
 
         {isLoading ? (
           <div className="space-y-3">

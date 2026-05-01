@@ -249,6 +249,21 @@ export default function FollowUps() {
           </div>
         </div>
 
+        {/* Filter info */}
+        <div className="text-sm text-muted-foreground">
+          {filterByMonth ? (
+            <>
+              แสดงงานติดตามเดือน <span className="font-semibold text-foreground">{THAI_MONTHS_SHORT[selectedMonth - 1]} {selectedYear + 543}</span>
+              <span className="ml-2">({filteredData.length} รายการ)</span>
+            </>
+          ) : (
+            <>
+              งานติดตามทั้งหมด
+              <span className="ml-1 font-semibold text-foreground">({filteredData.length} รายการ)</span>
+            </>
+          )}
+        </div>
+
         {/* Loading */}
         {isLoading && (
           <div className="space-y-3">

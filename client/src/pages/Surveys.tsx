@@ -398,12 +398,19 @@ export default function Surveys() {
         </div>
 
         {/* Title bar showing current filter */}
-        {filterByMonth && (
-          <div className="text-sm text-muted-foreground">
-            แสดงงานสำรวจเดือน <span className="font-semibold text-foreground">{THAI_MONTHS[selectedMonth - 1]} {selectedYear + 543}</span>
-            {data && <span className="ml-2">({data.total} รายการ)</span>}
-          </div>
-        )}
+        <div className="text-sm text-muted-foreground">
+          {filterByMonth ? (
+            <>
+              แสดงงานสำรวจเดือน <span className="font-semibold text-foreground">{THAI_MONTHS[selectedMonth - 1]} {selectedYear + 543}</span>
+              {data && <span className="ml-2">({data.total} รายการ)</span>}
+            </>
+          ) : (
+            <>
+              งานสำรวจทั้งหมด
+              {data && <span className="ml-1 font-semibold text-foreground">({data.total} รายการ)</span>}
+            </>
+          )}
+        </div>
 
         {/* Bulk Action Bar */}
         {selectedIds.size > 0 && (

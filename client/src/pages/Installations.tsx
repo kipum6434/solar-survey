@@ -302,7 +302,11 @@ export default function Installations() {
           </div>
           <div className="flex items-center gap-3">
             <div className="text-sm text-muted-foreground">
-              ทั้งหมด <span className="font-semibold text-foreground">{total}</span> รายการ
+              {filterByMonth ? (
+                <>งานติดตั้งเดือน <span className="font-semibold text-foreground">{THAI_MONTHS_SHORT[selectedMonth - 1]} {selectedYear}</span> ({total} รายการ)</>
+              ) : (
+                <>งานติดตั้งทั้งหมด <span className="font-semibold text-foreground">({total} รายการ)</span></>
+              )}
             </div>
             <Button
               variant="outline"
