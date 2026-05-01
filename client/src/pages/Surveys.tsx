@@ -13,7 +13,6 @@ import { formatPhone } from "@/lib/formatPhone";
 import { Pagination } from "@/components/Pagination";
 import { StatusDropdown } from "@/components/StatusDropdown";
 import { useState, useMemo, useCallback } from "react";
-import { useSort } from "@/hooks/useSort";
 import { SortableHeader } from "@/components/SortableHeader";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useLocation } from "wouter";
@@ -59,6 +58,10 @@ export default function Surveys() {
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<"list" | "table">("table");
 
+  // Server-side sort state
+  const [sortBy, setSortBy] = useState<string>("");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc" | null>(null);
+
   // Month/Year filter - default to current month
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
@@ -90,7 +93,9 @@ export default function Surveys() {
     limit: 50,
     month: filterByMonth ? selectedMonth : undefined,
     year: filterByMonth ? selectedYear : undefined,
-  }), [search, statusFilter, sourceFilter, surveyorFilter, adminSenderFilter, closerFilter, districtFilter, provinceFilter, page, filterByMonth, selectedMonth, selectedYear]);
+    sortBy: sortBy || undefined,
+    sortDirection: sortDirection || undefined,
+  }), [search, statusFilter, sourceFilter, surveyorFilter, adminSenderFilter, closerFilter, districtFilter, provinceFilter, page, filterByMonth, selectedMonth, selectedYear, sortBy, sortDirection]);
 
   const { data, isLoading, refetch } = trpc.survey.list.useQuery(queryInput);
 
@@ -120,6 +125,24 @@ export default function Surveys() {
   });
 
   const totalPages = Math.ceil((data?.total ?? 0) / 50);
+
+  // Server-side sort handler - cycles: asc -> desc -> null
+  const handleServerSort = useCallback((key: string) => {
+    if (sortBy === key) {
+      if (sortDirection === "asc") {
+        setSortDirection("desc");
+      } else if (sortDirection === "desc") {
+        setSortBy("");
+        setSortDirection(null);
+      }
+    } else {
+      setSortBy(key);
+      setSortDirection("asc");
+    }
+    setPage(1);
+  }, [sortBy, sortDirection]);
+
+  const sortConfig = useMemo(() => ({ key: sortBy, direction: sortDirection }), [sortBy, sortDirection]);
 
   // Current page survey IDs for select-all
   const currentPageIds = useMemo(() => data?.data?.map((item: any) => item.survey.id) || [], [data]);
@@ -454,6 +477,8 @@ export default function Surveys() {
                 onToggleSelectAll={toggleSelectAll}
                 allSelected={allSelected}
                 someSelected={someSelected}
+                sortConfig={sortConfig}
+                onSort={handleServerSort}
               />
             ) : (
               <SurveyListView
@@ -467,6 +492,8 @@ export default function Surveys() {
                 onToggleSelectAll={toggleSelectAll}
                 allSelected={allSelected}
                 someSelected={someSelected}
+                sortConfig={sortConfig}
+                onSort={handleServerSort}
               />
             )}
             <Pagination page={page} totalPages={totalPages} onPageChange={setPage} totalItems={data?.total} />
@@ -650,11 +677,13 @@ interface SurveyViewProps {
   onToggleSelectAll: () => void;
   allSelected: boolean;
   someSelected: boolean;
+  sortConfig: { key: string; direction: "asc" | "desc" | null };
+  onSort: (key: string) => void;
 }
 
 /* ==================== TABLE VIEW ==================== */
-function SurveyTableView({ data, onRowClick, onRefetch, onUpdateInstallationDate, onUpdateScheduledDate, selectedIds, onToggleSelect, onToggleSelectAll, allSelected, someSelected }: SurveyViewProps) {
-  // Flatten data for sorting: merge survey + customer fields
+function SurveyTableView({ data, onRowClick, onRefetch, onUpdateInstallationDate, onUpdateScheduledDate, selectedIds, onToggleSelect, onToggleSelectAll, allSelected, someSelected, sortConfig, onSort }: SurveyViewProps) {
+  // Flatten data for display (no client-side sorting - server handles it)
   const flatData = useMemo(() => data.map((item: any) => ({
     ...item,
     _scheduledDate: item.survey.scheduledDate,
@@ -680,7 +709,9 @@ function SurveyTableView({ data, onRowClick, onRefetch, onUpdateInstallationDate
     _installationDate: item.survey.installationDate,
     _surveyNotes: item.survey.surveyNotes,
   })), [data]);
-  const { sortedData, sortConfig, requestSort } = useSort(flatData);
+  // Use server-sorted data directly (no local re-sort)
+  const sortedData = flatData;
+  const requestSort = onSort;
 
   return (
     <div className="border rounded-lg overflow-hidden">
@@ -803,7 +834,7 @@ function SurveyTableView({ data, onRowClick, onRefetch, onUpdateInstallationDate
 }
 
 /* ==================== LIST VIEW (original) ==================== */
-function SurveyListView({ data, onRowClick, onRefetch, onUpdateInstallationDate, onUpdateScheduledDate, selectedIds, onToggleSelect, onToggleSelectAll, allSelected, someSelected }: SurveyViewProps) {
+function SurveyListView({ data, onRowClick, onRefetch, onUpdateInstallationDate, onUpdateScheduledDate, selectedIds, onToggleSelect, onToggleSelectAll, allSelected, someSelected, sortConfig: _sortConfig, onSort: _onSort }: SurveyViewProps) {
   return (
     <div className="space-y-3">
       {/* Select all bar for list view */}

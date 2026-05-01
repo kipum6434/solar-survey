@@ -946,7 +946,7 @@ export async function deleteSource(id: number) {
   await db.delete(sources).where(eq(sources.id, id));
 }
 
-export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; adminSenderId?: number; closerId?: number; page?: number; limit?: number; search?: string; month?: number; year?: number; source?: string; district?: string; province?: string; scopedSurveyIds?: number[] }) {
+export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; adminSenderId?: number; closerId?: number; page?: number; limit?: number; search?: string; month?: number; year?: number; source?: string; district?: string; province?: string; scopedSurveyIds?: number[]; sortBy?: string; sortDirection?: "asc" | "desc" }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
   const { status, assignedTo, adminSenderId, closerId, page = 1, limit = 20, search, month, year, source, district, province, scopedSurveyIds } = opts;
@@ -991,6 +991,31 @@ export async function getSurveysWithCustomer(opts: { status?: string; assignedTo
     conditions.push(sql`YEAR(FROM_UNIXTIME(${surveys.scheduledDate} / 1000 + 25200)) = ${year}`);
   }
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  // Determine sort order based on sortBy/sortDirection params
+  const { sortBy, sortDirection } = opts;
+  let orderByClause: any = desc(surveys.createdAt); // default
+  if (sortBy && sortDirection) {
+    const sortDir = sortDirection === "asc" ? asc : desc;
+    const sortMap: Record<string, any> = {
+      _scheduledDateTime: surveys.scheduledDate,
+      _scheduledDate: surveys.scheduledDate,
+      _scheduledTime: surveys.scheduledTime,
+      _customerName: customers.name,
+      _phone: customers.phone,
+      _source: customers.source,
+      _districtProvince: customers.district,
+      _status: surveys.status,
+      _installationDate: surveys.installationDate,
+      _surveyNotes: surveys.surveyNotes,
+      createdAt: surveys.createdAt,
+    };
+    const sortColumn = sortMap[sortBy];
+    if (sortColumn) {
+      orderByClause = sortDir(sortColumn);
+    }
+  }
+
   const data = await db.select({
     survey: surveys,
     customer: customers,
@@ -999,7 +1024,7 @@ export async function getSurveysWithCustomer(opts: { status?: string; assignedTo
     .innerJoin(customers, eq(surveys.customerId, customers.id))
     .leftJoin(users, eq(surveys.assignedTo, users.id))
     .where(whereClause)
-    .orderBy(desc(surveys.createdAt))
+    .orderBy(orderByClause)
     .limit(limit)
     .offset(offset);
   // Fetch assignments for all surveys in result
