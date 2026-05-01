@@ -2237,3 +2237,109 @@ export async function updateCompanySettings(data: Partial<InsertCompanySettings>
     return { id: Number((result as any)[0].insertId), ...data };
   }
 }
+
+// ==================== PENDING APPROVALS ====================
+export async function getPendingApprovals(opts: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  month?: number;
+  year?: number;
+  installerTeamId?: number;
+  deliveryStatus?: string;
+}) {
+  const db = await getDb();
+  if (!db) return { data: [], total: 0 };
+  const { page = 1, limit = 50, search, month, year, installerTeamId, deliveryStatus: statusFilter } = opts;
+  const offset = (page - 1) * limit;
+
+  const conditions: any[] = [];
+  if (statusFilter && statusFilter !== "all") {
+    conditions.push(eq(surveys.deliveryStatus, statusFilter as any));
+  } else {
+    conditions.push(eq(surveys.deliveryStatus, "submitted"));
+  }
+
+  if (search) {
+    conditions.push(or(
+      like(customers.name, `%${search}%`),
+      like(customers.phone, `%${search}%`)
+    ));
+  }
+  if (month && year) {
+    conditions.push(sql`MONTH(FROM_UNIXTIME(${surveys.deliverySubmittedAt} / 1000 + 25200)) = ${month}`);
+    conditions.push(sql`YEAR(FROM_UNIXTIME(${surveys.deliverySubmittedAt} / 1000 + 25200)) = ${year}`);
+  } else if (year) {
+    conditions.push(sql`YEAR(FROM_UNIXTIME(${surveys.deliverySubmittedAt} / 1000 + 25200)) = ${year}`);
+  }
+  if (installerTeamId) {
+    conditions.push(eq(surveys.installerTeamId, installerTeamId));
+  }
+
+  const whereClause = and(...conditions);
+
+  const data = await db.select({
+    survey: surveys,
+    customer: customers,
+  }).from(surveys)
+    .innerJoin(customers, eq(surveys.customerId, customers.id))
+    .where(whereClause)
+    .orderBy(desc(surveys.deliverySubmittedAt), desc(surveys.id))
+    .limit(limit)
+    .offset(offset);
+
+  // Fetch installer teams
+  const installerTeamIds = data.map(d => d.survey.installerTeamId).filter(Boolean) as number[];
+  let installerTeamMap: Record<number, { id: number; name: string; phone: string | null; color: string | null }> = {};
+  if (installerTeamIds.length > 0) {
+    const teamData = await db.select().from(installerTeams).where(inArray(installerTeams.id, installerTeamIds));
+    for (const t of teamData) {
+      installerTeamMap[t.id] = { id: t.id, name: t.name, phone: t.phone, color: t.color ?? null };
+    }
+  }
+
+  // Fetch assignments
+  const surveyIds = data.map(d => d.survey.id);
+  let assignmentsMap: Record<number, { role: string; userName: string | null }[]> = {};
+  if (surveyIds.length > 0) {
+    const allAssignments = await db.select({
+      surveyId: surveyAssignments.surveyId,
+      role: surveyAssignments.role,
+      teamMemberName: teamMembers.name,
+      fallbackUserName: users.name,
+    }).from(surveyAssignments)
+      .leftJoin(teamMembers, eq(surveyAssignments.userId, teamMembers.id))
+      .leftJoin(users, eq(surveyAssignments.userId, users.id))
+      .where(inArray(surveyAssignments.surveyId, surveyIds));
+    for (const a of allAssignments) {
+      if (!assignmentsMap[a.surveyId]) assignmentsMap[a.surveyId] = [];
+      assignmentsMap[a.surveyId].push({ role: a.role, userName: a.teamMemberName ?? a.fallbackUserName });
+    }
+  }
+
+  // Get photo counts per survey
+  let photoCountMap: Record<number, number> = {};
+  if (surveyIds.length > 0) {
+    const photoCounts = await db.select({
+      surveyId: installationPhotos.surveyId,
+      count: sql<number>`count(*)`,
+    }).from(installationPhotos)
+      .where(inArray(installationPhotos.surveyId, surveyIds))
+      .groupBy(installationPhotos.surveyId);
+    for (const pc of photoCounts) {
+      photoCountMap[pc.surveyId] = pc.count;
+    }
+  }
+
+  const countQ = await db.select({ count: sql<number>`count(*)` }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(whereClause);
+
+  return {
+    data: data.map(d => ({
+      ...d,
+      installerTeam: d.survey.installerTeamId ? installerTeamMap[d.survey.installerTeamId] || null : null,
+      assignments: assignmentsMap[d.survey.id] || [],
+      photoCount: photoCountMap[d.survey.id] || 0,
+    })),
+    total: Number(countQ[0]?.count || 0),
+  };
+}

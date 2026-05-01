@@ -832,3 +832,10 @@
 - [x] เปลี่ยน dialog นัดติดตั้งให้มี date picker เลือกวันที่นัดติดตั้ง
 - [x] อัพเดท backend closeToInstallation ให้รับ installationDate parameter
 - [x] บันทึกวันที่นัดติดตั้งลงใน survey.installationDate
+
+### Feature: หน้ารออนุมัติ (Pending Approvals) ใน sidebar
+- [x] สร้าง backend API สำหรับดึงรายการงานที่รออนุมัติ (installationStatus = 'submitted')
+- [x] รองรับ filter: เดือน/ปี/ทีมช่าง + pagination
+- [x] สร้างหน้า Approvals.tsx พร้อม UI ฟิลเตอร์เหมือนหน้าอื่นๆ
+- [x] เพิ่มเมนู "รออนุมัติ" ใน sidebar
+- [x] เพิ่ม route ใน App.tsx

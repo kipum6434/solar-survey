@@ -26,6 +26,7 @@ import Gallery from "./pages/Gallery";
 import LineSettings from "./pages/LineSettings";
 import FollowUps from "./pages/FollowUps";
 import CompanySettings from "./pages/CompanySettings";
+import Approvals from "./pages/Approvals";
 
 function Router() {
   return (
@@ -43,6 +44,7 @@ function Router() {
       <Route path={"/notifications"} component={Notifications} />
       <Route path={"/status-management"} component={StatusManagement} />
       <Route path={"/installations"} component={Installations} />
+      <Route path={"/approvals"} component={Approvals} />
       <Route path={"/file-management"} component={FileManagement} />
       <Route path={"/installer-teams"} component={InstallerTeams} />
       <Route path={"/installer-team-report"} component={InstallerTeamReport} />

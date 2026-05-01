@@ -1612,6 +1612,19 @@ const installerTeamRouter = router({
 
 // ==================== DELIVERY ROUTER ====================
 const deliveryRouter = router({
+  list: protectedProcedure
+    .input(z.object({
+      page: z.number().optional(),
+      limit: z.number().optional(),
+      search: z.string().optional(),
+      month: z.number().optional(),
+      year: z.number().optional(),
+      installerTeamId: z.number().optional(),
+      deliveryStatus: z.string().optional(),
+    }).optional())
+    .query(async ({ input }) => {
+      return db.getPendingApprovals(input ?? {});
+    }),
   info: protectedProcedure
     .input(z.object({ surveyId: z.number() }))
     .query(async ({ input }) => {

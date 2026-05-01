@@ -44,6 +44,7 @@ import {
   MessageSquare,
   PhoneCall,
   Building2,
+  FileCheck,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation, Redirect } from "wouter";
@@ -58,6 +59,7 @@ const baseMenuItems = [
   { icon: ClipboardList, label: "งานสำรวจ", path: "/surveys" },
   { icon: PhoneCall, label: "งานติดตาม", path: "/follow-ups" },
   { icon: Wrench, label: "งานติดตั้ง", path: "/installations" },
+  { icon: FileCheck, label: "รออนุมัติ", path: "/approvals" },
   { icon: TrendingUp, label: "ผลงานทีม", path: "/team-performance" },
   { icon: Users2, label: "จัดการทีมงาน", path: "/team" },
   { icon: Shield, label: "จัดการผู้ใช้งาน", path: "/users", superadminOnly: true },
