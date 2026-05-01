@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarUI } from "@/components/ui/calendar";
 import { trpc } from "@/lib/trpc";
 import { SURVEY_STATUS_MAP, PHOTO_CATEGORY_MAP, DOC_TYPE_MAP, FOLLOW_UP_METHOD_MAP } from "@/lib/constants";
 import { formatPhone } from "@/lib/formatPhone";
@@ -156,6 +158,7 @@ export default function SurveyDetail() {
   });
   const [showCompleteSurveyConfirm, setShowCompleteSurveyConfirm] = useState(false);
   const [showCloseToInstallConfirm, setShowCloseToInstallConfirm] = useState(false);
+  const [installDate, setInstallDate] = useState<Date | undefined>(undefined);
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -946,26 +949,51 @@ export default function SurveyDetail() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Confirm นัดติดตั้ง Dialog */}
-      <AlertDialog open={showCloseToInstallConfirm} onOpenChange={setShowCloseToInstallConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>ยืนยันนัดติดตั้ง</AlertDialogTitle>
-            <AlertDialogDescription>
-              สถานะจะเปลี่ยนเป็น "ปิดการขาย" และสถานะติดตั้งจะเปลี่ยนเป็น "รอการติดตั้ง" อัตโนมัติ
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-              onClick={() => { closeToInstallation.mutate({ id: surveyId }); setShowCloseToInstallConfirm(false); }}
+      {/* นัดติดตั้ง Dialog พร้อมเลือกวันที่ */}
+      <Dialog open={showCloseToInstallConfirm} onOpenChange={(open) => { setShowCloseToInstallConfirm(open); if (!open) setInstallDate(undefined); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Calendar className="h-5 w-5 text-blue-600" /> นัดวันติดตั้ง</DialogTitle>
+            <DialogDescription>
+              เลือกวันที่นัดติดตั้ง สถานะจะเปลี่ยนเป็น "ปิดการขาย" และสร้างงานติดตั้งอัตโนมัติ
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label className="text-sm font-medium mb-2 block">วันที่นัดติดตั้ง <span className="text-red-500">*</span></Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-start text-left font-normal">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  {installDate ? installDate.toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" }) : <span className="text-muted-foreground">เลือกวันที่...</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarUI
+                  mode="single"
+                  selected={installDate}
+                  onSelect={setInstallDate}
+                  disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowCloseToInstallConfirm(false); setInstallDate(undefined); }}>ยกเลิก</Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
+              disabled={!installDate || closeToInstallation.isPending}
+              onClick={() => {
+                if (!installDate) return;
+                closeToInstallation.mutate({ id: surveyId, installationDate: installDate.getTime() });
+                setShowCloseToInstallConfirm(false);
+                setInstallDate(undefined);
+              }}
             >
-              <Calendar className="h-4 w-4 mr-1.5" /> นัดติดตั้ง
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              <Calendar className="h-4 w-4" /> ยืนยันนัดติดตั้ง
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

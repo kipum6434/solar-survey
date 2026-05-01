@@ -463,12 +463,16 @@ const surveyRouter = router({
 
   // ปิดหน้างาน → เปลี่ยนสถานะเป็น "won" + installationStatus "waiting" (รอการติดตั้ง)
   closeToInstallation: protectedProcedure
-    .input(z.object({ id: z.number() }))
+    .input(z.object({ id: z.number(), installationDate: z.number().optional() }))
     .mutation(async ({ input, ctx }) => {
       const survey = await db.getSurveyById(input.id);
       if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบงานสำรวจ" });
-      await db.updateSurvey(input.id, { status: "won", installationStatus: "waiting", completedAt: Date.now() } as any);
-      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "survey", entityId: input.id, details: `ปิดหน้างาน → รอการติดตั้ง ID: ${input.id}` });
+      const updateData: any = { status: "won", installationStatus: "waiting", completedAt: Date.now() };
+      if (input.installationDate) {
+        updateData.installationDate = input.installationDate;
+      }
+      await db.updateSurvey(input.id, updateData);
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "survey", entityId: input.id, details: `นัดติดตั้ง${input.installationDate ? " วันที่ " + new Date(input.installationDate).toLocaleDateString("th-TH") : ""} ID: ${input.id}` });
       return { success: true };
     }),
 });
