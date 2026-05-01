@@ -815,3 +815,8 @@
 - [x] หน้างานติดตาม: เพิ่ม pagination (50 ราย/หน้า)
 - [x] หน้างานติดตั้ง: เพิ่ม pagination (50 ราย/หน้า)
 - [x] Backend: อัพเดท API ให้รองรับ offset/limit parameters
+
+### Bug: ระบบเตือนเบอร์โทรซ้ำตอนเพิ่มลูกค้าหายไป
+- [x] ตรวจสอบ backend API checkDuplicatePhone ว่ายังทำงานอยู่หรือไม่
+- [x] ตรวจสอบ frontend ว่ายังเรียก check duplicate ก่อนบันทึกหรือไม่
+- [x] แก้ไขให้ระบบเตือนเบอร์ซ้ำกลับมาทำงานปกติ (แสดงข้อมูลลูกค้าที่ซ้ำ) — เปลี่ยนจาก useQuery+refetch เป็น trpc.useUtils().fetch

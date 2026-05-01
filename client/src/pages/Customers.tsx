@@ -799,19 +799,16 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
   const [parsedPreview, setParsedPreview] = useState<any>(null);
   const [duplicateWarning, setDuplicateWarning] = useState<{ id: number; name: string; phone: string | null }[] | null>(null);
   const [checkingDuplicate, setCheckingDuplicate] = useState(false);
-  const checkDupQuery = trpc.customer.checkDuplicate.useQuery(
-    { phone: form.phone.replace(/[\s\-\.]/g, "") },
-    { enabled: false }
-  );
+  const trpcUtils = trpc.useUtils();
 
   const handlePhoneBlur = async () => {
     const raw = form.phone.replace(/[\s\-\.]/g, "");
     if (raw.length < 3) { setDuplicateWarning(null); return; }
     setCheckingDuplicate(true);
     try {
-      const result = await checkDupQuery.refetch();
-      if (result.data && result.data.duplicates.length > 0) {
-        setDuplicateWarning(result.data.duplicates);
+      const result = await trpcUtils.customer.checkDuplicate.fetch({ phone: raw });
+      if (result && result.duplicates.length > 0) {
+        setDuplicateWarning(result.duplicates);
       } else {
         setDuplicateWarning(null);
       }
@@ -854,6 +851,17 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
     setLineText("");
     setParsedPreview(null);
     toast.success("กรอกข้อมูลอัตโนมัติแล้ว ตรวจสอบและกดบันทึก");
+    // Trigger duplicate phone check for parsed phone
+    if (parsedPreview.phone) {
+      const rawPhone = parsedPreview.phone.replace(/[\s\-\.]/g, "");
+      if (rawPhone.length >= 3) {
+        setCheckingDuplicate(true);
+        trpcUtils.customer.checkDuplicate.fetch({ phone: rawPhone }).then((res) => {
+          if (res && res.duplicates.length > 0) setDuplicateWarning(res.duplicates);
+          else setDuplicateWarning(null);
+        }).catch(() => setDuplicateWarning(null)).finally(() => setCheckingDuplicate(false));
+      }
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
