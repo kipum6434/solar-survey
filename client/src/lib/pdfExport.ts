@@ -455,10 +455,10 @@ export async function exportSurveyPDF(
     for (let i = 0; i < photos.length; i++) {
       const col = i % COLS;
       if (col === 0 && i > 0) {
-        y += PHOTO_SIZE + 12;
+        y += PHOTO_SIZE + 16;
       }
       if (col === 0) {
-        y = checkPageBreak(doc, y, PHOTO_SIZE + 15);
+        y = checkPageBreak(doc, y, PHOTO_SIZE + 18);
       }
       
       const x = MARGIN + col * (PHOTO_SIZE + GAP);
@@ -495,16 +495,22 @@ export async function exportSurveyPDF(
         doc.setFontSize(9);
       }
       
-      // Category label
+      // Category label - wrap text to fit within column width
       const catLabel = categoryMap[photos[i].category || "other"] || photos[i].category || "อื่นๆ";
-      doc.setFontSize(7);
+      doc.setFontSize(6.5);
       doc.setTextColor(100, 100, 100);
-      doc.text(catLabel, x + PHOTO_SIZE / 2, y + PHOTO_SIZE + 4, { align: "center" });
+      const maxCaptionWidth = PHOTO_SIZE - 2;
+      const captionLines = doc.splitTextToSize(catLabel, maxCaptionWidth);
+      // Show max 2 lines to keep layout clean
+      const displayLines = captionLines.slice(0, 2);
+      for (let lineIdx = 0; lineIdx < displayLines.length; lineIdx++) {
+        doc.text(displayLines[lineIdx], x + PHOTO_SIZE / 2, y + PHOTO_SIZE + 4 + (lineIdx * 3.5), { align: "center" });
+      }
       doc.setFontSize(9);
     }
     
     // Move past last row of photos
-    y += PHOTO_SIZE + 12;
+    y += PHOTO_SIZE + 16;
   }
   
   // ==================== LOGO WATERMARK + FOOTER ====================
@@ -679,10 +685,10 @@ export async function exportInstallationPDF(
     for (let i = 0; i < installPhotos.length; i++) {
       const col = i % COLS;
       if (col === 0 && i > 0) {
-        y += PHOTO_SIZE + 12;
+        y += PHOTO_SIZE + 16;
       }
       if (col === 0) {
-        y = checkPageBreak(doc, y, PHOTO_SIZE + 15);
+        y = checkPageBreak(doc, y, PHOTO_SIZE + 18);
       }
       
       const x = MARGIN + col * (PHOTO_SIZE + GAP);
@@ -717,13 +723,19 @@ export async function exportInstallationPDF(
       }
       
       const catLabel = categoryMap[installPhotos[i].category || "other"] || installPhotos[i].category || "อื่นๆ";
-      doc.setFontSize(7);
+      doc.setFontSize(6.5);
       doc.setTextColor(100, 100, 100);
-      doc.text(catLabel, x + PHOTO_SIZE / 2, y + PHOTO_SIZE + 4, { align: "center" });
+      const maxCaptionWidth = PHOTO_SIZE - 2;
+      const captionLines = doc.splitTextToSize(catLabel, maxCaptionWidth);
+      // Show max 2 lines to keep layout clean
+      const displayLines = captionLines.slice(0, 2);
+      for (let lineIdx = 0; lineIdx < displayLines.length; lineIdx++) {
+        doc.text(displayLines[lineIdx], x + PHOTO_SIZE / 2, y + PHOTO_SIZE + 4 + (lineIdx * 3.5), { align: "center" });
+      }
       doc.setFontSize(9);
     }
     
-    y += PHOTO_SIZE + 12;
+    y += PHOTO_SIZE + 16;
   }
   
   // ==================== COMPLETION NOTE ====================
