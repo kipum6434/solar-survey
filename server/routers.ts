@@ -2029,7 +2029,7 @@ const lineSettingsRouter = router({
 
 // ==================== COMPANY SETTINGS ROUTER ====================
 const companySettingsRouter = router({
-  get: protectedProcedure.query(async () => {
+  get: publicProcedure.query(async () => {
     const settings = await db.getCompanySettings();
     return settings || { id: 0, companyName: "", phone: "", address: "", logoUrl: null, logoFileKey: null };
   }),

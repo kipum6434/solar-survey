@@ -839,3 +839,6 @@
 - [x] สร้างหน้า Approvals.tsx พร้อม UI ฟิลเตอร์เหมือนหน้าอื่นๆ
 - [x] เพิ่มเมนู "รออนุมัติ" ใน sidebar
 - [x] เพิ่ม route ใน App.tsx
+
+### Bug: ลิงก์แชร์ /share/... redirect ไป login
+- [x] แก้ไขให้ /share/ routes เข้าถึงได้โดยไม่ต้อง login (สำหรับทีมช่าง) — เปลี่ยน companySettings.get เป็น public + เพิ่ม exclude /share/ ใน redirect logic

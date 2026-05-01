@@ -18,8 +18,10 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   if (!isUnauthorized) return;
 
-  // Don't redirect if already on login page
+  // Don't redirect if already on login page or on public share pages
   if (window.location.pathname === "/login") return;
+  if (window.location.pathname.startsWith("/share/")) return;
+  if (window.location.pathname.startsWith("/survey-field/")) return;
 
   window.location.href = "/login";
 };
