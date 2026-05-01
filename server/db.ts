@@ -994,7 +994,7 @@ export async function getSurveysWithCustomer(opts: { status?: string; assignedTo
 
   // Determine sort order based on sortBy/sortDirection params
   const { sortBy, sortDirection } = opts;
-  let orderByClause: any = desc(surveys.createdAt); // default
+  let orderByClauses: any[] = [desc(surveys.createdAt)]; // default
   if (sortBy && sortDirection) {
     const sortDir = sortDirection === "asc" ? asc : desc;
     const sortMap: Record<string, any> = {
@@ -1012,7 +1012,18 @@ export async function getSurveysWithCustomer(opts: { status?: string; assignedTo
     };
     const sortColumn = sortMap[sortBy];
     if (sortColumn) {
-      orderByClause = sortDir(sortColumn);
+      // When sorting by date, add secondary sort by time (nulls first, then time asc)
+      if (sortBy === "_scheduledDate" || sortBy === "_scheduledDateTime") {
+        orderByClauses = [
+          sortDir(sortColumn),
+          // Within same date: null time first (so user sees "not yet scheduled")
+          asc(sql`CASE WHEN ${surveys.scheduledTime} IS NULL OR ${surveys.scheduledTime} = '' THEN 0 ELSE 1 END`),
+          // Then sort by time ascending
+          asc(surveys.scheduledTime),
+        ];
+      } else {
+        orderByClauses = [sortDir(sortColumn)];
+      }
     }
   }
 
@@ -1024,7 +1035,7 @@ export async function getSurveysWithCustomer(opts: { status?: string; assignedTo
     .innerJoin(customers, eq(surveys.customerId, customers.id))
     .leftJoin(users, eq(surveys.assignedTo, users.id))
     .where(whereClause)
-    .orderBy(orderByClause)
+    .orderBy(...orderByClauses)
     .limit(limit)
     .offset(offset);
   // Fetch assignments for all surveys in result
