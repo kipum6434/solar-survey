@@ -50,6 +50,7 @@ export const customers = mysqlTable("customers", {
   statusId: int("statusId"),
   facebookName: varchar("facebookName", { length: 255 }),
   notes: text("notes"),
+  surveyorId: int("surveyorId"),
   createdBy: int("createdBy"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

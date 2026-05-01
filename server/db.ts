@@ -118,7 +118,34 @@ export async function getCustomers(opts: { search?: string; page?: number; limit
     conditions.push(sql`YEAR(${customers.createdAt}) = ${year}`);
   }
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-  const data = await db.select().from(customers).where(whereClause).orderBy(desc(customers.createdAt), desc(customers.id)).limit(limit).offset(offset);
+  const data = await db.select({
+    id: customers.id,
+    name: customers.name,
+    phone: customers.phone,
+    email: customers.email,
+    address: customers.address,
+    province: customers.province,
+    district: customers.district,
+    subDistrict: customers.subDistrict,
+    postalCode: customers.postalCode,
+    latitude: customers.latitude,
+    longitude: customers.longitude,
+    source: customers.source,
+    electricityBill: customers.electricityBill,
+    roofType: customers.roofType,
+    roofArea: customers.roofArea,
+    phaseType: customers.phaseType,
+    meterSize: customers.meterSize,
+    fullAddress: customers.fullAddress,
+    statusId: customers.statusId,
+    facebookName: customers.facebookName,
+    notes: customers.notes,
+    surveyorId: customers.surveyorId,
+    surveyorName: teamMembers.name,
+    createdBy: customers.createdBy,
+    createdAt: customers.createdAt,
+    updatedAt: customers.updatedAt,
+  }).from(customers).leftJoin(teamMembers, eq(customers.surveyorId, teamMembers.id)).where(whereClause).orderBy(desc(customers.createdAt), desc(customers.id)).limit(limit).offset(offset);
   const countQ = whereClause
     ? await db.select({ count: sql<number>`count(*)` }).from(customers).where(whereClause)
     : await db.select({ count: sql<number>`count(*)` }).from(customers);
@@ -242,7 +269,17 @@ export async function getTeamPerformance(opts: { month?: number; year?: number }
 export async function getCustomerById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(customers).where(eq(customers.id, id)).limit(1);
+  const result = await db.select({
+    id: customers.id, name: customers.name, phone: customers.phone, email: customers.email,
+    address: customers.address, province: customers.province, district: customers.district,
+    subDistrict: customers.subDistrict, postalCode: customers.postalCode,
+    latitude: customers.latitude, longitude: customers.longitude, source: customers.source,
+    electricityBill: customers.electricityBill, roofType: customers.roofType, roofArea: customers.roofArea,
+    phaseType: customers.phaseType, meterSize: customers.meterSize, fullAddress: customers.fullAddress,
+    statusId: customers.statusId, facebookName: customers.facebookName, notes: customers.notes,
+    surveyorId: customers.surveyorId, surveyorName: teamMembers.name,
+    createdBy: customers.createdBy, createdAt: customers.createdAt, updatedAt: customers.updatedAt,
+  }).from(customers).leftJoin(teamMembers, eq(customers.surveyorId, teamMembers.id)).where(eq(customers.id, id)).limit(1);
   return result[0];
 }
 

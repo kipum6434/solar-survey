@@ -29,6 +29,7 @@ export default function CustomerDetail() {
 
   const { data: customer, isLoading, refetch } = trpc.customer.getById.useQuery({ id: customerId });
   const { data: surveys } = trpc.survey.getByCustomer.useQuery({ customerId });
+  const { data: teamAll } = trpc.teamMember.listAll.useQuery();
 
   const updateMutation = trpc.customer.update.useMutation({
     onSuccess: () => { toast.success("อัพเดทข้อมูลสำเร็จ"); setEditing(false); refetch(); },
@@ -196,6 +197,19 @@ export default function CustomerDetail() {
               </CardContent>
             </Card>
 
+                {customer.surveyorName && (
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <User className="h-4 w-4" /> คนส่งสำรวจ
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm font-medium">{customer.surveyorName}</p>
+                </CardContent>
+              </Card>
+            )}
+
             {customer.notes && (
               <Card className="border-0 shadow-sm">
                 <CardHeader className="pb-3">
@@ -309,6 +323,18 @@ export default function CustomerDetail() {
                 <div><Label>ขนาดมิเตอร์</Label><Input value={editForm.meterSize || ""} onChange={(e) => setEditForm({ ...editForm, meterSize: e.target.value })} /></div>
                 <div><Label>Latitude</Label><Input value={editForm.latitude || ""} onChange={(e) => setEditForm({ ...editForm, latitude: e.target.value })} /></div>
                 <div><Label>Longitude</Label><Input value={editForm.longitude || ""} onChange={(e) => setEditForm({ ...editForm, longitude: e.target.value })} /></div>
+                <div className="col-span-2">
+                  <Label>คนส่งสำรวจ</Label>
+                  <Select value={editForm.surveyorId ? String(editForm.surveyorId) : "_none"} onValueChange={(v) => setEditForm({ ...editForm, surveyorId: v === "_none" ? null : Number(v) })}>
+                    <SelectTrigger><SelectValue placeholder="เลือกคนส่งสำรวจ" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_none">ยังไม่ระบุ</SelectItem>
+                      {(teamAll || []).map((m: any) => (
+                        <SelectItem key={m.id} value={String(m.id)}>{m.name} {m.role === "admin_sender" ? "(แอดมิน)" : m.role === "surveyor" ? "(ช่างสำรวจ)" : `(${m.role})`}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="col-span-2"><Label>หมายเหตุ</Label><Textarea value={editForm.notes || ""} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} rows={2} /></div>
               </div>
               <DialogFooter>

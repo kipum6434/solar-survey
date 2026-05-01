@@ -94,6 +94,9 @@ export default function Customers() {
   const [statusFilter, setStatusFilter] = useState("");
 
   const { data: distinctValues } = trpc.customer.distinctValues.useQuery();
+  const { data: teamMembersForImport } = trpc.teamMember.listAll.useQuery();
+  // Cache team data for import mapping
+  if (teamMembersForImport) (window as any).__teamSurveyorsCache = teamMembersForImport;
 
   const queryInput = useMemo(() => ({
     search,
@@ -133,13 +136,14 @@ export default function Customers() {
     if (!data?.data || selectedIds.size === 0) return;
     const selected = data.data.filter((c: any) => selectedIds.has(c.id));
     if (selected.length === 0) { toast.error("ไม่พบข้อมูลที่เลือก"); return; }
-    const headers = ["ชื่อลูกค้า", "เบอร์โทร", "ที่อยู่", "โลเคชั่น", "ช่องทาง", "เขต/อำเภอ", "จังหวัด", "ค่าไฟ/เดือน", "ประเภทหลังคา", "ระบบไฟ", "ชื่อ FB", "หมายเหตุ", "สถานะ", "วันที่สร้าง"];
+    const headers = ["ชื่อลูกค้า", "เบอร์โทร", "ที่อยู่", "โลเคชั่น", "ช่องทาง", "คนส่งสำรวจ", "เขต/อำเภอ", "จังหวัด", "ค่าไฟ/เดือน", "ประเภทหลังคา", "ระบบไฟ", "ชื่อ FB", "หมายเหตุ", "สถานะ", "วันที่สร้าง"];
     const rows = selected.map((c: any) => ({
       "ชื่อลูกค้า": c.name || "",
       "เบอร์โทร": c.phone || "",
       "ที่อยู่": c.fullAddress || "",
       "โลเคชั่น": c.address || "",
       "ช่องทาง": c.source || "",
+      "คนส่งสำรวจ": c.surveyorName || "",
       "เขต/อำเภอ": c.district || "",
       "จังหวัด": c.province || "",
       "ค่าไฟ/เดือน": c.electricityBill || "",
@@ -437,7 +441,20 @@ export default function Customers() {
       <ImportExcelDialog
         open={showImport}
         onOpenChange={(v) => { setShowImport(v); if (!v) { setImportDuplicates([]); setPendingImportData(null); } }}
-        onImport={(customers) => { setPendingImportData(customers); importMutation.mutate({ customers }); }}
+        onImport={(customers) => {
+              // Map surveyorName to surveyorId if team data available
+              const teamData = (window as any).__teamSurveyorsCache;
+              const mapped = customers.map(c => {
+                if (c.surveyorName && teamData) {
+                  const found = teamData.find((t: any) => t.name === c.surveyorName);
+                  if (found) return { ...c, surveyorId: found.id, surveyorName: undefined };
+                }
+                const { surveyorName: _, ...rest } = c;
+                return rest;
+              });
+              setPendingImportData(mapped);
+              importMutation.mutate({ customers: mapped });
+            }}
         onForceImport={() => { if (pendingImportData) importMutation.mutate({ customers: pendingImportData, skipDuplicateCheck: true }); }}
         loading={importMutation.isPending}
         duplicateWarnings={importDuplicates}
@@ -524,6 +541,7 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete, selectedIds, on
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell"><SortableHeader label="ที่อยู่" sortKey="fullAddress" sortConfig={sortConfig} onSort={requestSort} /></th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell"><SortableHeader label="โลเคชั่น" sortKey="address" sortConfig={sortConfig} onSort={requestSort} /></th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell"><SortableHeader label="ช่องทาง" sortKey="source" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell"><SortableHeader label="คนส่งสำรวจ" sortKey="surveyorName" sortConfig={sortConfig} onSort={requestSort} /></th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell"><SortableHeader label="เขต/อำเภอ" sortKey="district" sortConfig={sortConfig} onSort={requestSort} /></th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell"><SortableHeader label="จังหวัด" sortKey="province" sortConfig={sortConfig} onSort={requestSort} /></th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell"><SortableHeader label="ค่าไฟ/เดือน" sortKey="electricityBill" sortConfig={sortConfig} onSort={requestSort} /></th>
@@ -575,6 +593,9 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete, selectedIds, on
                         {c.source || "-"}
                       </Badge>
                     ) : "-"}
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap hidden md:table-cell text-muted-foreground text-xs">
+                    {c.surveyorName || "-"}
                   </td>
                   <td className="px-3 py-2.5 whitespace-nowrap hidden lg:table-cell text-muted-foreground">
                     {c.district || "-"}
@@ -764,7 +785,8 @@ function CustomerGridView({ data, onRowClick, onEdit, onDelete, selectedIds, onT
 
 /* ==================== ADD CUSTOMER DIALOG ==================== */
 function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: boolean; onOpenChange: (v: boolean) => void; onSubmit: (d: any) => void; loading: boolean }) {
-  const [form, setForm] = useState({ name: "", phone: "", address: "", district: "", province: "", source: "other" as string, notes: "", electricityBill: "", roofType: "", phaseType: "" as string, fullAddress: "", facebookName: "" });
+  const [form, setForm] = useState({ name: "", phone: "", address: "", district: "", province: "", source: "other" as string, notes: "", electricityBill: "", roofType: "", phaseType: "" as string, fullAddress: "", facebookName: "", surveyorId: null as number | null });
+  const { data: teamSurveyors } = trpc.teamMember.listAll.useQuery();
   const [showLinePaste, setShowLinePaste] = useState(false);
   const [lineText, setLineText] = useState("");
   const [parsedPreview, setParsedPreview] = useState<any>(null);
@@ -806,7 +828,8 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
 
   const handleApplyParsed = () => {
     if (!parsedPreview) return;
-    setForm({
+    setForm(prev => ({
+      ...prev,
       name: parsedPreview.name || "",
       phone: parsedPreview.phone || "",
       address: parsedPreview.location || "",
@@ -819,7 +842,7 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
       phaseType: parsedPreview.phaseType === "single" || parsedPreview.phaseType === "three" ? parsedPreview.phaseType : "",
       fullAddress: parsedPreview.fullAddress || "",
       facebookName: parsedPreview.facebookName || "",
-    });
+    }));
     setShowLinePaste(false);
     setLineText("");
     setParsedPreview(null);
@@ -836,8 +859,9 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
       fullAddress: form.fullAddress || undefined,
       facebookName: form.facebookName || undefined,
       source: form.source as any,
+      surveyorId: form.surveyorId || undefined,
     });
-    setForm({ name: "", phone: "", address: "", district: "", province: "", source: "other", notes: "", electricityBill: "", roofType: "", phaseType: "", fullAddress: "", facebookName: "" });
+    setForm({ name: "", phone: "", address: "", district: "", province: "", source: "other", notes: "", electricityBill: "", roofType: "", phaseType: "", fullAddress: "", facebookName: "", surveyorId: null });
     setDuplicateWarning(null);
   };
 
@@ -922,6 +946,18 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
                 <SelectContent>
                   <SelectItem value="single">1 เฟส</SelectItem>
                   <SelectItem value="three">3 เฟส</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2">
+              <Label>คนส่งสำรวจ</Label>
+              <Select value={form.surveyorId ? String(form.surveyorId) : "_none"} onValueChange={(v) => setForm({ ...form, surveyorId: v === "_none" ? null : Number(v) })}>
+                <SelectTrigger><SelectValue placeholder="เลือกคนส่งสำรวจ" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">ยังไม่ระบุ</SelectItem>
+                  {(teamSurveyors || []).map((m: any) => (
+                    <SelectItem key={m.id} value={String(m.id)}>{m.name} {m.role === "admin_sender" ? "(แอดมิน)" : m.role === "surveyor" ? "(ช่างสำรวจ)" : `(${m.role})`}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -1053,6 +1089,7 @@ const COLUMN_MAP: Record<string, string> = {
   "ระบบไฟฟ้า": "phaseType", "เฟส": "phaseType", "phase": "phaseType",
   "ขนาดมิเตอร์": "meterSize", "มิเตอร์": "meterSize", "meter": "meterSize",
   "ชื่อ FB": "facebookName", "ชื่อ Facebook": "facebookName", "facebook": "facebookName", "facebookName": "facebookName", "ชื่อเฟส": "facebookName", "fb": "facebookName",
+  "คนส่งสำรวจ": "surveyorName", "surveyor": "surveyorName", "ผู้สำรวจ": "surveyorName", "Admin": "surveyorName",
   "หมายเหตุ": "notes", "notes": "notes", "note": "notes",
 };
 
@@ -1140,8 +1177,8 @@ function ImportExcelDialog({ open, onOpenChange, onImport, onForceImport, loadin
 
   const downloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet([
-      ["ชื่อลูกค้า", "เบอร์โทร", "ที่อยู่", "โลเคชั่น", "เขต/อำเภอ", "จังหวัด", "แหล่งที่มา", "ค่าไฟ/เดือน", "ประเภทหลังคา", "ระบบไฟฟ้า", "ชื่อ FB", "หมายเหตุ"],
-      ["สมชาย ใจดี", "0812345678", "48/22 มบ.เมืองประชา ถนนหทัยราษฎร์", "https://maps.google.com/...", "คลองสามวา", "กรุงเทพ", "FB เพจ SET", "3500", "เมทัลชีท", "3 เฟส", "Somchai Jaidi", "สนใจติดตั้ง 10kW"],
+      ["ชื่อลูกค้า", "เบอร์โทร", "ที่อยู่", "โลเคชั่น", "เขต/อำเภอ", "จังหวัด", "แหล่งที่มา", "ค่าไฟ/เดือน", "ประเภทหลังคา", "ระบบไฟฟ้า", "คนส่งสำรวจ", "ชื่อ FB", "หมายเหตุ"],
+      ["สมชาย ใจดี", "0812345678", "48/22 มบ.เมืองประชา ถนนหทัยราษฎร์", "https://maps.google.com/...", "คลองสามวา", "กรุงเทพ", "FB เพจ SET", "3500", "เมทัลชีท", "3 เฟส", "กุลธิดา บุนนาค", "Somchai Jaidi", "สนใจติดตั้ง 10kW"],
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "ลูกค้า");
@@ -1303,6 +1340,7 @@ function CustomerTemplateDialog({ open, onOpenChange }: { open: boolean; onOpenC
 ประเภทหลังคา : 
 ระบบไฟ : 1 เฟส / 3 เฟส
 แหล่งที่มา : FB เพจ ___ / LINE / แนะนำ
+คนส่งสำรวจ : 
 ชื่อ FB : 
 หมายเหตุ : `;
 

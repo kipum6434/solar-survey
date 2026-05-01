@@ -61,6 +61,7 @@ const customerRouter = router({
       fullAddress: z.string().optional(),
       facebookName: z.string().optional(),
       notes: z.string().optional(),
+      surveyorId: z.number().nullable().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       if (input.source) await db.getOrCreateSource(input.source);
@@ -91,12 +92,13 @@ const customerRouter = router({
       fullAddress: z.string().nullable().optional(),
       facebookName: z.string().nullable().optional(),
       notes: z.string().nullable().optional(),
+      surveyorId: z.number().nullable().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const { id, ...data } = input;
       // Filter out null/undefined/empty-string values so Drizzle doesn't send them as NULL/empty to DB
-      // Keep 'name' even if empty (it's required)
-      const keepFields = new Set(["name"]);
+      // Keep 'name' even if empty (it's required), keep surveyorId even if null (to allow clearing)
+      const keepFields = new Set(["name", "surveyorId"]);
       const cleanData = Object.fromEntries(
         Object.entries(data).filter(([k, v]) => {
           if (keepFields.has(k)) return v !== null && v !== undefined;
@@ -166,6 +168,7 @@ const customerRouter = router({
         meterSize: z.string().optional(),
         facebookName: z.string().optional(),
         notes: z.string().optional(),
+        surveyorId: z.number().nullable().optional(),
       })),
       skipDuplicateCheck: z.boolean().optional(),
     }))

@@ -791,3 +791,13 @@
 - [x] PDF: แก้ไข header ให้แสดงชื่อบริษัท, เบอร์โทร, ที่อยู่
 - [x] PDF: ใช้โลโก้จาก company_settings แทน VITE_APP_LOGO (fallback ไป VITE_APP_LOGO ถ้าไม่มี)
 - [x] Vitest: 9 tests passed — company-settings.test.ts
+
+### Feature: เพิ่มช่อง "คนส่งสำรวจ" (surveyor) ในหน้าลูกค้า — link ทั้งระบบ
+- [x] Schema: เพิ่ม column surveyorId (FK → team_members) ในตาราง customers
+- [x] Backend: อัพเดท db helpers + routers ให้รองรับ surveyorId (create, update, get)
+- [x] Frontend: เพิ่ม dropdown เลือกคนส่งสำรวจ (จาก team_members) ในฟอร์มเพิ่ม/แก้ไขลูกค้า
+- [x] Frontend: แสดงชื่อคนส่งสำรวจในตารางรายชื่อลูกค้า
+- [x] Frontend: แสดงชื่อคนส่งสำรวจในหน้างานสำรวจ + งานติดตาม (link จาก customer)
+- [x] Template: เพิ่มช่อง "คนส่งสำรวจ" ใน Template ขอข้อมูล
+- [x] Excel: เพิ่มคอลัมน์ "คนส่งสำรวจ" ใน Import/Export Excel
+- [x] Vitest: 26 tests passed (company-settings 9, pdf-image-proxy 16, auth 1)
