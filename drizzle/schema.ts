@@ -161,6 +161,7 @@ export const surveyPhotos = mysqlTable("survey_photos", {
   category: varchar("category", { length: 100 }).default("other"),
   fileSize: int("fileSize"),
   caption: text("caption"),
+  sortOrder: int("sortOrder").default(0).notNull(),
   uploadedBy: int("uploadedBy"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });

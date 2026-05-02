@@ -443,12 +443,22 @@ export async function deleteSurvey(id: number) {
 export async function getSurveyPhotos(surveyId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(surveyPhotos).where(eq(surveyPhotos.surveyId, surveyId)).orderBy(desc(surveyPhotos.createdAt));
+  return db.select().from(surveyPhotos).where(eq(surveyPhotos.surveyId, surveyId)).orderBy(asc(surveyPhotos.sortOrder), asc(surveyPhotos.id));
 }
 
 export async function createSurveyPhoto(data: InsertSurveyPhoto) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
+  // Auto-set sortOrder to be after existing photos in same survey+category
+  if (data.sortOrder === undefined || data.sortOrder === null) {
+    const existing = await db.select({ cnt: sql<number>`count(*)` })
+      .from(surveyPhotos)
+      .where(and(
+        eq(surveyPhotos.surveyId, data.surveyId),
+        eq(surveyPhotos.category, data.category || "other")
+      ));
+    data.sortOrder = existing[0]?.cnt ?? 0;
+  }
   const result = await db.insert(surveyPhotos).values(data);
   return result[0].insertId;
 }
@@ -457,6 +467,14 @@ export async function deleteSurveyPhoto(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.delete(surveyPhotos).where(eq(surveyPhotos.id, id));
+}
+
+export async function reorderSurveyPhotos(items: { id: number; sortOrder: number }[]) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  for (const item of items) {
+    await db.update(surveyPhotos).set({ sortOrder: item.sortOrder }).where(eq(surveyPhotos.id, item.id));
+  }
 }
 
 // ==================== SURVEY DOCUMENTS QUERIES ====================

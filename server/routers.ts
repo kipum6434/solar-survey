@@ -525,6 +525,13 @@ const photoRouter = router({
       await db.logActivity({ userId: ctx.user.id, action: "delete_photo", entityType: "photo", entityId: input.id, details: `ลบรูป: ${photo?.fileName || input.id}` });
       return { success: true };
     }),
+
+  reorder: publicProcedure
+    .input(z.object({ items: z.array(z.object({ id: z.number(), sortOrder: z.number() })).min(1).max(500) }))
+    .mutation(async ({ input }) => {
+      await db.reorderSurveyPhotos(input.items);
+      return { success: true };
+    }),
 });
 
 // ==================== DOCUMENT ROUTER ====================
@@ -789,6 +796,22 @@ const shareLinkRouter = router({
       if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
       const { token, surveyId, ...data } = input;
       await db.updateSurvey(surveyId, data);
+      return { success: true };
+    }),
+
+  // Public reorder survey photos (ลิงก์สำรวจ — จัดเรียงรูป)
+  publicReorderSurveyPhotos: publicProcedure
+    .input(z.object({
+      token: z.string(),
+      surveyId: z.number(),
+      items: z.array(z.object({ id: z.number(), sortOrder: z.number() })).min(1).max(500),
+    }))
+    .mutation(async ({ input }) => {
+      const link = await db.getShareLinkByToken(input.token);
+      if (!link || !link.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
+      if (link.linkType !== "survey") throw new TRPCError({ code: "FORBIDDEN", message: "ลิงก์นี้ไม่ใช่ลิงก์สำรวจ" });
+      if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
+      await db.reorderSurveyPhotos(input.items);
       return { success: true };
     }),
 

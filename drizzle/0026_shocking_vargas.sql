@@ -1,0 +1,1 @@
+ALTER TABLE `survey_photos` ADD `sortOrder` int DEFAULT 0 NOT NULL;

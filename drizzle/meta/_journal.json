@@ -183,6 +183,13 @@
       "when": 1777654266403,
       "tag": "0025_vengeful_mojo",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1777695329517,
+      "tag": "0026_shocking_vargas",
+      "breakpoints": true
     }
   ]
 }

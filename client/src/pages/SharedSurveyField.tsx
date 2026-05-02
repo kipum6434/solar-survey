@@ -9,7 +9,7 @@ import { compressImages } from "@/lib/imageCompression";
 import {
   Camera, MapPin, Calendar, Phone, Zap, Home, Gauge,
   X, Sun, Upload, Trash2, CheckCircle2, Clock,
-  Save, FileText, ChevronDown, ChevronUp, Info, User, ImagePlus,
+  Save, FileText, ChevronDown, ChevronUp, Info, User, ImagePlus, GripVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,70 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+// Sortable photo item component
+function SortablePhotoItem({ photo, onDelete, onPreview }: {
+  photo: any;
+  onDelete: (id: number) => void;
+  onPreview: (url: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: photo.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.7 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className={`relative group aspect-square ${isDragging ? "ring-2 ring-blue-400 rounded-md shadow-lg" : ""}`}>
+      <img
+        src={photo.url}
+        alt={photo.fileName}
+        className="w-full h-full object-cover rounded-md cursor-pointer"
+        onClick={() => onPreview(photo.url)}
+      />
+      {/* Drag handle */}
+      <button
+        {...attributes}
+        {...listeners}
+        className="absolute top-1 left-1 bg-black/50 text-white rounded-full p-1 opacity-60 hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing touch-none"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <GripVertical className="h-3 w-3" />
+      </button>
+      {/* Delete button */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onDelete(photo.id); }}
+        className="absolute top-1 right-1 bg-red-500/80 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <Trash2 className="h-3 w-3" />
+      </button>
+      {/* Sort order badge */}
+      <div className="absolute bottom-1 left-1 bg-black/50 text-white text-[10px] rounded px-1">
+        {photo.sortOrder + 1}
+      </div>
+    </div>
+  );
+}
 
 export default function SharedSurveyField() {
   const params = useParams<{ token: string }>();
@@ -67,6 +131,13 @@ export default function SharedSurveyField() {
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const galleryInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
+  // DnD sensors - with touch delay for mobile
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
   const completeSurveyMut = trpc.survey.publicCompleteSurvey.useMutation({
     onSuccess: () => { toast.success("สำรวจเสร็จสิ้นแล้ว"); window.location.reload(); },
     onError: (e: any) => { toast.error(e.message || "เกิดข้อผิดพลาด"); },
@@ -76,6 +147,10 @@ export default function SharedSurveyField() {
   const deletePhotoMut = trpc.shareLink.publicDeleteSurveyPhoto.useMutation();
   const updateTechMut = trpc.shareLink.publicUpdateSurveyTechnical.useMutation();
   const updateCustMut = trpc.shareLink.publicUpdateCustomerInfo.useMutation();
+  const reorderPhotosMut = trpc.shareLink.publicReorderSurveyPhotos.useMutation({
+    onSuccess: () => { utils.shareLink.getByToken.invalidate({ token: params.token || "" }); },
+    onError: (e: any) => { toast.error("จัดเรียงล้มเหลว: " + (e.message || "")); },
+  });
 
   // Build dynamic category map
   const categoryMap: Record<string, string> = useMemo(() => {
@@ -180,6 +255,20 @@ export default function SharedSurveyField() {
     }
     setDeletingPhotoId(null);
   }, [token, surveyId, deletePhotoMut, utils]);
+
+  // Drag end handler for photo reorder within a category
+  const handleDragEnd = useCallback((catKey: string, catPhotos: any[]) => (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = catPhotos.findIndex((p: any) => p.id === active.id);
+    const newIndex = catPhotos.findIndex((p: any) => p.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove([...catPhotos], oldIndex, newIndex);
+    const items = reordered.map((p: any, i: number) => ({ id: p.id, sortOrder: i }));
+    reorderPhotosMut.mutate({ token, surveyId, items });
+  }, [token, surveyId, reorderPhotosMut]);
 
   // Save technical data
   const handleSaveTech = useCallback(async () => {
@@ -610,12 +699,14 @@ export default function SharedSurveyField() {
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <Camera className="h-4 w-4" /> อัพโหลดรูปสำรวจ ({(photosData || []).length} รูป)
             </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">กดค้างที่ไอคอน ⠿ แล้วลากเพื่อจัดลำดับรูป</p>
           </CardHeader>
           <CardContent className="space-y-4">
             {categoryKeys.map((catKey) => {
               const catLabel = categoryMap[catKey];
               const catPhotos = photosByCategory[catKey] || [];
               const isUploading = uploadingCategory === catKey;
+              const photoIds = catPhotos.map((p: any) => p.id);
 
               return (
                 <div key={catKey} className="border rounded-lg p-3">
@@ -664,24 +755,20 @@ export default function SharedSurveyField() {
                     />
                   </div>
                   {catPhotos.length > 0 && (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                      {catPhotos.map((photo: any) => (
-                        <div key={photo.id} className="relative group aspect-square">
-                          <img
-                            src={photo.url}
-                            alt={photo.fileName}
-                            className="w-full h-full object-cover rounded-md cursor-pointer"
-                            onClick={() => setLightboxImg(photo.url)}
-                          />
-                          <button
-                            onClick={() => setDeletingPhotoId(photo.id)}
-                            className="absolute top-1 right-1 bg-red-500/80 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(catKey, catPhotos)}>
+                      <SortableContext items={photoIds} strategy={rectSortingStrategy}>
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                          {catPhotos.map((photo: any) => (
+                            <SortablePhotoItem
+                              key={photo.id}
+                              photo={photo}
+                              onDelete={(id) => setDeletingPhotoId(id)}
+                              onPreview={(url) => setLightboxImg(url)}
+                            />
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </SortableContext>
+                    </DndContext>
                   )}
                 </div>
               );
