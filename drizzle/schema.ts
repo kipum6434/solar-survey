@@ -41,7 +41,7 @@ export const customers = mysqlTable("customers", {
   latitude: decimal("latitude", { precision: 10, scale: 7 }),
   longitude: decimal("longitude", { precision: 10, scale: 7 }),
   source: varchar("source", { length: 255 }).default("other"),
-  electricityBill: decimal("electricityBill", { precision: 10, scale: 2 }),
+  electricityBill: text("electricityBill"),
   roofType: varchar("roofType", { length: 100 }),
   roofArea: decimal("roofArea", { precision: 10, scale: 2 }),
   phaseType: mysqlEnum("phaseType", ["single", "three"]),

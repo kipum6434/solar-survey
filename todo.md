@@ -881,3 +881,8 @@
 - [x] Backend: sanitize ค่า numeric fields (systemSize, panelCount, quotedPrice) ก่อน save ลง DB - strip ตัวอักษรที่ไม่ใช่ตัวเลข
 - [x] Frontend: แสดง error message ที่เป็น user-friendly แทน raw SQL
 - [x] Frontend: format ค่าตัวเลขให้มี comma เมื่อแสดงผล (200000 → 200,000)
+
+### Feature: เปลี่ยนช่องค่าไฟเป็น text เพื่อรองรับช่วงราคา
+- [x] เปลี่ยน electricityBill column จาก decimal เป็น text ใน DB
+- [x] เอา sanitize ออกจาก electricityBill (ให้กรอกอะไรก็ได้ เช่น "3000-5000")
+- [x] แก้ placeholder ให้ชัดเจนว่ากรอกช่วงได้

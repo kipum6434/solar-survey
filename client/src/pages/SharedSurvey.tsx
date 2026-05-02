@@ -230,7 +230,7 @@ export default function SharedSurvey() {
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold">ข้อมูลทางเทคนิค</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
-              {c.electricityBill && <div className="flex items-center gap-2"><Zap className="h-4 w-4 text-amber-500" />ค่าไฟ: {Number(c.electricityBill).toLocaleString()} บาท/เดือน</div>}
+              {c.electricityBill && <div className="flex items-center gap-2"><Zap className="h-4 w-4 text-amber-500" />ค่าไฟ: {c.electricityBill} บาท/เดือน</div>}
               {c.roofType && <div className="flex items-center gap-2"><Home className="h-4 w-4 text-muted-foreground" />หลังคา: {c.roofType}</div>}
               {c.phaseType && <div className="flex items-center gap-2"><Gauge className="h-4 w-4 text-muted-foreground" />ระบบไฟ: {c.phaseType === "single" ? "1 เฟส" : "3 เฟส"}</div>}
               {s.systemSize && <div className="flex items-center gap-2"><Sun className="h-4 w-4 text-amber-500" />ขนาดระบบ: {s.systemSize} kW</div>}

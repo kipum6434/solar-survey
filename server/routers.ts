@@ -876,11 +876,6 @@ const shareLinkRouter = router({
       const surveyData = await db.getSurveyWithCustomer(link.surveyId);
       if (!surveyData) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบข้อมูล" });
       const { token, surveyId, ...custData } = input;
-      // Sanitize numeric fields
-      if (custData.electricityBill !== undefined && custData.electricityBill !== null) {
-        const num = parseFloat(custData.electricityBill.replace(/[^0-9.]/g, ""));
-        custData.electricityBill = isNaN(num) ? "" : String(num);
-      }
       const cleanData = Object.fromEntries(
         Object.entries(custData).filter(([_, v]) => v !== undefined && v !== null && v !== "")
       );

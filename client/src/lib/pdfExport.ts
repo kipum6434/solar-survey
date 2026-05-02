@@ -395,7 +395,7 @@ export async function exportSurveyPDF(
   if (customer.subDistrict || customer.district || customer.province) {
     customerItems.push({ key: "พื้นที่:", value: [customer.subDistrict, customer.district, customer.province, customer.postalCode].filter(Boolean).join(", ") });
   }
-  if (customer.electricityBill) customerItems.push({ key: "ค่าไฟ/เดือน:", value: `${formatNumber(customer.electricityBill)} บาท` });
+  if (customer.electricityBill) customerItems.push({ key: "ค่าไฟ/เดือน:", value: `${customer.electricityBill} บาท` });
   if (customer.roofType) customerItems.push({ key: "ประเภทหลังคา:", value: customer.roofType });
   if (customer.roofArea) customerItems.push({ key: "พื้นที่หลังคา:", value: `${formatNumber(customer.roofArea)} ตร.ม.` });
   if (customer.phaseType) customerItems.push({ key: "ระบบไฟ:", value: customer.phaseType === "single" ? "1 เฟส" : "3 เฟส" });

@@ -167,7 +167,7 @@ export default function CustomerDetail() {
                 {customer.electricityBill && (
                   <div className="flex items-center gap-3">
                     <Zap className="h-4 w-4 text-amber-500" />
-                    <span>ค่าไฟ: {Number(customer.electricityBill).toLocaleString()} บาท/เดือน</span>
+                    <span>ค่าไฟ: {customer.electricityBill} บาท/เดือน</span>
                   </div>
                 )}
                 {customer.roofType && (
@@ -308,7 +308,7 @@ export default function CustomerDetail() {
                   <Label>แหล่งที่มา</Label>
                   <SourceCombobox value={editForm.source || ""} onChange={(v) => setEditForm({ ...editForm, source: v })} />
                 </div>
-                <div><Label>ค่าไฟ/เดือน</Label><Input value={editForm.electricityBill || ""} onChange={(e) => setEditForm({ ...editForm, electricityBill: e.target.value })} type="number" /></div>
+                <div><Label>ค่าไฟ/เดือน</Label><Input value={editForm.electricityBill || ""} onChange={(e) => setEditForm({ ...editForm, electricityBill: e.target.value })} placeholder="เช่น 3000-5000" /></div>
                 <div><Label>ประเภทหลังคา</Label><Input value={editForm.roofType || ""} onChange={(e) => setEditForm({ ...editForm, roofType: e.target.value })} /></div>
                 <div>
                   <Label>ระบบไฟ</Label>

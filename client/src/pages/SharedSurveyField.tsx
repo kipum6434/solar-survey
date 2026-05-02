@@ -195,14 +195,8 @@ export default function SharedSurveyField() {
 
   // Initialize customer form once
   if (c && !custForm) {
-    const fmtBill = (v: string | number | null | undefined) => {
-      if (!v) return "";
-      const n = Number(v);
-      if (isNaN(n)) return String(v);
-      return n.toLocaleString("en-US");
-    };
     setCustForm({
-      electricityBill: fmtBill(c.electricityBill),
+      electricityBill: c.electricityBill || "",
       roofType: c.roofType || "",
       roofArea: c.roofArea || "",
       phaseType: c.phaseType || "",
@@ -321,12 +315,10 @@ export default function SharedSurveyField() {
     if (!custForm) return;
     setCustSaving(true);
     try {
-      // Sanitize numeric field
-      const cleanBill = custForm.electricityBill ? custForm.electricityBill.replace(/[^0-9.]/g, "") : "";
       await updateCustMut.mutateAsync({
         token,
         surveyId,
-        electricityBill: cleanBill || undefined,
+        electricityBill: custForm.electricityBill || undefined,
         roofType: custForm.roofType || undefined,
         roofArea: custForm.roofArea || undefined,
         phaseType: (custForm.phaseType as "single" | "three") || undefined,
@@ -472,7 +464,7 @@ export default function SharedSurveyField() {
                 <MapPin className="h-4 w-4" /> ดูบน Google Maps
               </a>
             )}
-            {c.electricityBill && <div className="flex items-center gap-2"><Zap className="h-4 w-4 text-amber-500" />ค่าไฟ: {Number(c.electricityBill).toLocaleString()} บาท/เดือน</div>}
+            {c.electricityBill && <div className="flex items-center gap-2"><Zap className="h-4 w-4 text-amber-500" />ค่าไฟ: {c.electricityBill} บาท/เดือน</div>}
             {c.roofType && <div className="flex items-center gap-2"><Home className="h-4 w-4 text-muted-foreground" />หลังคา: {c.roofType}</div>}
             {c.phaseType && <div className="flex items-center gap-2"><Gauge className="h-4 w-4 text-muted-foreground" />ระบบไฟ: {c.phaseType === "single" ? "1 เฟส" : "3 เฟส"}</div>}
           </CardContent>
@@ -604,7 +596,7 @@ export default function SharedSurveyField() {
                   <Input
                     value={custForm.electricityBill}
                     onChange={(e) => { setCustForm({ ...custForm, electricityBill: e.target.value }); setCustDirty(true); }}
-                    placeholder="เช่น 3500"
+                    placeholder="เช่น 3000-5000 หรือ 3,500"
                   />
                 </div>
                 <div>

@@ -614,7 +614,7 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete, selectedIds, on
                     {c.electricityBill ? (
                       <span className="flex items-center gap-1 text-amber-600">
                         <Zap className="h-3 w-3" />
-                        {Number(c.electricityBill).toLocaleString()} ฿
+                        {c.electricityBill} ฿
                       </span>
                     ) : <span className="text-muted-foreground">-</span>}
                   </td>
@@ -948,7 +948,7 @@ function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: bo
             </div>
             <div>
               <Label>ค่าไฟ/เดือน (บาท)</Label>
-              <Input value={form.electricityBill} onChange={(e) => setForm({ ...form, electricityBill: e.target.value })} placeholder="เช่น 3000" type="number" />
+              <Input value={form.electricityBill} onChange={(e) => setForm({ ...form, electricityBill: e.target.value })} placeholder="เช่น 3000-5000 หรือ 3,500" />
             </div>
             <div>
               <Label>ประเภทหลังคา</Label>
