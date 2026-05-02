@@ -216,7 +216,7 @@ export async function getCustomerDistinctValues() {
 
 export async function getTeamPerformance(opts: { month?: number; year?: number }) {
   const db = await getDb();
-  if (!db) return [];
+  if (!db) return { adminSenders: [], surveyors: [], totals: { totalCases: 0, totalWon: 0, closeRate: 0 } };
   const { month, year } = opts;
   const conditions: any[] = [];
   if (month && year) {
@@ -225,13 +225,13 @@ export async function getTeamPerformance(opts: { month?: number; year?: number }
   } else if (year) {
     conditions.push(sql`YEAR(${surveys.createdAt}) = ${year}`);
   }
-  // Get all survey assignments with survey info
+  // Get all surveys with status
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
   const surveyData = whereClause
     ? await db.select({ surveyId: surveys.id, createdAt: surveys.createdAt, status: surveys.status }).from(surveys).where(whereClause)
     : await db.select({ surveyId: surveys.id, createdAt: surveys.createdAt, status: surveys.status }).from(surveys);
   const surveyIds = surveyData.map(s => s.surveyId);
-  if (surveyIds.length === 0) return [];
+  if (surveyIds.length === 0) return { adminSenders: [], surveyors: [], totals: { totalCases: surveyData.length, totalWon: 0, closeRate: 0 } };
   // Get all assignments for these surveys
   const assignments = await db.select({
     surveyId: surveyAssignments.surveyId,
@@ -244,26 +244,52 @@ export async function getTeamPerformance(opts: { month?: number; year?: number }
     .leftJoin(teamMembers, eq(surveyAssignments.userId, teamMembers.id))
     .leftJoin(users, eq(surveyAssignments.userId, users.id))
     .where(inArray(surveyAssignments.surveyId, surveyIds));
-  // Count per team member - each assignment counts as 1 regardless of co-assignment
-  const memberStats: Record<number, { name: string; role: string; surveyCount: number; completedCount: number }> = {};
+  // Build survey status map
   const surveyStatusMap: Record<number, string> = {};
   for (const s of surveyData) surveyStatusMap[s.surveyId] = s.status;
+  const isWon = (surveyId: number) => surveyStatusMap[surveyId] === "won";
+  const isSurveyed = (surveyId: number) => {
+    const st = surveyStatusMap[surveyId];
+    return st === "surveyed" || st === "quoted" || st === "negotiating" || st === "won";
+  };
+  // Split by assignment role
+  type MemberPerf = { name: string; totalCases: number; surveyedCount: number; wonCount: number; closeRate: number };
+  const adminSenderMap: Record<number, MemberPerf> = {};
+  const surveyorMap: Record<number, MemberPerf> = {};
   for (const a of assignments) {
-    if (!memberStats[a.userId]) {
-      memberStats[a.userId] = {
-        name: a.teamMemberName ?? a.fallbackUserName ?? `ID:${a.userId}`,
-        role: a.teamMemberRole ?? a.role,
-        surveyCount: 0,
-        completedCount: 0,
-      };
-    }
-    memberStats[a.userId].surveyCount++;
-    const surveyStatus = surveyStatusMap[a.surveyId];
-    if (surveyStatus === "surveyed" || surveyStatus === "quoted" || surveyStatus === "negotiating" || surveyStatus === "won") {
-      memberStats[a.userId].completedCount++;
+    const name = a.teamMemberName ?? a.fallbackUserName ?? `ID:${a.userId}`;
+    if (a.role === "admin_sender") {
+      if (!adminSenderMap[a.userId]) {
+        adminSenderMap[a.userId] = { name, totalCases: 0, surveyedCount: 0, wonCount: 0, closeRate: 0 };
+      }
+      adminSenderMap[a.userId].totalCases++;
+      if (isSurveyed(a.surveyId)) adminSenderMap[a.userId].surveyedCount++;
+      if (isWon(a.surveyId)) adminSenderMap[a.userId].wonCount++;
+    } else if (a.role === "surveyor") {
+      if (!surveyorMap[a.userId]) {
+        surveyorMap[a.userId] = { name, totalCases: 0, surveyedCount: 0, wonCount: 0, closeRate: 0 };
+      }
+      surveyorMap[a.userId].totalCases++;
+      if (isSurveyed(a.surveyId)) surveyorMap[a.userId].surveyedCount++;
+      if (isWon(a.surveyId)) surveyorMap[a.userId].wonCount++;
     }
   }
-  return Object.entries(memberStats).map(([id, stats]) => ({ teamMemberId: Number(id), ...stats }));
+  // Calculate close rates
+  const calcRate = (map: Record<number, MemberPerf>) => {
+    return Object.entries(map).map(([id, stats]) => ({
+      teamMemberId: Number(id),
+      ...stats,
+      closeRate: stats.totalCases > 0 ? Math.round((stats.wonCount / stats.totalCases) * 100) : 0,
+    })).sort((a, b) => b.totalCases - a.totalCases);
+  };
+  // Overall totals
+  const totalCases = surveyData.length;
+  const totalWon = surveyData.filter(s => s.status === "won").length;
+  return {
+    adminSenders: calcRate(adminSenderMap),
+    surveyors: calcRate(surveyorMap),
+    totals: { totalCases, totalWon, closeRate: totalCases > 0 ? Math.round((totalWon / totalCases) * 100) : 0 },
+  };
 }
 
 export async function getCustomerById(id: number) {

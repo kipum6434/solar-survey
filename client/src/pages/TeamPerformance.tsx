@@ -3,14 +3,98 @@ import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, ClipboardCheck, TrendingUp, BarChart3 } from "lucide-react";
+import { Users, TrendingUp, BarChart3, Trophy } from "lucide-react";
 
 const MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
-const ROLE_LABELS: Record<string, string> = {
-  admin_sender: "แอดมิน",
-  surveyor: "เซลล์/สำรวจ",
-  closer: "ปิดการขาย",
+
+type MemberPerf = {
+  teamMemberId: number;
+  name: string;
+  totalCases: number;
+  surveyedCount: number;
+  wonCount: number;
+  closeRate: number;
 };
+
+function PerformanceTable({ title, icon, data, emptyText }: { title: string; icon: React.ReactNode; data: MemberPerf[]; emptyText: string }) {
+  if (data.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            {icon}
+            {title}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            <Users className="h-10 w-10 mx-auto mb-2 opacity-30" />
+            <p>{emptyText}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const maxCases = Math.max(...data.map(d => d.totalCases), 1);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          {icon}
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left">
+                <th className="py-3 px-4 font-medium text-muted-foreground">#</th>
+                <th className="py-3 px-4 font-medium text-muted-foreground">ชื่อ</th>
+                <th className="py-3 px-4 font-medium text-muted-foreground text-center">เคสทั้งหมด</th>
+                <th className="py-3 px-4 font-medium text-muted-foreground text-center">สำรวจแล้ว</th>
+                <th className="py-3 px-4 font-medium text-muted-foreground text-center">ปิดการขายได้</th>
+                <th className="py-3 px-4 font-medium text-muted-foreground text-center">อัตราปิด</th>
+                <th className="py-3 px-4 font-medium text-muted-foreground">กราฟ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((member, idx) => {
+                const barWidth = Math.round((member.totalCases / maxCases) * 100);
+                return (
+                  <tr key={member.teamMemberId} className="border-b last:border-0 hover:bg-muted/50">
+                    <td className="py-3 px-4 text-muted-foreground">{idx + 1}</td>
+                    <td className="py-3 px-4 font-medium">{member.name}</td>
+                    <td className="py-3 px-4 text-center font-semibold text-lg">{member.totalCases}</td>
+                    <td className="py-3 px-4 text-center font-semibold text-blue-600">{member.surveyedCount}</td>
+                    <td className="py-3 px-4 text-center font-semibold text-green-600">{member.wonCount}</td>
+                    <td className="py-3 px-4 text-center">
+                      <span className={`font-bold ${
+                        member.closeRate >= 50 ? "text-green-600" : member.closeRate >= 25 ? "text-amber-600" : "text-red-500"
+                      }`}>
+                        {member.closeRate}%
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 min-w-[120px]">
+                      <div className="w-full bg-muted rounded-full h-3 relative">
+                        <div
+                          className="bg-primary rounded-full h-3 transition-all"
+                          style={{ width: `${barWidth}%` }}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function TeamPerformance() {
   const now = new Date();
@@ -33,9 +117,9 @@ export default function TeamPerformance() {
     return Array.from({ length: 5 }, (_, i) => currentBE - i);
   }, []);
 
-  const totalSurveys = performance?.reduce((sum, p) => sum + p.surveyCount, 0) ?? 0;
-  const totalCompleted = performance?.reduce((sum, p) => sum + p.completedCount, 0) ?? 0;
-  const teamCount = performance?.length ?? 0;
+  const totals = performance?.totals ?? { totalCases: 0, totalWon: 0, closeRate: 0 };
+  const adminSenders = performance?.adminSenders ?? [];
+  const surveyors = performance?.surveyors ?? [];
 
   return (
     <DashboardLayout>
@@ -43,7 +127,7 @@ export default function TeamPerformance() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">ผลงานทีม</h1>
-          <p className="text-muted-foreground text-sm">สรุปจำนวนเคสสำรวจต่อทีมงาน</p>
+          <p className="text-muted-foreground text-sm">สรุปผลงานและอัตราปิดการขายแยกตามบทบาท</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Select value={viewMode} onValueChange={(v) => setViewMode(v as "month" | "year")}>
@@ -85,21 +169,10 @@ export default function TeamPerformance() {
         <Card>
           <CardContent className="flex items-center gap-4 p-5">
             <div className="p-3 rounded-xl bg-blue-100 text-blue-600">
-              <Users className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{teamCount}</p>
-              <p className="text-sm text-muted-foreground">ทีมงานที่มีงาน</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-4 p-5">
-            <div className="p-3 rounded-xl bg-amber-100 text-amber-600">
               <BarChart3 className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{totalSurveys}</p>
+              <p className="text-2xl font-bold">{totals.totalCases}</p>
               <p className="text-sm text-muted-foreground">เคสทั้งหมด</p>
             </div>
           </CardContent>
@@ -107,94 +180,50 @@ export default function TeamPerformance() {
         <Card>
           <CardContent className="flex items-center gap-4 p-5">
             <div className="p-3 rounded-xl bg-green-100 text-green-600">
-              <ClipboardCheck className="h-6 w-6" />
+              <Trophy className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{totalCompleted}</p>
-              <p className="text-sm text-muted-foreground">สำรวจเสร็จ</p>
+              <p className="text-2xl font-bold">{totals.totalWon}</p>
+              <p className="text-sm text-muted-foreground">ปิดการขายได้</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className="p-3 rounded-xl bg-amber-100 text-amber-600">
+              <TrendingUp className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{totals.closeRate}%</p>
+              <p className="text-sm text-muted-foreground">อัตราปิดรวม</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Performance Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            {viewMode === "month"
-              ? `ผลงาน ${MONTHS[selectedMonth - 1]} ${selectedYear}`
-              : `ผลงานปี ${selectedYear}`}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-            </div>
-          ) : !performance || performance.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Users className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p>ไม่มีข้อมูลผลงานในช่วงเวลานี้</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left">
-                    <th className="py-3 px-4 font-medium text-muted-foreground">#</th>
-                    <th className="py-3 px-4 font-medium text-muted-foreground">ชื่อทีมงาน</th>
-                    <th className="py-3 px-4 font-medium text-muted-foreground">ตำแหน่ง</th>
-                    <th className="py-3 px-4 font-medium text-muted-foreground text-center">เคสทั้งหมด</th>
-                    <th className="py-3 px-4 font-medium text-muted-foreground text-center">สำรวจเสร็จ</th>
-                    <th className="py-3 px-4 font-medium text-muted-foreground text-center">อัตราสำเร็จ</th>
-                    <th className="py-3 px-4 font-medium text-muted-foreground">กราฟ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {performance
-                    .sort((a, b) => b.surveyCount - a.surveyCount)
-                    .map((member, idx) => {
-                      const rate = member.surveyCount > 0 ? Math.round((member.completedCount / member.surveyCount) * 100) : 0;
-                      const maxCount = Math.max(...performance.map(p => p.surveyCount), 1);
-                      const barWidth = Math.round((member.surveyCount / maxCount) * 100);
-                      return (
-                        <tr key={member.teamMemberId} className="border-b last:border-0 hover:bg-muted/50">
-                          <td className="py-3 px-4 text-muted-foreground">{idx + 1}</td>
-                          <td className="py-3 px-4 font-medium">{member.name}</td>
-                          <td className="py-3 px-4">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                              member.role === "surveyor" ? "bg-blue-100 text-blue-700" :
-                              member.role === "admin_sender" ? "bg-purple-100 text-purple-700" :
-                              "bg-green-100 text-green-700"
-                            }`}>
-                              {ROLE_LABELS[member.role] || member.role}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-center font-semibold text-lg">{member.surveyCount}</td>
-                          <td className="py-3 px-4 text-center font-semibold text-lg text-green-600">{member.completedCount}</td>
-                          <td className="py-3 px-4 text-center">
-                            <span className={`font-medium ${rate >= 70 ? "text-green-600" : rate >= 40 ? "text-amber-600" : "text-red-500"}`}>
-                              {rate}%
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 min-w-[120px]">
-                            <div className="w-full bg-muted rounded-full h-3">
-                              <div
-                                className="bg-primary rounded-full h-3 transition-all"
-                                style={{ width: `${barWidth}%` }}
-                              />
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Admin Sender Table */}
+          <PerformanceTable
+            title="ผลงานคนส่งสำรวจ (แอดมิน)"
+            icon={<Users className="h-5 w-5 text-purple-600" />}
+            data={adminSenders}
+            emptyText="ไม่มีข้อมูลคนส่งสำรวจในช่วงเวลานี้"
+          />
+
+          {/* Surveyor Table */}
+          <PerformanceTable
+            title="ผลงานเซลล์ (คนสำรวจ)"
+            icon={<Users className="h-5 w-5 text-blue-600" />}
+            data={surveyors}
+            emptyText="ไม่มีข้อมูลเซลล์ในช่วงเวลานี้"
+          />
+        </div>
+      )}
     </div>
     </DashboardLayout>
   );

@@ -863,3 +863,9 @@
 - [x] Backend: อัพเดท API team members ให้รองรับ multi-role
 - [x] Frontend: หน้าจัดการทีมงาน - เปลี่ยนจาก dropdown role เป็น checkbox หลาย role
 - [x] Frontend: dropdown มอบหมายงาน - แสดงคนที่มี role นั้นๆ ทุกคน (via server-side JSON_CONTAINS filter)
+
+### Feature: ปรับปรุงหน้าผลงานทีม (Team Performance Revamp)
+- [x] Backend: query แยก 2 กลุ่ม - คนส่งสำรวจ (admin_sender) และ เซลล์/คนสำรวจ (surveyor) พร้อมอัตราปิดการขาย
+- [x] Frontend: ตาราง 1 - ผลงานคนส่งสำรวจ (ส่งทั้งหมด, ปิดได้, อัตราปิด)
+- [x] Frontend: ตาราง 2 - ผลงานเซลล์ (เคสที่ได้รับ, ปิดได้, อัตราปิด)
+- [x] กรองตามเดือน/ปี เหมือนเดิม
