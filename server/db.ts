@@ -1059,10 +1059,10 @@ export async function deleteSource(id: number) {
   await db.delete(sources).where(eq(sources.id, id));
 }
 
-export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; adminSenderId?: number; closerId?: number; page?: number; limit?: number; search?: string; month?: number; year?: number; source?: string; district?: string; province?: string; scopedSurveyIds?: number[]; sortBy?: string; sortDirection?: "asc" | "desc" }) {
+export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; adminSenderId?: number; closerId?: number; page?: number; limit?: number; search?: string; month?: number; year?: number; source?: string; district?: string; province?: string; scopedSurveyIds?: number[]; sortBy?: string; sortDirection?: "asc" | "desc"; filterDate?: number; filterDateEnd?: number }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { status, assignedTo, adminSenderId, closerId, page = 1, limit = 20, search, month, year, source, district, province, scopedSurveyIds } = opts;
+  const { status, assignedTo, adminSenderId, closerId, page = 1, limit = 20, search, month, year, source, district, province, scopedSurveyIds, filterDate, filterDateEnd } = opts;
   const offset = (page - 1) * limit;
 
   // If filtering by team member (any role), find matching survey IDs first
@@ -1096,7 +1096,16 @@ export async function getSurveysWithCustomer(opts: { status?: string; assignedTo
   if (source) conditions.push(eq(customers.source, source));
   if (district) conditions.push(eq(customers.district, district));
   if (province) conditions.push(eq(customers.province, province));
-  if (month && year) {
+  if (filterDate) {
+    // Filter by specific date or date range (timestamps in ms, already adjusted for timezone by frontend)
+    conditions.push(gte(surveys.scheduledDate, filterDate));
+    if (filterDateEnd) {
+      conditions.push(lte(surveys.scheduledDate, filterDateEnd));
+    } else {
+      // Single day: filterDate is start of day, end is +24h
+      conditions.push(lte(surveys.scheduledDate, filterDate + 86400000 - 1));
+    }
+  } else if (month && year) {
     // Filter by scheduledDate (stored as Unix timestamp ms) with UTC+7 Thailand timezone
     conditions.push(sql`MONTH(FROM_UNIXTIME(${surveys.scheduledDate} / 1000 + 25200)) = ${month}`);
     conditions.push(sql`YEAR(FROM_UNIXTIME(${surveys.scheduledDate} / 1000 + 25200)) = ${year}`);

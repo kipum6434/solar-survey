@@ -922,3 +922,9 @@
 - [x] เมื่อเปลี่ยน "แอดมินผู้ส่งงาน" ในหน้าส่งสำรวจ → sync กลับไปที่ customer.surveyorId
 - [x] แก้ SurveyDetail.tsx EditSurveyDialog ให้ใช้ listAll + role labels ด้วย
 - [x] เพิ่ม default value: ตอนสร้างงานสำรวจ ดึง customer.surveyorId มาเป็นค่าเริ่มต้น
+
+### Feature: เพิ่ม Date Picker filter ในหน้างานสำรวจ
+- [x] Backend: เพิ่ม parameter filterDate (วันที่เฉพาะ) และ filterDateEnd (ช่วงวันที่) ใน survey.list procedure
+- [x] Frontend: เพิ่ม Date Picker component (range mode) ในแถว filter หน้างานสำรวจ
+- [x] Frontend: รองรับ mobile-friendly (responsive)
+- [x] Fix: แก้ TypeScript error - filterDate ต้องเป็น number (timestamp) ไม่ใช่ string

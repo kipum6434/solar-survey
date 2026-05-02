@@ -18,10 +18,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import {
-  Search, ClipboardList, Calendar, User, ChevronLeft, ChevronRight, Filter,
-  LayoutList, Table2, Phone, MapPin, Download, Trash2,
+  Search, ClipboardList, Calendar as CalendarIcon, User, ChevronLeft, ChevronRight, Filter,
+  LayoutList, Table2, Phone, MapPin, Download, Trash2, X, CalendarDays,
 } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { th } from "date-fns/locale";
 import { StickyScrollbar } from "@/components/StickyScrollbar";
+import type { DateRange } from "react-day-picker";
 
 const THAI_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -58,6 +62,11 @@ export default function Surveys() {
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<"list" | "table">("table");
 
+  // Date filter state
+  const [filterDate, setFilterDate] = useState<Date | undefined>(undefined);
+  const [filterDateEnd, setFilterDateEnd] = useState<Date | undefined>(undefined);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
   // Server-side sort state
   const [sortBy, setSortBy] = useState<string>("");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc" | null>(null);
@@ -91,11 +100,13 @@ export default function Surveys() {
     province: provinceFilter || undefined,
     page,
     limit: 50,
-    month: filterByMonth ? selectedMonth : undefined,
-    year: filterByMonth ? selectedYear : undefined,
+    month: filterByMonth && !filterDate ? selectedMonth : undefined,
+    year: filterByMonth && !filterDate ? selectedYear : undefined,
+    filterDate: filterDate ? filterDate.getTime() : undefined,
+    filterDateEnd: filterDateEnd ? filterDateEnd.getTime() : undefined,
     sortBy: sortBy || undefined,
     sortDirection: sortDirection || undefined,
-  }), [search, statusFilter, sourceFilter, surveyorFilter, adminSenderFilter, closerFilter, districtFilter, provinceFilter, page, filterByMonth, selectedMonth, selectedYear, sortBy, sortDirection]);
+  }), [search, statusFilter, sourceFilter, surveyorFilter, adminSenderFilter, closerFilter, districtFilter, provinceFilter, page, filterByMonth, selectedMonth, selectedYear, filterDate, filterDateEnd, sortBy, sortDirection]);
 
   const { data, isLoading, refetch } = trpc.survey.list.useQuery(queryInput);
 
@@ -400,6 +411,83 @@ export default function Surveys() {
               ))}
             </SelectContent>
           </Select>
+          {/* Date Picker */}
+          <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+            <PopoverTrigger asChild>
+              <Button
+                variant={filterDate ? "default" : "outline"}
+                size="sm"
+                className="h-9 text-xs gap-1.5"
+              >
+                <CalendarDays className="h-3.5 w-3.5" />
+                {filterDate ? (
+                  filterDateEnd ? (
+                    <span>{format(filterDate, "d MMM", { locale: th })} - {format(filterDateEnd, "d MMM yy", { locale: th })}</span>
+                  ) : (
+                    <span>{format(filterDate, "d MMM yy", { locale: th })}</span>
+                  )
+                ) : (
+                  <span>เลือกวันที่</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="range"
+                selected={filterDate ? { from: filterDate, to: filterDateEnd || filterDate } : undefined}
+                onSelect={(range: DateRange | undefined) => {
+                  if (range?.from) {
+                    // Set start of day for from
+                    const startOfDay = new Date(range.from);
+                    startOfDay.setHours(0, 0, 0, 0);
+                    setFilterDate(startOfDay);
+                    if (range.to && range.to.getTime() !== range.from.getTime()) {
+                      const endOfDay = new Date(range.to);
+                      endOfDay.setHours(23, 59, 59, 999);
+                      setFilterDateEnd(endOfDay);
+                    } else {
+                      setFilterDateEnd(undefined);
+                    }
+                    setFilterByMonth(false);
+                    setPage(1);
+                  } else {
+                    setFilterDate(undefined);
+                    setFilterDateEnd(undefined);
+                  }
+                }}
+                locale={th}
+                numberOfMonths={1}
+              />
+              {filterDate && (
+                <div className="p-2 border-t flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-muted-foreground"
+                    onClick={() => {
+                      setFilterDate(undefined);
+                      setFilterDateEnd(undefined);
+                      setShowDatePicker(false);
+                    }}
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    ล้างตัวกรองวันที่
+                  </Button>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+          {filterDate && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9"
+              onClick={() => { setFilterDate(undefined); setFilterDateEnd(undefined); }}
+              title="ล้างตัวกรองวันที่"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
           <div className="flex items-center border rounded-md">
             <Button
               variant={viewMode === "list" ? "default" : "ghost"}
@@ -422,7 +510,16 @@ export default function Surveys() {
 
         {/* Title bar showing current filter */}
         <div className="text-sm text-muted-foreground">
-          {filterByMonth ? (
+          {filterDate ? (
+            <>
+              แสดงงานสำรวจวันที่{" "}
+              <span className="font-semibold text-foreground">
+                {format(filterDate, "d MMMM yyyy", { locale: th })}
+                {filterDateEnd && ` - ${format(filterDateEnd, "d MMMM yyyy", { locale: th })}`}
+              </span>
+              {data && <span className="ml-2">({data.total} รายการ)</span>}
+            </>
+          ) : filterByMonth ? (
             <>
               แสดงงานสำรวจเดือน <span className="font-semibold text-foreground">{THAI_MONTHS[selectedMonth - 1]} {selectedYear + 543}</span>
               {data && <span className="ml-2">({data.total} รายการ)</span>}
@@ -894,7 +991,7 @@ function SurveyListView({ data, onRowClick, onRefetch, onUpdateInstallationDate,
                   </div>
                   <div className="flex items-center gap-4 mt-1.5 text-xs text-muted-foreground flex-wrap">
                     <span className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                      <Calendar className="h-3 w-3" />
+                      <CalendarIcon className="h-3 w-3" />
                       <ScheduledDateCell
                         surveyId={s.id}
                         currentDate={s.scheduledDate || null}

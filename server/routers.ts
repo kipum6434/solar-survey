@@ -248,6 +248,8 @@ const surveyRouter = router({
       province: z.string().optional(),
       sortBy: z.string().optional(),
       sortDirection: z.enum(["asc", "desc"]).optional(),
+      filterDate: z.number().optional(),
+      filterDateEnd: z.number().optional(),
     }))
     .query(async ({ input, ctx }) => {
       const scope = await getUserScope(ctx.user);
