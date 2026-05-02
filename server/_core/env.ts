@@ -9,4 +9,5 @@ export const ENV = {
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   lineChannelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "",
   lineUserId: process.env.LINE_USER_ID ?? "",
+  siteUrl: process.env.SITE_URL ?? "https://tcssurvey.com",
 };

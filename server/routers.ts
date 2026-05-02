@@ -13,6 +13,7 @@ import { getUserScope } from "./dataScope";
 import { notifyOwner } from "./_core/notification";
 import { invokeLLM } from "./_core/llm";
 import { sendLineNotification } from "./lineNotify";
+import { ENV } from "./_core/env";
 
 // ==================== CUSTOMER ROUTER ====================
 const customerRouter = router({
@@ -435,14 +436,20 @@ const surveyRouter = router({
       try {
         const surveyData = await db.getSurveyWithCustomer(input.id);
         const customerName = surveyData?.customer?.name || `งาน #${input.id}`;
+        const surveyorNames = surveyData?.assignments
+          ?.filter((a: any) => a.assignment.role === "surveyor")
+          .map((a: any) => a.user.name)
+          .filter(Boolean)
+          .join(", ") || "-";
+        const notifContent = `งานสำรวจของลูกค้า "${customerName}" (ID: ${input.id})\nเซลล์/ผู้สำรวจ: ${surveyorNames}\nสำรวจเสร็จสิ้นแล้ว`;
         await notifyOwner({
           title: "สำรวจเสร็จสิ้น",
-          content: `งานสำรวจของลูกค้า "${customerName}" (ID: ${input.id}) สำรวจเสร็จสิ้นแล้ว`,
+          content: notifContent,
         });
         // LINE notification
         await sendLineNotification(
           "สำรวจเสร็จสิ้น",
-          `งานสำรวจของลูกค้า "${customerName}" (ID: ${input.id}) สำรวจเสร็จสิ้นแล้ว`
+          notifContent
         );
       } catch (e) {
         console.warn("[Survey] Failed to notify owner:", e);
@@ -465,14 +472,21 @@ const surveyRouter = router({
       try {
         const surveyData = await db.getSurveyWithCustomer(input.surveyId);
         const customerName = surveyData?.customer?.name || `งาน #${input.surveyId}`;
+        const surveyorNames = surveyData?.assignments
+          ?.filter((a: any) => a.assignment.role === "surveyor")
+          .map((a: any) => a.user.name)
+          .filter(Boolean)
+          .join(", ") || "-";
+        const shareUrl = `${ENV.siteUrl}/survey-field/${input.token}`;
+        const notifContent = `งานสำรวจของลูกค้า "${customerName}" (ID: ${input.surveyId})\nเซลล์/ผู้สำรวจ: ${surveyorNames}\nสำรวจเสร็จสิ้นแล้ว (ผ่าน Share Link)\n\n🔗 ดูผลสำรวจ: ${shareUrl}`;
         await notifyOwner({
           title: "สำรวจเสร็จสิ้น (Share Link)",
-          content: `งานสำรวจของลูกค้า "${customerName}" (ID: ${input.surveyId}) สำรวจเสร็จสิ้นแล้ว (ผ่าน Share Link)`,
+          content: notifContent,
         });
         // LINE notification
         await sendLineNotification(
           "สำรวจเสร็จสิ้น (Share Link)",
-          `งานสำรวจของลูกค้า "${customerName}" (ID: ${input.surveyId}) สำรวจเสร็จสิ้นแล้ว (ผ่าน Share Link)`
+          notifContent
         );
       } catch (e) {
         console.warn("[Survey] Failed to notify owner:", e);
@@ -1811,9 +1825,14 @@ const deliveryRouter = router({
       try {
         const surveyData = await db.getSurveyWithCustomer(input.surveyId);
         const customerName = surveyData?.customer?.name || `งาน #${input.surveyId}`;
+        const surveyorNames = surveyData?.assignments
+          ?.filter((a: any) => a.assignment.role === "surveyor")
+          .map((a: any) => a.user.name)
+          .filter(Boolean)
+          .join(", ") || "-";
         await sendLineNotification(
           "ติดตั้งเสร็จสิ้น",
-          `งานติดตั้งของลูกค้า "${customerName}" (ID: ${input.surveyId}) ติดตั้งเสร็จสิ้นแล้ว`
+          `งานติดตั้งของลูกค้า "${customerName}" (ID: ${input.surveyId})\nเซลล์/ผู้สำรวจ: ${surveyorNames}\nติดตั้งเสร็จสิ้นแล้ว`
         );
       } catch (e) {
         console.warn("[Installation] Failed to send LINE notification:", e);

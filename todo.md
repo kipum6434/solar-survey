@@ -886,3 +886,7 @@
 - [x] เปลี่ยน electricityBill column จาก decimal เป็น text ใน DB
 - [x] เอา sanitize ออกจาก electricityBill (ให้กรอกอะไรก็ได้ เช่น "3000-5000")
 - [x] แก้ placeholder ให้ชัดเจนว่ากรอกช่วงได้
+
+### Feature: เพิ่มชื่อเซลล์และลิงก์สำรวจในข้อความแจ้งเตือน LINE
+- [x] เพิ่มชื่อเซลล์/คนสำรวจ (surveyor) ในข้อความ LINE notification
+- [x] เพิ่ม share link URL ในข้อความ LINE notification เมื่อสำรวจเสร็จผ่าน share link
