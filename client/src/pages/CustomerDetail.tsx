@@ -14,7 +14,7 @@ import { formatPhone, formatPhoneInput } from "@/lib/formatPhone";
 import { SourceCombobox } from "@/components/SourceCombobox";
 import { MultiUserSelect } from "@/components/MultiUserSelect";
 import { useLocation, useParams } from "wouter";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
   ArrowLeft, Phone, Mail, MapPin, Zap, Home, Gauge, StickyNote, Plus, ClipboardList, Calendar, User, Globe,
@@ -353,19 +353,26 @@ export default function CustomerDetail() {
         customerId={customerId}
         onSubmit={(d: any) => createSurveyMutation.mutate(d)}
         loading={createSurveyMutation.isPending}
+        defaultAdminSenderId={customer?.surveyorId}
       />
     </DashboardLayout>
   );
 }
 
-function AddSurveyDialog({ open, onOpenChange, customerId, onSubmit, loading }: any) {
+function AddSurveyDialog({ open, onOpenChange, customerId, onSubmit, loading, defaultAdminSenderId }: any) {
   const [form, setForm] = useState({
     scheduledDate: "",
     scheduledTime: "",
-    adminSenderId: "",
+    adminSenderId: defaultAdminSenderId ? String(defaultAdminSenderId) : "",
     surveyorIds: [] as number[],
     surveyNotes: "",
   });
+  // Sync defaultAdminSenderId when it changes (e.g. customer data loads)
+  useEffect(() => {
+    if (defaultAdminSenderId && !form.adminSenderId) {
+      setForm(f => ({ ...f, adminSenderId: String(defaultAdminSenderId) }));
+    }
+  }, [defaultAdminSenderId]);
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
@@ -379,10 +386,9 @@ function AddSurveyDialog({ open, onOpenChange, customerId, onSubmit, loading }: 
     setForm({ scheduledDate: "", scheduledTime: "", adminSenderId: "", surveyorIds: [], surveyNotes: "" });
   };
 
-  const { data: teamAdminSenders } = trpc.teamMember.list.useQuery({ role: "admin_sender" });
-  const { data: teamSurveyors } = trpc.teamMember.list.useQuery({ role: "surveyor" });
-  const adminSenderOptions = (teamAdminSenders || []).map((m: any) => ({ id: m.id, name: m.name }));
-  const surveyorOptions = (teamSurveyors || []).map((m: any) => ({ id: m.id, name: m.name }));
+  const { data: teamAll } = trpc.teamMember.listAll.useQuery();
+  const adminSenderOptions = (teamAll || []).filter((m: any) => m.isActive).map((m: any) => ({ id: m.id, name: m.name, role: m.role }));
+  const surveyorOptions = (teamAll || []).filter((m: any) => m.isActive && (m.role === "surveyor" || (m.roles && JSON.parse(m.roles || '[]').includes("surveyor")))).map((m: any) => ({ id: m.id, name: m.name }));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -410,7 +416,7 @@ function AddSurveyDialog({ open, onOpenChange, customerId, onSubmit, loading }: 
               <SelectTrigger><SelectValue placeholder="เลือกแอดมิน" /></SelectTrigger>
               <SelectContent>
                 {adminSenderOptions.length > 0 ? adminSenderOptions.map((m: any) => (
-                  <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+                  <SelectItem key={m.id} value={String(m.id)}>{m.name} {m.role === "admin_sender" ? "(แอดมิน)" : m.role === "surveyor" ? "(ช่างสำรวจ)" : `(${m.role})`}</SelectItem>
                 )) : (
                   <div className="px-2 py-1.5 text-sm text-muted-foreground">ยังไม่มีสมาชิก - เพิ่มได้ที่หน้าจัดการทีมงาน</div>
                 )}

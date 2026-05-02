@@ -66,9 +66,10 @@ export default function SurveyDetail() {
   const { data: shareLinks, refetch: refetchLinks } = trpc.shareLink.list.useQuery({ surveyId });
   const { data: surveyShareLinks, refetch: refetchSurveyLinks } = trpc.shareLink.listByType.useQuery({ surveyId, linkType: "survey" });
   const { data: installShareLinks, refetch: refetchInstallLinks } = trpc.shareLink.listByType.useQuery({ surveyId, linkType: "installation" });
-  const { data: teamAdminSenders } = trpc.teamMember.list.useQuery({ role: "admin_sender" });
-  const { data: teamSurveyors } = trpc.teamMember.list.useQuery({ role: "surveyor" });
-  const { data: teamClosers } = trpc.teamMember.list.useQuery({ role: "closer" });
+  const { data: teamAllMembers } = trpc.teamMember.listAll.useQuery();
+  const teamAdminSenders = (teamAllMembers || []).filter((m: any) => m.isActive);
+  const teamSurveyors = (teamAllMembers || []).filter((m: any) => m.isActive && (m.role === "surveyor" || (m.roles && JSON.parse(m.roles || '[]').includes("surveyor"))));
+  const teamClosers = (teamAllMembers || []).filter((m: any) => m.isActive && (m.role === "closer" || (m.roles && JSON.parse(m.roles || '[]').includes("closer"))));
   const { data: photoCategories, refetch: refetchCategories } = trpc.photoCategory.list.useQuery();
   const createCategory = trpc.photoCategory.create.useMutation({ onSuccess: () => { refetchCategories(); toast.success("เพิ่มประเภทรูปภาพสำเร็จ"); } });
   const deleteCategory = trpc.photoCategory.delete.useMutation({ onSuccess: () => { refetchCategories(); toast.success("ลบประเภทรูปภาพสำเร็จ"); } });
@@ -1087,7 +1088,7 @@ function EditSurveyDialog({ open, onOpenChange, survey, adminSenders, surveyors,
               <Select value={form.adminSenderId || ""} onValueChange={(v) => setForm({ ...form, adminSenderId: v })}>
                 <SelectTrigger><SelectValue placeholder="เลือกแอดมิน..." /></SelectTrigger>
                 <SelectContent>
-                  {(adminSenders || []).map((m: any) => (<SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>))}
+                  {(adminSenders || []).map((m: any) => (<SelectItem key={m.id} value={String(m.id)}>{m.name} {m.role === "admin_sender" ? "(แอดมิน)" : m.role === "surveyor" ? "(ช่างสำรวจ)" : m.role === "closer" ? "(ผู้ปิดการขาย)" : `(${m.role})`}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>

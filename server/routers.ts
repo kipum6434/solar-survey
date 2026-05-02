@@ -110,6 +110,21 @@ const customerRouter = router({
       );
       if (cleanData.source) await db.getOrCreateSource(cleanData.source as string);
       await db.updateCustomer(id, cleanData);
+      // Sync: when surveyorId changes, update the latest survey's admin_sender assignment
+      if (data.surveyorId !== undefined && data.surveyorId !== null) {
+        const customerSurveys = (await db.getSurveys({ customerId: id, limit: 1 })).data;
+        if (customerSurveys.length > 0) {
+          const latestSurvey = customerSurveys[0]; // sorted by createdAt desc
+          const currentAssignments = await db.getSurveyAssignments(latestSurvey.id);
+          const assignments: { userId: number; role: "admin_sender" | "surveyor" | "closer" }[] = [];
+          assignments.push({ userId: data.surveyorId, role: "admin_sender" });
+          // Keep existing surveyors and closers
+          currentAssignments.filter(a => a.assignment.role !== "admin_sender").forEach(a => {
+            assignments.push({ userId: a.assignment.userId, role: a.assignment.role as any });
+          });
+          await db.setSurveyAssignments(latestSurvey.id, assignments);
+        }
+      }
       await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "customer", entityId: id, details: `แก้ไขลูกค้า ID: ${id}` });
       return { success: true };
     }),
@@ -288,6 +303,10 @@ const surveyRouter = router({
         assignments.push({ userId: surveyData.assignedTo, role: "surveyor" });
       }
       await db.setSurveyAssignments(id, assignments);
+      // Sync customer.surveyorId with adminSenderId
+      if (surveyData.adminSenderId && surveyData.customerId) {
+        await db.updateCustomer(surveyData.customerId, { surveyorId: surveyData.adminSenderId });
+      }
       await db.logActivity({ userId: ctx.user.id, action: "create", entityType: "survey", entityId: id, details: `สร้างงานสำรวจ ID: ${id}` });
       // Notify surveyors
       const notifyIds = surveyorIds || (surveyData.assignedTo ? [surveyData.assignedTo] : []);
@@ -395,6 +414,10 @@ const surveyRouter = router({
           if (closerIdVal) assignments.push({ userId: closerIdVal, role: "closer" });
         }
         await db.setSurveyAssignments(id, assignments);
+        // Sync customer.surveyorId when adminSenderId changes
+        if (rawData.adminSenderId && oldSurvey?.customerId) {
+          await db.updateCustomer(oldSurvey.customerId, { surveyorId: rawData.adminSenderId });
+        }
       }
       if (data.status && oldSurvey && data.status !== oldSurvey.status) {
         if (oldSurvey.assignedTo && oldSurvey.assignedTo !== ctx.user.id) {
