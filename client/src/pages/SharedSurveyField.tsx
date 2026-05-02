@@ -9,7 +9,7 @@ import { compressImages } from "@/lib/imageCompression";
 import {
   Camera, MapPin, Calendar, Phone, Zap, Home, Gauge,
   X, Sun, Upload, Trash2, CheckCircle2, Clock,
-  Save, FileText, ChevronDown, ChevronUp, Info, User,
+  Save, FileText, ChevronDown, ChevronUp, Info, User, ImagePlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,6 +65,7 @@ export default function SharedSurveyField() {
   const [custDirty, setCustDirty] = useState(false);
 
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const galleryInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const completeSurveyMut = trpc.survey.publicCompleteSurvey.useMutation({
     onSuccess: () => { toast.success("สำรวจเสร็จสิ้นแล้ว"); window.location.reload(); },
@@ -620,25 +621,44 @@ export default function SharedSurveyField() {
                 <div key={catKey} className="border rounded-lg p-3">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium">{catLabel} ({catPhotos.length})</span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5"
-                      disabled={isUploading}
-                      onClick={() => fileInputRefs.current[catKey]?.click()}
-                    >
-                      {isUploading && uploadProgress ? (
-                        <><Upload className="h-3.5 w-3.5 animate-bounce" /> อัพ {uploadProgress.current}/{uploadProgress.total}</>
-                      ) : (
-                        <><Upload className="h-3.5 w-3.5" /> เพิ่มรูป</>
-                      )}
-                    </Button>
+                    <div className="flex gap-1.5">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        disabled={isUploading}
+                        onClick={() => fileInputRefs.current[catKey]?.click()}
+                      >
+                        {isUploading && uploadProgress && uploadingCategory === catKey ? (
+                          <><Upload className="h-3.5 w-3.5 animate-bounce" /> อัพ {uploadProgress.current}/{uploadProgress.total}</>
+                        ) : (
+                          <><Camera className="h-3.5 w-3.5" /> ถ่ายรูป</>
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        disabled={isUploading}
+                        onClick={() => galleryInputRefs.current[catKey]?.click()}
+                      >
+                        <ImagePlus className="h-3.5 w-3.5" /> เลือกรูป
+                      </Button>
+                    </div>
                     <input
                       ref={(el) => { fileInputRefs.current[catKey] = el; }}
                       type="file"
                       accept="image/*"
                       multiple
                       capture="environment"
+                      className="hidden"
+                      onChange={(e) => handlePhotoUpload(catKey, e.target.files)}
+                    />
+                    <input
+                      ref={(el) => { galleryInputRefs.current[catKey] = el; }}
+                      type="file"
+                      accept="image/*"
+                      multiple
                       className="hidden"
                       onChange={(e) => handlePhotoUpload(catKey, e.target.files)}
                     />
