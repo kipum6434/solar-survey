@@ -621,7 +621,14 @@ describe("Round 14B: Team Performance API", () => {
       year: now.getFullYear(),
     });
     expect(result).toBeDefined();
-    expect(Array.isArray(result)).toBe(true);
+    expect(result).toHaveProperty("adminSenders");
+    expect(result).toHaveProperty("surveyors");
+    expect(result).toHaveProperty("totals");
+    expect(Array.isArray(result.adminSenders)).toBe(true);
+    expect(Array.isArray(result.surveyors)).toBe(true);
+    expect(result.totals).toHaveProperty("totalCases");
+    expect(result.totals).toHaveProperty("totalWon");
+    expect(result.totals).toHaveProperty("closeRate");
   });
 });
 
