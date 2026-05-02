@@ -331,6 +331,19 @@ const surveyRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const { id, surveyorIds, ...rawData } = input;
+      // Sanitize numeric fields before processing
+      if (rawData.systemSize !== undefined && rawData.systemSize !== null) {
+        const num = parseFloat(rawData.systemSize.replace(/[^0-9.]/g, ""));
+        rawData.systemSize = isNaN(num) ? null : String(num);
+      }
+      if (rawData.panelCount !== undefined && rawData.panelCount !== null) {
+        const num = parseInt(String(rawData.panelCount).replace(/[^0-9]/g, ""), 10);
+        rawData.panelCount = isNaN(num) ? null : num;
+      }
+      if (rawData.quotedPrice !== undefined && rawData.quotedPrice !== null) {
+        const num = parseFloat(rawData.quotedPrice.replace(/[^0-9.]/g, ""));
+        rawData.quotedPrice = isNaN(num) ? null : String(num);
+      }
       // Remove null/undefined/empty-string values so they don't get sent to DB
       // Keep scheduledTime even if empty, keep status/scheduledDate always
       const keepEvenIfEmpty = new Set(["status", "scheduledDate", "scheduledTime", "adminSenderId"]);
@@ -346,7 +359,11 @@ const surveyRouter = router({
       if (data.status === "surveyed" || data.status === "won") {
         (data as any).completedAt = Date.now();
       }
-      await db.updateSurvey(id, data);
+      try {
+        await db.updateSurvey(id, data);
+      } catch (e: any) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "บันทึกไม่สำเร็จ กรุณาตรวจสอบข้อมูลอีกครั้ง" });
+      }
       // Update assignments if surveyorIds provided — use rawData for null checks
       if (surveyorIds !== undefined || rawData.adminSenderId !== undefined || rawData.closerId !== undefined) {
         const currentAssignments = await db.getSurveyAssignments(id);
@@ -794,8 +811,26 @@ const shareLinkRouter = router({
       if (link.linkType !== "survey") throw new TRPCError({ code: "FORBIDDEN", message: "ลิงก์นี้ไม่ใช่ลิงก์สำรวจ" });
       if (link.expiresAt && link.expiresAt < Date.now()) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์หมดอายุ" });
       if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
-      const { token, surveyId, ...data } = input;
-      await db.updateSurvey(surveyId, data);
+      const { token, surveyId, ...rawData } = input;
+      // Sanitize numeric fields - strip non-numeric chars (keep dots for decimals)
+      const data: any = { ...rawData };
+      if (data.systemSize !== undefined) {
+        const num = parseFloat(data.systemSize.replace(/[^0-9.]/g, ""));
+        data.systemSize = isNaN(num) ? null : String(num);
+      }
+      if (data.panelCount !== undefined) {
+        const num = parseInt(String(data.panelCount).replace(/[^0-9]/g, ""), 10);
+        data.panelCount = isNaN(num) ? null : num;
+      }
+      if (data.quotedPrice !== undefined) {
+        const num = parseFloat(data.quotedPrice.replace(/[^0-9.]/g, ""));
+        data.quotedPrice = isNaN(num) ? null : String(num);
+      }
+      try {
+        await db.updateSurvey(surveyId, data);
+      } catch (e: any) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "บันทึกไม่สำเร็จ กรุณาตรวจสอบข้อมูลอีกครั้ง" });
+      }
       return { success: true };
     }),
 
@@ -841,11 +876,20 @@ const shareLinkRouter = router({
       const surveyData = await db.getSurveyWithCustomer(link.surveyId);
       if (!surveyData) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบข้อมูล" });
       const { token, surveyId, ...custData } = input;
+      // Sanitize numeric fields
+      if (custData.electricityBill !== undefined && custData.electricityBill !== null) {
+        const num = parseFloat(custData.electricityBill.replace(/[^0-9.]/g, ""));
+        custData.electricityBill = isNaN(num) ? "" : String(num);
+      }
       const cleanData = Object.fromEntries(
         Object.entries(custData).filter(([_, v]) => v !== undefined && v !== null && v !== "")
       );
       if (Object.keys(cleanData).length > 0) {
-        await db.updateCustomer(surveyData.customer.id, cleanData);
+        try {
+          await db.updateCustomer(surveyData.customer.id, cleanData);
+        } catch (e: any) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "บันทึกไม่สำเร็จ กรุณาตรวจสอบข้อมูลอีกครั้ง" });
+        }
       }
       return { success: true };
     }),

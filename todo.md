@@ -876,3 +876,8 @@
 ### Feature: Reorder รูปภาพ + บีบอัดรูปอัตโนมัติ
 - [x] เพิ่ม drag-and-drop reorder รูปภาพในหน้า survey-field (ลากจัดลำดับ)
 - [x] เพิ่ม/ตรวจสอบการบีบอัดรูปอัตโนมัติก่อนอัพโหลด (ประหยัดพื้นที่ S3)
+
+### Bug Fix: ฟอร์มข้อมูลเทคนิคในหน้า survey-field แสดง SQL error
+- [x] Backend: sanitize ค่า numeric fields (systemSize, panelCount, quotedPrice) ก่อน save ลง DB - strip ตัวอักษรที่ไม่ใช่ตัวเลข
+- [x] Frontend: แสดง error message ที่เป็น user-friendly แทน raw SQL
+- [x] Frontend: format ค่าตัวเลขให้มี comma เมื่อแสดงผล (200000 → 200,000)

@@ -172,25 +172,37 @@ export default function SharedSurveyField() {
   const surveyId = s?.id || 0;
   const token = params.token || "";
 
-  // Initialize tech form once
+  // Initialize tech form once - format numeric values with commas for display
   if (s && !techForm) {
+    const fmtNum = (v: string | number | null | undefined) => {
+      if (!v) return "";
+      const n = Number(v);
+      if (isNaN(n)) return String(v);
+      return n.toLocaleString("en-US");
+    };
     setTechForm({
       systemSize: s.systemSize || "",
-      panelCount: s.panelCount ? String(s.panelCount) : "",
+      panelCount: s.panelCount ? fmtNum(s.panelCount) : "",
       inverterModel: s.inverterModel || "",
       panelBrand: s.panelBrand || "",
       needBattery: (s as any).needBattery || "",
       needOptimizer: (s as any).needOptimizer || "",
       systemType: s.systemType || "",
       surveyNotes: s.surveyNotes || "",
-      quotedPrice: s.quotedPrice || "",
+      quotedPrice: fmtNum(s.quotedPrice),
     });
   }
 
   // Initialize customer form once
   if (c && !custForm) {
+    const fmtBill = (v: string | number | null | undefined) => {
+      if (!v) return "";
+      const n = Number(v);
+      if (isNaN(n)) return String(v);
+      return n.toLocaleString("en-US");
+    };
     setCustForm({
-      electricityBill: c.electricityBill || "",
+      electricityBill: fmtBill(c.electricityBill),
       roofType: c.roofType || "",
       roofArea: c.roofArea || "",
       phaseType: c.phaseType || "",
@@ -275,18 +287,24 @@ export default function SharedSurveyField() {
     if (!techForm) return;
     setTechSaving(true);
     try {
+      // Strip non-numeric chars for numeric fields
+      const cleanNum = (v: string) => v.replace(/[^0-9.]/g, "");
+      const cleanInt = (v: string) => v.replace(/[^0-9]/g, "");
+      const sysSize = cleanNum(techForm.systemSize);
+      const pCount = cleanInt(techForm.panelCount);
+      const qPrice = cleanNum(techForm.quotedPrice);
       await updateTechMut.mutateAsync({
         token,
         surveyId,
-        systemSize: techForm.systemSize || undefined,
-        panelCount: techForm.panelCount ? Number(techForm.panelCount) : undefined,
+        systemSize: sysSize || undefined,
+        panelCount: pCount ? parseInt(pCount, 10) : undefined,
         inverterModel: techForm.inverterModel || undefined,
         panelBrand: techForm.panelBrand || undefined,
         needBattery: techForm.needBattery || undefined,
         needOptimizer: techForm.needOptimizer || undefined,
         systemType: (techForm.systemType as "string" | "micro" | "both") || undefined,
         surveyNotes: techForm.surveyNotes || undefined,
-        quotedPrice: techForm.quotedPrice || undefined,
+        quotedPrice: qPrice || undefined,
       });
       toast.success("บันทึกข้อมูลเทคนิคแล้ว");
       setTechDirty(false);
@@ -303,10 +321,12 @@ export default function SharedSurveyField() {
     if (!custForm) return;
     setCustSaving(true);
     try {
+      // Sanitize numeric field
+      const cleanBill = custForm.electricityBill ? custForm.electricityBill.replace(/[^0-9.]/g, "") : "";
       await updateCustMut.mutateAsync({
         token,
         surveyId,
-        electricityBill: custForm.electricityBill || undefined,
+        electricityBill: cleanBill || undefined,
         roofType: custForm.roofType || undefined,
         roofArea: custForm.roofArea || undefined,
         phaseType: (custForm.phaseType as "single" | "three") || undefined,
