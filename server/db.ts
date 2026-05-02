@@ -214,24 +214,46 @@ export async function getCustomerDistinctValues() {
   };
 }
 
-export async function getTeamPerformance(opts: { month?: number; year?: number }) {
+export async function getTeamPerformance(opts: { month?: number; year?: number; tab?: "lead" | "commission" }) {
   const db = await getDb();
-  if (!db) return { adminSenders: [], surveyors: [], totals: { totalCases: 0, totalWon: 0, closeRate: 0 } };
-  const { month, year } = opts;
+  const emptyResult = { adminSenders: [], surveyors: [], totals: { totalCases: 0, totalSurveyed: 0, totalWon: 0, closeRate: 0 } };
+  if (!db) return emptyResult;
+  const { month, year, tab = "lead" } = opts;
+
+  // Tab 1 (lead): filter by createdAt month
+  // Tab 2 (commission): filter by installationCompletedAt month (only completed/delivered surveys)
   const conditions: any[] = [];
-  if (month && year) {
-    conditions.push(sql`MONTH(${surveys.createdAt}) = ${month}`);
-    conditions.push(sql`YEAR(${surveys.createdAt}) = ${year}`);
-  } else if (year) {
-    conditions.push(sql`YEAR(${surveys.createdAt}) = ${year}`);
+  if (tab === "commission") {
+    // Only surveys with installationCompletedAt in the selected period
+    if (month && year) {
+      const startOfMonth = new Date(year, month - 1, 1).getTime();
+      const endOfMonth = new Date(year, month, 1).getTime();
+      conditions.push(gte(surveys.installationCompletedAt, startOfMonth));
+      conditions.push(lte(surveys.installationCompletedAt, endOfMonth));
+    } else if (year) {
+      const startOfYear = new Date(year, 0, 1).getTime();
+      const endOfYear = new Date(year + 1, 0, 1).getTime();
+      conditions.push(gte(surveys.installationCompletedAt, startOfYear));
+      conditions.push(lte(surveys.installationCompletedAt, endOfYear));
+    }
+    conditions.push(isNotNull(surveys.installationCompletedAt));
+  } else {
+    // Tab 1: filter by createdAt
+    if (month && year) {
+      conditions.push(sql`MONTH(${surveys.createdAt}) = ${month}`);
+      conditions.push(sql`YEAR(${surveys.createdAt}) = ${year}`);
+    } else if (year) {
+      conditions.push(sql`YEAR(${surveys.createdAt}) = ${year}`);
+    }
   }
-  // Get all surveys created in the selected period (count by creation date)
+
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
   const surveyData = whereClause
-    ? await db.select({ surveyId: surveys.id, createdAt: surveys.createdAt, status: surveys.status, installationStatus: surveys.installationStatus }).from(surveys).where(whereClause)
-    : await db.select({ surveyId: surveys.id, createdAt: surveys.createdAt, status: surveys.status, installationStatus: surveys.installationStatus }).from(surveys);
+    ? await db.select({ surveyId: surveys.id, createdAt: surveys.createdAt, status: surveys.status, installationStatus: surveys.installationStatus, installationCompletedAt: surveys.installationCompletedAt }).from(surveys).where(whereClause)
+    : await db.select({ surveyId: surveys.id, createdAt: surveys.createdAt, status: surveys.status, installationStatus: surveys.installationStatus, installationCompletedAt: surveys.installationCompletedAt }).from(surveys);
   const surveyIds = surveyData.map(s => s.surveyId);
-  if (surveyIds.length === 0) return { adminSenders: [], surveyors: [], totals: { totalCases: 0, totalWon: 0, closeRate: 0 } };
+  if (surveyIds.length === 0) return emptyResult;
+
   // Get all assignments for these surveys
   const assignments = await db.select({
     surveyId: surveyAssignments.surveyId,
@@ -244,72 +266,90 @@ export async function getTeamPerformance(opts: { month?: number; year?: number }
     .leftJoin(teamMembers, eq(surveyAssignments.userId, teamMembers.id))
     .leftJoin(users, eq(surveyAssignments.userId, users.id))
     .where(inArray(surveyAssignments.surveyId, surveyIds));
-  // Build survey status map (includes installationStatus)
+
+  // Build survey status map
   const surveyStatusMap: Record<number, { status: string; installationStatus: string | null }> = {};
   for (const s of surveyData) {
     surveyStatusMap[s.surveyId] = { status: s.status, installationStatus: s.installationStatus };
   }
-  // "ปิดการขายได้" = installationStatus is 'completed' or 'delivered' (ติดตั้งเสร็จสิ้น)
+
+  // "ปิดการขายได้" = installationStatus is 'completed' or 'delivered'
   const isWon = (surveyId: number) => {
     const info = surveyStatusMap[surveyId];
     return info?.installationStatus === "completed" || info?.installationStatus === "delivered";
   };
-  // "สำรวจแล้ว" = status moved past scheduled (surveyed, follow_up, quoted, negotiating, won)
+  // "สำรวจแล้ว" = status moved past scheduled
   const isSurveyed = (surveyId: number) => {
     const info = surveyStatusMap[surveyId];
     const st = info?.status;
     return st === "surveyed" || st === "follow_up" || st === "quoted" || st === "negotiating" || st === "won";
   };
-  // Split by assignment role
-  type MemberPerf = { name: string; totalCases: number; surveyedCount: number; wonCount: number; closeRate: number };
+
+  // For Tab 1 (lead): surveyor table shows "ได้รับมอบหมาย" (assigned) + "สำรวจแล้ว" + "ปิดการขายได้"
+  // For Tab 2 (commission): all surveys in the list are already "ปิดการขายได้" (completed installations)
+  type MemberPerf = { name: string; assignedCount: number; totalCases: number; surveyedCount: number; wonCount: number; closeRate: number };
   const adminSenderMap: Record<number, MemberPerf> = {};
   const surveyorMap: Record<number, MemberPerf> = {};
-  // Track which surveys have a surveyor assigned
   const surveysWithSurveyor = new Set<number>();
+
   for (const a of assignments) {
     const name = a.teamMemberName ?? a.fallbackUserName ?? `ID:${a.userId}`;
     if (a.role === "admin_sender") {
       if (!adminSenderMap[a.userId]) {
-        adminSenderMap[a.userId] = { name, totalCases: 0, surveyedCount: 0, wonCount: 0, closeRate: 0 };
+        adminSenderMap[a.userId] = { name, assignedCount: 0, totalCases: 0, surveyedCount: 0, wonCount: 0, closeRate: 0 };
       }
       adminSenderMap[a.userId].totalCases++;
+      adminSenderMap[a.userId].assignedCount++;
       if (isSurveyed(a.surveyId)) adminSenderMap[a.userId].surveyedCount++;
       if (isWon(a.surveyId)) adminSenderMap[a.userId].wonCount++;
     } else if (a.role === "surveyor") {
       surveysWithSurveyor.add(a.surveyId);
       if (!surveyorMap[a.userId]) {
-        surveyorMap[a.userId] = { name, totalCases: 0, surveyedCount: 0, wonCount: 0, closeRate: 0 };
+        surveyorMap[a.userId] = { name, assignedCount: 0, totalCases: 0, surveyedCount: 0, wonCount: 0, closeRate: 0 };
       }
+      surveyorMap[a.userId].assignedCount++;
       surveyorMap[a.userId].totalCases++;
       if (isSurveyed(a.surveyId)) surveyorMap[a.userId].surveyedCount++;
       if (isWon(a.surveyId)) surveyorMap[a.userId].wonCount++;
     }
   }
+
   // Count surveys without surveyor assignment as "ยังไม่ได้มอบหมาย"
   const unassignedSurveys = surveyIds.filter(id => !surveysWithSurveyor.has(id));
   if (unassignedSurveys.length > 0) {
-    const unassignedPerf: MemberPerf = { name: "ยังไม่ได้มอบหมาย", totalCases: unassignedSurveys.length, surveyedCount: 0, wonCount: 0, closeRate: 0 };
+    const unassignedPerf: MemberPerf = { name: "ยังไม่ได้มอบหมาย", assignedCount: unassignedSurveys.length, totalCases: unassignedSurveys.length, surveyedCount: 0, wonCount: 0, closeRate: 0 };
     for (const sid of unassignedSurveys) {
       if (isSurveyed(sid)) unassignedPerf.surveyedCount++;
       if (isWon(sid)) unassignedPerf.wonCount++;
     }
     surveyorMap[0] = unassignedPerf;
   }
+
   // Calculate close rates
+  // For Tab 1 (lead): closeRate = wonCount / surveyedCount (ปิดได้จากที่สำรวจแล้ว)
+  // For Tab 2 (commission): all are won, so closeRate is not meaningful — show count only
   const calcRate = (map: Record<number, MemberPerf>) => {
     return Object.entries(map).map(([id, stats]) => ({
       teamMemberId: Number(id),
       ...stats,
-      closeRate: stats.totalCases > 0 ? Math.round((stats.wonCount / stats.totalCases) * 100) : 0,
+      closeRate: tab === "lead"
+        ? (stats.surveyedCount > 0 ? Math.round((stats.wonCount / stats.surveyedCount) * 100) : 0)
+        : 100, // All items in commission tab are already won
     })).sort((a, b) => b.totalCases - a.totalCases);
   };
+
   // Overall totals
   const totalCases = surveyData.length;
+  const totalSurveyed = surveyData.filter(s => isSurveyed(s.surveyId)).length;
   const totalWon = surveyData.filter(s => s.installationStatus === "completed" || s.installationStatus === "delivered").length;
+  const closeRate = tab === "lead"
+    ? (totalSurveyed > 0 ? Math.round((totalWon / totalSurveyed) * 100) : 0)
+    : 100;
+
   return {
     adminSenders: calcRate(adminSenderMap),
     surveyors: calcRate(surveyorMap),
-    totals: { totalCases, totalWon, closeRate: totalCases > 0 ? Math.round((totalWon / totalCases) * 100) : 0 },
+    totals: { totalCases, totalSurveyed, totalWon, closeRate },
   };
 }
 

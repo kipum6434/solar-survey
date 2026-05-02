@@ -357,8 +357,12 @@ const surveyRouter = router({
         })
       ) as Partial<typeof rawData>;
       const oldSurvey = await db.getSurveyById(id);
-      if (data.status === "surveyed" || data.status === "won") {
-        (data as any).completedAt = Date.now();
+      if (data.status === "surveyed" || data.status === "won" || data.status === "follow_up") {
+        if (!(data as any).completedAt) (data as any).completedAt = Date.now();
+      }
+      // If installationStatus is being set to completed/delivered, also set installationCompletedAt
+      if ((data as any).installationStatus === "completed" || (data as any).installationStatus === "delivered") {
+        (data as any).installationCompletedAt = Date.now();
       }
       try {
         await db.updateSurvey(id, data);
@@ -1271,6 +1275,7 @@ const teamPerformanceRouter = router({
     .input(z.object({
       month: z.number().min(1).max(12).optional(),
       year: z.number().optional(),
+      tab: z.enum(["lead", "commission"]).optional(),
     }))
     .query(({ input }) => db.getTeamPerformance(input)),
 });
@@ -1284,12 +1289,12 @@ const installationRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       await db.updateInstallationStatus(input.surveyId, input.installationStatus);
-      // If status is completed, also set completedAt
+      // If status is completed/delivered, set installationCompletedAt
       if (input.installationStatus === "completed" || input.installationStatus === "delivered") {
-        await db.updateSurvey(input.surveyId, { completedAt: Date.now() } as any);
+        await db.updateSurvey(input.surveyId, { installationCompletedAt: Date.now() } as any);
       } else {
-        // Clear completedAt if not completed/delivered
-        await db.updateSurvey(input.surveyId, { completedAt: null } as any);
+        // Clear installationCompletedAt if not completed/delivered
+        await db.updateSurvey(input.surveyId, { installationCompletedAt: null } as any);
       }
       await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "survey", entityId: input.surveyId, details: `เปลี่ยนสถานะติดตั้ง: ${input.installationStatus || 'ไม่มี'}` });
       return { success: true };

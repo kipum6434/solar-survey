@@ -3,20 +3,24 @@ import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, TrendingUp, BarChart3, Trophy } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Users, TrendingUp, BarChart3, Trophy, ClipboardCheck } from "lucide-react";
 
 const MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 
 type MemberPerf = {
   teamMemberId: number;
   name: string;
+  assignedCount: number;
   totalCases: number;
   surveyedCount: number;
   wonCount: number;
   closeRate: number;
 };
 
-function PerformanceTable({ title, icon, data, emptyText }: { title: string; icon: React.ReactNode; data: MemberPerf[]; emptyText: string }) {
+type TabMode = "lead" | "commission";
+
+function LeadTable({ title, icon, data, emptyText, isSurveyor }: { title: string; icon: React.ReactNode; data: MemberPerf[]; emptyText: string; isSurveyor?: boolean }) {
   if (data.length === 0) {
     return (
       <Card>
@@ -53,7 +57,12 @@ function PerformanceTable({ title, icon, data, emptyText }: { title: string; ico
               <tr className="border-b text-left">
                 <th className="py-3 px-4 font-medium text-muted-foreground">#</th>
                 <th className="py-3 px-4 font-medium text-muted-foreground">ชื่อ</th>
-                <th className="py-3 px-4 font-medium text-muted-foreground text-center">เคสทั้งหมด</th>
+                {isSurveyor && (
+                  <th className="py-3 px-4 font-medium text-muted-foreground text-center">ได้รับมอบหมาย</th>
+                )}
+                {!isSurveyor && (
+                  <th className="py-3 px-4 font-medium text-muted-foreground text-center">เคสทั้งหมด</th>
+                )}
                 <th className="py-3 px-4 font-medium text-muted-foreground text-center">สำรวจแล้ว</th>
                 <th className="py-3 px-4 font-medium text-muted-foreground text-center">ปิดการขายได้</th>
                 <th className="py-3 px-4 font-medium text-muted-foreground text-center">อัตราปิด</th>
@@ -67,7 +76,9 @@ function PerformanceTable({ title, icon, data, emptyText }: { title: string; ico
                   <tr key={member.teamMemberId} className="border-b last:border-0 hover:bg-muted/50">
                     <td className="py-3 px-4 text-muted-foreground">{idx + 1}</td>
                     <td className="py-3 px-4 font-medium">{member.name}</td>
-                    <td className="py-3 px-4 text-center font-semibold text-lg">{member.totalCases}</td>
+                    <td className="py-3 px-4 text-center font-semibold text-lg">
+                      {isSurveyor ? member.assignedCount : member.totalCases}
+                    </td>
                     <td className="py-3 px-4 text-center font-semibold text-blue-600">{member.surveyedCount}</td>
                     <td className="py-3 px-4 text-center font-semibold text-green-600">{member.wonCount}</td>
                     <td className="py-3 px-4 text-center">
@@ -96,19 +107,88 @@ function PerformanceTable({ title, icon, data, emptyText }: { title: string; ico
   );
 }
 
+function CommissionTable({ title, icon, data, emptyText }: { title: string; icon: React.ReactNode; data: MemberPerf[]; emptyText: string }) {
+  if (data.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            {icon}
+            {title}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            <Users className="h-10 w-10 mx-auto mb-2 opacity-30" />
+            <p>{emptyText}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const maxCases = Math.max(...data.map(d => d.wonCount), 1);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          {icon}
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left">
+                <th className="py-3 px-4 font-medium text-muted-foreground">#</th>
+                <th className="py-3 px-4 font-medium text-muted-foreground">ชื่อ</th>
+                <th className="py-3 px-4 font-medium text-muted-foreground text-center">ปิดการขายได้ (เดือนนี้)</th>
+                <th className="py-3 px-4 font-medium text-muted-foreground">กราฟ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((member, idx) => {
+                const barWidth = Math.round((member.wonCount / maxCases) * 100);
+                return (
+                  <tr key={member.teamMemberId} className="border-b last:border-0 hover:bg-muted/50">
+                    <td className="py-3 px-4 text-muted-foreground">{idx + 1}</td>
+                    <td className="py-3 px-4 font-medium">{member.name}</td>
+                    <td className="py-3 px-4 text-center font-semibold text-lg text-green-600">{member.wonCount}</td>
+                    <td className="py-3 px-4 min-w-[120px]">
+                      <div className="w-full bg-muted rounded-full h-3 relative">
+                        <div
+                          className="bg-green-500 rounded-full h-3 transition-all"
+                          style={{ width: `${barWidth}%` }}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function TeamPerformance() {
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear() + 543);
   const [viewMode, setViewMode] = useState<"month" | "year">("month");
+  const [activeTab, setActiveTab] = useState<TabMode>("lead");
 
   const queryInput = useMemo(() => {
     const buddhistYear = selectedYear;
     const ceYear = buddhistYear - 543;
     return viewMode === "month"
-      ? { month: selectedMonth, year: ceYear }
-      : { year: ceYear };
-  }, [selectedMonth, selectedYear, viewMode]);
+      ? { month: selectedMonth, year: ceYear, tab: activeTab as "lead" | "commission" }
+      : { year: ceYear, tab: activeTab as "lead" | "commission" };
+  }, [selectedMonth, selectedYear, viewMode, activeTab]);
 
   const { data: performance, isLoading } = trpc.teamPerformance.summary.useQuery(queryInput);
 
@@ -117,9 +197,9 @@ export default function TeamPerformance() {
     return Array.from({ length: 5 }, (_, i) => currentBE - i);
   }, []);
 
-  const totals = performance?.totals ?? { totalCases: 0, totalWon: 0, closeRate: 0 };
-  const adminSenders = performance?.adminSenders ?? [];
-  const surveyors = performance?.surveyors ?? [];
+  const totals = performance?.totals ?? { totalCases: 0, totalSurveyed: 0, totalWon: 0, closeRate: 0 };
+  const adminSenders = (performance?.adminSenders ?? []) as MemberPerf[];
+  const surveyors = (performance?.surveyors ?? []) as MemberPerf[];
 
   return (
     <DashboardLayout>
@@ -164,66 +244,142 @@ export default function TeamPerformance() {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="flex items-center gap-4 p-5">
-            <div className="p-3 rounded-xl bg-blue-100 text-blue-600">
-              <BarChart3 className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{totals.totalCases}</p>
-              <p className="text-sm text-muted-foreground">เคสทั้งหมด</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-4 p-5">
-            <div className="p-3 rounded-xl bg-green-100 text-green-600">
-              <Trophy className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{totals.totalWon}</p>
-              <p className="text-sm text-muted-foreground">ปิดการขายได้</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-4 p-5">
-            <div className="p-3 rounded-xl bg-amber-100 text-amber-600">
-              <TrendingUp className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{totals.closeRate}%</p>
-              <p className="text-sm text-muted-foreground">อัตราปิดรวม</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabMode)}>
+        <TabsList>
+          <TabsTrigger value="lead" className="gap-1.5">
+            <BarChart3 className="h-4 w-4" />
+            ภาพรวม Lead
+          </TabsTrigger>
+          <TabsTrigger value="commission" className="gap-1.5">
+            <Trophy className="h-4 w-4" />
+            ปิดงาน / คอมมิชชั่น
+          </TabsTrigger>
+        </TabsList>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {/* Admin Sender Table */}
-          <PerformanceTable
-            title="ผลงานคนส่งสำรวจ (แอดมิน)"
-            icon={<Users className="h-5 w-5 text-purple-600" />}
-            data={adminSenders}
-            emptyText="ไม่มีข้อมูลคนส่งสำรวจในช่วงเวลานี้"
-          />
+        {/* Tab 1: Lead Overview */}
+        <TabsContent value="lead">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+            <Card>
+              <CardContent className="flex items-center gap-4 p-5">
+                <div className="p-3 rounded-xl bg-blue-100 text-blue-600">
+                  <BarChart3 className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{totals.totalCases}</p>
+                  <p className="text-sm text-muted-foreground">เคสทั้งหมด</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="flex items-center gap-4 p-5">
+                <div className="p-3 rounded-xl bg-cyan-100 text-cyan-600">
+                  <ClipboardCheck className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{totals.totalSurveyed}</p>
+                  <p className="text-sm text-muted-foreground">สำรวจแล้ว</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="flex items-center gap-4 p-5">
+                <div className="p-3 rounded-xl bg-green-100 text-green-600">
+                  <Trophy className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{totals.totalWon}</p>
+                  <p className="text-sm text-muted-foreground">ปิดการขายได้</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="flex items-center gap-4 p-5">
+                <div className="p-3 rounded-xl bg-amber-100 text-amber-600">
+                  <TrendingUp className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{totals.closeRate}%</p>
+                  <p className="text-sm text-muted-foreground">อัตราปิด</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-          {/* Surveyor Table */}
-          <PerformanceTable
-            title="ผลงานเซลล์ (คนสำรวจ)"
-            icon={<Users className="h-5 w-5 text-blue-600" />}
-            data={surveyors}
-            emptyText="ไม่มีข้อมูลเซลล์ในช่วงเวลานี้"
-          />
-        </div>
-      )}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <LeadTable
+                title="ผลงานคนส่งสำรวจ (แอดมิน)"
+                icon={<Users className="h-5 w-5 text-purple-600" />}
+                data={adminSenders}
+                emptyText="ไม่มีข้อมูลคนส่งสำรวจในช่วงเวลานี้"
+              />
+              <LeadTable
+                title="ผลงานเซลล์ (คนสำรวจ)"
+                icon={<Users className="h-5 w-5 text-blue-600" />}
+                data={surveyors}
+                emptyText="ไม่มีข้อมูลเซลล์ในช่วงเวลานี้"
+                isSurveyor
+              />
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Tab 2: Commission */}
+        <TabsContent value="commission">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <Card>
+              <CardContent className="flex items-center gap-4 p-5">
+                <div className="p-3 rounded-xl bg-green-100 text-green-600">
+                  <Trophy className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{totals.totalWon}</p>
+                  <p className="text-sm text-muted-foreground">ปิดงานได้ (ติดตั้งเสร็จเดือนนี้)</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="flex items-center gap-4 p-5">
+                <div className="p-3 rounded-xl bg-amber-100 text-amber-600">
+                  <TrendingUp className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">นับจากเคสที่ติดตั้งเสร็จในเดือนที่เลือก</p>
+                  <p className="text-xs text-muted-foreground mt-1">ใช้สำหรับคิดค่าคอมมิชชั่น / ตัดรอบ</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <CommissionTable
+                title="ผลงานคนส่งสำรวจ (แอดมิน)"
+                icon={<Users className="h-5 w-5 text-purple-600" />}
+                data={adminSenders}
+                emptyText="ไม่มีเคสที่ติดตั้งเสร็จในเดือนนี้"
+              />
+              <CommissionTable
+                title="ผลงานเซลล์ (คนสำรวจ)"
+                icon={<Users className="h-5 w-5 text-blue-600" />}
+                data={surveyors}
+                emptyText="ไม่มีเคสที่ติดตั้งเสร็จในเดือนนี้"
+              />
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
     </DashboardLayout>
   );

@@ -94,6 +94,7 @@ export const surveys = mysqlTable("surveys", {
   installationDate: bigint("installationDate", { mode: "number" }),
   installationStatus: mysqlEnum("installationStatus", ["waiting", "in_progress", "completed", "delivered"]),
   completedAt: bigint("completedAt", { mode: "number" }),
+  installationCompletedAt: bigint("installationCompletedAt", { mode: "number" }),
   deliveryStatus: mysqlEnum("deliveryStatus", ["pending", "submitted", "approved", "rejected"]).default("pending"),
   deliverySubmittedAt: bigint("deliverySubmittedAt", { mode: "number" }),
   deliverySubmittedBy: int("deliverySubmittedBy"),

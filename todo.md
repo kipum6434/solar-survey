@@ -898,3 +898,14 @@
 - [x] ตรวจสอบว่าทำไมบางงานไม่มีชื่อเซลล์ → งานที่ยังไม่ได้มอบหมาย surveyor แสดงเป็น "ยังไม่ได้มอบหมาย"
 - [x] แก้ให้แสดงชื่อเซลล์และคนส่งสำรวจครบถ้วน (resolve name จาก team_members + users fallback)
 - [x] แก้ "สำรวจแล้ว" ให้รวม follow_up status ด้วย
+
+### Feature: ปรับปรุงหน้าผลงานทีม - 2 Tab + completedAt + ลบข้อมูลทดสอบ
+- [x] Schema: เพิ่ม installationCompletedAt column ใน surveys table (completedAt มีอยู่แล้ว ใช้สำหรับสำรวจเสร็จ)
+- [x] Backend: บันทึก installationCompletedAt อัตโนมัติเมื่อเปลี่ยน installationStatus เป็น completed/delivered
+- [x] Backend: ปรับ getTeamPerformance query - Tab 1 (ภาพรวม Lead) นับตามเดือนสร้างงาน
+- [x] Backend: เพิ่ม query Tab 2 (ปิดงาน/คอมมิชชั่น) นับตามเดือนที่ installationCompletedAt
+- [x] Backend: ตาราง เซลล์ เพิ่ม "ได้รับมอบหมาย" = ทุกเคสที่ assign ให้เซลล์คนนั้น
+- [x] Frontend: เพิ่ม 2 Tab ในหน้าผลงานทีม (ภาพรวม Lead / ปิดงาน-คอมมิชชั่น)
+- [x] Frontend: Tab 1 แสดงตาราง แอดมิน + เซลล์ พร้อมคอลัมน์ ได้รับมอบหมาย/สำรวจแล้ว/ปิดการขาย/อัตราปิด
+- [x] Frontend: Tab 2 แสดงตาราง แอดมิน + เซลล์ นับเฉพาะเคสที่ติดตั้งเสร็จในเดือนนั้น
+- [x] ลบข้อมูลทดสอบออกจาก DB (Round12 Test, FilterTest, R24 Surveyor, ทดสอบระบบ ฯลฯ)

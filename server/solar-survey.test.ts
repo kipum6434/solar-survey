@@ -613,12 +613,13 @@ describe("Round 14A: Survey filter by ANY assignment (not just primary)", () => 
 });
 
 describe("Round 14B: Team Performance API", () => {
-  it("should return team performance data", async () => {
+  it("should return team performance data for lead tab", async () => {
     const adminCaller = appRouter.createCaller(createAdminContext());
     const now = new Date();
     const result = await adminCaller.teamPerformance.summary({
       month: now.getMonth() + 1,
       year: now.getFullYear(),
+      tab: "lead",
     });
     expect(result).toBeDefined();
     expect(result).toHaveProperty("adminSenders");
@@ -627,8 +628,28 @@ describe("Round 14B: Team Performance API", () => {
     expect(Array.isArray(result.adminSenders)).toBe(true);
     expect(Array.isArray(result.surveyors)).toBe(true);
     expect(result.totals).toHaveProperty("totalCases");
+    expect(result.totals).toHaveProperty("totalSurveyed");
     expect(result.totals).toHaveProperty("totalWon");
     expect(result.totals).toHaveProperty("closeRate");
+    // Each member should have assignedCount
+    if (result.surveyors.length > 0) {
+      expect(result.surveyors[0]).toHaveProperty("assignedCount");
+    }
+  });
+
+  it("should return team performance data for commission tab", async () => {
+    const adminCaller = appRouter.createCaller(createAdminContext());
+    const now = new Date();
+    const result = await adminCaller.teamPerformance.summary({
+      month: now.getMonth() + 1,
+      year: now.getFullYear(),
+      tab: "commission",
+    });
+    expect(result).toBeDefined();
+    expect(result).toHaveProperty("adminSenders");
+    expect(result).toHaveProperty("surveyors");
+    expect(result).toHaveProperty("totals");
+    expect(result.totals).toHaveProperty("totalWon");
   });
 });
 
