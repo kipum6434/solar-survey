@@ -537,6 +537,263 @@ const surveyRouter = router({
       await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "survey", entityId: input.id, details: `นัดติดตั้ง${input.installationDate ? " วันที่ " + new Date(input.installationDate).toLocaleDateString("th-TH") : ""} ID: ${input.id}` });
       return { success: true };
     }),
+
+  // ==================== POSTPONE / CANCEL (Protected - Admin/Backend) ====================
+  postponeSurvey: protectedProcedure
+    .input(z.object({ id: z.number(), reason: z.string().min(1) }))
+    .mutation(async ({ input, ctx }) => {
+      const survey = await db.getSurveyById(input.id);
+      if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบงานสำรวจ" });
+      await db.createPostponeCancelLog({
+        surveyId: input.id,
+        action: "postpone_survey",
+        reason: input.reason,
+        previousDate: survey.scheduledDate || undefined,
+        actionBy: ctx.user.name || "Admin",
+        actionByRole: "admin",
+      });
+      await db.updateSurvey(input.id, { status: "postponed" } as any);
+      await db.logActivity({ userId: ctx.user.id, action: "postpone", entityType: "survey", entityId: input.id, details: `เลื่อนสำรวจ: ${input.reason}` });
+      // Notify
+      try {
+        const surveyData = await db.getSurveyWithCustomer(input.id);
+        const customerName = surveyData?.customer?.name || `งาน #${input.id}`;
+        const notifContent = `⏸️ เลื่อนสำรวจ\nลูกค้า: ${customerName} (ID: ${input.id})\nสาเหตุ: ${input.reason}\nโดย: ${ctx.user.name || "Admin"}`;
+        await notifyOwner({ title: "เลื่อนสำรวจ", content: notifContent });
+        await sendLineNotification("เลื่อนสำรวจ", notifContent);
+      } catch (e) { console.warn("[Postpone] notify failed:", e); }
+      return { success: true };
+    }),
+
+  cancelSurvey: protectedProcedure
+    .input(z.object({ id: z.number(), reason: z.string().min(1) }))
+    .mutation(async ({ input, ctx }) => {
+      const survey = await db.getSurveyById(input.id);
+      if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบงานสำรวจ" });
+      await db.createPostponeCancelLog({
+        surveyId: input.id,
+        action: "cancel_survey",
+        reason: input.reason,
+        previousDate: survey.scheduledDate || undefined,
+        actionBy: ctx.user.name || "Admin",
+        actionByRole: "admin",
+      });
+      await db.updateSurvey(input.id, { status: "cancelled" } as any);
+      await db.logActivity({ userId: ctx.user.id, action: "cancel", entityType: "survey", entityId: input.id, details: `ยกเลิกสำรวจ: ${input.reason}` });
+      // Notify
+      try {
+        const surveyData = await db.getSurveyWithCustomer(input.id);
+        const customerName = surveyData?.customer?.name || `งาน #${input.id}`;
+        const notifContent = `❌ ยกเลิกสำรวจ\nลูกค้า: ${customerName} (ID: ${input.id})\nสาเหตุ: ${input.reason}\nโดย: ${ctx.user.name || "Admin"}`;
+        await notifyOwner({ title: "ยกเลิกสำรวจ", content: notifContent });
+        await sendLineNotification("ยกเลิกสำรวจ", notifContent);
+      } catch (e) { console.warn("[Cancel] notify failed:", e); }
+      return { success: true };
+    }),
+
+  postponeInstallation: protectedProcedure
+    .input(z.object({ id: z.number(), reason: z.string().min(1) }))
+    .mutation(async ({ input, ctx }) => {
+      const survey = await db.getSurveyById(input.id);
+      if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบงานสำรวจ" });
+      await db.createPostponeCancelLog({
+        surveyId: input.id,
+        action: "postpone_install",
+        reason: input.reason,
+        previousDate: survey.installationDate || undefined,
+        actionBy: ctx.user.name || "Admin",
+        actionByRole: "admin",
+      });
+      await db.updateSurvey(input.id, { installationStatus: "postponed" } as any);
+      await db.logActivity({ userId: ctx.user.id, action: "postpone", entityType: "survey", entityId: input.id, details: `เลื่อนติดตั้ง: ${input.reason}` });
+      // Notify
+      try {
+        const surveyData = await db.getSurveyWithCustomer(input.id);
+        const customerName = surveyData?.customer?.name || `งาน #${input.id}`;
+        const notifContent = `⏸️ เลื่อนติดตั้ง\nลูกค้า: ${customerName} (ID: ${input.id})\nสาเหตุ: ${input.reason}\nโดย: ${ctx.user.name || "Admin"}`;
+        await notifyOwner({ title: "เลื่อนติดตั้ง", content: notifContent });
+        await sendLineNotification("เลื่อนติดตั้ง", notifContent);
+      } catch (e) { console.warn("[Postpone Install] notify failed:", e); }
+      return { success: true };
+    }),
+
+  cancelInstallation: protectedProcedure
+    .input(z.object({ id: z.number(), reason: z.string().min(1) }))
+    .mutation(async ({ input, ctx }) => {
+      const survey = await db.getSurveyById(input.id);
+      if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบงานสำรวจ" });
+      await db.createPostponeCancelLog({
+        surveyId: input.id,
+        action: "cancel_install",
+        reason: input.reason,
+        previousDate: survey.installationDate || undefined,
+        actionBy: ctx.user.name || "Admin",
+        actionByRole: "admin",
+      });
+      await db.updateSurvey(input.id, { installationStatus: "cancelled" } as any);
+      await db.logActivity({ userId: ctx.user.id, action: "cancel", entityType: "survey", entityId: input.id, details: `ยกเลิกติดตั้ง: ${input.reason}` });
+      // Notify
+      try {
+        const surveyData = await db.getSurveyWithCustomer(input.id);
+        const customerName = surveyData?.customer?.name || `งาน #${input.id}`;
+        const notifContent = `❌ ยกเลิกติดตั้ง\nลูกค้า: ${customerName} (ID: ${input.id})\nสาเหตุ: ${input.reason}\nโดย: ${ctx.user.name || "Admin"}`;
+        await notifyOwner({ title: "ยกเลิกติดตั้ง", content: notifContent });
+        await sendLineNotification("ยกเลิกติดตั้ง", notifContent);
+      } catch (e) { console.warn("[Cancel Install] notify failed:", e); }
+      return { success: true };
+    }),
+
+  // ==================== POSTPONE / CANCEL (Public - Share Link) ====================
+  publicPostponeSurvey: publicProcedure
+    .input(z.object({ token: z.string(), surveyId: z.number(), reason: z.string().min(1), actionBy: z.string().min(1), actionByRole: z.enum(["admin", "surveyor", "installer"]) }))
+    .mutation(async ({ input }) => {
+      const link = await db.getShareLinkByToken(input.token);
+      if (!link || !link.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
+      if (link.expiresAt && link.expiresAt < Date.now()) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์หมดอายุ" });
+      if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
+      const survey = await db.getSurveyById(input.surveyId);
+      if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบงานสำรวจ" });
+      await db.createPostponeCancelLog({
+        surveyId: input.surveyId,
+        action: "postpone_survey",
+        reason: input.reason,
+        previousDate: survey.scheduledDate || undefined,
+        actionBy: input.actionBy,
+        actionByRole: input.actionByRole,
+      });
+      await db.updateSurvey(input.surveyId, { status: "postponed" } as any);
+      // Notify
+      try {
+        const surveyData = await db.getSurveyWithCustomer(input.surveyId);
+        const customerName = surveyData?.customer?.name || `งาน #${input.surveyId}`;
+        const notifContent = `⏸️ เลื่อนสำรวจ (Share Link)\nลูกค้า: ${customerName} (ID: ${input.surveyId})\nสาเหตุ: ${input.reason}\nโดย: ${input.actionBy} (${input.actionByRole})`;
+        await notifyOwner({ title: "เลื่อนสำรวจ", content: notifContent });
+        await sendLineNotification("เลื่อนสำรวจ", notifContent);
+      } catch (e) { console.warn("[Public Postpone] notify failed:", e); }
+      return { success: true };
+    }),
+
+  publicCancelSurvey: publicProcedure
+    .input(z.object({ token: z.string(), surveyId: z.number(), reason: z.string().min(1), actionBy: z.string().min(1), actionByRole: z.enum(["admin", "surveyor", "installer"]) }))
+    .mutation(async ({ input }) => {
+      const link = await db.getShareLinkByToken(input.token);
+      if (!link || !link.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
+      if (link.expiresAt && link.expiresAt < Date.now()) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์หมดอายุ" });
+      if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
+      const survey = await db.getSurveyById(input.surveyId);
+      if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบงานสำรวจ" });
+      await db.createPostponeCancelLog({
+        surveyId: input.surveyId,
+        action: "cancel_survey",
+        reason: input.reason,
+        previousDate: survey.scheduledDate || undefined,
+        actionBy: input.actionBy,
+        actionByRole: input.actionByRole,
+      });
+      await db.updateSurvey(input.surveyId, { status: "cancelled" } as any);
+      // Notify
+      try {
+        const surveyData = await db.getSurveyWithCustomer(input.surveyId);
+        const customerName = surveyData?.customer?.name || `งาน #${input.surveyId}`;
+        const notifContent = `❌ ยกเลิกสำรวจ (Share Link)\nลูกค้า: ${customerName} (ID: ${input.surveyId})\nสาเหตุ: ${input.reason}\nโดย: ${input.actionBy} (${input.actionByRole})`;
+        await notifyOwner({ title: "ยกเลิกสำรวจ", content: notifContent });
+        await sendLineNotification("ยกเลิกสำรวจ", notifContent);
+      } catch (e) { console.warn("[Public Cancel] notify failed:", e); }
+      return { success: true };
+    }),
+
+  publicPostponeInstallation: publicProcedure
+    .input(z.object({ token: z.string(), surveyId: z.number(), reason: z.string().min(1), actionBy: z.string().min(1), actionByRole: z.enum(["admin", "surveyor", "installer"]) }))
+    .mutation(async ({ input }) => {
+      const link = await db.getShareLinkByToken(input.token);
+      if (!link || !link.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
+      if (link.expiresAt && link.expiresAt < Date.now()) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์หมดอายุ" });
+      if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
+      const survey = await db.getSurveyById(input.surveyId);
+      if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบงานสำรวจ" });
+      await db.createPostponeCancelLog({
+        surveyId: input.surveyId,
+        action: "postpone_install",
+        reason: input.reason,
+        previousDate: survey.installationDate || undefined,
+        actionBy: input.actionBy,
+        actionByRole: input.actionByRole,
+      });
+      await db.updateSurvey(input.surveyId, { installationStatus: "postponed" } as any);
+      // Notify
+      try {
+        const surveyData = await db.getSurveyWithCustomer(input.surveyId);
+        const customerName = surveyData?.customer?.name || `งาน #${input.surveyId}`;
+        const notifContent = `⏸️ เลื่อนติดตั้ง (Share Link)\nลูกค้า: ${customerName} (ID: ${input.surveyId})\nสาเหตุ: ${input.reason}\nโดย: ${input.actionBy} (${input.actionByRole})`;
+        await notifyOwner({ title: "เลื่อนติดตั้ง", content: notifContent });
+        await sendLineNotification("เลื่อนติดตั้ง", notifContent);
+      } catch (e) { console.warn("[Public Postpone Install] notify failed:", e); }
+      return { success: true };
+    }),
+
+  publicCancelInstallation: publicProcedure
+    .input(z.object({ token: z.string(), surveyId: z.number(), reason: z.string().min(1), actionBy: z.string().min(1), actionByRole: z.enum(["admin", "surveyor", "installer"]) }))
+    .mutation(async ({ input }) => {
+      const link = await db.getShareLinkByToken(input.token);
+      if (!link || !link.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
+      if (link.expiresAt && link.expiresAt < Date.now()) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์หมดอายุ" });
+      if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
+      const survey = await db.getSurveyById(input.surveyId);
+      if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบงานสำรวจ" });
+      await db.createPostponeCancelLog({
+        surveyId: input.surveyId,
+        action: "cancel_install",
+        reason: input.reason,
+        previousDate: survey.installationDate || undefined,
+        actionBy: input.actionBy,
+        actionByRole: input.actionByRole,
+      });
+      await db.updateSurvey(input.surveyId, { installationStatus: "cancelled" } as any);
+      // Notify
+      try {
+        const surveyData = await db.getSurveyWithCustomer(input.surveyId);
+        const customerName = surveyData?.customer?.name || `งาน #${input.surveyId}`;
+        const notifContent = `❌ ยกเลิกติดตั้ง (Share Link)\nลูกค้า: ${customerName} (ID: ${input.surveyId})\nสาเหตุ: ${input.reason}\nโดย: ${input.actionBy} (${input.actionByRole})`;
+        await notifyOwner({ title: "ยกเลิกติดตั้ง", content: notifContent });
+        await sendLineNotification("ยกเลิกติดตั้ง", notifContent);
+      } catch (e) { console.warn("[Public Cancel Install] notify failed:", e); }
+      return { success: true };
+    }),
+
+  // ==================== GET POSTPONE/CANCEL LOGS ====================
+  getPostponeCancelLogs: protectedProcedure
+    .input(z.object({ surveyId: z.number() }))
+    .query(({ input }) => db.getPostponeCancelLogs(input.surveyId)),
+
+  publicGetPostponeCancelLogs: publicProcedure
+    .input(z.object({ token: z.string(), surveyId: z.number() }))
+    .query(async ({ input }) => {
+      const link = await db.getShareLinkByToken(input.token);
+      if (!link || !link.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
+      if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
+      return db.getPostponeCancelLogs(input.surveyId);
+    }),
+
+  // ==================== REOPEN (Admin only) ====================
+  reopenSurvey: protectedProcedure
+    .input(z.object({ id: z.number(), newStatus: z.enum(["pending", "scheduled"]).default("pending") }))
+    .mutation(async ({ input, ctx }) => {
+      const survey = await db.getSurveyById(input.id);
+      if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบงานสำรวจ" });
+      await db.updateSurvey(input.id, { status: input.newStatus } as any);
+      await db.logActivity({ userId: ctx.user.id, action: "reopen", entityType: "survey", entityId: input.id, details: `เปิดงานสำรวจใหม่ → ${input.newStatus}` });
+      return { success: true };
+    }),
+
+  reopenInstallation: protectedProcedure
+    .input(z.object({ id: z.number(), newStatus: z.enum(["waiting", "in_progress"]).default("waiting") }))
+    .mutation(async ({ input, ctx }) => {
+      const survey = await db.getSurveyById(input.id);
+      if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบงานสำรวจ" });
+      await db.updateSurvey(input.id, { installationStatus: input.newStatus } as any);
+      await db.logActivity({ userId: ctx.user.id, action: "reopen", entityType: "survey", entityId: input.id, details: `เปิดงานติดตั้งใหม่ → ${input.newStatus}` });
+      return { success: true };
+    }),
 });
 
 // ==================== PHOTO ROUTER ====================

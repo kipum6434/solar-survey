@@ -10,8 +10,12 @@ import {
   Camera, MapPin, Calendar, Phone, Mail, Zap, Home, Gauge,
   X, Image, Sun, Wrench, FolderDown, Download, Upload, Trash2,
   Package, CheckCircle2, Clock, AlertTriangle, HardHat, Send, Plus,
-  CircleAlert, CircleCheck, Info, XCircle,
+  CircleAlert, CircleCheck, Info, XCircle, PauseCircle,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
@@ -463,6 +467,25 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
     onError: (e: any) => { toast.error(e.message || "ส่งมอบล้มเหลว"); setConfirmSubmit(false); },
   });
 
+  // Postpone/Cancel Installation state
+  const [showPostponeInstallDialog, setShowPostponeInstallDialog] = useState(false);
+  const [showCancelInstallDialog, setShowCancelInstallDialog] = useState(false);
+  const [postponeInstallReason, setPostponeInstallReason] = useState("");
+  const [cancelInstallReason, setCancelInstallReason] = useState("");
+  const [installActionByName, setInstallActionByName] = useState("");
+
+  const postponeInstallMut = trpc.survey.publicPostponeInstallation.useMutation({
+    onSuccess: () => { toast.success("เลื่อนติดตั้งสำเร็จ"); setShowPostponeInstallDialog(false); setPostponeInstallReason(""); setInstallActionByName(""); window.location.reload(); },
+    onError: (e: any) => toast.error(e.message || "เกิดข้อผิดพลาด"),
+  });
+  const cancelInstallMut = trpc.survey.publicCancelInstallation.useMutation({
+    onSuccess: () => { toast.success("ยกเลิกติดตั้งสำเร็จ"); setShowCancelInstallDialog(false); setCancelInstallReason(""); setInstallActionByName(""); window.location.reload(); },
+    onError: (e: any) => toast.error(e.message || "เกิดข้อผิดพลาด"),
+  });
+
+  const installStatus = surveyData?.installationStatus || "waiting";
+  const isInstallPostponedOrCancelled = installStatus === "postponed" || installStatus === "cancelled";
+
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -882,6 +905,103 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Postpone/Cancel Installation Buttons */}
+      <CardContent className="pt-0">
+        {!isInstallPostponedOrCancelled && installStatus !== "completed" && installStatus !== "delivered" && (
+          <div className="border-t pt-4 mt-2">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-2">
+                <PauseCircle className="h-4 w-4 text-yellow-500" />
+                <p className="text-xs text-muted-foreground">ต้องการเลื่อนหรือยกเลิกติดตั้ง?</p>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" className="gap-1.5 text-xs border-yellow-300 text-yellow-700 hover:bg-yellow-50" onClick={() => setShowPostponeInstallDialog(true)}>
+                  <PauseCircle className="h-3.5 w-3.5" /> เลื่อน
+                </Button>
+                <Button size="sm" variant="outline" className="gap-1.5 text-xs border-red-300 text-red-700 hover:bg-red-50" onClick={() => setShowCancelInstallDialog(true)}>
+                  <XCircle className="h-3.5 w-3.5" /> ยกเลิก
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isInstallPostponedOrCancelled && (
+          <div className={`border-t pt-4 mt-2 rounded-lg p-3 ${installStatus === 'postponed' ? 'bg-yellow-50' : 'bg-red-50'}`}>
+            <div className="flex items-center gap-2">
+              {installStatus === 'postponed' ? <PauseCircle className="h-5 w-5 text-yellow-600" /> : <XCircle className="h-5 w-5 text-red-600" />}
+              <div>
+                <p className={`font-medium text-sm ${installStatus === 'postponed' ? 'text-yellow-800' : 'text-red-800'}`}>
+                  {installStatus === 'postponed' ? 'งานติดตั้งถูกเลื่อน' : 'งานติดตั้งถูกยกเลิก'}
+                </p>
+                <p className="text-xs text-muted-foreground">กรุณาติดต่อแอดมินเพื่อดำเนินการต่อ</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+
+      {/* Postpone Installation Dialog */}
+      <Dialog open={showPostponeInstallDialog} onOpenChange={(open) => { if (!open) { setShowPostponeInstallDialog(false); setPostponeInstallReason(""); setInstallActionByName(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><PauseCircle className="h-5 w-5 text-yellow-600" /> เลื่อนติดตั้ง</DialogTitle>
+            <DialogDescription>สถานะจะเปลี่ยนเป็น "เลื่อนติดตั้ง" รอนัดวันใหม่</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <Label className="text-sm font-medium mb-1.5 block">ชื่อผู้ดำเนินการ <span className="text-red-500">*</span></Label>
+              <Input placeholder="ชื่อของคุณ..." value={installActionByName} onChange={(e) => setInstallActionByName(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-sm font-medium mb-1.5 block">สาเหตุ <span className="text-red-500">*</span></Label>
+              <Textarea placeholder="ระบุสาเหตุที่ต้องเลื่อน..." value={postponeInstallReason} onChange={(e) => setPostponeInstallReason(e.target.value)} rows={3} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowPostponeInstallDialog(false); setPostponeInstallReason(""); setInstallActionByName(""); }}>ยกเลิก</Button>
+            <Button
+              className="bg-yellow-600 hover:bg-yellow-700 text-white gap-1.5"
+              disabled={!postponeInstallReason.trim() || !installActionByName.trim() || postponeInstallMut.isPending}
+              onClick={() => postponeInstallMut.mutate({ token, surveyId, reason: postponeInstallReason.trim(), actionBy: installActionByName.trim(), actionByRole: "installer" })}
+            >
+              <PauseCircle className="h-4 w-4" /> ยืนยันเลื่อน
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Installation Dialog */}
+      <Dialog open={showCancelInstallDialog} onOpenChange={(open) => { if (!open) { setShowCancelInstallDialog(false); setCancelInstallReason(""); setInstallActionByName(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><XCircle className="h-5 w-5 text-red-600" /> ยกเลิกติดตั้ง</DialogTitle>
+            <DialogDescription>สถานะจะเปลี่ยนเป็น "ยกเลิกติดตั้ง" สามารถเปิดใหม่ได้ภายหลัง</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <Label className="text-sm font-medium mb-1.5 block">ชื่อผู้ดำเนินการ <span className="text-red-500">*</span></Label>
+              <Input placeholder="ชื่อของคุณ..." value={installActionByName} onChange={(e) => setInstallActionByName(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-sm font-medium mb-1.5 block">สาเหตุ <span className="text-red-500">*</span></Label>
+              <Textarea placeholder="ระบุสาเหตุที่ต้องยกเลิก..." value={cancelInstallReason} onChange={(e) => setCancelInstallReason(e.target.value)} rows={3} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowCancelInstallDialog(false); setCancelInstallReason(""); setInstallActionByName(""); }}>ยกเลิก</Button>
+            <Button
+              variant="destructive"
+              className="gap-1.5"
+              disabled={!cancelInstallReason.trim() || !installActionByName.trim() || cancelInstallMut.isPending}
+              onClick={() => cancelInstallMut.mutate({ token, surveyId, reason: cancelInstallReason.trim(), actionBy: installActionByName.trim(), actionByRole: "installer" })}
+            >
+              <XCircle className="h-4 w-4" /> ยืนยันยกเลิก
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Lightbox */}
       {lightboxImg && (

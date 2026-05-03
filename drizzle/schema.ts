@@ -73,7 +73,8 @@ export const surveys = mysqlTable("surveys", {
     "negotiating",
     "won",
     "lost",
-    "cancelled"
+    "cancelled",
+    "postponed"
   ]).default("pending").notNull(),
   scheduledDate: bigint("scheduledDate", { mode: "number" }),
   scheduledTime: varchar("scheduledTime", { length: 10 }),
@@ -92,7 +93,7 @@ export const surveys = mysqlTable("surveys", {
   systemType: mysqlEnum("systemType", ["string", "micro", "both"]),
   statusId: int("statusId"),
   installationDate: bigint("installationDate", { mode: "number" }),
-  installationStatus: mysqlEnum("installationStatus", ["waiting", "in_progress", "completed", "delivered"]),
+  installationStatus: mysqlEnum("installationStatus", ["waiting", "in_progress", "completed", "delivered", "postponed", "cancelled"]),
   completedAt: bigint("completedAt", { mode: "number" }),
   installationCompletedAt: bigint("installationCompletedAt", { mode: "number" }),
   deliveryStatus: mysqlEnum("deliveryStatus", ["pending", "submitted", "approved", "rejected"]).default("pending"),
@@ -397,3 +398,19 @@ export const companySettings = mysqlTable("company_settings", {
 });
 export type CompanySettings = typeof companySettings.$inferSelect;
 export type InsertCompanySettings = typeof companySettings.$inferInsert;
+
+// ==================== POSTPONE / CANCEL LOGS ====================
+export const postponeCancelLogs = mysqlTable("postpone_cancel_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  surveyId: int("surveyId").notNull(),
+  action: mysqlEnum("action", ["postpone_survey", "cancel_survey", "postpone_install", "cancel_install"]).notNull(),
+  reason: text("reason").notNull(),
+  newDate: bigint("newDate", { mode: "number" }),
+  previousDate: bigint("previousDate", { mode: "number" }),
+  actionBy: varchar("actionBy", { length: 255 }).notNull(),
+  actionByRole: mysqlEnum("actionByRole", ["admin", "surveyor", "installer"]).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PostponeCancelLog = typeof postponeCancelLogs.$inferSelect;
+export type InsertPostponeCancelLog = typeof postponeCancelLogs.$inferInsert;

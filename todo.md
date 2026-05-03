@@ -928,3 +928,24 @@
 - [x] Frontend: เพิ่ม Date Picker component (range mode) ในแถว filter หน้างานสำรวจ
 - [x] Frontend: รองรับ mobile-friendly (responsive)
 - [x] Fix: แก้ TypeScript error - filterDate ต้องเป็น number (timestamp) ไม่ใช่ string
+
+### Feature: ระบบเลื่อน/ยกเลิก งานสำรวจและติดตั้ง พร้อมบันทึกสาเหตุ
+- [x] Schema: สร้างตาราง postpone_cancel_logs (id, surveyId, action, reason, newDate, actionBy, actionByRole, createdAt)
+- [x] Schema: เพิ่มสถานะ postponed ใน surveys.status enum
+- [x] Schema: เพิ่มสถานะ cancelled ใน surveys.status enum
+- [x] Schema: เพิ่มสถานะ postponed, cancelled ใน installationStatus enum
+- [x] Backend: API postponeSurvey (เลื่อนสำรวจ + บันทึกสาเหตุ + เปลี่ยนสถานะเป็น postponed)
+- [x] Backend: API cancelSurvey (ยกเลิกสำรวจ + บันทึกสาเหตุ + เปลี่ยนสถานะเป็น cancelled)
+- [x] Backend: API postponeInstallation (เลื่อนติดตั้ง + บันทึกสาเหตุ)
+- [x] Backend: API cancelInstallation (ยกเลิกติดตั้ง + บันทึกสาเหตุ)
+- [x] Backend: API getPostponeCancelLogs (ดูประวัติเลื่อน/ยกเลิกของงาน)
+- [x] Backend: Public API สำหรับลิงก์แชร์ (เลื่อน/ยกเลิกผ่าน share link)
+- [x] Frontend: หน้า SurveyDetail - เพิ่มปุ่มเลื่อน/ยกเลิกสำรวจ + Dialog กรอกสาเหตุ
+- [x] Frontend: หน้า SurveyDetail - เพิ่มปุ่มเลื่อน/ยกเลิกติดตั้ง + Dialog กรอกสาเหตุ
+- [x] Frontend: หน้า SurveyDetail - แสดงประวัติเลื่อน/ยกเลิก (Timeline)
+- [x] Frontend: หน้าลิงก์แชร์สำรวจ - เพิ่มปุ่มเลื่อน/ยกเลิกสำรวจ + Dialog กรอกสาเหตุ
+- [x] Frontend: หน้าลิงก์แชร์ติดตั้ง - เพิ่มปุ่มเลื่อน/ยกเลิกติดตั้ง + Dialog กรอกสาเหตุ
+- [x] Backend: แจ้งเตือน LINE + ในระบบ เมื่อมีการเลื่อน/ยกเลิก
+- [x] Frontend: สถานะ postponed/cancelled แสดงใน StatusDropdown + ตารางงานสำรวจ
+- [x] Frontend: แอดมินสามารถเปลี่ยนสถานะกลับจาก cancelled/postponed ได้
+- [x] Vitest: ทดสอบ API เลื่อน/ยกเลิก + ดูประวัติ (9 tests passed)

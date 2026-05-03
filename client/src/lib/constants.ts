@@ -9,6 +9,16 @@ export const SURVEY_STATUS_MAP: Record<string, { label: string; color: string; b
   won: { label: "ปิดการขาย", color: "text-green-700", bg: "bg-green-100" },
   lost: { label: "ไม่สำเร็จ", color: "text-red-700", bg: "bg-red-50" },
   cancelled: { label: "ยกเลิก", color: "text-gray-500", bg: "bg-gray-100" },
+  postponed: { label: "เลื่อนสำรวจ", color: "text-yellow-700", bg: "bg-yellow-50" },
+};
+
+export const INSTALLATION_STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
+  waiting: { label: "รอติดตั้ง", color: "text-blue-700", bg: "bg-blue-50" },
+  in_progress: { label: "กำลังติดตั้ง", color: "text-amber-700", bg: "bg-amber-50" },
+  completed: { label: "ติดตั้งเสร็จ", color: "text-green-700", bg: "bg-green-50" },
+  delivered: { label: "ส่งมอบแล้ว", color: "text-emerald-700", bg: "bg-emerald-50" },
+  postponed: { label: "เลื่อนติดตั้ง", color: "text-yellow-700", bg: "bg-yellow-50" },
+  cancelled: { label: "ยกเลิกติดตั้ง", color: "text-red-700", bg: "bg-red-50" },
 };
 
 export const SOURCE_MAP: Record<string, string> = {

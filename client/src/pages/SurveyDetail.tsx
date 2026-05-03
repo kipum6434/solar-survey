@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
 import { trpc } from "@/lib/trpc";
-import { SURVEY_STATUS_MAP, PHOTO_CATEGORY_MAP, DOC_TYPE_MAP, FOLLOW_UP_METHOD_MAP } from "@/lib/constants";
+import { SURVEY_STATUS_MAP, INSTALLATION_STATUS_MAP, PHOTO_CATEGORY_MAP, DOC_TYPE_MAP, FOLLOW_UP_METHOD_MAP } from "@/lib/constants";
 import { formatPhone } from "@/lib/formatPhone";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useParams, useLocation } from "wouter";
@@ -23,6 +23,7 @@ import {
   ArrowLeft, Camera, FileText, PhoneCall, Share2, MapPin, Calendar, User, Pencil,
   Upload, Trash2, Download, Link2, Copy, X, Image, Eye, CheckCircle2, Clock,
   Zap, Sun, Home, Gauge, Receipt, Settings2, Users, Wrench, FolderDown, Package,
+  PauseCircle, XCircle, RotateCcw, History,
 } from "lucide-react";
 import { MultiUserSelect } from "@/components/MultiUserSelect";
 import { SourceCombobox } from "@/components/SourceCombobox";
@@ -160,6 +161,41 @@ export default function SurveyDetail() {
   const [showCompleteSurveyConfirm, setShowCompleteSurveyConfirm] = useState(false);
   const [showCloseToInstallConfirm, setShowCloseToInstallConfirm] = useState(false);
   const [installDate, setInstallDate] = useState<Date | undefined>(undefined);
+
+  // Postpone/Cancel state
+  const [showPostponeDialog, setShowPostponeDialog] = useState<"survey" | "install" | null>(null);
+  const [showCancelDialog, setShowCancelDialog] = useState<"survey" | "install" | null>(null);
+  const [postponeReason, setPostponeReason] = useState("");
+  const [cancelReason, setCancelReason] = useState("");
+
+  // Postpone/Cancel mutations
+  const postponeSurvey = trpc.survey.postponeSurvey.useMutation({
+    onSuccess: () => { toast.success("เลื่อนสำรวจสำเร็จ"); setShowPostponeDialog(null); setPostponeReason(""); refetch(); refetchLogs(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const cancelSurveyMut = trpc.survey.cancelSurvey.useMutation({
+    onSuccess: () => { toast.success("ยกเลิกสำรวจสำเร็จ"); setShowCancelDialog(null); setCancelReason(""); refetch(); refetchLogs(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const postponeInstallation = trpc.survey.postponeInstallation.useMutation({
+    onSuccess: () => { toast.success("เลื่อนติดตั้งสำเร็จ"); setShowPostponeDialog(null); setPostponeReason(""); refetch(); refetchLogs(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const cancelInstallation = trpc.survey.cancelInstallation.useMutation({
+    onSuccess: () => { toast.success("ยกเลิกติดตั้งสำเร็จ"); setShowCancelDialog(null); setCancelReason(""); refetch(); refetchLogs(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const reopenSurvey = trpc.survey.reopenSurvey.useMutation({
+    onSuccess: () => { toast.success("เปิดงานสำรวจใหม่สำเร็จ"); refetch(); refetchLogs(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const reopenInstallation = trpc.survey.reopenInstallation.useMutation({
+    onSuccess: () => { toast.success("เปิดงานติดตั้งใหม่สำเร็จ"); refetch(); refetchLogs(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  // Postpone/Cancel logs
+  const { data: postponeLogs, refetch: refetchLogs } = trpc.survey.getPostponeCancelLogs.useQuery({ surveyId });
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -365,6 +401,39 @@ export default function SurveyDetail() {
                     <Wrench className="h-3.5 w-3.5 mr-1" /> รอการติดตั้ง
                   </Badge>
                 )}
+                {/* ปุ่มเลื่อน/ยกเลิกสำรวจ */}
+                {(s.status !== "cancelled" && s.status !== "postponed" && s.status !== "won" && s.status !== "lost") && (
+                  <>
+                    <Button size="sm" variant="outline" className="gap-1.5 border-yellow-300 text-yellow-700 hover:bg-yellow-50" onClick={() => setShowPostponeDialog("survey")}>
+                      <PauseCircle className="h-4 w-4" /> เลื่อนสำรวจ
+                    </Button>
+                    <Button size="sm" variant="outline" className="gap-1.5 border-red-300 text-red-700 hover:bg-red-50" onClick={() => setShowCancelDialog("survey")}>
+                      <XCircle className="h-4 w-4" /> ยกเลิกสำรวจ
+                    </Button>
+                  </>
+                )}
+                {/* ปุ่มเลื่อน/ยกเลิกติดตั้ง */}
+                {(s.installationStatus === "waiting" || s.installationStatus === "in_progress") && (
+                  <>
+                    <Button size="sm" variant="outline" className="gap-1.5 border-yellow-300 text-yellow-700 hover:bg-yellow-50" onClick={() => setShowPostponeDialog("install")}>
+                      <PauseCircle className="h-4 w-4" /> เลื่อนติดตั้ง
+                    </Button>
+                    <Button size="sm" variant="outline" className="gap-1.5 border-red-300 text-red-700 hover:bg-red-50" onClick={() => setShowCancelDialog("install")}>
+                      <XCircle className="h-4 w-4" /> ยกเลิกติดตั้ง
+                    </Button>
+                  </>
+                )}
+                {/* ปุ่มเปิดงานใหม่ */}
+                {(s.status === "cancelled" || s.status === "postponed") && (
+                  <Button size="sm" variant="outline" className="gap-1.5 border-green-300 text-green-700 hover:bg-green-50" onClick={() => reopenSurvey.mutate({ id: surveyId })} disabled={reopenSurvey.isPending}>
+                    <RotateCcw className="h-4 w-4" /> เปิดงานสำรวจใหม่
+                  </Button>
+                )}
+                {(s.installationStatus === "cancelled" || s.installationStatus === "postponed") && (
+                  <Button size="sm" variant="outline" className="gap-1.5 border-green-300 text-green-700 hover:bg-green-50" onClick={() => reopenInstallation.mutate({ id: surveyId })} disabled={reopenInstallation.isPending}>
+                    <RotateCcw className="h-4 w-4" /> เปิดงานติดตั้งใหม่
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>
@@ -404,6 +473,7 @@ export default function SurveyDetail() {
             <TabsTrigger value="followup" className="gap-1.5"><PhoneCall className="h-3.5 w-3.5" /> Follow-up ({followUps?.length ?? 0})</TabsTrigger>
             <TabsTrigger value="share" className="gap-1.5"><Share2 className="h-3.5 w-3.5" /> แชร์ ({shareLinks?.length ?? 0})</TabsTrigger>
             <TabsTrigger value="delivery" className="gap-1.5"><Package className="h-3.5 w-3.5" /> ส่งมอบงาน</TabsTrigger>
+            <TabsTrigger value="history" className="gap-1.5"><History className="h-3.5 w-3.5" /> ประวัติ ({postponeLogs?.length ?? 0})</TabsTrigger>
           </TabsList>
 
           {/* Photos Tab */}
@@ -752,6 +822,51 @@ export default function SurveyDetail() {
           <TabsContent value="delivery" className="mt-4">
             <DeliveryTab surveyId={surveyId} installationStatus={s.installationStatus} surveyData={s} customerData={c} />
           </TabsContent>
+
+          {/* History Tab - ประวัติเลื่อน/ยกเลิก */}
+          <TabsContent value="history" className="mt-4">
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold">ประวัติการเลื่อน/ยกเลิก</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {(!postponeLogs || postponeLogs.length === 0) ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">ยังไม่มีประวัติการเลื่อน/ยกเลิก</p>
+                ) : (
+                  <div className="space-y-3">
+                    {postponeLogs.map((log: any) => {
+                      const isPostpone = log.action.includes("postpone");
+                      const isSurvey = log.action.includes("survey");
+                      const actionLabel = isPostpone
+                        ? (isSurvey ? "เลื่อนสำรวจ" : "เลื่อนติดตั้ง")
+                        : (isSurvey ? "ยกเลิกสำรวจ" : "ยกเลิกติดตั้ง");
+                      const roleLabel = log.actionByRole === "admin" ? "แอดมิน" : log.actionByRole === "surveyor" ? "เซลล์" : "ช่าง";
+                      return (
+                        <div key={log.id} className={`flex gap-3 p-3 rounded-lg border ${isPostpone ? 'border-yellow-200 bg-yellow-50/50' : 'border-red-200 bg-red-50/50'}`}>
+                          <div className={`shrink-0 mt-0.5 ${isPostpone ? 'text-yellow-600' : 'text-red-600'}`}>
+                            {isPostpone ? <PauseCircle className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`text-sm font-medium ${isPostpone ? 'text-yellow-700' : 'text-red-700'}`}>{actionLabel}</span>
+                              <Badge variant="secondary" className="text-xs">{roleLabel}: {log.actionBy}</Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">สาเหตุ: {log.reason}</p>
+                            {log.previousDate && (
+                              <p className="text-xs text-muted-foreground mt-0.5">วันเดิม: {new Date(log.previousDate).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}</p>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-0.5">{new Date(log.createdAt).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
 
         {/* Survey Notes */}
@@ -991,6 +1106,70 @@ export default function SurveyDetail() {
               }}
             >
               <Calendar className="h-4 w-4" /> ยืนยันนัดติดตั้ง
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Postpone Dialog */}
+      <Dialog open={showPostponeDialog !== null} onOpenChange={(open) => { if (!open) { setShowPostponeDialog(null); setPostponeReason(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><PauseCircle className="h-5 w-5 text-yellow-600" /> {showPostponeDialog === "survey" ? "เลื่อนสำรวจ" : "เลื่อนติดตั้ง"}</DialogTitle>
+            <DialogDescription>
+              {showPostponeDialog === "survey" ? "สถานะจะเปลี่ยนเป็น \"เลื่อนสำรวจ\" รอนัดวันใหม่" : "สถานะติดตั้งจะเปลี่ยนเป็น \"เลื่อนติดตั้ง\" รอนัดวันใหม่"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label className="text-sm font-medium mb-2 block">สาเหตุ <span className="text-red-500">*</span></Label>
+            <Textarea placeholder="ระบุสาเหตุที่ต้องเลื่อน..." value={postponeReason} onChange={(e) => setPostponeReason(e.target.value)} rows={3} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowPostponeDialog(null); setPostponeReason(""); }}>ยกเลิก</Button>
+            <Button
+              className="bg-yellow-600 hover:bg-yellow-700 text-white gap-1.5"
+              disabled={!postponeReason.trim() || postponeSurvey.isPending || postponeInstallation.isPending}
+              onClick={() => {
+                if (showPostponeDialog === "survey") {
+                  postponeSurvey.mutate({ id: surveyId, reason: postponeReason.trim() });
+                } else {
+                  postponeInstallation.mutate({ id: surveyId, reason: postponeReason.trim() });
+                }
+              }}
+            >
+              <PauseCircle className="h-4 w-4" /> ยืนยันเลื่อน
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Dialog */}
+      <Dialog open={showCancelDialog !== null} onOpenChange={(open) => { if (!open) { setShowCancelDialog(null); setCancelReason(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><XCircle className="h-5 w-5 text-red-600" /> {showCancelDialog === "survey" ? "ยกเลิกสำรวจ" : "ยกเลิกติดตั้ง"}</DialogTitle>
+            <DialogDescription>
+              {showCancelDialog === "survey" ? "สถานะจะเปลี่ยนเป็น \"ยกเลิก\" สามารถเปิดใหม่ได้ภายหลัง" : "สถานะติดตั้งจะเปลี่ยนเป็น \"ยกเลิก\" สามารถเปิดใหม่ได้ภายหลัง"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label className="text-sm font-medium mb-2 block">สาเหตุ <span className="text-red-500">*</span></Label>
+            <Textarea placeholder="ระบุสาเหตุที่ต้องยกเลิก..." value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} rows={3} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowCancelDialog(null); setCancelReason(""); }}>ยกเลิก</Button>
+            <Button
+              variant="destructive"
+              className="gap-1.5"
+              disabled={!cancelReason.trim() || cancelSurveyMut.isPending || cancelInstallation.isPending}
+              onClick={() => {
+                if (showCancelDialog === "survey") {
+                  cancelSurveyMut.mutate({ id: surveyId, reason: cancelReason.trim() });
+                } else {
+                  cancelInstallation.mutate({ id: surveyId, reason: cancelReason.trim() });
+                }
+              }}
+            >
+              <XCircle className="h-4 w-4" /> ยืนยันยกเลิก
             </Button>
           </DialogFooter>
         </DialogContent>

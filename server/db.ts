@@ -1,6 +1,6 @@
 import { eq, and, or, like, desc, gte, lte, sql, inArray, asc, isNotNull, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory, installerTeams, InsertInstallerTeam, deliveryComments, InsertDeliveryComment, lineGroups, InsertLineGroup, lineNotificationTargets, InsertLineNotificationTarget, companySettings, InsertCompanySettings } from "../drizzle/schema";
+import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory, installerTeams, InsertInstallerTeam, deliveryComments, InsertDeliveryComment, lineGroups, InsertLineGroup, lineNotificationTargets, InsertLineNotificationTarget, companySettings, InsertCompanySettings, postponeCancelLogs, InsertPostponeCancelLog } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -2518,4 +2518,21 @@ export async function getPendingApprovals(opts: {
     })),
     total: Number(countQ[0]?.count || 0),
   };
+}
+
+// ==================== POSTPONE / CANCEL LOGS ====================
+
+export async function createPostponeCancelLog(data: InsertPostponeCancelLog) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(postponeCancelLogs).values(data).$returningId();
+  return result;
+}
+
+export async function getPostponeCancelLogs(surveyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(postponeCancelLogs)
+    .where(eq(postponeCancelLogs.surveyId, surveyId))
+    .orderBy(desc(postponeCancelLogs.createdAt));
 }

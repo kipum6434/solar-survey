@@ -2,6 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { SURVEY_STATUS_MAP, PHOTO_CATEGORY_MAP } from "@/lib/constants";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { formatPhone } from "@/lib/formatPhone";
 import { useParams } from "wouter";
 import { useState, useRef, useCallback, useMemo } from "react";
@@ -10,6 +12,7 @@ import {
   Camera, MapPin, Calendar, Phone, Zap, Home, Gauge,
   X, Sun, Upload, Trash2, CheckCircle2, Clock,
   Save, FileText, ChevronDown, ChevronUp, Info, User, ImagePlus, GripVertical,
+  PauseCircle, XCircle, History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -142,6 +145,23 @@ export default function SharedSurveyField() {
     onSuccess: () => { toast.success("สำรวจเสร็จสิ้นแล้ว"); window.location.reload(); },
     onError: (e: any) => { toast.error(e.message || "เกิดข้อผิดพลาด"); },
   });
+
+  // Postpone/Cancel state
+  const [showPostponeDialog, setShowPostponeDialog] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [postponeReason, setPostponeReason] = useState("");
+  const [cancelReason, setCancelReason] = useState("");
+  const [actionByName, setActionByName] = useState("");
+
+  const postponeSurveyMut = trpc.survey.publicPostponeSurvey.useMutation({
+    onSuccess: () => { toast.success("เลื่อนสำรวจสำเร็จ"); setShowPostponeDialog(false); setPostponeReason(""); setActionByName(""); window.location.reload(); },
+    onError: (e: any) => toast.error(e.message || "เกิดข้อผิดพลาด"),
+  });
+  const cancelSurveyMut = trpc.survey.publicCancelSurvey.useMutation({
+    onSuccess: () => { toast.success("ยกเลิกสำรวจสำเร็จ"); setShowCancelDialog(false); setCancelReason(""); setActionByName(""); window.location.reload(); },
+    onError: (e: any) => toast.error(e.message || "เกิดข้อผิดพลาด"),
+  });
+  const { data: postponeLogs } = trpc.survey.publicGetPostponeCancelLogs.useQuery({ token: params.token || "", surveyId: 0 }, { enabled: false });
 
   const uploadPhotoMut = trpc.shareLink.publicUploadSurveyPhoto.useMutation();
   const deletePhotoMut = trpc.shareLink.publicDeleteSurveyPhoto.useMutation();
@@ -398,6 +418,7 @@ export default function SharedSurveyField() {
 
   const statusInfo = SURVEY_STATUS_MAP[s.status] || SURVEY_STATUS_MAP.pending;
   const isSurveyed = s.status === "surveyed" || s.status === "follow_up" || s.status === "quoted" || s.status === "negotiating" || s.status === "won";
+  const isPostponedOrCancelled = s.status === "postponed" || s.status === "cancelled";
 
   // Group photos by category
   const photosByCategory: Record<string, typeof photosData> = {};
@@ -825,6 +846,42 @@ export default function SharedSurveyField() {
           </Card>
         )}
 
+        {/* Postpone/Cancel Buttons */}
+        {!isPostponedOrCancelled && s.status !== "won" && s.status !== "lost" && (
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-2">
+                  <PauseCircle className="h-5 w-5 text-yellow-500" />
+                  <p className="text-sm text-muted-foreground">ต้องการเลื่อนหรือยกเลิกสำรวจ?</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" className="gap-1.5 border-yellow-300 text-yellow-700 hover:bg-yellow-50" onClick={() => setShowPostponeDialog(true)}>
+                    <PauseCircle className="h-4 w-4" /> เลื่อน
+                  </Button>
+                  <Button size="sm" variant="outline" className="gap-1.5 border-red-300 text-red-700 hover:bg-red-50" onClick={() => setShowCancelDialog(true)}>
+                    <XCircle className="h-4 w-4" /> ยกเลิก
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {isPostponedOrCancelled && (
+          <Card className={`border-0 shadow-sm ${s.status === 'postponed' ? 'bg-yellow-50/50 border-l-4 border-l-yellow-400' : 'bg-red-50/50 border-l-4 border-l-red-400'}`}>
+            <CardContent className="p-4 flex items-center gap-3">
+              {s.status === 'postponed' ? <PauseCircle className="h-5 w-5 text-yellow-600" /> : <XCircle className="h-5 w-5 text-red-600" />}
+              <div>
+                <p className={`font-medium text-sm ${s.status === 'postponed' ? 'text-yellow-800' : 'text-red-800'}`}>
+                  {s.status === 'postponed' ? 'งานสำรวจถูกเลื่อน' : 'งานสำรวจถูกยกเลิก'}
+                </p>
+                <p className="text-xs text-muted-foreground">กรุณาติดต่อแอดมินเพื่อดำเนินการต่อ</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Last updated */}
         {s.updatedAt && (
           <div className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1">
@@ -883,6 +940,67 @@ export default function SharedSurveyField() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Postpone Survey Dialog */}
+      <Dialog open={showPostponeDialog} onOpenChange={(open) => { if (!open) { setShowPostponeDialog(false); setPostponeReason(""); setActionByName(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><PauseCircle className="h-5 w-5 text-yellow-600" /> เลื่อนสำรวจ</DialogTitle>
+            <DialogDescription>สถานะจะเปลี่ยนเป็น "เลื่อนสำรวจ" รอนัดวันใหม่</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <Label className="text-sm font-medium mb-1.5 block">ชื่อผู้ดำเนินการ <span className="text-red-500">*</span></Label>
+              <Input placeholder="ชื่อของคุณ..." value={actionByName} onChange={(e) => setActionByName(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-sm font-medium mb-1.5 block">สาเหตุ <span className="text-red-500">*</span></Label>
+              <Textarea placeholder="ระบุสาเหตุที่ต้องเลื่อน..." value={postponeReason} onChange={(e) => setPostponeReason(e.target.value)} rows={3} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowPostponeDialog(false); setPostponeReason(""); setActionByName(""); }}>ยกเลิก</Button>
+            <Button
+              className="bg-yellow-600 hover:bg-yellow-700 text-white gap-1.5"
+              disabled={!postponeReason.trim() || !actionByName.trim() || postponeSurveyMut.isPending}
+              onClick={() => postponeSurveyMut.mutate({ token, surveyId, reason: postponeReason.trim(), actionBy: actionByName.trim(), actionByRole: "surveyor" })}
+            >
+              <PauseCircle className="h-4 w-4" /> ยืนยันเลื่อน
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Survey Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={(open) => { if (!open) { setShowCancelDialog(false); setCancelReason(""); setActionByName(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><XCircle className="h-5 w-5 text-red-600" /> ยกเลิกสำรวจ</DialogTitle>
+            <DialogDescription>สถานะจะเปลี่ยนเป็น "ยกเลิก" สามารถเปิดใหม่ได้ภายหลัง</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <Label className="text-sm font-medium mb-1.5 block">ชื่อผู้ดำเนินการ <span className="text-red-500">*</span></Label>
+              <Input placeholder="ชื่อของคุณ..." value={actionByName} onChange={(e) => setActionByName(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-sm font-medium mb-1.5 block">สาเหตุ <span className="text-red-500">*</span></Label>
+              <Textarea placeholder="ระบุสาเหตุที่ต้องยกเลิก..." value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} rows={3} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowCancelDialog(false); setCancelReason(""); setActionByName(""); }}>ยกเลิก</Button>
+            <Button
+              variant="destructive"
+              className="gap-1.5"
+              disabled={!cancelReason.trim() || !actionByName.trim() || cancelSurveyMut.isPending}
+              onClick={() => cancelSurveyMut.mutate({ token, surveyId, reason: cancelReason.trim(), actionBy: actionByName.trim(), actionByRole: "surveyor" })}
+            >
+              <XCircle className="h-4 w-4" /> ยืนยันยกเลิก
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
