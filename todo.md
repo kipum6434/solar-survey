@@ -949,3 +949,10 @@
 - [x] Frontend: สถานะ postponed/cancelled แสดงใน StatusDropdown + ตารางงานสำรวจ
 - [x] Frontend: แอดมินสามารถเปลี่ยนสถานะกลับจาก cancelled/postponed ได้
 - [x] Vitest: ทดสอบ API เลื่อน/ยกเลิก + ดูประวัติ (9 tests passed)
+
+### Feature: Sync หมวดหมู่รูปสำรวจ - ลิงก์แชร์ใช้ข้อมูลจาก photo_categories เดียวกับหลังบ้าน
+- [x] Query: ตรวจสอบ category เก่าที่มีอยู่ใน survey_photos + photo_categories ปัจจุบัน
+- [x] Migration: Map category key เก่า → key ใหม่ (UPDATE SQL) - 350 รูป migrated สำเร็จ
+- [x] Frontend SharedSurveyField: ลบหมวดหมู่ hardcode เก่า ดึงจาก API แทน
+- [x] Frontend SharedSurveyField: เรียงลำดับตาม sortOrder จาก photo_categories
+- [x] ทดสอบ: รูปเก่าแสดงถูกหมวดหมู่ใหม่ + อัพรูปใหม่ใช้หมวดจาก API (2 tests passed)

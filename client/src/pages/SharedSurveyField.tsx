@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { SURVEY_STATUS_MAP, PHOTO_CATEGORY_MAP } from "@/lib/constants";
+import { SURVEY_STATUS_MAP } from "@/lib/constants";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { formatPhone } from "@/lib/formatPhone";
@@ -172,9 +172,9 @@ export default function SharedSurveyField() {
     onError: (e: any) => { toast.error("จัดเรียงล้มเหลว: " + (e.message || "")); },
   });
 
-  // Build dynamic category map
+  // Build category map from API only (photo_categories table)
   const categoryMap: Record<string, string> = useMemo(() => {
-    const map = { ...PHOTO_CATEGORY_MAP };
+    const map: Record<string, string> = {};
     if (photoCategories) {
       for (const cat of photoCategories) {
         map[cat.key] = cat.label;
@@ -183,7 +183,10 @@ export default function SharedSurveyField() {
     return map;
   }, [photoCategories]);
 
-  const categoryKeys = useMemo(() => Object.keys(categoryMap), [categoryMap]);
+  const categoryKeys = useMemo(() => {
+    if (!photoCategories) return [];
+    return photoCategories.map((cat: any) => cat.key);
+  }, [photoCategories]);
 
   // Initialize tech form when data loads
   const s = data && 'survey' in data ? data.survey : null;
@@ -420,12 +423,14 @@ export default function SharedSurveyField() {
   const isSurveyed = s.status === "surveyed" || s.status === "follow_up" || s.status === "quoted" || s.status === "negotiating" || s.status === "won";
   const isPostponedOrCancelled = s.status === "postponed" || s.status === "cancelled";
 
-  // Group photos by category
+  // Group photos by category (only show categories from photo_categories API)
   const photosByCategory: Record<string, typeof photosData> = {};
   for (const photo of (photosData || [])) {
-    const cat = (photo as any).category || "other";
-    if (!photosByCategory[cat]) photosByCategory[cat] = [];
-    photosByCategory[cat].push(photo);
+    const cat = (photo as any).category || "อื่นๆ";
+    // If category key exists in categoryMap, use it; otherwise put in อื่นๆ
+    const resolvedCat = categoryMap[cat] ? cat : "อื่นๆ";
+    if (!photosByCategory[resolvedCat]) photosByCategory[resolvedCat] = [];
+    photosByCategory[resolvedCat].push(photo);
   }
 
   return (

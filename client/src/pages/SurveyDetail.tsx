@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
 import { trpc } from "@/lib/trpc";
-import { SURVEY_STATUS_MAP, INSTALLATION_STATUS_MAP, PHOTO_CATEGORY_MAP, DOC_TYPE_MAP, FOLLOW_UP_METHOD_MAP } from "@/lib/constants";
+import { SURVEY_STATUS_MAP, INSTALLATION_STATUS_MAP, DOC_TYPE_MAP, FOLLOW_UP_METHOD_MAP } from "@/lib/constants";
 import { formatPhone } from "@/lib/formatPhone";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useParams, useLocation } from "wouter";
@@ -88,15 +88,13 @@ export default function SurveyDetail() {
   const [newCategoryLabel, setNewCategoryLabel] = useState("");
   const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<{ id: number; label: string } | null>(null);
 
-  // Build dynamic category map from DB
-  const dynamicCategoryMap: Record<string, string> = {};
+  // Build category map from DB only (photo_categories table)
+  const categoryMap: Record<string, string> = {};
   if (photoCategories) {
     for (const cat of photoCategories) {
-      dynamicCategoryMap[cat.key] = cat.label;
+      categoryMap[cat.key] = cat.label;
     }
   }
-  // Merge both: PHOTO_CATEGORY_MAP (fallback) + dynamicCategoryMap (DB) so all keys resolve to Thai labels
-  const categoryMap = { ...PHOTO_CATEGORY_MAP, ...dynamicCategoryMap };
 
   // Inline edit state for tech card
   const [editingTech, setEditingTech] = useState(false);
@@ -533,7 +531,7 @@ export default function SurveyDetail() {
                         onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
                         className="flex items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-1.5 text-xs shadow-xs w-[200px] h-8 hover:bg-accent/50 transition-colors"
                       >
-                        <span className="truncate">{dynamicCategoryMap[photoCategory] || photoCategory}</span>
+                        <span className="truncate">{categoryMap[photoCategory] || photoCategory}</span>
                         <svg className="h-3.5 w-3.5 opacity-50 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                       </button>
                       {categoryDropdownOpen && (

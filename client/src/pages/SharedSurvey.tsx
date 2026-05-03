@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { SURVEY_STATUS_MAP, PHOTO_CATEGORY_MAP } from "@/lib/constants";
+import { SURVEY_STATUS_MAP } from "@/lib/constants";
 import { formatPhone } from "@/lib/formatPhone";
 import { useParams } from "wouter";
 import { useState, useRef, useCallback, useMemo } from "react";
@@ -55,8 +55,8 @@ export default function SharedSurvey() {
     onError: (e: any) => { toast.error(e.message || "เกิดข้อผิดพลาด"); },
   });
 
-  // Build dynamic category map from DB, fallback to static
-  const categoryMap: Record<string, string> = { ...PHOTO_CATEGORY_MAP };
+  // Build category map from DB only (photo_categories table)
+  const categoryMap: Record<string, string> = {};
   if (photoCategories) {
     for (const cat of photoCategories) {
       categoryMap[cat.key] = cat.label;
