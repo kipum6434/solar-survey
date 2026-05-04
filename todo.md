@@ -968,3 +968,12 @@
 - [x] แสดงชื่อหมวดหมู่ภาษาไทย (merge PHOTO_CATEGORY_MAP + DB categories)
 - [x] เพิ่มปุ่มถ่ายรูป/เลือกรูปในแต่ละหมวดหมู่ (เหมือน SharedSurveyField)
 - [x] ยังคงปุ่มดาวน์โหลดทั้งหมดไว้
+
+### Feature: ระบบ Retry อัตโนมัติสำหรับอัพโหลดรูป
+- [x] สร้าง shared hook useUploadWithRetry (retry 3 ครั้ง, exponential backoff)
+- [x] แสดง progress/status ขณะอัพโหลด (กำลังอัพ / retry / สำเร็จ / ล้มเหลว)
+- [x] เตือนก่อนปิดหน้า (beforeunload) ถ้ายังมีรูปกำลัง upload
+- [x] ปุ่ม retry มือ ถ้า retry 3 ครั้งแล้วยังไม่สำเร็จ
+- [x] ใช้กับหน้า SharedSurveyField (ลิงก์แชร์สำรวจ)
+- [x] ใช้กับหน้า SurveyDetail (หลังบ้าน แท็บรูปภาพ)
+- [x] ใช้กับหน้าช่างติดตั้ง (DeliveryTab / SharedSurvey)

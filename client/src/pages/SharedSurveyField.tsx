@@ -8,6 +8,8 @@ import { formatPhone } from "@/lib/formatPhone";
 import { useParams } from "wouter";
 import { useState, useRef, useCallback, useMemo } from "react";
 import { compressImages } from "@/lib/imageCompression";
+import { useUploadWithRetry } from "@/hooks/useUploadWithRetry";
+import { UploadStatusBar } from "@/components/UploadStatusBar";
 import {
   Camera, MapPin, Calendar, Phone, Zap, Home, Gauge,
   X, Sun, Upload, Trash2, CheckCircle2, Clock,
@@ -97,7 +99,7 @@ export default function SharedSurveyField() {
   const [showTechnical, setShowTechnical] = useState(true);
   const [showCustomerInfo, setShowCustomerInfo] = useState(true);
   const [uploadingCategory, setUploadingCategory] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
+  const { state: uploadState, uploadFiles: uploadWithRetry, retryFailed, clearState: clearUploadState } = useUploadWithRetry();
   const [deletingPhotoId, setDeletingPhotoId] = useState<number | null>(null);
 
   // Technical form state
@@ -234,45 +236,38 @@ export default function SharedSurveyField() {
     });
   }
 
-  // Photo upload handler
+  // Photo upload handler with retry
   const handlePhotoUpload = useCallback(async (category: string, files: FileList | null) => {
     if (!files || files.length === 0) return;
     setUploadingCategory(category);
-    setUploadProgress({ current: 0, total: files.length });
     try {
       const fileArray = Array.from(files);
-      const compressed = await compressImages(fileArray, (done, total) => {
-        setUploadProgress({ current: done, total });
+      const compressed = await compressImages(fileArray);
+
+      const { successCount, failedCount } = await uploadWithRetry(compressed, async (item) => {
+        await uploadPhotoMut.mutateAsync({
+          token,
+          surveyId,
+          fileName: item.fileName,
+          base64Data: item.base64,
+          category,
+          mimeType: "image/jpeg",
+        });
       });
 
-      // Upload in chunks of 3
-      const CHUNK = 3;
-      let uploaded = 0;
-      for (let i = 0; i < compressed.length; i += CHUNK) {
-        const chunk = compressed.slice(i, i + CHUNK);
-        await Promise.all(chunk.map(async (item) => {
-          await uploadPhotoMut.mutateAsync({
-            token,
-            surveyId,
-            fileName: item.fileName,
-            base64Data: item.base64,
-            category,
-            mimeType: "image/jpeg",
-          });
-          uploaded++;
-          setUploadProgress({ current: uploaded, total: compressed.length });
-        }));
+      if (successCount > 0) {
+        toast.success(`อัพโหลดสำเร็จ ${successCount} รูป`);
+        utils.shareLink.getByToken.invalidate({ token });
       }
-
-      toast.success(`อัพโหลดสำเร็จ ${compressed.length} รูป`);
-      utils.shareLink.getByToken.invalidate({ token });
+      if (failedCount > 0) {
+        toast.error(`อัพโหลดล้มเหลว ${failedCount} รูป (กดลองใหม่ได้ที่ด้านล่าง)`);
+      }
     } catch (e: any) {
       toast.error(e.message || "อัพโหลดล้มเหลว");
     } finally {
       setUploadingCategory(null);
-      setUploadProgress(null);
     }
-  }, [token, surveyId, uploadPhotoMut, utils]);
+  }, [token, surveyId, uploadPhotoMut, utils, uploadWithRetry]);
 
   // Delete photo handler
   const handleDeletePhoto = useCallback(async (photoId: number) => {
@@ -759,8 +754,8 @@ export default function SharedSurveyField() {
                         disabled={isUploading}
                         onClick={() => fileInputRefs.current[catKey]?.click()}
                       >
-                        {isUploading && uploadProgress && uploadingCategory === catKey ? (
-                          <><Upload className="h-3.5 w-3.5 animate-bounce" /> อัพ {uploadProgress.current}/{uploadProgress.total}</>
+                        {isUploading && uploadState.isUploading && uploadingCategory === catKey ? (
+                          <><Upload className="h-3.5 w-3.5 animate-bounce" /> อัพ {uploadState.successCount}/{uploadState.totalCount}</>
                         ) : (
                           <><Camera className="h-3.5 w-3.5" /> ถ่ายรูป</>
                         )}
@@ -1015,6 +1010,18 @@ export default function SharedSurveyField() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Upload Status Bar */}
+      <UploadStatusBar
+        state={uploadState}
+        onRetry={async () => {
+          const { successCount } = await retryFailed();
+          if (successCount > 0) {
+            toast.success(`อัพโหลดสำเร็จ ${successCount} รูป`);
+            utils.shareLink.getByToken.invalidate({ token });
+          }
+        }}
+        onDismiss={clearUploadState}
+      />
     </div>
   );
 }

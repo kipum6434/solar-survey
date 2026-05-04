@@ -18,6 +18,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useParams, useLocation } from "wouter";
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { compressImages } from "@/lib/imageCompression";
+import { useUploadWithRetry } from "@/hooks/useUploadWithRetry";
+import { UploadStatusBar } from "@/components/UploadStatusBar";
 import { toast } from "sonner";
 import {
   ArrowLeft, Camera, FileText, PhoneCall, Share2, MapPin, Calendar, User, Pencil,
@@ -253,7 +255,7 @@ export default function SurveyDetail() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const [photoCategory, setPhotoCategory] = useState("other");
-  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
+  const { state: uploadState, uploadFiles: uploadWithRetry, retryFailed, clearState: clearUploadState } = useUploadWithRetry();
 
   const handlePhotoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -263,37 +265,31 @@ export default function SurveyDetail() {
       return true;
     });
     if (validFiles.length === 0) return;
-    setUploadProgress({ current: 0, total: validFiles.length });
     try {
-      const compressed = await compressImages(validFiles, (done, total) => {
-        setUploadProgress({ current: done, total });
+      const compressed = await compressImages(validFiles);
+
+      const { successCount, failedCount } = await uploadWithRetry(compressed, async (item) => {
+        await uploadPhoto.mutateAsync({
+          surveyId,
+          customerId: data.customer.id,
+          fileName: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${item.fileName}`,
+          category: uploadCategory as any,
+          base64Data: item.base64,
+          mimeType: item.originalFile?.type?.startsWith("image/") ? "image/jpeg" : (item.originalFile?.type || "image/jpeg"),
+        });
       });
-      // Upload in parallel chunks of 3
-      const CHUNK = 3;
-      let uploaded = 0;
-      for (let i = 0; i < compressed.length; i += CHUNK) {
-        const chunk = compressed.slice(i, i + CHUNK);
-        await Promise.all(chunk.map(({ base64, fileName, originalFile }) =>
-          uploadPhoto.mutateAsync({
-            surveyId,
-            customerId: data.customer.id,
-            fileName: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${fileName}`,
-            category: uploadCategory as any,
-            base64Data: base64,
-            mimeType: originalFile.type.startsWith("image/") ? "image/jpeg" : originalFile.type,
-          })
-        ));
-        uploaded += chunk.length;
-        setUploadProgress({ current: uploaded, total: compressed.length });
+
+      if (successCount > 0) {
+        toast.success(`อัพโหลดสำเร็จ ${successCount} รูป`);
       }
-      toast.success(`อัพโหลดสำเร็จ ${compressed.length} รูป`);
+      if (failedCount > 0) {
+        toast.error(`อัพโหลดล้มเหลว ${failedCount} รูป (กดลองใหม่ได้ที่ด้านล่าง)`);
+      }
     } catch (err: any) {
       toast.error(err?.message || "อัพโหลดล้มเหลว");
-    } finally {
-      setUploadProgress(null);
     }
     e.target.value = "";
-  }, [data, uploadCategory, surveyId, uploadPhoto]);
+  }, [data, uploadCategory, surveyId, uploadPhoto, uploadWithRetry]);
 
   const handleDocUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -598,10 +594,10 @@ export default function SurveyDetail() {
                               <Badge variant="secondary" className="text-[10px]">{catPhotos.length}</Badge>
                             </h4>
                             <div className="flex items-center gap-1.5">
-                              <Button variant="outline" size="sm" className="text-xs gap-1 h-7" onClick={() => startUpload(catKey)} disabled={!!uploadProgress}>
+                              <Button variant="outline" size="sm" className="text-xs gap-1 h-7" onClick={() => startUpload(catKey)} disabled={uploadState.isUploading}>
                                 <Camera className="h-3 w-3" /> ถ่ายรูป
                               </Button>
-                              <Button size="sm" className="text-xs gap-1 h-7" onClick={() => startUpload(catKey)} disabled={!!uploadProgress}>
+                              <Button size="sm" className="text-xs gap-1 h-7" onClick={() => startUpload(catKey)} disabled={uploadState.isUploading}>
                                 <Upload className="h-3 w-3" /> เลือกรูป
                               </Button>
                             </div>
@@ -630,7 +626,7 @@ export default function SurveyDetail() {
                             <div className="text-center py-6 rounded-lg bg-muted/30 border border-dashed">
                               <Image className="h-8 w-8 mx-auto mb-2 opacity-30" />
                               <p className="text-xs text-muted-foreground">ยังไม่มีรูปในหมวดนี้</p>
-                              <Button variant="outline" size="sm" className="mt-2 text-xs gap-1" onClick={() => startUpload(catKey)} disabled={!!uploadProgress}>
+                              <Button variant="outline" size="sm" className="mt-2 text-xs gap-1" onClick={() => startUpload(catKey)} disabled={uploadState.isUploading}>
                                 <Upload className="h-3 w-3" /> อัปโหลดรูป
                               </Button>
                             </div>
@@ -1218,6 +1214,17 @@ export default function SurveyDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Upload Status Bar */}
+      <UploadStatusBar
+        state={uploadState}
+        onRetry={async () => {
+          const { successCount } = await retryFailed();
+          if (successCount > 0) {
+            toast.success(`อัพโหลดสำเร็จ ${successCount} รูป`);
+          }
+        }}
+        onDismiss={clearUploadState}
+      />
     </DashboardLayout>
   );
 }

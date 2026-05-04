@@ -1,5 +1,7 @@
 import { useState, useRef, useMemo, useCallback } from "react";
 import { compressImages } from "@/lib/imageCompression";
+import { useUploadWithRetry } from "@/hooks/useUploadWithRetry";
+import { UploadStatusBar } from "@/components/UploadStatusBar";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -169,7 +171,7 @@ export default function DeliveryTab({ surveyId, installationStatus, surveyData, 
     return Math.round((validation.completedRequired / validation.requiredCount) * 100);
   }, [validation]);
 
-  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
+  const { state: uploadState, uploadFiles: uploadWithRetry, retryFailed, clearState: clearUploadState } = useUploadWithRetry();
 
   const handlePhotoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -179,34 +181,29 @@ export default function DeliveryTab({ surveyId, installationStatus, surveyData, 
       return true;
     });
     if (validFiles.length === 0) return;
-    setUploadProgress({ current: 0, total: validFiles.length });
     try {
-      const compressed = await compressImages(validFiles, (done, total) => {
-        setUploadProgress({ current: done, total });
+      const compressed = await compressImages(validFiles);
+
+      const { successCount, failedCount } = await uploadWithRetry(compressed, async (item) => {
+        await uploadPhoto.mutateAsync({
+          surveyId,
+          fileName: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${item.fileName}`,
+          category: uploadCategory || "other",
+          fileData: item.base64,
+        });
       });
-      const CHUNK = 3;
-      let uploaded = 0;
-      for (let i = 0; i < compressed.length; i += CHUNK) {
-        const chunk = compressed.slice(i, i + CHUNK);
-        await Promise.all(chunk.map(({ base64, fileName }) =>
-          uploadPhoto.mutateAsync({
-            surveyId,
-            fileName: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${fileName}`,
-            category: uploadCategory || "other",
-            fileData: base64,
-          })
-        ));
-        uploaded += chunk.length;
-        setUploadProgress({ current: uploaded, total: compressed.length });
+
+      if (successCount > 0) {
+        toast.success(`อัพโหลดสำเร็จ ${successCount} รูป`);
       }
-      toast.success(`อัพโหลดสำเร็จ ${compressed.length} รูป`);
+      if (failedCount > 0) {
+        toast.error(`อัพโหลดล้มเหลว ${failedCount} รูป (กดลองใหม่ได้ที่ด้านล่าง)`);
+      }
     } catch (err: any) {
       toast.error(err?.message || "อัพโหลดล้มเหลว");
-    } finally {
-      setUploadProgress(null);
     }
     e.target.value = "";
-  }, [surveyId, uploadCategory, uploadPhoto]);
+  }, [surveyId, uploadCategory, uploadPhoto, uploadWithRetry]);
 
   const startUpload = (categoryKey: string) => {
     setUploadCategory(categoryKey);
@@ -841,6 +838,17 @@ export default function DeliveryTab({ surveyId, installationStatus, surveyData, 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Upload Status Bar */}
+      <UploadStatusBar
+        state={uploadState}
+        onRetry={async () => {
+          const { successCount } = await retryFailed();
+          if (successCount > 0) {
+            toast.success(`อัพโหลดสำเร็จ ${successCount} รูป`);
+          }
+        }}
+        onDismiss={clearUploadState}
+      />
     </div>
   );
 }
@@ -1039,7 +1047,6 @@ function DeliveryCommentSection({ surveyId, isAdmin, currentUserId }: {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
     </Card>
   );
 }
