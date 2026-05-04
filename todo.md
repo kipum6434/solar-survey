@@ -977,3 +977,6 @@
 - [x] ใช้กับหน้า SharedSurveyField (ลิงก์แชร์สำรวจ)
 - [x] ใช้กับหน้า SurveyDetail (หลังบ้าน แท็บรูปภาพ)
 - [x] ใช้กับหน้าช่างติดตั้ง (DeliveryTab / SharedSurvey)
+
+### Fix: LINE notification สำรวจเสร็จ ให้แนบลิงก์เสมอ
+- [x] แก้ completeSurvey (หลังบ้าน) ให้หา share link ของงานนั้นมาแนบใน notification เสมอ

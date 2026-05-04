@@ -470,7 +470,18 @@ const surveyRouter = router({
           .map((a: any) => a.user.name)
           .filter(Boolean)
           .join(", ") || "-";
-        const notifContent = `งานสำรวจของลูกค้า "${customerName}" (ID: ${input.id})\nเซลล์/ผู้สำรวจ: ${surveyorNames}\nสำรวจเสร็จสิ้นแล้ว`;
+        // Find share link for this survey to include in notification
+        let shareUrlPart = "";
+        try {
+          const shareLinks = await db.getShareLinksBySurveyByType(input.id, "survey");
+          const activeLink = shareLinks.find((l: any) => l.isActive && (!l.expiresAt || l.expiresAt > Date.now()));
+          if (activeLink) {
+            shareUrlPart = `\n\n🔗 ดูผลสำรวจ: ${ENV.siteUrl}/survey-field/${activeLink.token}`;
+          }
+        } catch (e) {
+          // ignore if share link lookup fails
+        }
+        const notifContent = `งานสำรวจของลูกค้า "${customerName}" (ID: ${input.id})\nเซลล์/ผู้สำรวจ: ${surveyorNames}\nสำรวจเสร็จสิ้นแล้ว${shareUrlPart}`;
         await notifyOwner({
           title: "สำรวจเสร็จสิ้น",
           content: notifContent,
