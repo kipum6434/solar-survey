@@ -993,3 +993,11 @@
 - [x] checkPageBreak อัพเดทให้เว้นที่สำหรับ compact header เมื่อขึ้นหน้าใหม่
 - [x] หน้า 1 ยังคง full header เดิม + โลโก้มุมบนขวา
 - [x] Vitest: 19 tests passed (pdf-compact-header.test.ts)
+
+### Fix: PDF Export header หน้า 2+ เปลี่ยนเป็น full header เหมือนหน้า 1
+- [x] เปลี่ยน compact header (18mm) เป็น full header (36mm) เหมือนหน้า 1 ทุกประการ
+- [x] แสดงชื่อบริษัท, ที่อยู่, เบอร์โทร, "รายงานการสำรวจ Solar", ลูกค้า, วันที่พิมพ์, โลโก้
+- [x] เพิ่มหน้า X/Y ในทุกหน้า (รวมหน้า 1)
+- [x] อัพเดท checkPageBreak ให้เว้นพื้นที่ 36mm สำหรับ full header
+- [x] ทำเหมือนกันทั้ง Survey PDF (สีส้ม) และ Installation PDF (สีเขียว)
+- [x] อัพเดท Vitest ให้ตรงกับ implementation ใหม่ (31 tests passed)

@@ -3,161 +3,199 @@ import * as fs from "fs";
 import * as path from "path";
 
 /**
- * Tests for the compact repeating header on pages 2+ of PDF exports.
- * These are contract/design tests that verify the implementation structure
- * without rendering actual PDFs (which requires browser environment).
+ * Tests for the full repeating header on all pages of PDF exports.
+ * Verifies that pages 2+ get the same full header as page 1
+ * (company name, address, report title, customer, logo, page X/Y).
  */
 
-describe("PDF Compact Header - Design Contract", () => {
+describe("PDF Full Header - Design Contract", () => {
   const pdfExportPath = path.resolve(__dirname, "../client/src/lib/pdfExport.ts");
   let pdfExportContent: string;
+  let surveySection: string;
+  let installSection: string;
 
   beforeAll(() => {
     pdfExportContent = fs.readFileSync(pdfExportPath, "utf-8");
+    surveySection = pdfExportContent.slice(
+      pdfExportContent.indexOf("export async function exportSurveyPDF"),
+      pdfExportContent.indexOf("export async function exportInstallationPDF")
+    );
+    installSection = pdfExportContent.slice(
+      pdfExportContent.indexOf("export async function exportInstallationPDF")
+    );
   });
 
-  describe("Compact header constant and function", () => {
-    it("should define COMPACT_HEADER_HEIGHT constant", () => {
-      expect(pdfExportContent).toContain("COMPACT_HEADER_HEIGHT");
-      // Should be around 18mm
-      const match = pdfExportContent.match(/COMPACT_HEADER_HEIGHT\s*=\s*(\d+)/);
+  describe("Full header constant and function", () => {
+    it("should define FULL_HEADER_HEIGHT constant at 36mm", () => {
+      expect(pdfExportContent).toContain("FULL_HEADER_HEIGHT");
+      const match = pdfExportContent.match(/FULL_HEADER_HEIGHT\s*=\s*(\d+)/);
       expect(match).toBeTruthy();
-      const height = parseInt(match![1]);
-      expect(height).toBeGreaterThanOrEqual(15);
-      expect(height).toBeLessThanOrEqual(25);
+      expect(parseInt(match![1])).toBe(36);
     });
 
-    it("should define drawCompactHeader function", () => {
-      expect(pdfExportContent).toContain("function drawCompactHeader(");
+    it("should define drawFullHeader function (not drawCompactHeader)", () => {
+      expect(pdfExportContent).toContain("function drawFullHeader(");
+      expect(pdfExportContent).not.toContain("function drawCompactHeader(");
     });
 
-    it("drawCompactHeader should accept headerColor as RGB tuple parameter", () => {
-      // Verify the function signature includes headerColor
+    it("drawFullHeader should accept headerColor as RGB tuple", () => {
       expect(pdfExportContent).toContain("headerColor: [number, number, number]");
     });
 
-    it("drawCompactHeader should accept logoData parameter", () => {
+    it("drawFullHeader should accept reportTitle parameter", () => {
+      expect(pdfExportContent).toContain("reportTitle: string");
+    });
+
+    it("drawFullHeader should accept companyInfo parameter", () => {
+      expect(pdfExportContent).toContain("companyInfo?: CompanyInfo | null");
+    });
+
+    it("drawFullHeader should accept logoData parameter", () => {
       expect(pdfExportContent).toContain("logoData?: string | null");
     });
+  });
 
-    it("drawCompactHeader should draw company name", () => {
-      // Should contain text drawing for company name
-      expect(pdfExportContent).toContain("doc.text(companyName, MARGIN,");
+  describe("drawFullHeader renders full header content", () => {
+    let headerFn: string;
+
+    beforeAll(() => {
+      const start = pdfExportContent.indexOf("function drawFullHeader(");
+      const end = pdfExportContent.indexOf("function drawSectionHeader(");
+      headerFn = pdfExportContent.slice(start, end);
     });
 
-    it("drawCompactHeader should draw customer name and survey ID", () => {
-      expect(pdfExportContent).toContain("ลูกค้า: ${customerName}  |  #${surveyId}");
+    it("should draw company name at font size 14", () => {
+      expect(headerFn).toContain("doc.setFontSize(14)");
+      expect(headerFn).toContain("companyInfo?.companyName || reportTitle");
     });
 
-    it("drawCompactHeader should draw page number", () => {
-      expect(pdfExportContent).toContain("หน้า ${pageNum}/${totalPages}");
+    it("should draw company contact info (phone + address)", () => {
+      expect(headerFn).toContain("companyInfo.phone");
+      expect(headerFn).toContain("companyInfo.address");
+    });
+
+    it("should draw report title line", () => {
+      expect(headerFn).toContain("doc.text(reportTitle, MARGIN, 23)");
+    });
+
+    it("should draw customer name and survey ID", () => {
+      expect(headerFn).toContain("`ลูกค้า: ${customerName}  |  #${surveyId}`");
+    });
+
+    it("should draw page number on header", () => {
+      expect(headerFn).toContain("`หน้า ${pageNum}/${totalPages}`");
+    });
+
+    it("should draw logo with white background and rounded rect", () => {
+      expect(headerFn).toContain("doc.roundedRect(");
+      expect(headerFn).toContain("doc.addImage(logoData");
+    });
+
+    it("should use white text color on colored header bar", () => {
+      expect(headerFn).toContain("doc.setTextColor(255, 255, 255)");
+    });
+
+    it("should draw colored bar spanning full page width", () => {
+      expect(headerFn).toContain("doc.rect(0, 0, PAGE_WIDTH, headerHeight");
     });
   });
 
-  describe("checkPageBreak accounts for compact header space", () => {
-    it("should return COMPACT_HEADER_HEIGHT + offset when adding new page", () => {
-      // The checkPageBreak function should leave space for the compact header
-      expect(pdfExportContent).toContain("return COMPACT_HEADER_HEIGHT + 4;");
+  describe("checkPageBreak accounts for full header space", () => {
+    it("should return FULL_HEADER_HEIGHT + 8 when adding new page", () => {
+      expect(pdfExportContent).toContain("return FULL_HEADER_HEIGHT + 8;");
     });
   });
 
-  describe("Survey PDF (orange) uses compact header on pages 2+", () => {
-    it("should use amber-500 color [245, 158, 11] for survey PDF header", () => {
-      // Find the section in exportSurveyPDF that sets headerColor
-      const surveySection = pdfExportContent.slice(
-        pdfExportContent.indexOf("export async function exportSurveyPDF"),
-        pdfExportContent.indexOf("export async function exportInstallationPDF")
-      );
+  describe("Survey PDF (orange) uses full header on all pages", () => {
+    it("should use amber-500 color [245, 158, 11]", () => {
       expect(surveySection).toContain("[245, 158, 11]");
     });
 
-    it("should call drawCompactHeader for pages 2+ in survey PDF", () => {
-      const surveySection = pdfExportContent.slice(
-        pdfExportContent.indexOf("export async function exportSurveyPDF"),
-        pdfExportContent.indexOf("export async function exportInstallationPDF")
-      );
-      expect(surveySection).toContain("drawCompactHeader(");
+    it("should call drawFullHeader for pages 2+", () => {
+      expect(surveySection).toContain("drawFullHeader(");
       expect(surveySection).toContain("if (i > 1)");
     });
 
-    it("should only add logo watermark on page 1 in survey PDF", () => {
-      const surveySection = pdfExportContent.slice(
-        pdfExportContent.indexOf("export async function exportSurveyPDF"),
-        pdfExportContent.indexOf("export async function exportInstallationPDF")
-      );
-      // Page 1 should still get logo but via inline code, not addWatermarkToAllPages
+    it("should pass report title 'รายงานการสำรวจ Solar' to drawFullHeader", () => {
+      expect(surveySection).toContain('"รายงานการสำรวจ Solar"');
+    });
+
+    it("should pass companyInfo to drawFullHeader", () => {
+      // Verify companyInfo is passed in the drawFullHeader call
+      const drawCallIdx = surveySection.indexOf("drawFullHeader(");
+      const drawCallEnd = surveySection.indexOf(");", drawCallIdx);
+      const drawCallBlock = surveySection.slice(drawCallIdx, drawCallEnd);
+      expect(drawCallBlock).toContain("companyInfo");
+    });
+
+    it("should add page number to page 1 as well", () => {
+      expect(surveySection).toContain("`หน้า 1/${pageCount}`");
+    });
+
+    it("should not use addWatermarkToAllPages or drawCompactHeader", () => {
       expect(surveySection).not.toContain("addWatermarkToAllPages");
+      expect(surveySection).not.toContain("drawCompactHeader");
     });
   });
 
-  describe("Installation PDF (green) uses compact header on pages 2+", () => {
-    it("should use emerald-500 color [16, 185, 129] for installation PDF header", () => {
-      const installSection = pdfExportContent.slice(
-        pdfExportContent.indexOf("export async function exportInstallationPDF")
-      );
+  describe("Installation PDF (green) uses full header on all pages", () => {
+    it("should use emerald-500 color [16, 185, 129]", () => {
       expect(installSection).toContain("[16, 185, 129]");
     });
 
-    it("should call drawCompactHeader for pages 2+ in installation PDF", () => {
-      const installSection = pdfExportContent.slice(
-        pdfExportContent.indexOf("export async function exportInstallationPDF")
-      );
-      expect(installSection).toContain("drawCompactHeader(");
+    it("should call drawFullHeader for pages 2+", () => {
+      expect(installSection).toContain("drawFullHeader(");
       expect(installSection).toContain("if (i > 1)");
     });
 
-    it("should only add logo watermark on page 1 in installation PDF", () => {
-      const installSection = pdfExportContent.slice(
-        pdfExportContent.indexOf("export async function exportInstallationPDF")
-      );
+    it("should pass report title 'รายงานส่งมอบงานติดตั้ง Solar' to drawFullHeader", () => {
+      expect(installSection).toContain('"รายงานส่งมอบงานติดตั้ง Solar"');
+    });
+
+    it("should pass companyInfo to drawFullHeader", () => {
+      const drawCallIdx = installSection.indexOf("drawFullHeader(");
+      const drawCallEnd = installSection.indexOf(");", drawCallIdx);
+      const drawCallBlock = installSection.slice(drawCallIdx, drawCallEnd);
+      expect(drawCallBlock).toContain("companyInfo");
+    });
+
+    it("should add page number to page 1 as well", () => {
+      expect(installSection).toContain("`หน้า 1/${pageCount}`");
+    });
+
+    it("should not use addWatermarkToAllPages or drawCompactHeader", () => {
       expect(installSection).not.toContain("addWatermarkToAllPages");
+      expect(installSection).not.toContain("drawCompactHeader");
     });
   });
 
   describe("Footer still present on all pages", () => {
     it("should draw footer text on all pages in survey PDF", () => {
-      const surveySection = pdfExportContent.slice(
-        pdfExportContent.indexOf("export async function exportSurveyPDF"),
-        pdfExportContent.indexOf("export async function exportInstallationPDF")
-      );
-      // Footer loop should iterate all pages
       expect(surveySection).toContain("for (let i = 1; i <= pageCount; i++)");
       expect(surveySection).toContain("PAGE_HEIGHT - 8");
     });
 
     it("should draw footer text on all pages in installation PDF", () => {
-      const installSection = pdfExportContent.slice(
-        pdfExportContent.indexOf("export async function exportInstallationPDF")
-      );
       expect(installSection).toContain("for (let i = 1; i <= pageCount; i++)");
       expect(installSection).toContain("PAGE_HEIGHT - 8");
     });
   });
 
-  describe("Compact header design constraints", () => {
-    it("compact header should be smaller than full page-1 header (36mm)", () => {
-      const match = pdfExportContent.match(/COMPACT_HEADER_HEIGHT\s*=\s*(\d+)/);
-      const compactHeight = parseInt(match![1]);
-      // Full header is 36mm with company info, compact should be significantly smaller
-      expect(compactHeight).toBeLessThan(36);
+  describe("Full header is same size as page 1 header", () => {
+    it("FULL_HEADER_HEIGHT should equal 36mm (same as page 1 with company info)", () => {
+      // Page 1 uses: const headerHeight = hasCompanyInfo ? 36 : 28;
+      // FULL_HEADER_HEIGHT should match the 36mm case
+      expect(surveySection).toContain("hasCompanyInfo ? 36 : 28");
+      const match = pdfExportContent.match(/FULL_HEADER_HEIGHT\s*=\s*(\d+)/);
+      expect(parseInt(match![1])).toBe(36);
     });
 
-    it("should use white text color (255,255,255) on colored header bar", () => {
-      // Within drawCompactHeader function
+    it("drawFullHeader should also use 36 for hasCompanyInfo case", () => {
       const headerFn = pdfExportContent.slice(
-        pdfExportContent.indexOf("function drawCompactHeader("),
+        pdfExportContent.indexOf("function drawFullHeader("),
         pdfExportContent.indexOf("function drawSectionHeader(")
       );
-      expect(headerFn).toContain("doc.setTextColor(255, 255, 255)");
-    });
-
-    it("compact header bar should span full page width", () => {
-      const headerFn = pdfExportContent.slice(
-        pdfExportContent.indexOf("function drawCompactHeader("),
-        pdfExportContent.indexOf("function drawSectionHeader(")
-      );
-      // Should draw rect from 0 to PAGE_WIDTH
-      expect(headerFn).toContain("doc.rect(0, 0, PAGE_WIDTH, COMPACT_HEADER_HEIGHT");
+      expect(headerFn).toContain("hasCompanyInfo ? FULL_HEADER_HEIGHT : 28");
     });
   });
 });

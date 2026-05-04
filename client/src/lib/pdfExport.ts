@@ -142,24 +142,25 @@ function formatNumber(val: string | number | null | undefined): string {
   return Number(val).toLocaleString("th-TH");
 }
 
-// Compact header height for pages 2+ (will be drawn in final pass)
-const COMPACT_HEADER_HEIGHT = 18; // mm
+// Full header height for pages 2+ (same as page 1, drawn in final pass)
+const FULL_HEADER_HEIGHT = 36; // mm — same as page 1 header with company info
 
 function checkPageBreak(doc: jsPDF, y: number, needed: number): number {
   if (y + needed > PAGE_HEIGHT - MARGIN) {
     doc.addPage();
-    // Leave space for compact header that will be drawn in final pass
-    return COMPACT_HEADER_HEIGHT + 4;
+    // Leave space for full header that will be drawn in final pass
+    return FULL_HEADER_HEIGHT + 8;
   }
   return y;
 }
 
 /**
- * Draw a compact repeating header on pages 2+.
- * Smaller than the full page-1 header to maximize content space.
+ * Draw a full repeating header on pages 2+ — identical to page 1 header.
+ * Includes company name, address/phone, report title, customer info, date, logo, and page number.
  * @param headerColor - RGB tuple for the header bar color
+ * @param reportTitle - e.g. "รายงานการสำรวจ Solar" or "รายงานส่งมอบงานติดตั้ง Solar"
  */
-function drawCompactHeader(
+function drawFullHeader(
   doc: jsPDF,
   pageNum: number,
   totalPages: number,
@@ -167,44 +168,80 @@ function drawCompactHeader(
   customerName: string,
   surveyId: number,
   headerColor: [number, number, number],
+  reportTitle: string,
+  companyInfo?: CompanyInfo | null,
   logoData?: string | null,
 ): void {
+  const hasCompanyInfo = companyInfo?.companyName || companyInfo?.phone || companyInfo?.address;
+  const headerHeight = hasCompanyInfo ? FULL_HEADER_HEIGHT : 28;
+  
   // Draw colored bar
   doc.setFillColor(headerColor[0], headerColor[1], headerColor[2]);
-  doc.rect(0, 0, PAGE_WIDTH, COMPACT_HEADER_HEIGHT, "F");
+  doc.rect(0, 0, PAGE_WIDTH, headerHeight, "F");
   
-  // Logo (top-right, small) - draw first so we know how much space it takes
-  const LOGO_SIZE_COMPACT = 12;
-  const logoRightEdge = PAGE_WIDTH - MARGIN;
+  // Logo (top-right)
   if (logoData) {
-    const logoX = logoRightEdge - LOGO_SIZE_COMPACT;
-    const logoY = 3;
+    const LOGO_SIZE = 14;
+    const LOGO_X = PAGE_WIDTH - MARGIN - LOGO_SIZE;
+    const LOGO_Y = 3;
     try {
-      doc.addImage(logoData, 'PNG', logoX, logoY, LOGO_SIZE_COMPACT, LOGO_SIZE_COMPACT);
-    } catch {
-      // Silently skip if logo can't be added
-    }
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(230, 230, 230);
+      doc.setLineWidth(0.2);
+      doc.roundedRect(LOGO_X - 1, LOGO_Y - 1, LOGO_SIZE + 2, LOGO_SIZE + 2, 2, 2, 'FD');
+      doc.addImage(logoData, 'PNG', LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE);
+    } catch { /* skip */ }
   }
   
-  // Company name (left side, first line)
-  doc.setFontSize(10);
-  doc.setTextColor(255, 255, 255);
-  doc.text(companyName, MARGIN, 7);
-  
-  // Customer + job number (left side, second line)
-  doc.setFontSize(8);
-  doc.setTextColor(255, 255, 255);
-  doc.text(`ลูกค้า: ${customerName}  |  #${surveyId}`, MARGIN, 13);
-  
-  // Page number (right side, second line - offset from logo)
-  doc.setFontSize(8);
-  doc.setTextColor(255, 255, 255);
-  const pageText = `หน้า ${pageNum}/${totalPages}`;
-  const pageTextWidth = doc.getTextWidth(pageText);
-  const pageTextX = logoData 
-    ? logoRightEdge - LOGO_SIZE_COMPACT - 3 - pageTextWidth 
-    : logoRightEdge - pageTextWidth;
-  doc.text(pageText, pageTextX, 13);
+  if (hasCompanyInfo) {
+    // Company name as main title
+    doc.setFontSize(14);
+    doc.setTextColor(255, 255, 255);
+    doc.text(companyInfo?.companyName || reportTitle, MARGIN, 10);
+    
+    // Company contact info
+    doc.setFontSize(7);
+    doc.setTextColor(255, 255, 255);
+    const contactParts: string[] = [];
+    if (companyInfo?.phone) contactParts.push(`โทร: ${companyInfo.phone}`);
+    if (companyInfo?.address) contactParts.push(companyInfo.address);
+    if (contactParts.length > 0) {
+      const contactText = contactParts.join("  |  ");
+      const maxWidth = PAGE_WIDTH - MARGIN * 2 - 20;
+      let displayText = contactText;
+      if (doc.getTextWidth(displayText) > maxWidth) {
+        while (doc.getTextWidth(displayText + "...") > maxWidth && displayText.length > 0) {
+          displayText = displayText.slice(0, -1);
+        }
+        displayText += "...";
+      }
+      doc.text(displayText, MARGIN, 16);
+    }
+    
+    // Report title line
+    doc.setFontSize(10);
+    doc.text(reportTitle, MARGIN, 23);
+    
+    // Customer + job number
+    doc.setFontSize(9);
+    doc.text(`ลูกค้า: ${customerName}  |  #${surveyId}`, MARGIN, 29);
+    
+    // Page number (right side, same line as customer)
+    doc.setFontSize(8);
+    const pageText = `หน้า ${pageNum}/${totalPages}`;
+    doc.text(pageText, PAGE_WIDTH - MARGIN - doc.getTextWidth(pageText), 29);
+  } else {
+    doc.setFontSize(16);
+    doc.setTextColor(255, 255, 255);
+    doc.text(reportTitle, MARGIN, 12);
+    doc.setFontSize(10);
+    doc.text(`ลูกค้า: ${customerName}  |  #${surveyId}`, MARGIN, 20);
+    
+    // Page number
+    doc.setFontSize(8);
+    const pageText = `หน้า ${pageNum}/${totalPages}`;
+    doc.text(pageText, PAGE_WIDTH - MARGIN - doc.getTextWidth(pageText), 20);
+  }
 }
 
 function drawSectionHeader(doc: jsPDF, y: number, title: string): number {
@@ -570,7 +607,7 @@ export async function exportSurveyPDF(
     y += PHOTO_SIZE + 16;
   }
   
-  // ==================== COMPACT HEADER (pages 2+) + LOGO WATERMARK + FOOTER ====================
+  // ==================== FULL HEADER (all pages) + LOGO + FOOTER ====================
   onProgress?.("กำลังเพิ่มส่วนหัวและลายน้ำ...");
   const logoData = await loadLogoBase64(imageProxyFn, companyInfo?.logoUrl);
   
@@ -581,18 +618,20 @@ export async function exportSurveyPDF(
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     
-    // Draw compact header on pages 2+
     if (i > 1) {
-      drawCompactHeader(
+      // Pages 2+: draw full header identical to page 1
+      drawFullHeader(
         doc, i, pageCount,
         footerCompanyName,
         customer.name,
         survey.id,
         headerColor,
+        "รายงานการสำรวจ Solar",
+        companyInfo,
         logoData,
       );
     } else {
-      // Page 1: only add logo watermark in top-right (on colored header)
+      // Page 1: add logo + page number overlay on existing header
       if (logoData) {
         const LOGO_SIZE = 14;
         const LOGO_X = PAGE_WIDTH - MARGIN - LOGO_SIZE;
@@ -605,6 +644,13 @@ export async function exportSurveyPDF(
           doc.addImage(logoData, 'PNG', LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE);
         } catch { /* skip */ }
       }
+      // Add page number to page 1 as well
+      const hasCI = companyInfo?.companyName || companyInfo?.phone || companyInfo?.address;
+      doc.setFontSize(8);
+      doc.setTextColor(255, 255, 255);
+      const p1Text = `หน้า 1/${pageCount}`;
+      const p1Y = hasCI ? 29 : 20;
+      doc.text(p1Text, PAGE_WIDTH - MARGIN - doc.getTextWidth(p1Text), p1Y);
     }
     
     // Footer on all pages
@@ -835,7 +881,7 @@ export async function exportInstallationPDF(
     doc.text(`วันที่เสร็จ: ${formatDate(survey.completedAt)}`, MARGIN + 4, y + 8);
   }
   
-  // ==================== COMPACT HEADER (pages 2+) + LOGO WATERMARK + FOOTER ====================
+  // ==================== FULL HEADER (all pages) + LOGO + FOOTER ====================
   onProgress?.("กำลังเพิ่มส่วนหัวและลายน้ำ...");
   const logoData = await loadLogoBase64(imageProxyFn, companyInfo?.logoUrl);
   
@@ -846,18 +892,20 @@ export async function exportInstallationPDF(
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     
-    // Draw compact header on pages 2+
     if (i > 1) {
-      drawCompactHeader(
+      // Pages 2+: draw full header identical to page 1
+      drawFullHeader(
         doc, i, pageCount,
         footerCompanyName,
         customer.name,
         survey.id,
         headerColor,
+        "รายงานส่งมอบงานติดตั้ง Solar",
+        companyInfo,
         logoData,
       );
     } else {
-      // Page 1: only add logo watermark in top-right (on colored header)
+      // Page 1: add logo + page number overlay on existing header
       if (logoData) {
         const LOGO_SIZE = 14;
         const LOGO_X = PAGE_WIDTH - MARGIN - LOGO_SIZE;
@@ -870,6 +918,13 @@ export async function exportInstallationPDF(
           doc.addImage(logoData, 'PNG', LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE);
         } catch { /* skip */ }
       }
+      // Add page number to page 1 as well
+      const hasCI = companyInfo?.companyName || companyInfo?.phone || companyInfo?.address;
+      doc.setFontSize(8);
+      doc.setTextColor(255, 255, 255);
+      const p1Text = `หน้า 1/${pageCount}`;
+      const p1Y = hasCI ? 29 : 20;
+      doc.text(p1Text, PAGE_WIDTH - MARGIN - doc.getTextWidth(p1Text), p1Y);
     }
     
     // Footer on all pages
