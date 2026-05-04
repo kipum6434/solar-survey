@@ -984,3 +984,12 @@
 ### Feature: สร้าง share link อัตโนมัติตอนสร้างงานสำรวจ
 - [x] เพิ่มการสร้าง share link (type: survey) อัตโนมัติเมื่อสร้างงานสำรวจใหม่
 - [x] สร้าง share link ย้อนหลังให้งานสำรวจเก่าที่ยังไม่มี (สร้าง 91 ลิงก์, ข้าม 56 งานที่มีอยู่แล้ว)
+
+### Fix: PDF Export header ทุกหน้า
+- [x] เพิ่ม repeating compact header สำหรับหน้า 2+ (ชื่อบริษัท + โลโก้ + ชื่อลูกค้า + เลขงาน + หน้า X/Y)
+- [x] Survey PDF: ใช้สีส้ม amber-500 (245,158,11) สำหรับ compact header
+- [x] Installation PDF: ใช้สีเขียว emerald-500 (16,185,129) สำหรับ compact header
+- [x] Compact header สูง 18mm (เล็กกว่า full header 36mm เพื่อประหยัดพื้นที่)
+- [x] checkPageBreak อัพเดทให้เว้นที่สำหรับ compact header เมื่อขึ้นหน้าใหม่
+- [x] หน้า 1 ยังคง full header เดิม + โลโก้มุมบนขวา
+- [x] Vitest: 19 tests passed (pdf-compact-header.test.ts)

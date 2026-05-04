@@ -142,12 +142,69 @@ function formatNumber(val: string | number | null | undefined): string {
   return Number(val).toLocaleString("th-TH");
 }
 
+// Compact header height for pages 2+ (will be drawn in final pass)
+const COMPACT_HEADER_HEIGHT = 18; // mm
+
 function checkPageBreak(doc: jsPDF, y: number, needed: number): number {
   if (y + needed > PAGE_HEIGHT - MARGIN) {
     doc.addPage();
-    return MARGIN + 5;
+    // Leave space for compact header that will be drawn in final pass
+    return COMPACT_HEADER_HEIGHT + 4;
   }
   return y;
+}
+
+/**
+ * Draw a compact repeating header on pages 2+.
+ * Smaller than the full page-1 header to maximize content space.
+ * @param headerColor - RGB tuple for the header bar color
+ */
+function drawCompactHeader(
+  doc: jsPDF,
+  pageNum: number,
+  totalPages: number,
+  companyName: string,
+  customerName: string,
+  surveyId: number,
+  headerColor: [number, number, number],
+  logoData?: string | null,
+): void {
+  // Draw colored bar
+  doc.setFillColor(headerColor[0], headerColor[1], headerColor[2]);
+  doc.rect(0, 0, PAGE_WIDTH, COMPACT_HEADER_HEIGHT, "F");
+  
+  // Logo (top-right, small) - draw first so we know how much space it takes
+  const LOGO_SIZE_COMPACT = 12;
+  const logoRightEdge = PAGE_WIDTH - MARGIN;
+  if (logoData) {
+    const logoX = logoRightEdge - LOGO_SIZE_COMPACT;
+    const logoY = 3;
+    try {
+      doc.addImage(logoData, 'PNG', logoX, logoY, LOGO_SIZE_COMPACT, LOGO_SIZE_COMPACT);
+    } catch {
+      // Silently skip if logo can't be added
+    }
+  }
+  
+  // Company name (left side, first line)
+  doc.setFontSize(10);
+  doc.setTextColor(255, 255, 255);
+  doc.text(companyName, MARGIN, 7);
+  
+  // Customer + job number (left side, second line)
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
+  doc.text(`ลูกค้า: ${customerName}  |  #${surveyId}`, MARGIN, 13);
+  
+  // Page number (right side, second line - offset from logo)
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
+  const pageText = `หน้า ${pageNum}/${totalPages}`;
+  const pageTextWidth = doc.getTextWidth(pageText);
+  const pageTextX = logoData 
+    ? logoRightEdge - LOGO_SIZE_COMPACT - 3 - pageTextWidth 
+    : logoRightEdge - pageTextWidth;
+  doc.text(pageText, pageTextX, 13);
 }
 
 function drawSectionHeader(doc: jsPDF, y: number, title: string): number {
@@ -513,17 +570,44 @@ export async function exportSurveyPDF(
     y += PHOTO_SIZE + 16;
   }
   
-  // ==================== LOGO WATERMARK + FOOTER ====================
-  onProgress?.("กำลังเพิ่มลายน้ำโลโก้...");
+  // ==================== COMPACT HEADER (pages 2+) + LOGO WATERMARK + FOOTER ====================
+  onProgress?.("กำลังเพิ่มส่วนหัวและลายน้ำ...");
   const logoData = await loadLogoBase64(imageProxyFn, companyInfo?.logoUrl);
-  if (logoData) {
-    addWatermarkToAllPages(doc, logoData);
-  }
   
   const pageCount = doc.getNumberOfPages();
   const footerCompanyName = companyInfo?.companyName || "Solar Survey Management System";
+  const headerColor: [number, number, number] = [245, 158, 11]; // amber-500
+  
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
+    
+    // Draw compact header on pages 2+
+    if (i > 1) {
+      drawCompactHeader(
+        doc, i, pageCount,
+        footerCompanyName,
+        customer.name,
+        survey.id,
+        headerColor,
+        logoData,
+      );
+    } else {
+      // Page 1: only add logo watermark in top-right (on colored header)
+      if (logoData) {
+        const LOGO_SIZE = 14;
+        const LOGO_X = PAGE_WIDTH - MARGIN - LOGO_SIZE;
+        const LOGO_Y = 3;
+        try {
+          doc.setFillColor(255, 255, 255);
+          doc.setDrawColor(230, 230, 230);
+          doc.setLineWidth(0.2);
+          doc.roundedRect(LOGO_X - 1, LOGO_Y - 1, LOGO_SIZE + 2, LOGO_SIZE + 2, 2, 2, 'FD');
+          doc.addImage(logoData, 'PNG', LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE);
+        } catch { /* skip */ }
+      }
+    }
+    
+    // Footer on all pages
     doc.setFontSize(7);
     doc.setTextColor(180, 180, 180);
     doc.text(`${footerCompanyName}  |  หน้า ${i}/${pageCount}`, PAGE_WIDTH / 2, PAGE_HEIGHT - 8, { align: "center" });
@@ -751,17 +835,44 @@ export async function exportInstallationPDF(
     doc.text(`วันที่เสร็จ: ${formatDate(survey.completedAt)}`, MARGIN + 4, y + 8);
   }
   
-  // ==================== LOGO WATERMARK + FOOTER ====================
-  onProgress?.("กำลังเพิ่มลายน้ำโลโก้...");
+  // ==================== COMPACT HEADER (pages 2+) + LOGO WATERMARK + FOOTER ====================
+  onProgress?.("กำลังเพิ่มส่วนหัวและลายน้ำ...");
   const logoData = await loadLogoBase64(imageProxyFn, companyInfo?.logoUrl);
-  if (logoData) {
-    addWatermarkToAllPages(doc, logoData);
-  }
   
   const pageCount = doc.getNumberOfPages();
   const footerCompanyName = companyInfo?.companyName || "Solar Survey Management System";
+  const headerColor: [number, number, number] = [16, 185, 129]; // emerald-500
+  
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
+    
+    // Draw compact header on pages 2+
+    if (i > 1) {
+      drawCompactHeader(
+        doc, i, pageCount,
+        footerCompanyName,
+        customer.name,
+        survey.id,
+        headerColor,
+        logoData,
+      );
+    } else {
+      // Page 1: only add logo watermark in top-right (on colored header)
+      if (logoData) {
+        const LOGO_SIZE = 14;
+        const LOGO_X = PAGE_WIDTH - MARGIN - LOGO_SIZE;
+        const LOGO_Y = 3;
+        try {
+          doc.setFillColor(255, 255, 255);
+          doc.setDrawColor(230, 230, 230);
+          doc.setLineWidth(0.2);
+          doc.roundedRect(LOGO_X - 1, LOGO_Y - 1, LOGO_SIZE + 2, LOGO_SIZE + 2, 2, 2, 'FD');
+          doc.addImage(logoData, 'PNG', LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE);
+        } catch { /* skip */ }
+      }
+    }
+    
+    // Footer on all pages
     doc.setFontSize(7);
     doc.setTextColor(180, 180, 180);
     doc.text(`${footerCompanyName}  |  หน้า ${i}/${pageCount}`, PAGE_WIDTH / 2, PAGE_HEIGHT - 8, { align: "center" });
