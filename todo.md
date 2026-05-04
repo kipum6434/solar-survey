@@ -962,3 +962,9 @@
 - [x] แก้ SortablePhotoItem ใช้ setActivatorNodeRef ให้ drag listener อยู่ที่ drag handle เท่านั้น
 - [x] ปรับ Lightbox ทุกหน้า (SharedSurveyField + SharedSurvey x2) ให้ z-index 100, pinch-to-zoom, ปุ่มปิดชัดเจน
 - [x] ปุ่มลบรูปแสดงเสมอบนมือถือ (max-sm:opacity-80)
+
+### ปรับปรุงหน้าหลังบ้าน SurveyDetail แท็บรูปภาพ ให้สมบูรณ์เหมือนหน้าลิงก์แชร์
+- [x] แสดงรูปแยกตามหมวดหมู่ (แทนที่จะแสดงรวมเป็น grid เดียว)
+- [x] แสดงชื่อหมวดหมู่ภาษาไทย (merge PHOTO_CATEGORY_MAP + DB categories)
+- [x] เพิ่มปุ่มถ่ายรูป/เลือกรูปในแต่ละหมวดหมู่ (เหมือน SharedSurveyField)
+- [x] ยังคงปุ่มดาวน์โหลดทั้งหมดไว้

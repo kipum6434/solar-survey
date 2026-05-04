@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
 import { trpc } from "@/lib/trpc";
-import { SURVEY_STATUS_MAP, INSTALLATION_STATUS_MAP, DOC_TYPE_MAP, FOLLOW_UP_METHOD_MAP } from "@/lib/constants";
+import { SURVEY_STATUS_MAP, INSTALLATION_STATUS_MAP, DOC_TYPE_MAP, FOLLOW_UP_METHOD_MAP, PHOTO_CATEGORY_MAP } from "@/lib/constants";
 import { formatPhone } from "@/lib/formatPhone";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useParams, useLocation } from "wouter";
@@ -23,7 +23,7 @@ import {
   ArrowLeft, Camera, FileText, PhoneCall, Share2, MapPin, Calendar, User, Pencil,
   Upload, Trash2, Download, Link2, Copy, X, Image, Eye, CheckCircle2, Clock,
   Zap, Sun, Home, Gauge, Receipt, Settings2, Users, Wrench, FolderDown, Package,
-  PauseCircle, XCircle, RotateCcw, History,
+  PauseCircle, XCircle, RotateCcw, History, Plus,
 } from "lucide-react";
 import { MultiUserSelect } from "@/components/MultiUserSelect";
 import { SourceCombobox } from "@/components/SourceCombobox";
@@ -88,13 +88,67 @@ export default function SurveyDetail() {
   const [newCategoryLabel, setNewCategoryLabel] = useState("");
   const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<{ id: number; label: string } | null>(null);
 
-  // Build category map from DB only (photo_categories table)
-  const categoryMap: Record<string, string> = {};
-  if (photoCategories) {
-    for (const cat of photoCategories) {
-      categoryMap[cat.key] = cat.label;
+  // Build category map: merge static fallback + DB categories
+  const categoryMap = useMemo(() => {
+    const map: Record<string, string> = { ...PHOTO_CATEGORY_MAP };
+    if (photoCategories) {
+      for (const cat of photoCategories) {
+        map[cat.key] = cat.label;
+      }
     }
-  }
+    return map;
+  }, [photoCategories]);
+
+  // Group photos by category
+  const photosByCategory = useMemo(() => {
+    if (!photos) return {};
+    const grouped: Record<string, any[]> = {};
+    for (const photo of photos as any[]) {
+      const cat = photo.category || "other";
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(photo);
+    }
+    return grouped;
+  }, [photos]);
+
+  // All categories (from DB + any that photos have)
+  const allPhotoCategories = useMemo(() => {
+    const cats: string[] = [];
+    const seen = new Set<string>();
+    // First: categories from DB in sortOrder
+    if (photoCategories) {
+      for (const cat of photoCategories) {
+        if (!seen.has(cat.key)) { cats.push(cat.key); seen.add(cat.key); }
+      }
+    }
+    // Then: any categories from existing photos not in DB
+    if (photos) {
+      for (const photo of photos as any[]) {
+        if (photo.category && !seen.has(photo.category)) {
+          cats.push(photo.category); seen.add(photo.category);
+        }
+      }
+    }
+    return cats;
+  }, [photoCategories, photos]);
+
+  const [showUploadOptions, setShowUploadOptions] = useState(false);
+  const [uploadCategory, setUploadCategory] = useState<string>("other");
+
+  const startUpload = (categoryKey: string) => {
+    setUploadCategory(categoryKey);
+    setShowUploadOptions(true);
+  };
+
+  const startGalleryUpload = () => {
+    setShowUploadOptions(false);
+    setTimeout(() => photoInputRef.current?.click(), 50);
+  };
+
+  const startCameraUpload = () => {
+    setShowUploadOptions(false);
+    setTimeout(() => cameraInputRef.current?.click(), 50);
+  };
 
   // Inline edit state for tech card
   const [editingTech, setEditingTech] = useState(false);
@@ -224,7 +278,7 @@ export default function SurveyDetail() {
             surveyId,
             customerId: data.customer.id,
             fileName: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${fileName}`,
-            category: photoCategory as any,
+            category: uploadCategory as any,
             base64Data: base64,
             mimeType: originalFile.type.startsWith("image/") ? "image/jpeg" : originalFile.type,
           })
@@ -239,7 +293,7 @@ export default function SurveyDetail() {
       setUploadProgress(null);
     }
     e.target.value = "";
-  }, [data, photoCategory, surveyId, uploadPhoto]);
+  }, [data, uploadCategory, surveyId, uploadPhoto]);
 
   const handleDocUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -474,7 +528,7 @@ export default function SurveyDetail() {
             <TabsTrigger value="history" className="gap-1.5"><History className="h-3.5 w-3.5" /> ประวัติ ({postponeLogs?.length ?? 0})</TabsTrigger>
           </TabsList>
 
-          {/* Photos Tab */}
+          {/* Photos Tab - Grouped by Category */}
           <TabsContent value="photos" className="mt-4">
             <Card className="border-0 shadow-sm">
               <CardHeader className="pb-3">
@@ -525,99 +579,71 @@ export default function SurveyDetail() {
                         {isDownloadingAll ? 'กำลังดาวน์โหลด...' : `ดาวน์โหลดทั้งหมด (${photos.length})`}
                       </Button>
                     )}
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
-                        className="flex items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-1.5 text-xs shadow-xs w-[200px] h-8 hover:bg-accent/50 transition-colors"
-                      >
-                        <span className="truncate">{categoryMap[photoCategory] || photoCategory}</span>
-                        <svg className="h-3.5 w-3.5 opacity-50 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                      </button>
-                      {categoryDropdownOpen && (
-                        <>
-                          <div className="fixed inset-0 z-40" onClick={() => setCategoryDropdownOpen(false)} />
-                          <div className="absolute top-full left-0 mt-1 z-50 bg-popover text-popover-foreground border rounded-md shadow-md min-w-[220px] max-h-[300px] overflow-y-auto p-1">
-                            {(photoCategories || []).map((cat: any) => (
-                              <div
-                                key={cat.key}
-                                className={`flex items-center justify-between gap-2 rounded-sm px-3 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground ${photoCategory === cat.key ? 'bg-accent/60 font-medium' : ''}`}
-                                onClick={() => { setPhotoCategory(cat.key); setCategoryDropdownOpen(false); }}
-                              >
-                                <span className="truncate">{cat.label}</span>
-                                {cat.key !== 'other' && (
-                                  <button
-                                    type="button"
-                                    className="shrink-0 p-1.5 rounded text-red-400 hover:text-red-600 hover:bg-red-100 transition-colors"
-                                    onClick={(e) => { e.stopPropagation(); setCategoryDropdownOpen(false); setConfirmDeleteCategory({ id: cat.id, label: cat.label }); }}
-                                    title="ลบประเภทนี้"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-                            <div className="border-t mt-1 pt-1">
-                              <div
-                                className="flex items-center gap-1 rounded-sm px-2 py-1.5 text-xs cursor-pointer text-primary font-medium hover:bg-accent hover:text-accent-foreground"
-                                onClick={() => { setCategoryDropdownOpen(false); setShowNewCategory(true); }}
-                              >
-                                + เพิ่มประเภทใหม่
-                              </div>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    <Button size="sm" variant="outline" onClick={() => cameraInputRef.current?.click()} className="gap-1.5" disabled={!!uploadProgress}>
-                      <Camera className="h-3.5 w-3.5" /> ถ่ายรูป
-                    </Button>
-                    <Button size="sm" onClick={() => photoInputRef.current?.click()} className="gap-1.5" disabled={!!uploadProgress}>
-                      <Upload className="h-3.5 w-3.5" /> {uploadProgress ? `อัพ ${uploadProgress.current}/${uploadProgress.total}` : "เลือกรูป"}
-                    </Button>
                     <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" hidden onChange={handlePhotoUpload} />
                     <input ref={photoInputRef} type="file" accept="image/*" multiple hidden onChange={handlePhotoUpload} />
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                {photos && photos.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {photos.map((photo: any) => (
-                      <div key={photo.id} className="group relative rounded-lg overflow-hidden bg-muted aspect-square">
-                        <img src={photo.url} alt={photo.caption || photo.fileName} className="w-full h-full object-cover cursor-pointer" onClick={() => setLightboxImg(photo.url)} />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-end">
-                          <div className="w-full p-2 translate-y-full group-hover:translate-y-0 transition-transform">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-1">
-                                <Badge variant="secondary" className="text-[9px] bg-white/90 text-foreground">
-                                  {categoryMap[photo.category] || photo.category}
-                                </Badge>
-                                {photo.fileSize && (
-                                  <span className="text-[9px] text-white/80 font-medium">
-                                    {photo.fileSize > 1048576 ? `${(photo.fileSize / 1048576).toFixed(1)} MB` : `${(photo.fileSize / 1024).toFixed(0)} KB`}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex gap-1">
-                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-white" onClick={() => setLightboxImg(photo.url)}>
-                                  <Eye className="h-3 w-3" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-red-100" onClick={(e) => { e.stopPropagation(); setConfirmDeletePhoto(photo.id); }}>
-                                  <Trash2 className="h-3 w-3 text-destructive" />
-                                </Button>
-                              </div>
+                {allPhotoCategories.length > 0 ? (
+                  <div className="space-y-6">
+                    {allPhotoCategories.map((catKey) => {
+                      const catPhotos = photosByCategory[catKey] || [];
+                      return (
+                        <div key={catKey}>
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-medium flex items-center gap-2">
+                              <Camera className="h-4 w-4 text-muted-foreground" />
+                              {categoryMap[catKey] || catKey}
+                              <Badge variant="secondary" className="text-[10px]">{catPhotos.length}</Badge>
+                            </h4>
+                            <div className="flex items-center gap-1.5">
+                              <Button variant="outline" size="sm" className="text-xs gap-1 h-7" onClick={() => startUpload(catKey)} disabled={!!uploadProgress}>
+                                <Camera className="h-3 w-3" /> ถ่ายรูป
+                              </Button>
+                              <Button size="sm" className="text-xs gap-1 h-7" onClick={() => startUpload(catKey)} disabled={!!uploadProgress}>
+                                <Upload className="h-3 w-3" /> เลือกรูป
+                              </Button>
                             </div>
                           </div>
+                          {catPhotos.length > 0 ? (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                              {catPhotos.map((photo: any) => (
+                                <div key={photo.id} className="group relative rounded-lg overflow-hidden bg-muted aspect-square">
+                                  <img src={photo.url} alt={photo.caption || photo.fileName} className="w-full h-full object-cover cursor-pointer" onClick={() => setLightboxImg(photo.url)} loading="lazy" />
+                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-end">
+                                    <div className="w-full p-2 translate-y-full group-hover:translate-y-0 transition-transform">
+                                      <div className="flex items-center justify-end gap-1">
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-white" onClick={() => setLightboxImg(photo.url)}>
+                                          <Eye className="h-3 w-3" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-red-100" onClick={(e) => { e.stopPropagation(); setConfirmDeletePhoto(photo.id); }}>
+                                          <Trash2 className="h-3 w-3 text-destructive" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-6 rounded-lg bg-muted/30 border border-dashed">
+                              <Image className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                              <p className="text-xs text-muted-foreground">ยังไม่มีรูปในหมวดนี้</p>
+                              <Button variant="outline" size="sm" className="mt-2 text-xs gap-1" onClick={() => startUpload(catKey)} disabled={!!uploadProgress}>
+                                <Upload className="h-3 w-3" /> อัปโหลดรูป
+                              </Button>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-12 text-muted-foreground">
                     <Image className="h-12 w-12 mx-auto mb-3 opacity-30" />
                     <p className="text-sm">ยังไม่มีรูปภาพ</p>
-                    <p className="text-xs mt-1">คลิกปุ่มอัพโหลดเพื่อเพิ่มรูปภาพหน้างาน</p>
+                    <p className="text-xs mt-1">กดปุ่มถ่ายรูปหรือเลือกรูปในแต่ละหมวดเพื่อเพิ่มรูปภาพหน้างาน</p>
                   </div>
                 )}
               </CardContent>
@@ -914,6 +940,26 @@ export default function SurveyDetail() {
             <Button variant="outline" onClick={() => setConfirmDeleteDoc(null)}>ยกเลิก</Button>
             <Button variant="destructive" onClick={() => { if (confirmDeleteDoc) { deleteDoc.mutate({ id: confirmDeleteDoc }); setConfirmDeleteDoc(null); } }} disabled={deleteDoc.isPending}>ลบเอกสาร</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Upload Options Dialog (camera vs gallery) */}
+      <Dialog open={showUploadOptions} onOpenChange={setShowUploadOptions}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="text-center text-sm">เลือกวิธีอัปโหลดรูป</DialogTitle>
+            <DialogDescription className="text-center text-xs">
+              หมวด: {categoryMap[uploadCategory] || uploadCategory}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 py-2">
+            <Button variant="outline" className="w-full gap-2 h-12" onClick={startCameraUpload}>
+              <Camera className="h-5 w-5" /> ถ่ายรูปจากกล้อง
+            </Button>
+            <Button variant="outline" className="w-full gap-2 h-12" onClick={startGalleryUpload}>
+              <Image className="h-5 w-5" /> เลือกรูปจากแกลเลอรี
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
