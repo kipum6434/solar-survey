@@ -956,3 +956,9 @@
 - [x] Frontend SharedSurveyField: ลบหมวดหมู่ hardcode เก่า ดึงจาก API แทน
 - [x] Frontend SharedSurveyField: เรียงลำดับตาม sortOrder จาก photo_categories
 - [x] ทดสอบ: รูปเก่าแสดงถูกหมวดหมู่ใหม่ + อัพรูปใหม่ใช้หมวดจาก API (2 tests passed)
+
+### Bug Fix: หน้าลิงก์แชร์สำรวจ - กดดูรูปขยายไม่ได้
+- [x] ตรวจสอบว่ารูปภาพมี onClick handler หรือ Lightbox หรือไม่ → พบว่า DnD sensor intercept touch event
+- [x] แก้ SortablePhotoItem ใช้ setActivatorNodeRef ให้ drag listener อยู่ที่ drag handle เท่านั้น
+- [x] ปรับ Lightbox ทุกหน้า (SharedSurveyField + SharedSurvey x2) ให้ z-index 100, pinch-to-zoom, ปุ่มปิดชัดเจน
+- [x] ปุ่มลบรูปแสดงเสมอบนมือถือ (max-sm:opacity-80)

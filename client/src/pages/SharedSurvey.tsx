@@ -390,11 +390,13 @@ export default function SharedSurvey() {
 
       {/* Lightbox */}
       {lightboxImg && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setLightboxImg(null)}>
-          <button className="absolute top-4 right-4 text-white hover:bg-white/20 rounded-full p-2" onClick={() => setLightboxImg(null)}>
+        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center" onClick={() => setLightboxImg(null)}>
+          <button className="absolute top-4 right-4 z-[101] bg-black/60 text-white rounded-full p-2" onClick={() => setLightboxImg(null)}>
             <X className="h-6 w-6" />
           </button>
-          <img src={lightboxImg} alt="Preview" className="max-w-full max-h-full object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
+          <div className="w-full h-full flex items-center justify-center p-2 overflow-auto" onClick={(e) => e.stopPropagation()}>
+            <img src={lightboxImg} alt="Preview" className="max-w-full max-h-full object-contain select-none" style={{ touchAction: "pinch-zoom" }} onClick={() => setLightboxImg(null)} />
+          </div>
         </div>
       )}
     </div>
@@ -1005,11 +1007,13 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
 
       {/* Lightbox */}
       {lightboxImg && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setLightboxImg(null)}>
-          <button className="absolute top-4 right-4 text-white hover:bg-white/20 rounded-full p-2" onClick={() => setLightboxImg(null)}>
+        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center" onClick={() => setLightboxImg(null)}>
+          <button className="absolute top-4 right-4 z-[101] bg-black/60 text-white rounded-full p-2" onClick={() => setLightboxImg(null)}>
             <X className="h-6 w-6" />
           </button>
-          <img src={lightboxImg} alt="Preview" className="max-w-full max-h-full object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
+          <div className="w-full h-full flex items-center justify-center p-2 overflow-auto" onClick={(e) => e.stopPropagation()}>
+            <img src={lightboxImg} alt="Preview" className="max-w-full max-h-full object-contain select-none" style={{ touchAction: "pinch-zoom" }} onClick={() => setLightboxImg(null)} />
+          </div>
         </div>
       )}
     </Card>

@@ -45,7 +45,7 @@ function SortablePhotoItem({ photo, onDelete, onPreview }: {
   onDelete: (id: number) => void;
   onPreview: (url: string) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: photo.id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging, setActivatorNodeRef } = useSortable({ id: photo.id });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -61,21 +61,22 @@ function SortablePhotoItem({ photo, onDelete, onPreview }: {
         className="w-full h-full object-cover rounded-md cursor-pointer"
         onClick={() => onPreview(photo.url)}
       />
-      {/* Drag handle */}
+      {/* Drag handle - only this button activates drag */}
       <button
+        ref={setActivatorNodeRef}
         {...attributes}
         {...listeners}
-        className="absolute top-1 left-1 bg-black/50 text-white rounded-full p-1 opacity-60 hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing touch-none"
+        className="absolute top-1 left-1 bg-black/50 text-white rounded-full p-1.5 opacity-80 hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing touch-none"
         onClick={(e) => e.stopPropagation()}
       >
-        <GripVertical className="h-3 w-3" />
+        <GripVertical className="h-4 w-4" />
       </button>
       {/* Delete button */}
       <button
         onClick={(e) => { e.stopPropagation(); onDelete(photo.id); }}
-        className="absolute top-1 right-1 bg-red-500/80 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute top-1 right-1 bg-red-500/80 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 sm:transition-opacity md:opacity-0 max-sm:opacity-80"
       >
-        <Trash2 className="h-3 w-3" />
+        <Trash2 className="h-3.5 w-3.5" />
       </button>
       {/* Sort order badge */}
       <div className="absolute bottom-1 left-1 bg-black/50 text-white text-[10px] rounded px-1">
@@ -898,11 +899,19 @@ export default function SharedSurveyField() {
 
       {/* Lightbox */}
       {lightboxImg && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setLightboxImg(null)}>
-          <button className="absolute top-4 right-4 text-white" onClick={() => setLightboxImg(null)}>
-            <X className="h-8 w-8" />
+        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center" onClick={() => setLightboxImg(null)}>
+          <button className="absolute top-4 right-4 z-[101] bg-black/60 text-white rounded-full p-2" onClick={() => setLightboxImg(null)}>
+            <X className="h-6 w-6" />
           </button>
-          <img src={lightboxImg} alt="Preview" className="max-w-full max-h-full object-contain" />
+          <div className="w-full h-full flex items-center justify-center p-2 overflow-auto" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={lightboxImg}
+              alt="Preview"
+              className="max-w-full max-h-full object-contain select-none"
+              style={{ touchAction: "pinch-zoom" }}
+              onClick={() => setLightboxImg(null)}
+            />
+          </div>
         </div>
       )}
 
