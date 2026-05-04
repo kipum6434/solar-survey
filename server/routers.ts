@@ -1043,6 +1043,37 @@ const shareLinkRouter = router({
       return { id, token, linkType: input.linkType };
     }),
 
+  backfillSurveyLinks: adminProcedure
+    .mutation(async ({ ctx }) => {
+      // Get all survey IDs
+      const allSurveys = await db.getSurveys({ page: 1, limit: 9999 });
+      let created = 0;
+      let skipped = 0;
+      for (const survey of allSurveys.data) {
+        // Check if this survey already has an active survey-type share link
+        const existing = await db.getShareLinksBySurveyByType(survey.id, "survey");
+        const hasActive = existing.some((l: any) => l.isActive);
+        if (hasActive) {
+          skipped++;
+          continue;
+        }
+        // Create share link
+        const token = nanoid(32);
+        await db.createShareLink({
+          surveyId: survey.id,
+          token,
+          linkType: "survey",
+          expiresAt: null,
+          allowPhotos: true,
+          allowDocuments: true,
+          createdBy: ctx.user.id,
+        });
+        created++;
+      }
+      await db.logActivity({ userId: ctx.user.id, action: "backfill_share_links", entityType: "system", entityId: 0, details: `Backfill share links: สร้าง ${created} ลิงก์, ข้าม ${skipped} งานที่มีอยู่แล้ว` });
+      return { created, skipped, total: allSurveys.data.length };
+    }),
+
   revoke: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
