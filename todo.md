@@ -980,3 +980,6 @@
 
 ### Fix: LINE notification สำรวจเสร็จ ให้แนบลิงก์เสมอ
 - [x] แก้ completeSurvey (หลังบ้าน) ให้หา share link ของงานนั้นมาแนบใน notification เสมอ
+
+### Feature: สร้าง share link อัตโนมัติตอนสร้างงานสำรวจ
+- [x] เพิ่มการสร้าง share link (type: survey) อัตโนมัติเมื่อสร้างงานสำรวจใหม่

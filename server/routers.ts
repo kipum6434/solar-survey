@@ -310,6 +310,21 @@ const surveyRouter = router({
         await db.updateCustomer(surveyData.customerId, { surveyorId: surveyData.adminSenderId });
       }
       await db.logActivity({ userId: ctx.user.id, action: "create", entityType: "survey", entityId: id, details: `สร้างงานสำรวจ ID: ${id}` });
+      // Auto-create share link for survey
+      try {
+        const token = nanoid(32);
+        await db.createShareLink({
+          surveyId: id,
+          token,
+          linkType: "survey",
+          expiresAt: null,
+          allowPhotos: true,
+          allowDocuments: true,
+          createdBy: ctx.user.id,
+        });
+      } catch (e) {
+        console.warn("[Survey] Failed to auto-create share link:", e);
+      }
       // Notify surveyors
       const notifyIds = surveyorIds || (surveyData.assignedTo ? [surveyData.assignedTo] : []);
       for (const uid of notifyIds) {
