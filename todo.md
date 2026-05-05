@@ -1001,3 +1001,10 @@
 - [x] อัพเดท checkPageBreak ให้เว้นพื้นที่ 36mm สำหรับ full header
 - [x] ทำเหมือนกันทั้ง Survey PDF (สีส้ม) และ Installation PDF (สีเขียว)
 - [x] อัพเดท Vitest ให้ตรงกับ implementation ใหม่ (31 tests passed)
+
+### Fix: PDF Export ฟอนต์ไทยแสดงผลผิด (ตัวสะกดหาย + ตัวหนังสือซ้อน)
+- [x] เปลี่ยนจาก doc.text() เป็น html2canvas rendering (ใช้ browser engine วาดภาษาไทย)
+- [x] Embed ฟอนต์ Sarabun ผ่าน @font-face + storage proxy
+- [x] แก้ปัญหาวรรณยุกต์/สระซ้อนหาย (ทั้ง → ทัง, น้ำ → นำ)
+- [x] แก้ปัญหาตัวหนังสือซ้อนกัน (overlapping text)
+- [x] ทดสอบ PDF export - Vitest 43 tests passed
