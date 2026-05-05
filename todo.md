@@ -1016,3 +1016,10 @@
 - [x] รองรับ logo ใน header, company info, page number
 - [x] ลบ jspdf dependency ออก (ไม่ใช้แล้ว)
 - [x] อัปเดต vitest (pdf-compact-header.test.ts + pdf-export.test.ts) — 43 tests passed
+
+### Fix: PDF Export ปรับปรุง layout รูปภาพ + ซ่อนข้อมูลภายใน
+- [x] เพิ่มกรอบ (border) ให้รูปภาพแต่ละรูปใน PDF เหมือนแบบเก่า
+- [x] แก้ปัญหารูปบางรูปไม่ขึ้นภาพ (image loading fail) — ใช้ unbreakable rows ป้องกันรูปถูกตัดข้ามหน้า
+- [x] ซ่อน "สถานะ" ออกจาก PDF (ไม่ให้ลูกค้าเห็น)
+- [x] ซ่อน "หมายเหตุ" (ข้อมูลลูกค้า) ออกจาก PDF
+- [x] ซ่อน "หมายเหตุสำรวจ" (ข้อมูลทางเทคนิค) ออกจาก PDF

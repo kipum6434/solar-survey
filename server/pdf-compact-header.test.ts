@@ -178,6 +178,47 @@ describe("PDF Export - pdfmake Design Contract", () => {
       expect(photoGridFn).toContain("imageRow");
       expect(photoGridFn).toContain("labelRow");
     });
+
+    it("should have image borders (hLineColor/vLineColor)", () => {
+      const photoGridFn = pdfExportContent.slice(
+        pdfExportContent.indexOf("function buildPhotoGrid("),
+        pdfExportContent.indexOf("// ==================== SURVEY PDF EXPORT")
+      );
+      expect(photoGridFn).toContain("hLineColor");
+      expect(photoGridFn).toContain("vLineColor");
+      expect(photoGridFn).toContain("#d4d4d4");
+    });
+
+    it("should use unbreakable rows to prevent splitting across pages", () => {
+      const photoGridFn = pdfExportContent.slice(
+        pdfExportContent.indexOf("function buildPhotoGrid("),
+        pdfExportContent.indexOf("// ==================== SURVEY PDF EXPORT")
+      );
+      expect(photoGridFn).toContain("unbreakable: true");
+      expect(photoGridFn).toContain("dontBreakRows: true");
+    });
+  });
+
+  describe("Hidden internal fields from PDF", () => {
+    it("should hide status from survey PDF", () => {
+      expect(surveySection).toContain("STATUS (hidden from PDF - internal use only)");
+      expect(surveySection).not.toMatch(/content\.push\(statusLine\)/);
+    });
+
+    it("should hide customer notes from PDF", () => {
+      expect(surveySection).toContain("customer.notes hidden from PDF (internal use only)");
+      expect(surveySection).not.toContain('key: "หมายเหตุ:", value: customer.notes');
+    });
+
+    it("should hide survey notes from PDF", () => {
+      expect(surveySection).toContain("Survey notes hidden from PDF (internal use only)");
+      expect(surveySection).not.toContain('text: "หมายเหตุสำรวจ:"');
+    });
+
+    it("should hide installation status from installation PDF", () => {
+      expect(installSection).toContain("INSTALLATION STATUS (hidden from PDF - internal use only)");
+      expect(installSection).not.toMatch(/content\.push\(statusLine\)/);
+    });
   });
 
   describe("Page configuration", () => {

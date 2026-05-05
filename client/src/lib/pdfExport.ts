@@ -382,10 +382,10 @@ function buildKeyValueGrid(items: { key: string; value: string }[]): any {
   };
 }
 
-function buildPhotoGrid(photos: { data: string; label: string }[]): any {
-  // 3 columns per row
+function buildPhotoGrid(photos: { data: string; label: string }[]): any[] {
+  // Build individual rows as separate tables so each row won't break across pages
   const COLS = 3;
-  const rows: any[][] = [];
+  const result: any[] = [];
 
   for (let i = 0; i < photos.length; i += COLS) {
     const imageRow: any[] = [];
@@ -394,19 +394,37 @@ function buildPhotoGrid(photos: { data: string; label: string }[]): any {
     for (let col = 0; col < COLS; col++) {
       const idx = i + col;
       if (idx < photos.length && photos[idx].data) {
+        // Wrap image in a border box
         imageRow.push({
-          image: photos[idx].data,
-          width: 155,
-          height: 155,
-          fit: [155, 155] as [number, number],
-          alignment: "center" as const,
+          table: {
+            widths: ["*"],
+            body: [[
+              {
+                image: photos[idx].data,
+                width: 148,
+                height: 148,
+                fit: [148, 148] as [number, number],
+                alignment: "center" as const,
+              },
+            ]],
+          },
+          layout: {
+            hLineWidth: () => 0.5,
+            vLineWidth: () => 0.5,
+            hLineColor: () => "#d4d4d4",
+            vLineColor: () => "#d4d4d4",
+            paddingLeft: () => 3,
+            paddingRight: () => 3,
+            paddingTop: () => 3,
+            paddingBottom: () => 3,
+          },
         });
         labelRow.push({
           text: photos[idx].label,
           fontSize: 7,
           color: "#646464",
           alignment: "center" as const,
-          margin: [0, 2, 0, 8] as number[],
+          margin: [0, 2, 0, 6] as number[],
         });
       } else {
         imageRow.push({ text: "" });
@@ -414,26 +432,27 @@ function buildPhotoGrid(photos: { data: string; label: string }[]): any {
       }
     }
 
-    rows.push(imageRow);
-    rows.push(labelRow);
+    // Each photo row is its own unbreakable table
+    result.push({
+      table: {
+        widths: ["*", "*", "*"],
+        body: [imageRow, labelRow],
+        dontBreakRows: true,
+      },
+      layout: {
+        hLineWidth: () => 0,
+        vLineWidth: () => 0,
+        paddingLeft: () => 3,
+        paddingRight: () => 3,
+        paddingTop: () => 3,
+        paddingBottom: () => 3,
+      },
+      unbreakable: true,
+      margin: [0, 0, 0, 2] as number[],
+    });
   }
 
-  if (rows.length === 0) return { text: "" };
-
-  return {
-    table: {
-      widths: ["*", "*", "*"],
-      body: rows,
-    },
-    layout: {
-      hLineWidth: () => 0,
-      vLineWidth: () => 0,
-      paddingLeft: () => 3,
-      paddingRight: () => 3,
-      paddingTop: () => 3,
-      paddingBottom: () => 3,
-    },
-  };
+  return result;
 }
 
 // ==================== SURVEY PDF EXPORT ====================
@@ -470,21 +489,7 @@ export async function exportSurveyPDF(
   // Build content
   const content: any[] = [];
 
-  // ==================== STATUS ====================
-  const statusLabel = STATUS_LABELS[survey.status] || survey.status;
-  const statusLine: any = {
-    text: [
-      { text: "สถานะ: ", color: "#646464", fontSize: 9 },
-      { text: statusLabel, color: "#1e1e1e", fontSize: 9 },
-    ],
-    margin: [4, 4, 0, 0] as number[],
-  };
-  if (survey.scheduledDate) {
-    statusLine.text.push({ text: "  |  วันนัดสำรวจ: ", color: "#646464", fontSize: 9 });
-    statusLine.text.push({ text: formatDate(survey.scheduledDate), color: "#1e1e1e", fontSize: 9 });
-  }
-  content.push(statusLine);
-  content.push({ text: "", margin: [0, 4, 0, 0] as number[] });
+  // ==================== STATUS (hidden from PDF - internal use only) ====================
 
   // ==================== CUSTOMER INFO ====================
   onProgress?.("กำลังเพิ่มข้อมูลลูกค้า...");
@@ -504,7 +509,7 @@ export async function exportSurveyPDF(
   if (customer.roofArea) customerItems.push({ key: "พื้นที่หลังคา:", value: `${formatNumber(customer.roofArea)} ตร.ม.` });
   if (customer.phaseType) customerItems.push({ key: "ระบบไฟ:", value: customer.phaseType === "single" ? "1 เฟส" : "3 เฟส" });
   if (customer.meterSize) customerItems.push({ key: "ขนาดมิเตอร์:", value: customer.meterSize });
-  if (customer.notes) customerItems.push({ key: "หมายเหตุ:", value: customer.notes });
+  // customer.notes hidden from PDF (internal use only)
 
   content.push(buildKeyValueGrid(customerItems));
 
@@ -528,11 +533,7 @@ export async function exportSurveyPDF(
     content.push({ text: "ยังไม่มีข้อมูลเทคนิค", fontSize: 9, color: "#969696", margin: [4, 0, 0, 4] as number[] });
   }
 
-  // Survey notes
-  if (survey.surveyNotes) {
-    content.push({ text: "หมายเหตุสำรวจ:", fontSize: 9, color: "#646464", margin: [4, 4, 0, 2] as number[] });
-    content.push({ text: survey.surveyNotes, fontSize: 9, color: "#1e1e1e", margin: [4, 0, 0, 8] as number[] });
-  }
+  // Survey notes hidden from PDF (internal use only)
 
   // ==================== PHOTOS ====================
   if (photos.length > 0) {
@@ -552,7 +553,7 @@ export async function exportSurveyPDF(
     }
 
     if (loadedPhotos.length > 0) {
-      content.push(buildPhotoGrid(loadedPhotos));
+      content.push(...buildPhotoGrid(loadedPhotos));
     }
   }
 
@@ -621,21 +622,7 @@ export async function exportInstallationPDF(
   // Build content
   const content: any[] = [];
 
-  // ==================== INSTALLATION STATUS ====================
-  const installLabel = survey.installationStatus ? (INSTALLATION_STATUS_LABELS[survey.installationStatus] || survey.installationStatus) : "-";
-  const statusLine: any = {
-    text: [
-      { text: "สถานะติดตั้ง: ", color: "#646464", fontSize: 9 },
-      { text: installLabel, color: "#1e1e1e", fontSize: 9 },
-    ],
-    margin: [4, 4, 0, 0] as number[],
-  };
-  if (survey.installationDate) {
-    statusLine.text.push({ text: "  |  วันติดตั้ง: ", color: "#646464", fontSize: 9 });
-    statusLine.text.push({ text: formatDate(survey.installationDate), color: "#1e1e1e", fontSize: 9 });
-  }
-  content.push(statusLine);
-  content.push({ text: "", margin: [0, 4, 0, 0] as number[] });
+  // ==================== INSTALLATION STATUS (hidden from PDF - internal use only) ====================
 
   // ==================== CUSTOMER INFO ====================
   onProgress?.("กำลังเพิ่มข้อมูลลูกค้า...");
@@ -707,7 +694,7 @@ export async function exportInstallationPDF(
     }
 
     if (loadedPhotos.length > 0) {
-      content.push(buildPhotoGrid(loadedPhotos));
+      content.push(...buildPhotoGrid(loadedPhotos));
     }
   }
 
