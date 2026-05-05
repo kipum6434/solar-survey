@@ -290,7 +290,7 @@ const surveyRouter = router({
       panelBrand: z.string().optional(),
       needBattery: z.string().optional(),
       needOptimizer: z.string().optional(),
-      systemType: z.enum(["string", "micro", "both"]).optional(),
+      systemType: z.enum(["string", "micro", "both", "hybrid"]).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const { surveyorIds, ...surveyData } = input;
@@ -357,7 +357,7 @@ const surveyRouter = router({
       panelBrand: z.string().nullable().optional(),
       needBattery: z.string().nullable().optional(),
       needOptimizer: z.string().nullable().optional(),
-      systemType: z.enum(["string", "micro", "both"]).nullable().optional(),
+      systemType: z.enum(["string", "micro", "both", "hybrid"]).nullable().optional(),
       adminSenderId: z.number().nullable().optional(),
       surveyorIds: z.array(z.number()).optional(),
       closerId: z.number().nullable().optional(),
@@ -1158,7 +1158,7 @@ const shareLinkRouter = router({
       panelBrand: z.string().optional(),
       needBattery: z.string().optional(),
       needOptimizer: z.string().optional(),
-      systemType: z.enum(["string", "micro", "both"]).optional(),
+      systemType: z.enum(["string", "micro", "both", "hybrid"]).optional(),
       surveyNotes: z.string().optional(),
       quotedPrice: z.string().optional(),
     }))

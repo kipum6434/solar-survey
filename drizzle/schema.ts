@@ -90,7 +90,7 @@ export const surveys = mysqlTable("surveys", {
   panelBrand: varchar("panelBrand", { length: 255 }),
   needBattery: varchar("needBattery", { length: 500 }),
   needOptimizer: varchar("needOptimizer", { length: 500 }),
-  systemType: mysqlEnum("systemType", ["string", "micro", "both"]),
+  systemType: mysqlEnum("systemType", ["string", "micro", "both", "hybrid"]),
   statusId: int("statusId"),
   installationDate: bigint("installationDate", { mode: "number" }),
   installationStatus: mysqlEnum("installationStatus", ["waiting", "in_progress", "completed", "delivered", "postponed", "cancelled"]),

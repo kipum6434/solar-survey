@@ -1033,3 +1033,6 @@
 - [x] เพิ่ม loadImageWithDimensions() เพื่อเก็บ width/height ของรูปตอนโหลด
 - [x] คำนวณ topMargin อัตโนมัติสำหรับรูปแนวนอน (landscape) เพื่อจัดกึ่งกลางแนวตั้ง
 - [x] อัพเดท exportSurveyPDF + exportInstallationPDF ให้ใช้ loadImageWithDimensions
+
+### Feature: เพิ่มประเภทระบบ "Hybrid"
+- [x] เพิ่ม "hybrid" ใน systemType enum (schema + migration + server router + frontend dropdowns + PDF labels)

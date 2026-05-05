@@ -41,6 +41,7 @@ const SYSTEM_TYPE_MAP: Record<string, string> = {
   string: "String Inverter",
   micro: "Micro Inverter",
   both: "ทั้งสอง",
+  hybrid: "Hybrid",
 };
 
 const BATTERY_MAP: Record<string, string> = {

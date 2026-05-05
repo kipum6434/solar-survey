@@ -77,6 +77,7 @@ const SYSTEM_TYPE_LABELS: Record<string, string> = {
   string: "String Inverter",
   micro: "Micro Inverter",
   both: "ทั้งสองแบบ",
+  hybrid: "Hybrid",
 };
 
 // ==================== FONT SETUP ====================

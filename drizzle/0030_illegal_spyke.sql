@@ -1,0 +1,1 @@
+ALTER TABLE `surveys` MODIFY COLUMN `systemType` enum('string','micro','both','hybrid');

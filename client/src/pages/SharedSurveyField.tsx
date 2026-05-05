@@ -315,7 +315,7 @@ export default function SharedSurveyField() {
         panelBrand: techForm.panelBrand || undefined,
         needBattery: techForm.needBattery || undefined,
         needOptimizer: techForm.needOptimizer || undefined,
-        systemType: (techForm.systemType as "string" | "micro" | "both") || undefined,
+        systemType: (techForm.systemType as "string" | "micro" | "both" | "hybrid") || undefined,
         surveyNotes: techForm.surveyNotes || undefined,
         quotedPrice: qPrice || undefined,
       });
@@ -558,6 +558,7 @@ export default function SharedSurveyField() {
                       <SelectItem value="string">String Inverter</SelectItem>
                       <SelectItem value="micro">Micro Inverter</SelectItem>
                       <SelectItem value="both">ทั้งสองแบบ</SelectItem>
+                      <SelectItem value="hybrid">Hybrid</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

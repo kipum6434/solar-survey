@@ -1375,6 +1375,7 @@ function EditSurveyDialog({ open, onOpenChange, survey, adminSenders, surveyors,
                   <SelectItem value="string">String Inverter</SelectItem>
                   <SelectItem value="micro">Micro Inverter</SelectItem>
                   <SelectItem value="both">ทั้งสอง</SelectItem>
+                  <SelectItem value="hybrid">Hybrid</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1524,6 +1525,7 @@ function TechInfoCard({ survey: s, surveyId, updateSurvey, onRefetch }: { survey
     { value: "string", label: "String Inverter" },
     { value: "micro", label: "Micro Inverter" },
     { value: "both", label: "ทั้ง 2 แบบ" },
+    { value: "hybrid", label: "Hybrid" },
   ];
 
   return (
