@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 
-// Since pdfExport.ts is a client-side module using jsPDF and browser APIs,
+// Since pdfExport.ts is a client-side module using pdfmake and browser APIs,
 // we test the backend procedures that support PDF export data retrieval.
 // The actual PDF generation is client-side and tested via browser.
 

@@ -1001,3 +1001,18 @@
 - [x] อัพเดท checkPageBreak ให้เว้นพื้นที่ 36mm สำหรับ full header
 - [x] ทำเหมือนกันทั้ง Survey PDF (สีส้ม) และ Installation PDF (สีเขียว)
 - [x] อัพเดท Vitest ให้ตรงกับ implementation ใหม่ (31 tests passed)
+
+### Fix: PDF Export ฟอนต์ไทยแสดงผลผิด (ตัวสะกดหาย + ตัวหนังสือซ้อน)
+- [x] Embed ฟอนต์ Sarabun Regular + Bold เป็น base64 (~120KB แต่ละตัว) ไม่ต้องโหลดจาก network
+- [x] ลงทะเบียนฟอนต์ในทุก jsPDF document instance (แก้ bug fontLoaded flag)
+- [x] แก้ปัญหาตัวหนังสือซ้อน - getTextWidth คำนวณถูกต้องเมื่อใช้ Sarabun
+- [x] แก้ปัญหาวรรณยุกต์หาย - Sarabun รองรับ Thai combining chars ถูกต้อง
+- [x] Tests 31 ข้อผ่าน, TypeScript clean
+
+### Fix: PDF Export วรรณยุกต์ไทยหาย — เปลี่ยนจาก jsPDF เป็น pdfmake
+- [x] เปลี่ยน PDF engine จาก jsPDF เป็น pdfmake ที่รองรับ OpenType GPOS (วรรณยุกต์ไทย)
+- [x] ใช้ Sarabun font base64 เดิมกับ pdfmake (addVirtualFileSystem + setFonts)
+- [x] สร้าง layout ใหม่ด้วย pdfmake: repeating header/footer ทุกหน้า, photo grid 3 คอลัมน์
+- [x] รองรับ logo ใน header, company info, page number
+- [x] ลบ jspdf dependency ออก (ไม่ใช้แล้ว)
+- [x] อัปเดต vitest (pdf-compact-header.test.ts + pdf-export.test.ts) — 43 tests passed
