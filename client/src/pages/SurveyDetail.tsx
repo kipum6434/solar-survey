@@ -60,6 +60,7 @@ export default function SurveyDetail() {
     phone: companySettings.phone,
     address: companySettings.address,
     logoUrl: companySettings.logoUrl,
+    photoBorderColor: companySettings.photoBorderColor,
   } : null;
 
   const { data, isLoading, refetch } = trpc.survey.getById.useQuery({ id: surveyId });
@@ -99,6 +100,12 @@ export default function SurveyDetail() {
       }
     }
     return map;
+  }, [photoCategories]);
+
+  // Category order for PDF sorting (follows sortOrder from DB)
+  const categoryOrder = useMemo(() => {
+    if (!photoCategories) return [];
+    return photoCategories.map((cat: any) => cat.key);
   }, [photoCategories]);
 
   // Group photos by category
@@ -384,6 +391,7 @@ export default function SurveyDetail() {
                     undefined,
                     imageProxyFn,
                     companyInfoForPdf,
+                    categoryOrder,
                   );
                   toast.success("Export PDF สำเร็จ");
                 } catch (err: any) {

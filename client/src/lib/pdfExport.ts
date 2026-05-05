@@ -49,6 +49,7 @@ export interface CompanyInfo {
   phone?: string | null;
   address?: string | null;
   logoUrl?: string | null;
+  photoBorderColor?: string | null;
 }
 
 // ==================== CONSTANTS ====================
@@ -382,7 +383,7 @@ function buildKeyValueGrid(items: { key: string; value: string }[]): any {
   };
 }
 
-function buildPhotoGrid(photos: { data: string; label: string }[]): any[] {
+function buildPhotoGrid(photos: { data: string; label: string }[], borderColor: string = "#d4d4d4"): any[] {
   // Build individual rows as separate tables so each row won't break across pages
   const COLS = 3;
   const result: any[] = [];
@@ -394,29 +395,33 @@ function buildPhotoGrid(photos: { data: string; label: string }[]): any[] {
     for (let col = 0; col < COLS; col++) {
       const idx = i + col;
       if (idx < photos.length && photos[idx].data) {
-        // Wrap image in a border box
+        // Wrap image in a border box with vertical centering
+        const IMG_BOX_SIZE = 148;
         imageRow.push({
           table: {
             widths: ["*"],
+            heights: [IMG_BOX_SIZE],
             body: [[
               {
                 image: photos[idx].data,
-                width: 148,
-                height: 148,
-                fit: [148, 148] as [number, number],
+                width: IMG_BOX_SIZE,
+                height: IMG_BOX_SIZE,
+                fit: [IMG_BOX_SIZE, IMG_BOX_SIZE] as [number, number],
                 alignment: "center" as const,
+                margin: [0, 0, 0, 0] as number[],
               },
             ]],
           },
           layout: {
             hLineWidth: () => 0.5,
             vLineWidth: () => 0.5,
-            hLineColor: () => "#d4d4d4",
-            vLineColor: () => "#d4d4d4",
+            hLineColor: () => borderColor,
+            vLineColor: () => borderColor,
             paddingLeft: () => 3,
             paddingRight: () => 3,
             paddingTop: () => 3,
             paddingBottom: () => 3,
+            vLineAlignment: () => "center",
           },
         });
         labelRow.push({
@@ -464,6 +469,7 @@ export async function exportSurveyPDF(
   onProgress?: (step: string) => void,
   imageProxyFn?: ImageProxyFn,
   companyInfo?: CompanyInfo | null,
+  categoryOrder?: string[],
 ): Promise<void> {
   onProgress?.("กำลังเตรียมเอกสาร...");
   ensureFontsRegistered();
@@ -540,20 +546,32 @@ export async function exportSurveyPDF(
     onProgress?.(`กำลังเพิ่มรูปภาพ (${photos.length} รูป)...`);
     content.push(buildSectionHeader(`รูปภาพหน้างาน (${photos.length} รูป)`, sectionColor));
 
+    // Sort photos by category order if provided
+    const sortedPhotos = categoryOrder && categoryOrder.length > 0
+      ? [...photos].sort((a, b) => {
+          const catA = a.category || "other";
+          const catB = b.category || "other";
+          const idxA = categoryOrder.indexOf(catA);
+          const idxB = categoryOrder.indexOf(catB);
+          return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB);
+        })
+      : photos;
+
     const loadedPhotos: { data: string; label: string }[] = [];
 
-    for (let i = 0; i < photos.length; i++) {
-      onProgress?.(`กำลังโหลดรูปภาพ ${i + 1}/${photos.length}...`);
-      const imgData = await loadImageAsBase64(photos[i].url, imageProxyFn);
-      const catLabel = categoryMap[photos[i].category || "other"] || photos[i].category || "อื่นๆ";
+    for (let i = 0; i < sortedPhotos.length; i++) {
+      onProgress?.(`กำลังโหลดรูปภาพ ${i + 1}/${sortedPhotos.length}...`);
+      const imgData = await loadImageAsBase64(sortedPhotos[i].url, imageProxyFn);
+      const catLabel = categoryMap[sortedPhotos[i].category || "other"] || sortedPhotos[i].category || "อื่นๆ";
 
       if (imgData) {
         loadedPhotos.push({ data: imgData, label: catLabel });
       }
     }
 
+    const borderColor = companyInfo?.photoBorderColor || "#d4d4d4";
     if (loadedPhotos.length > 0) {
-      content.push(...buildPhotoGrid(loadedPhotos));
+      content.push(...buildPhotoGrid(loadedPhotos, borderColor));
     }
   }
 
@@ -597,6 +615,7 @@ export async function exportInstallationPDF(
   onProgress?: (step: string) => void,
   imageProxyFn?: ImageProxyFn,
   companyInfo?: CompanyInfo | null,
+  categoryOrder?: string[],
 ): Promise<void> {
   onProgress?.("กำลังเตรียมเอกสาร...");
   ensureFontsRegistered();
@@ -681,20 +700,32 @@ export async function exportInstallationPDF(
     onProgress?.(`กำลังเพิ่มรูปติดตั้ง (${installPhotos.length} รูป)...`);
     content.push(buildSectionHeader(`รูปภาพการติดตั้ง (${installPhotos.length} รูป)`, sectionColor));
 
+    // Sort photos by category order if provided
+    const sortedPhotos = categoryOrder && categoryOrder.length > 0
+      ? [...installPhotos].sort((a, b) => {
+          const catA = a.category || "other";
+          const catB = b.category || "other";
+          const idxA = categoryOrder.indexOf(catA);
+          const idxB = categoryOrder.indexOf(catB);
+          return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB);
+        })
+      : installPhotos;
+
     const loadedPhotos: { data: string; label: string }[] = [];
 
-    for (let i = 0; i < installPhotos.length; i++) {
-      onProgress?.(`กำลังโหลดรูปภาพ ${i + 1}/${installPhotos.length}...`);
-      const imgData = await loadImageAsBase64(installPhotos[i].url, imageProxyFn);
-      const catLabel = categoryMap[installPhotos[i].category || "other"] || installPhotos[i].category || "อื่นๆ";
+    for (let i = 0; i < sortedPhotos.length; i++) {
+      onProgress?.(`กำลังโหลดรูปภาพ ${i + 1}/${sortedPhotos.length}...`);
+      const imgData = await loadImageAsBase64(sortedPhotos[i].url, imageProxyFn);
+      const catLabel = categoryMap[sortedPhotos[i].category || "other"] || sortedPhotos[i].category || "อื่นๆ";
 
       if (imgData) {
         loadedPhotos.push({ data: imgData, label: catLabel });
       }
     }
 
+    const borderColor = companyInfo?.photoBorderColor || "#d4d4d4";
     if (loadedPhotos.length > 0) {
-      content.push(...buildPhotoGrid(loadedPhotos));
+      content.push(...buildPhotoGrid(loadedPhotos, borderColor));
     }
   }
 

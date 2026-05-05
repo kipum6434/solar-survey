@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Building2, Phone, MapPin, Upload, Trash2, ImageIcon, Save, Loader2, CheckCircle } from "lucide-react";
+import { Building2, Phone, MapPin, Upload, Trash2, ImageIcon, Save, Loader2, CheckCircle, Palette } from "lucide-react";
 
 const MAX_LOGO_SIZE = 2 * 1024 * 1024; // 2MB
 const RECOMMENDED_SIZE = "512 x 512 px";
@@ -47,6 +47,7 @@ export default function CompanySettings() {
   const [companyName, setCompanyName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [photoBorderColor, setPhotoBorderColor] = useState("#d4d4d4");
   const [formLoaded, setFormLoaded] = useState(false);
 
   // Sync form state when data loads
@@ -54,12 +55,13 @@ export default function CompanySettings() {
     setCompanyName(settings.companyName || "");
     setPhone(settings.phone || "");
     setAddress(settings.address || "");
+    setPhotoBorderColor(settings.photoBorderColor || "#d4d4d4");
     setFormLoaded(true);
   }
 
   const handleSave = useCallback(() => {
-    updateMutation.mutate({ companyName, phone, address });
-  }, [companyName, phone, address, updateMutation]);
+    updateMutation.mutate({ companyName, phone, address, photoBorderColor });
+  }, [companyName, phone, address, photoBorderColor, updateMutation]);
 
   const handleLogoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -261,6 +263,55 @@ export default function CompanySettings() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Photo Border Color Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Palette className="h-5 w-5 text-amber-500" />
+            สีกรอบรูปภาพ PDF
+          </CardTitle>
+          <CardDescription>กำหนดสีกรอบรูปภาพในรายงาน PDF ที่ส่งออก</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                value={photoBorderColor}
+                onChange={(e) => setPhotoBorderColor(e.target.value)}
+                className="w-10 h-10 rounded-lg border border-border cursor-pointer"
+              />
+              <div className="space-y-1">
+                <Input
+                  value={photoBorderColor}
+                  onChange={(e) => setPhotoBorderColor(e.target.value)}
+                  className="w-32 font-mono text-sm"
+                  placeholder="#d4d4d4"
+                />
+              </div>
+            </div>
+            <div className="flex-1">
+              <p className="text-xs text-muted-foreground">ตัวอย่างกรอบ:</p>
+              <div className="mt-2 w-24 h-16 rounded" style={{ border: `2px solid ${photoBorderColor}`, backgroundColor: '#f5f5f5' }}>
+                <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground">รูปภาพ</div>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {["#d4d4d4", "#f59e0b", "#3b82f6", "#10b981", "#ef4444", "#8b5cf6", "#000000"].map((color) => (
+              <button
+                key={color}
+                onClick={() => setPhotoBorderColor(color)}
+                className={`w-7 h-7 rounded-full border-2 transition-all ${photoBorderColor === color ? 'border-foreground scale-110' : 'border-transparent'}`}
+                style={{ backgroundColor: color }}
+                title={color}
+              />
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">กดปุ่ม "บันทึกข้อมูลบริษัท" ด้านบนเพื่อบันทึกการเปลี่ยนแปลง</p>
+        </CardContent>
+      </Card>
 
       {/* Preview Card */}
       <Card>

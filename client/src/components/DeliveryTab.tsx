@@ -58,6 +58,7 @@ export default function DeliveryTab({ surveyId, installationStatus, surveyData, 
     phone: companySettings.phone,
     address: companySettings.address,
     logoUrl: companySettings.logoUrl,
+    photoBorderColor: companySettings.photoBorderColor,
   } : null;
 
   // Queries
@@ -137,6 +138,12 @@ export default function DeliveryTab({ surveyId, installationStatus, surveyData, 
       }
     }
     return map;
+  }, [photoCategories]);
+
+  // Category order for PDF sorting (follows sortOrder from DB)
+  const categoryOrder = useMemo(() => {
+    if (!photoCategories) return [];
+    return photoCategories.map((cat: any) => cat.key);
   }, [photoCategories]);
 
   // Build category metadata map
@@ -348,6 +355,7 @@ export default function DeliveryTab({ surveyId, installationStatus, surveyData, 
                         (step) => setPdfProgress(step),
                         imageProxyFn,
                         companyInfoForPdf,
+                        categoryOrder,
                       );
                       toast.success("Export PDF สำเร็จ");
                     } catch (err: any) {

@@ -50,6 +50,7 @@ export default function SharedSurvey() {
     phone: companySettings.phone,
     address: companySettings.address,
     logoUrl: companySettings.logoUrl,
+    photoBorderColor: companySettings.photoBorderColor,
   } : null;
 
   const completeSurveyMut = trpc.survey.publicCompleteSurvey.useMutation({
@@ -59,9 +60,11 @@ export default function SharedSurvey() {
 
   // Build category map from DB only (photo_categories table)
   const categoryMap: Record<string, string> = {};
+  const categoryOrder: string[] = [];
   if (photoCategories) {
     for (const cat of photoCategories) {
       categoryMap[cat.key] = cat.label;
+      categoryOrder.push(cat.key);
     }
   }
 
@@ -168,6 +171,7 @@ export default function SharedSurvey() {
                     (step) => setPdfProgress(step),
                     imageProxyFn,
                     companyInfoForPdf,
+                    categoryOrder,
                   );
                   toast.success("Export PDF สำเร็จ");
                 } catch (err: any) {
@@ -437,6 +441,7 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
     phone: companySettings2.phone,
     address: companySettings2.address,
     logoUrl: companySettings2.logoUrl,
+    photoBorderColor: companySettings2.photoBorderColor,
   } : null;
 
   const { data: deliveryInfo, refetch: refetchDelivery } = trpc.delivery.publicInfo.useQuery(
@@ -556,7 +561,8 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
                   setIsExportingInstPDF(true);
                   try {
                     const catMap: Record<string, string> = {};
-                    for (const cat of photoCategories) catMap[cat.key] = cat.label;
+                    const catOrder: string[] = [];
+                    for (const cat of photoCategories) { catMap[cat.key] = cat.label; catOrder.push(cat.key); }
                     await exportInstallationPDF(
                       {
                         id: surveyData.id, status: surveyData.status,
@@ -586,6 +592,7 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
                       undefined,
                       imageProxyFn,
                       companyInfoForPdf2,
+                      catOrder,
                     );
                     toast.success("Export PDF สำเร็จ");
                   } catch (err: any) {

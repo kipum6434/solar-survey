@@ -2467,7 +2467,7 @@ const lineSettingsRouter = router({
 const companySettingsRouter = router({
   get: publicProcedure.query(async () => {
     const settings = await db.getCompanySettings();
-    return settings || { id: 0, companyName: "", phone: "", address: "", logoUrl: null, logoFileKey: null };
+    return settings || { id: 0, companyName: "", phone: "", address: "", logoUrl: null, logoFileKey: null, photoBorderColor: "#d4d4d4" };
   }),
 
   update: adminProcedure
@@ -2475,6 +2475,7 @@ const companySettingsRouter = router({
       companyName: z.string().optional(),
       phone: z.string().optional(),
       address: z.string().optional(),
+      photoBorderColor: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
       const result = await db.updateCompanySettings(input);

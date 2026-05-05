@@ -1,0 +1,1 @@
+ALTER TABLE `company_settings` ADD `photoBorderColor` varchar(20) DEFAULT '#d4d4d4';
