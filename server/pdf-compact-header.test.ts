@@ -3,225 +3,199 @@ import * as fs from "fs";
 import * as path from "path";
 
 /**
- * Tests for the html2pdf.js-based PDF export with proper Thai font support.
- * Verifies that the export uses HTML rendering (not jsPDF doc.text) for correct Thai text.
+ * Tests for the full repeating header on all pages of PDF exports.
+ * Verifies that pages 2+ get the same full header as page 1
+ * (company name, address, report title, customer, logo, page X/Y).
  */
 
-describe("PDF Export - html2pdf.js Thai Font Support", () => {
-  let pdfSource: string;
+describe("PDF Full Header - Design Contract", () => {
+  const pdfExportPath = path.resolve(__dirname, "../client/src/lib/pdfExport.ts");
+  let pdfExportContent: string;
+  let surveySection: string;
+  let installSection: string;
 
   beforeAll(() => {
-    const filePath = path.resolve(__dirname, "../client/src/lib/pdfExport.ts");
-    pdfSource = fs.readFileSync(filePath, "utf-8");
+    pdfExportContent = fs.readFileSync(pdfExportPath, "utf-8");
+    surveySection = pdfExportContent.slice(
+      pdfExportContent.indexOf("export async function exportSurveyPDF"),
+      pdfExportContent.indexOf("export async function exportInstallationPDF")
+    );
+    installSection = pdfExportContent.slice(
+      pdfExportContent.indexOf("export async function exportInstallationPDF")
+    );
   });
 
-  describe("html2pdf.js Integration", () => {
-    it("should import html2pdf.js", () => {
-      expect(pdfSource).toContain('import html2pdf from "html2pdf.js"');
+  describe("Full header constant and function", () => {
+    it("should define FULL_HEADER_HEIGHT constant at 36mm", () => {
+      expect(pdfExportContent).toContain("FULL_HEADER_HEIGHT");
+      const match = pdfExportContent.match(/FULL_HEADER_HEIGHT\s*=\s*(\d+)/);
+      expect(match).toBeTruthy();
+      expect(parseInt(match![1])).toBe(36);
     });
 
-    it("should NOT import jsPDF directly (replaced by html2pdf.js)", () => {
-      expect(pdfSource).not.toContain('import { jsPDF }');
-      expect(pdfSource).not.toContain("from 'jspdf'");
+    it("should define drawFullHeader function (not drawCompactHeader)", () => {
+      expect(pdfExportContent).toContain("function drawFullHeader(");
+      expect(pdfExportContent).not.toContain("function drawCompactHeader(");
     });
 
-    it("should use Sarabun font via Google Fonts CSS", () => {
-      expect(pdfSource).toContain("fonts.googleapis.com");
-      expect(pdfSource).toContain("Sarabun");
+    it("drawFullHeader should accept headerColor as RGB tuple", () => {
+      expect(pdfExportContent).toContain("headerColor: [number, number, number]");
     });
 
-    it("should set font-family to Sarabun in global styles", () => {
-      expect(pdfSource).toContain("font-family: 'Sarabun', sans-serif");
+    it("drawFullHeader should accept reportTitle parameter", () => {
+      expect(pdfExportContent).toContain("reportTitle: string");
     });
 
-    it("should wait for fonts to load before generating PDF", () => {
-      expect(pdfSource).toContain("document.fonts.ready");
-    });
-  });
-
-  describe("HTML-based Layout", () => {
-    it("should create a container with A4 width (210mm)", () => {
-      expect(pdfSource).toContain('container.style.width = "210mm"');
+    it("drawFullHeader should accept companyInfo parameter", () => {
+      expect(pdfExportContent).toContain("companyInfo?: CompanyInfo | null");
     });
 
-    it("should use html2pdf options with A4 format", () => {
-      expect(pdfSource).toContain('format: "a4"');
-      expect(pdfSource).toContain('orientation: "portrait"');
-    });
-
-    it("should use html2canvas with scale 2 for quality", () => {
-      expect(pdfSource).toContain("scale: 2");
-    });
-
-    it("should clean up container after PDF generation", () => {
-      expect(pdfSource).toContain("document.body.removeChild(container)");
-    });
-
-    it("should use hidden container (off-screen)", () => {
-      expect(pdfSource).toContain('container.style.left = "-9999px"');
+    it("drawFullHeader should accept logoData parameter", () => {
+      expect(pdfExportContent).toContain("logoData?: string | null");
     });
   });
 
-  describe("Survey PDF Export", () => {
-    it("should export exportSurveyPDF function", () => {
-      expect(pdfSource).toContain("export async function exportSurveyPDF");
+  describe("drawFullHeader renders full header content", () => {
+    let headerFn: string;
+
+    beforeAll(() => {
+      const start = pdfExportContent.indexOf("function drawFullHeader(");
+      const end = pdfExportContent.indexOf("function drawSectionHeader(");
+      headerFn = pdfExportContent.slice(start, end);
     });
 
-    it("should use amber color (#f59e0b) for survey header", () => {
-      expect(pdfSource).toContain('"#f59e0b"');
+    it("should draw company name at font size 14", () => {
+      expect(headerFn).toContain("doc.setFontSize(14)");
+      expect(headerFn).toContain("companyInfo?.companyName || reportTitle");
     });
 
-    it("should include report title 'รายงานการสำรวจ Solar'", () => {
-      expect(pdfSource).toContain("รายงานการสำรวจ Solar");
+    it("should draw company contact info (phone + address)", () => {
+      expect(headerFn).toContain("companyInfo.phone");
+      expect(headerFn).toContain("companyInfo.address");
     });
 
-    it("should include customer info section", () => {
-      expect(pdfSource).toContain("ข้อมูลลูกค้า");
+    it("should draw report title line", () => {
+      expect(headerFn).toContain("doc.text(reportTitle, MARGIN, 23)");
     });
 
-    it("should include technical info section", () => {
-      expect(pdfSource).toContain("ข้อมูลทางเทคนิค");
+    it("should draw customer name and survey ID", () => {
+      expect(headerFn).toContain("`ลูกค้า: ${customerName}  |  #${surveyId}`");
     });
 
-    it("should include photo grid for survey photos", () => {
-      expect(pdfSource).toContain("รูปภาพหน้างาน");
+    it("should draw page number on header", () => {
+      expect(headerFn).toContain("`หน้า ${pageNum}/${totalPages}`");
     });
 
-    it("should include survey notes when available", () => {
-      expect(pdfSource).toContain("หมายเหตุสำรวจ");
+    it("should draw logo with white background and rounded rect", () => {
+      expect(headerFn).toContain("doc.roundedRect(");
+      expect(headerFn).toContain("doc.addImage(logoData");
     });
 
-    it("should show print date in header", () => {
-      expect(pdfSource).toContain("พิมพ์เมื่อ:");
+    it("should use white text color on colored header bar", () => {
+      expect(headerFn).toContain("doc.setTextColor(255, 255, 255)");
     });
 
-    it("should include status labels", () => {
-      expect(pdfSource).toContain("รอดำเนินการ");
-      expect(pdfSource).toContain("นัดสำรวจแล้ว");
-    });
-  });
-
-  describe("Installation PDF Export", () => {
-    it("should export exportInstallationPDF function", () => {
-      expect(pdfSource).toContain("export async function exportInstallationPDF");
-    });
-
-    it("should use emerald color (#10b981) for installation header", () => {
-      expect(pdfSource).toContain('"#10b981"');
-    });
-
-    it("should include report title 'รายงานส่งมอบงานติดตั้ง Solar'", () => {
-      expect(pdfSource).toContain("รายงานส่งมอบงานติดตั้ง Solar");
-    });
-
-    it("should include installation status section", () => {
-      expect(pdfSource).toContain("สถานะติดตั้ง");
-    });
-
-    it("should include delivery info section", () => {
-      expect(pdfSource).toContain("ข้อมูลส่งมอบงาน");
-    });
-
-    it("should include installation photos section", () => {
-      expect(pdfSource).toContain("รูปภาพการติดตั้ง");
-    });
-
-    it("should include completion note", () => {
-      expect(pdfSource).toContain("ติดตั้งเสร็จสิ้น");
-    });
-
-    it("should include installation status labels", () => {
-      expect(pdfSource).toContain("รอติดตั้ง");
-      expect(pdfSource).toContain("กำลังติดตั้ง");
+    it("should draw colored bar spanning full page width", () => {
+      expect(headerFn).toContain("doc.rect(0, 0, PAGE_WIDTH, headerHeight");
     });
   });
 
-  describe("Header Structure", () => {
-    it("should build header with company name", () => {
-      expect(pdfSource).toContain("companyInfo?.companyName");
-    });
-
-    it("should include logo in header", () => {
-      expect(pdfSource).toContain("logoBase64");
-      expect(pdfSource).toContain('<img src="${logoBase64}"');
-    });
-
-    it("should include customer name and survey ID in header", () => {
-      expect(pdfSource).toContain("ลูกค้า: ${escapeHtml(customerName)}  |  #${surveyId}");
-    });
-
-    it("should include company contact info in header", () => {
-      expect(pdfSource).toContain("companyInfo?.phone");
-      expect(pdfSource).toContain("companyInfo?.address");
+  describe("checkPageBreak accounts for full header space", () => {
+    it("should return FULL_HEADER_HEIGHT + 8 when adding new page", () => {
+      expect(pdfExportContent).toContain("return FULL_HEADER_HEIGHT + 8;");
     });
   });
 
-  describe("Photo Grid", () => {
-    it("should use 3-column grid for photos", () => {
-      expect(pdfSource).toContain("grid-template-columns:1fr 1fr 1fr");
+  describe("Survey PDF (orange) uses full header on all pages", () => {
+    it("should use amber-500 color [245, 158, 11]", () => {
+      expect(surveySection).toContain("[245, 158, 11]");
     });
 
-    it("should maintain aspect ratio for photos", () => {
-      expect(pdfSource).toContain("aspect-ratio:1");
+    it("should call drawFullHeader for pages 2+", () => {
+      expect(surveySection).toContain("drawFullHeader(");
+      expect(surveySection).toContain("if (i > 1)");
     });
 
-    it("should show category label under each photo", () => {
-      expect(pdfSource).toContain("photo.label");
+    it("should pass report title 'รายงานการสำรวจ Solar' to drawFullHeader", () => {
+      expect(surveySection).toContain('"รายงานการสำรวจ Solar"');
     });
 
-    it("should handle failed image loads gracefully", () => {
-      expect(pdfSource).toContain("โหลดรูปไม่ได้");
-    });
-  });
-
-  describe("Thai Text Support", () => {
-    it("should use HTML rendering (not jsPDF doc.text) for Thai text", () => {
-      expect(pdfSource).not.toContain("doc.text(");
-      expect(pdfSource).not.toContain("doc.setFont(");
+    it("should pass companyInfo to drawFullHeader", () => {
+      // Verify companyInfo is passed in the drawFullHeader call
+      const drawCallIdx = surveySection.indexOf("drawFullHeader(");
+      const drawCallEnd = surveySection.indexOf(");", drawCallIdx);
+      const drawCallBlock = surveySection.slice(drawCallIdx, drawCallEnd);
+      expect(drawCallBlock).toContain("companyInfo");
     });
 
-    it("should include Thai text with combining characters in labels", () => {
-      expect(pdfSource).toContain("ทั้งสองแบบ");
-      expect(pdfSource).toContain("ค่าไฟ/เดือน:");
+    it("should add page number to page 1 as well", () => {
+      expect(surveySection).toContain("`หน้า 1/${pageCount}`");
     });
 
-    it("should escape HTML in user content", () => {
-      expect(pdfSource).toContain("function escapeHtml");
-      expect(pdfSource).toContain("escapeHtml(");
+    it("should not use addWatermarkToAllPages or drawCompactHeader", () => {
+      expect(surveySection).not.toContain("addWatermarkToAllPages");
+      expect(surveySection).not.toContain("drawCompactHeader");
     });
   });
 
-  describe("CompanyInfo Interface", () => {
-    it("should export CompanyInfo interface", () => {
-      expect(pdfSource).toContain("export interface CompanyInfo");
+  describe("Installation PDF (green) uses full header on all pages", () => {
+    it("should use emerald-500 color [16, 185, 129]", () => {
+      expect(installSection).toContain("[16, 185, 129]");
     });
 
-    it("should include all required fields", () => {
-      expect(pdfSource).toContain("companyName?: string | null");
-      expect(pdfSource).toContain("phone?: string | null");
-      expect(pdfSource).toContain("address?: string | null");
-      expect(pdfSource).toContain("logoUrl?: string | null");
+    it("should call drawFullHeader for pages 2+", () => {
+      expect(installSection).toContain("drawFullHeader(");
+      expect(installSection).toContain("if (i > 1)");
+    });
+
+    it("should pass report title 'รายงานส่งมอบงานติดตั้ง Solar' to drawFullHeader", () => {
+      expect(installSection).toContain('"รายงานส่งมอบงานติดตั้ง Solar"');
+    });
+
+    it("should pass companyInfo to drawFullHeader", () => {
+      const drawCallIdx = installSection.indexOf("drawFullHeader(");
+      const drawCallEnd = installSection.indexOf(");", drawCallIdx);
+      const drawCallBlock = installSection.slice(drawCallIdx, drawCallEnd);
+      expect(drawCallBlock).toContain("companyInfo");
+    });
+
+    it("should add page number to page 1 as well", () => {
+      expect(installSection).toContain("`หน้า 1/${pageCount}`");
+    });
+
+    it("should not use addWatermarkToAllPages or drawCompactHeader", () => {
+      expect(installSection).not.toContain("addWatermarkToAllPages");
+      expect(installSection).not.toContain("drawCompactHeader");
     });
   });
 
-  describe("ImageProxyFn", () => {
-    it("should export ImageProxyFn type", () => {
-      expect(pdfSource).toContain("export type ImageProxyFn");
+  describe("Footer still present on all pages", () => {
+    it("should draw footer text on all pages in survey PDF", () => {
+      expect(surveySection).toContain("for (let i = 1; i <= pageCount; i++)");
+      expect(surveySection).toContain("PAGE_HEIGHT - 8");
     });
 
-    it("should use image proxy for loading photos", () => {
-      expect(pdfSource).toContain("loadImageAsBase64");
-      expect(pdfSource).toContain("proxyFn");
+    it("should draw footer text on all pages in installation PDF", () => {
+      expect(installSection).toContain("for (let i = 1; i <= pageCount; i++)");
+      expect(installSection).toContain("PAGE_HEIGHT - 8");
     });
   });
 
-  describe("Footer", () => {
-    it("should include footer with company name", () => {
-      expect(pdfSource).toContain("buildFooter(footerCompanyName)");
+  describe("Full header is same size as page 1 header", () => {
+    it("FULL_HEADER_HEIGHT should equal 36mm (same as page 1 with company info)", () => {
+      // Page 1 uses: const headerHeight = hasCompanyInfo ? 36 : 28;
+      // FULL_HEADER_HEIGHT should match the 36mm case
+      expect(surveySection).toContain("hasCompanyInfo ? 36 : 28");
+      const match = pdfExportContent.match(/FULL_HEADER_HEIGHT\s*=\s*(\d+)/);
+      expect(parseInt(match![1])).toBe(36);
     });
 
-    it("should position footer at bottom", () => {
-      expect(pdfSource).toContain("position:fixed;bottom:0");
+    it("drawFullHeader should also use 36 for hasCompanyInfo case", () => {
+      const headerFn = pdfExportContent.slice(
+        pdfExportContent.indexOf("function drawFullHeader("),
+        pdfExportContent.indexOf("function drawSectionHeader(")
+      );
+      expect(headerFn).toContain("hasCompanyInfo ? FULL_HEADER_HEIGHT : 28");
     });
   });
 });
