@@ -122,6 +122,62 @@ function formatNumber(val: string | number | null | undefined): string {
 // Type for image proxy function passed from components
 export type ImageProxyFn = (url: string) => Promise<string | null>;
 
+interface ImageLoadResult {
+  data: string;
+  width: number;
+  height: number;
+}
+
+async function loadImageWithDimensions(
+  url: string,
+  proxyFn?: ImageProxyFn,
+): Promise<ImageLoadResult | null> {
+  try {
+    // Strategy 1: Use server-side proxy if provided (bypasses CORS)
+    if (proxyFn) {
+      const dataUrl = await proxyFn(url);
+      if (dataUrl) {
+        // Get dimensions from the data URL
+        const dims = await getImageDimensions(dataUrl);
+        return dims ? { data: dataUrl, width: dims.width, height: dims.height } : { data: dataUrl, width: 1, height: 1 };
+      }
+    }
+
+    // Strategy 2: Direct canvas approach
+    return await new Promise((resolve) => {
+      const img = new window.Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { resolve(null); return; }
+        ctx.drawImage(img, 0, 0);
+        try {
+          const data = canvas.toDataURL("image/jpeg", 0.7);
+          resolve({ data, width: img.naturalWidth, height: img.naturalHeight });
+        } catch {
+          resolve(null);
+        }
+      };
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+  } catch {
+    return null;
+  }
+}
+
+function getImageDimensions(dataUrl: string): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
 async function loadImageAsBase64(
   url: string,
   proxyFn?: ImageProxyFn,
@@ -383,7 +439,7 @@ function buildKeyValueGrid(items: { key: string; value: string }[]): any {
   };
 }
 
-function buildPhotoGrid(photos: { data: string; label: string }[], borderColor: string = "#d4d4d4"): any[] {
+function buildPhotoGrid(photos: { data: string; label: string; width?: number; height?: number }[], borderColor: string = "#d4d4d4"): any[] {
   // Build individual rows as separate tables so each row won't break across pages
   const COLS = 3;
   const result: any[] = [];
@@ -395,20 +451,30 @@ function buildPhotoGrid(photos: { data: string; label: string }[], borderColor: 
     for (let col = 0; col < COLS; col++) {
       const idx = i + col;
       if (idx < photos.length && photos[idx].data) {
-        // Wrap image in a border box with vertical centering
         const IMG_BOX_SIZE = 148;
+        const photo = photos[idx];
+
+        // Calculate top margin for landscape images to center them vertically
+        let topMargin = 0;
+        if (photo.width && photo.height && photo.width > photo.height) {
+          // Landscape image: calculate rendered height after fit
+          const aspectRatio = photo.height / photo.width;
+          const renderedHeight = IMG_BOX_SIZE * aspectRatio;
+          topMargin = Math.max(0, (IMG_BOX_SIZE - renderedHeight) / 2);
+        }
+
         imageRow.push({
           table: {
             widths: ["*"],
             heights: [IMG_BOX_SIZE],
             body: [[
               {
-                image: photos[idx].data,
+                image: photo.data,
                 width: IMG_BOX_SIZE,
                 height: IMG_BOX_SIZE,
                 fit: [IMG_BOX_SIZE, IMG_BOX_SIZE] as [number, number],
                 alignment: "center" as const,
-                margin: [0, 0, 0, 0] as number[],
+                margin: [0, topMargin, 0, 0] as number[],
               },
             ]],
           },
@@ -557,15 +623,15 @@ export async function exportSurveyPDF(
         })
       : photos;
 
-    const loadedPhotos: { data: string; label: string }[] = [];
+    const loadedPhotos: { data: string; label: string; width?: number; height?: number }[] = [];
 
     for (let i = 0; i < sortedPhotos.length; i++) {
       onProgress?.(`กำลังโหลดรูปภาพ ${i + 1}/${sortedPhotos.length}...`);
-      const imgData = await loadImageAsBase64(sortedPhotos[i].url, imageProxyFn);
+      const imgResult = await loadImageWithDimensions(sortedPhotos[i].url, imageProxyFn);
       const catLabel = categoryMap[sortedPhotos[i].category || "other"] || sortedPhotos[i].category || "อื่นๆ";
 
-      if (imgData) {
-        loadedPhotos.push({ data: imgData, label: catLabel });
+      if (imgResult) {
+        loadedPhotos.push({ data: imgResult.data, label: catLabel, width: imgResult.width, height: imgResult.height });
       }
     }
 
@@ -711,15 +777,15 @@ export async function exportInstallationPDF(
         })
       : installPhotos;
 
-    const loadedPhotos: { data: string; label: string }[] = [];
+    const loadedPhotos: { data: string; label: string; width?: number; height?: number }[] = [];
 
     for (let i = 0; i < sortedPhotos.length; i++) {
       onProgress?.(`กำลังโหลดรูปภาพ ${i + 1}/${sortedPhotos.length}...`);
-      const imgData = await loadImageAsBase64(sortedPhotos[i].url, imageProxyFn);
+      const imgResult = await loadImageWithDimensions(sortedPhotos[i].url, imageProxyFn);
       const catLabel = categoryMap[sortedPhotos[i].category || "other"] || sortedPhotos[i].category || "อื่นๆ";
 
-      if (imgData) {
-        loadedPhotos.push({ data: imgData, label: catLabel });
+      if (imgResult) {
+        loadedPhotos.push({ data: imgResult.data, label: catLabel, width: imgResult.width, height: imgResult.height });
       }
     }
 

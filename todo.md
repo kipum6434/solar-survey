@@ -1028,3 +1028,8 @@
 - [x] รูปแนวนอน (landscape) จัดกึ่งกลางแนวตั้ง (vertical center) ภายในกรอบ
 - [x] เรียงรูปตามลำดับหมวดหมู่ (sortOrder) จากหน้าจัดการสถานะ ก่อน render photo grid
 - [x] เพิ่มช่อง "สีกรอบรูป" ในหน้าตั้งค่าบริษัท (color picker) — เก็บใน DB, ใช้ตอน export PDF
+
+### Fix: PDF Export ปรับปรุงรอบ 3 — Landscape centering
+- [x] เพิ่ม loadImageWithDimensions() เพื่อเก็บ width/height ของรูปตอนโหลด
+- [x] คำนวณ topMargin อัตโนมัติสำหรับรูปแนวนอน (landscape) เพื่อจัดกึ่งกลางแนวตั้ง
+- [x] อัพเดท exportSurveyPDF + exportInstallationPDF ให้ใช้ loadImageWithDimensions
