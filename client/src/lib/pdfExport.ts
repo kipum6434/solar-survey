@@ -1,5 +1,4 @@
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas-pro";
 
 // ==================== TYPES ====================
 interface CustomerData {
@@ -52,16 +51,12 @@ export interface CompanyInfo {
 }
 
 // ==================== CONSTANTS ====================
-const PAGE_WIDTH_MM = 210;
-const PAGE_HEIGHT_MM = 297;
-const MARGIN_MM = 12;
-const CONTENT_WIDTH_MM = PAGE_WIDTH_MM - MARGIN_MM * 2;
-// Scale factor: pixels per mm (at 2x for retina quality)
-const SCALE = 3; // 3px per mm for high quality
-const PAGE_WIDTH_PX = PAGE_WIDTH_MM * SCALE;
-const PAGE_HEIGHT_PX = PAGE_HEIGHT_MM * SCALE;
-const MARGIN_PX = MARGIN_MM * SCALE;
-const CONTENT_WIDTH_PX = CONTENT_WIDTH_MM * SCALE;
+const MARGIN = 15;
+const PAGE_WIDTH = 210; // A4 width in mm
+const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
+const PAGE_HEIGHT = 297; // A4 height in mm
+const LINE_HEIGHT = 6;
+const SECTION_GAP = 8;
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "รอดำเนินการ",
@@ -89,8 +84,48 @@ const SYSTEM_TYPE_LABELS: Record<string, string> = {
   both: "ทั้งสองแบบ",
 };
 
-// Type for image proxy function passed from components
-export type ImageProxyFn = (url: string) => Promise<string | null>;
+// ==================== FONT LOADING ====================
+// Use Sarabun font for Thai support
+let fontLoaded = false;
+let fontBase64: string | null = null;
+
+async function loadThaiFont(): Promise<string> {
+  if (fontBase64) return fontBase64;
+  
+  // Try multiple font sources for reliability
+  const fontUrls = [
+    "https://raw.githubusercontent.com/google/fonts/main/ofl/sarabun/Sarabun-Regular.ttf",
+    "https://cdn.jsdelivr.net/npm/font-th-sarabun-new@1.0.0/fonts/THSarabunNew-webfont.ttf",
+  ];
+  
+  for (const fontUrl of fontUrls) {
+    try {
+      const response = await fetch(fontUrl);
+      if (!response.ok) continue;
+      const buffer = await response.arrayBuffer();
+      if (buffer.byteLength < 1000) continue; // Too small, probably not a valid font
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      fontBase64 = btoa(binary);
+      return fontBase64;
+    } catch (e) {
+      console.warn(`Failed to load font from ${fontUrl}:`, e);
+      continue;
+    }
+  }
+  throw new Error("ไม่สามารถโหลดฟอนต์ภาษาไทยได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต");
+}
+
+async function setupFont(doc: jsPDF): Promise<void> {
+  const base64 = await loadThaiFont();
+  doc.addFileToVFS("Sarabun-Regular.ttf", base64);
+  doc.addFont("Sarabun-Regular.ttf", "Sarabun", "normal");
+  doc.setFont("Sarabun");
+  fontLoaded = true;
+}
 
 // ==================== HELPERS ====================
 function formatDate(ts: number | null | undefined): string {
@@ -107,60 +142,169 @@ function formatNumber(val: string | number | null | undefined): string {
   return Number(val).toLocaleString("th-TH");
 }
 
-function escHtml(str: string | null | undefined): string {
-  if (!str) return "";
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+// Full header height for pages 2+ (same as page 1, drawn in final pass)
+const FULL_HEADER_HEIGHT = 36; // mm — same as page 1 header with company info
+
+function checkPageBreak(doc: jsPDF, y: number, needed: number): number {
+  if (y + needed > PAGE_HEIGHT - MARGIN) {
+    doc.addPage();
+    // Leave space for full header that will be drawn in final pass
+    return FULL_HEADER_HEIGHT + 8;
+  }
+  return y;
 }
 
-// ==================== FONT LOADING ====================
-const FONT_URL_REGULAR = "/manus-storage/Sarabun-Regular_6dc461fe.ttf";
-const FONT_URL_BOLD = "/manus-storage/Sarabun-Bold_4a9808be.ttf";
-
-let fontStyleInjected = false;
-
-async function ensureFontLoaded(): Promise<void> {
-  if (fontStyleInjected) return;
+/**
+ * Draw a full repeating header on pages 2+ — identical to page 1 header.
+ * Includes company name, address/phone, report title, customer info, date, logo, and page number.
+ * @param headerColor - RGB tuple for the header bar color
+ * @param reportTitle - e.g. "รายงานการสำรวจ Solar" or "รายงานส่งมอบงานติดตั้ง Solar"
+ */
+function drawFullHeader(
+  doc: jsPDF,
+  pageNum: number,
+  totalPages: number,
+  companyName: string,
+  customerName: string,
+  surveyId: number,
+  headerColor: [number, number, number],
+  reportTitle: string,
+  companyInfo?: CompanyInfo | null,
+  logoData?: string | null,
+): void {
+  const hasCompanyInfo = companyInfo?.companyName || companyInfo?.phone || companyInfo?.address;
+  const headerHeight = hasCompanyInfo ? FULL_HEADER_HEIGHT : 28;
   
-  // Load fonts via CSS @font-face for html2canvas rendering
-  const style = document.createElement("style");
-  style.textContent = `
-    @font-face {
-      font-family: 'SarabunPDF';
-      src: url('${FONT_URL_REGULAR}') format('truetype');
-      font-weight: normal;
-      font-style: normal;
-    }
-    @font-face {
-      font-family: 'SarabunPDF';
-      src: url('${FONT_URL_BOLD}') format('truetype');
-      font-weight: bold;
-      font-style: normal;
-    }
-  `;
-  document.head.appendChild(style);
+  // Draw colored bar
+  doc.setFillColor(headerColor[0], headerColor[1], headerColor[2]);
+  doc.rect(0, 0, PAGE_WIDTH, headerHeight, "F");
   
-  // Wait for fonts to actually load
-  try {
-    await document.fonts.load("16px SarabunPDF");
-    await document.fonts.load("bold 16px SarabunPDF");
-    // Small delay to ensure fonts are fully ready
-    await new Promise(r => setTimeout(r, 200));
-  } catch (e) {
-    console.warn("Font loading warning:", e);
+  // Logo (top-right)
+  if (logoData) {
+    const LOGO_SIZE = 14;
+    const LOGO_X = PAGE_WIDTH - MARGIN - LOGO_SIZE;
+    const LOGO_Y = 3;
+    try {
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(230, 230, 230);
+      doc.setLineWidth(0.2);
+      doc.roundedRect(LOGO_X - 1, LOGO_Y - 1, LOGO_SIZE + 2, LOGO_SIZE + 2, 2, 2, 'FD');
+      doc.addImage(logoData, 'PNG', LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE);
+    } catch { /* skip */ }
   }
   
-  fontStyleInjected = true;
+  if (hasCompanyInfo) {
+    // Company name as main title
+    doc.setFontSize(14);
+    doc.setTextColor(255, 255, 255);
+    doc.text(companyInfo?.companyName || reportTitle, MARGIN, 10);
+    
+    // Company contact info
+    doc.setFontSize(7);
+    doc.setTextColor(255, 255, 255);
+    const contactParts: string[] = [];
+    if (companyInfo?.phone) contactParts.push(`โทร: ${companyInfo.phone}`);
+    if (companyInfo?.address) contactParts.push(companyInfo.address);
+    if (contactParts.length > 0) {
+      const contactText = contactParts.join("  |  ");
+      const maxWidth = PAGE_WIDTH - MARGIN * 2 - 20;
+      let displayText = contactText;
+      if (doc.getTextWidth(displayText) > maxWidth) {
+        while (doc.getTextWidth(displayText + "...") > maxWidth && displayText.length > 0) {
+          displayText = displayText.slice(0, -1);
+        }
+        displayText += "...";
+      }
+      doc.text(displayText, MARGIN, 16);
+    }
+    
+    // Report title line
+    doc.setFontSize(10);
+    doc.text(reportTitle, MARGIN, 23);
+    
+    // Customer + job number
+    doc.setFontSize(9);
+    doc.text(`ลูกค้า: ${customerName}  |  #${surveyId}`, MARGIN, 29);
+    
+    // Page number (right side, same line as customer)
+    doc.setFontSize(8);
+    const pageText = `หน้า ${pageNum}/${totalPages}`;
+    doc.text(pageText, PAGE_WIDTH - MARGIN - doc.getTextWidth(pageText), 29);
+  } else {
+    doc.setFontSize(16);
+    doc.setTextColor(255, 255, 255);
+    doc.text(reportTitle, MARGIN, 12);
+    doc.setFontSize(10);
+    doc.text(`ลูกค้า: ${customerName}  |  #${surveyId}`, MARGIN, 20);
+    
+    // Page number
+    doc.setFontSize(8);
+    const pageText = `หน้า ${pageNum}/${totalPages}`;
+    doc.text(pageText, PAGE_WIDTH - MARGIN - doc.getTextWidth(pageText), 20);
+  }
 }
 
-// ==================== IMAGE LOADING ====================
+function drawSectionHeader(doc: jsPDF, y: number, title: string): number {
+  y = checkPageBreak(doc, y, 12);
+  doc.setFillColor(245, 158, 11); // amber-500
+  doc.rect(MARGIN, y, 3, 8, "F");
+  doc.setFontSize(12);
+  doc.setTextColor(30, 30, 30);
+  doc.text(title, MARGIN + 6, y + 6);
+  doc.setFontSize(9);
+  return y + 12;
+}
+
+function drawKeyValue(doc: jsPDF, y: number, key: string, value: string, x?: number): number {
+  y = checkPageBreak(doc, y, LINE_HEIGHT + 2);
+  const startX = x || MARGIN + 4;
+  doc.setTextColor(100, 100, 100);
+  doc.text(key, startX, y);
+  doc.setTextColor(30, 30, 30);
+  const keyWidth = doc.getTextWidth(key + "  ");
+  doc.text(value || "-", startX + keyWidth, y);
+  return y + LINE_HEIGHT;
+}
+
+function drawKeyValueGrid(doc: jsPDF, y: number, items: { key: string; value: string }[]): number {
+  const colWidth = CONTENT_WIDTH / 2;
+  for (let i = 0; i < items.length; i += 2) {
+    y = checkPageBreak(doc, y, LINE_HEIGHT + 2);
+    // Left column
+    doc.setTextColor(100, 100, 100);
+    doc.text(items[i].key, MARGIN + 4, y);
+    doc.setTextColor(30, 30, 30);
+    const kw1 = doc.getTextWidth(items[i].key + "  ");
+    const val1 = items[i].value || "-";
+    doc.text(val1, MARGIN + 4 + kw1, y);
+    
+    // Right column
+    if (i + 1 < items.length) {
+      doc.setTextColor(100, 100, 100);
+      doc.text(items[i + 1].key, MARGIN + colWidth, y);
+      doc.setTextColor(30, 30, 30);
+      const kw2 = doc.getTextWidth(items[i + 1].key + "  ");
+      const val2 = items[i + 1].value || "-";
+      doc.text(val2, MARGIN + colWidth + kw2, y);
+    }
+    y += LINE_HEIGHT;
+  }
+  return y;
+}
+
+// Type for image proxy function passed from components
+export type ImageProxyFn = (url: string) => Promise<string | null>;
+
 async function loadImageAsBase64(
   url: string,
   proxyFn?: ImageProxyFn,
 ): Promise<{ data: string; width: number; height: number } | null> {
   try {
+    // Strategy 1: Use server-side proxy if provided (bypasses CORS)
     if (proxyFn) {
       const dataUrl = await proxyFn(url);
       if (dataUrl) {
+        // Get dimensions by loading the data URL into an Image
         return await new Promise((resolve) => {
           const img = new window.Image();
           img.onload = () => {
@@ -172,6 +316,7 @@ async function loadImageAsBase64(
       }
     }
     
+    // Strategy 2: Direct canvas approach (works for same-origin or CORS-enabled images)
     return await new Promise((resolve) => {
       const img = new window.Image();
       img.crossOrigin = "anonymous";
@@ -197,15 +342,19 @@ async function loadImageAsBase64(
   }
 }
 
-// ==================== LOGO ====================
+// ==================== LOGO WATERMARK ====================
 const LOGO_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APP_LOGO) || '';
 let cachedLogoBase64: string | null = null;
+
 let lastLogoSource: string | null = null;
 
 async function loadLogoBase64(proxyFn?: ImageProxyFn, customLogoUrl?: string | null): Promise<string | null> {
   const logoSource = customLogoUrl || LOGO_URL;
   if (!logoSource) return null;
+  
+  // Use cache only if the logo source hasn't changed
   if (cachedLogoBase64 && lastLogoSource === logoSource) return cachedLogoBase64;
+  
   try {
     const result = await loadImageAsBase64(logoSource, proxyFn);
     if (result) {
@@ -217,243 +366,27 @@ async function loadLogoBase64(proxyFn?: ImageProxyFn, customLogoUrl?: string | n
   return null;
 }
 
-// ==================== HTML-BASED PDF RENDERING ====================
-
-/**
- * Build the header HTML for a page.
- */
-function buildHeaderHtml(
-  headerColor: string,
-  companyName: string,
-  contactInfo: string,
-  reportTitle: string,
-  customerName: string,
-  surveyId: number,
-  pageNum: number,
-  totalPages: number,
-  logoData: string | null,
-  printDate: string,
-): string {
-  const logoHtml = logoData
-    ? `<div style="position:absolute;top:${8*SCALE}px;right:${MARGIN_PX}px;width:${14*SCALE}px;height:${14*SCALE}px;background:#fff;border-radius:${2*SCALE}px;border:1px solid #e6e6e6;display:flex;align-items:center;justify-content:center;overflow:hidden;">
-        <img src="${logoData}" style="width:${13*SCALE}px;height:${13*SCALE}px;object-fit:contain;" />
-      </div>`
-    : "";
-
-  return `
-    <div style="position:relative;width:${PAGE_WIDTH_PX}px;height:${36*SCALE}px;background:${headerColor};padding:${MARGIN_PX}px;box-sizing:border-box;font-family:'SarabunPDF',sans-serif;">
-      <div style="color:#fff;font-size:${14*SCALE}px;font-weight:bold;line-height:1.3;padding-right:${16*SCALE}px;">${escHtml(companyName)}</div>
-      <div style="color:rgba(255,255,255,0.9);font-size:${7*SCALE}px;line-height:1.4;margin-top:${1*SCALE}px;padding-right:${16*SCALE}px;">${escHtml(contactInfo)}</div>
-      <div style="color:#fff;font-size:${10*SCALE}px;margin-top:${2*SCALE}px;">${escHtml(reportTitle)}</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:${1*SCALE}px;padding-right:${16*SCALE}px;">
-        <span style="color:#fff;font-size:${9*SCALE}px;">ลูกค้า: ${escHtml(customerName)}  |  #${surveyId}</span>
-        <span style="color:#fff;font-size:${8*SCALE}px;">หน้า ${pageNum}/${totalPages}</span>
-      </div>
-      <div style="position:absolute;bottom:${2*SCALE}px;right:${MARGIN_PX}px;color:rgba(255,255,255,0.85);font-size:${7*SCALE}px;">${escHtml(printDate)}</div>
-      ${logoHtml}
-    </div>
-  `;
-}
-
-/**
- * Build a section header HTML
- */
-function buildSectionHeaderHtml(title: string, accentColor: string = "#f59e0b"): string {
-  return `
-    <div style="display:flex;align-items:center;margin-top:${8*SCALE}px;margin-bottom:${4*SCALE}px;">
-      <div style="width:${3*SCALE}px;height:${8*SCALE}px;background:${accentColor};margin-right:${4*SCALE}px;border-radius:1px;"></div>
-      <span style="font-size:${12*SCALE}px;font-weight:bold;color:#1e1e1e;">${escHtml(title)}</span>
-    </div>
-  `;
-}
-
-/**
- * Build key-value grid HTML (2 columns)
- */
-function buildKeyValueGridHtml(items: { key: string; value: string }[]): string {
-  let html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:${2*SCALE}px ${8*SCALE}px;margin-bottom:${4*SCALE}px;">`;
-  for (const item of items) {
-    html += `
-      <div style="font-size:${9*SCALE}px;line-height:1.5;">
-        <span style="color:#646464;">${escHtml(item.key)}</span>
-        <span style="color:#1e1e1e;font-weight:bold;margin-left:${2*SCALE}px;">${escHtml(item.value || "-")}</span>
-      </div>
-    `;
-  }
-  html += `</div>`;
-  return html;
-}
-
-/**
- * Build photo grid HTML
- */
-function buildPhotoGridHtml(
-  photos: { url: string; dataUrl: string | null; category: string }[],
-): string {
-  const PHOTO_SIZE = 55 * SCALE;
-  const GAP = 5 * SCALE;
+function addWatermarkToAllPages(doc: jsPDF, logoData: string): void {
+  const pageCount = doc.getNumberOfPages();
+  const LOGO_SIZE = 14; // mm
+  const LOGO_X = PAGE_WIDTH - MARGIN - LOGO_SIZE;
+  const LOGO_Y = 3; // top margin offset
   
-  let html = `<div style="display:flex;flex-wrap:wrap;gap:${GAP}px;margin-top:${4*SCALE}px;">`;
-  for (const photo of photos) {
-    html += `
-      <div style="width:${PHOTO_SIZE}px;text-align:center;">
-        <div style="width:${PHOTO_SIZE}px;height:${PHOTO_SIZE}px;border:1px solid #dcdcdc;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#f5f5f5;">
-          ${photo.dataUrl
-            ? `<img src="${photo.dataUrl}" style="max-width:100%;max-height:100%;object-fit:contain;" />`
-            : `<span style="color:#b4b4b4;font-size:${8*SCALE}px;">โหลดรูปไม่ได้</span>`
-          }
-        </div>
-        <div style="font-size:${6.5*SCALE}px;color:#646464;margin-top:${2*SCALE}px;word-break:break-word;">${escHtml(photo.category)}</div>
-      </div>
-    `;
-  }
-  html += `</div>`;
-  return html;
-}
-
-/**
- * Build footer HTML
- */
-function buildFooterHtml(companyName: string, pageNum: number, totalPages: number): string {
-  return `
-    <div style="position:absolute;bottom:${6*SCALE}px;left:0;right:0;text-align:center;font-size:${7*SCALE}px;color:#b4b4b4;">
-      ${escHtml(companyName)}  |  หน้า ${pageNum}/${totalPages}
-    </div>
-  `;
-}
-
-/**
- * Render an HTML element to a canvas image, then add to PDF page.
- * This is the core function that ensures Thai text renders correctly
- * by using the browser's text rendering engine.
- */
-async function renderHtmlToPdfPage(
-  doc: jsPDF,
-  htmlContent: string,
-  pageIndex: number,
-): Promise<void> {
-  // Create a temporary container
-  const container = document.createElement("div");
-  container.style.position = "fixed";
-  container.style.left = "-9999px";
-  container.style.top = "0";
-  container.style.width = `${PAGE_WIDTH_PX}px`;
-  container.style.minHeight = `${PAGE_HEIGHT_PX}px`;
-  container.style.fontFamily = "'SarabunPDF', sans-serif";
-  container.style.fontSize = `${9*SCALE}px`;
-  container.style.lineHeight = "1.5";
-  container.style.color = "#1e1e1e";
-  container.style.background = "#ffffff";
-  container.innerHTML = htmlContent;
-  
-  document.body.appendChild(container);
-  
-  try {
-    const canvas = await html2canvas(container, {
-      scale: 1, // Already at high resolution via our SCALE factor
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: "#ffffff",
-      width: PAGE_WIDTH_PX,
-      height: PAGE_HEIGHT_PX,
-    });
-    
-    const imgData = canvas.toDataURL("image/jpeg", 0.92);
-    
-    if (pageIndex > 0) {
-      doc.addPage();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    try {
+      // Draw semi-transparent background circle for the logo
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(230, 230, 230);
+      doc.setLineWidth(0.2);
+      doc.roundedRect(LOGO_X - 1, LOGO_Y - 1, LOGO_SIZE + 2, LOGO_SIZE + 2, 2, 2, 'FD');
+      
+      // Add the logo image
+      doc.addImage(logoData, 'PNG', LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE);
+    } catch {
+      // Silently skip if logo can't be added to a page
     }
-    
-    doc.addImage(imgData, "JPEG", 0, 0, PAGE_WIDTH_MM, PAGE_HEIGHT_MM);
-  } finally {
-    document.body.removeChild(container);
   }
-}
-
-/**
- * Split content into pages. Each page has a header, content area, and footer.
- * Returns an array of HTML strings, one per page.
- */
-function paginateContent(
-  headerHtmlFn: (pageNum: number, totalPages: number) => string,
-  footerHtmlFn: (pageNum: number, totalPages: number) => string,
-  contentBlocks: string[],
-): string[] {
-  // Available content height per page (in px)
-  const HEADER_HEIGHT = 36 * SCALE;
-  const FOOTER_HEIGHT = 12 * SCALE;
-  const CONTENT_AREA_HEIGHT = PAGE_HEIGHT_PX - HEADER_HEIGHT - FOOTER_HEIGHT - (8 * SCALE); // 8*SCALE padding
-  
-  // We'll estimate content heights and split into pages
-  // For simplicity, we render all content first, then split by measuring
-  const pages: string[][] = [[]];
-  let currentPageHeight = 0;
-  
-  for (const block of contentBlocks) {
-    // Estimate block height based on content
-    const estimatedHeight = estimateBlockHeight(block);
-    
-    if (currentPageHeight + estimatedHeight > CONTENT_AREA_HEIGHT && currentPageHeight > 0) {
-      // Start new page
-      pages.push([]);
-      currentPageHeight = 0;
-    }
-    
-    pages[pages.length - 1].push(block);
-    currentPageHeight += estimatedHeight;
-  }
-  
-  const totalPages = pages.length;
-  
-  return pages.map((pageBlocks, idx) => {
-    const pageNum = idx + 1;
-    return `
-      <div style="width:${PAGE_WIDTH_PX}px;height:${PAGE_HEIGHT_PX}px;position:relative;overflow:hidden;background:#fff;">
-        ${headerHtmlFn(pageNum, totalPages)}
-        <div style="padding:${4*SCALE}px ${MARGIN_PX}px;box-sizing:border-box;">
-          ${pageBlocks.join("")}
-        </div>
-        ${footerHtmlFn(pageNum, totalPages)}
-      </div>
-    `;
-  });
-}
-
-/**
- * Estimate the height of an HTML block in pixels.
- * This is a rough estimate used for pagination.
- */
-function estimateBlockHeight(html: string): number {
-  // Count approximate lines based on content
-  const lineHeight = 9 * SCALE * 1.5; // font-size * line-height
-  
-  // Photo grid: estimate based on number of photos
-  const photoMatches = html.match(/<img /g);
-  if (photoMatches && photoMatches.length > 0) {
-    const photoSize = 55 * SCALE;
-    const rows = Math.ceil(photoMatches.length / 3);
-    return rows * (photoSize + 20 * SCALE) + 16 * SCALE;
-  }
-  
-  // Section header
-  if (html.includes("font-weight:bold") && html.includes("margin-top")) {
-    const lines = (html.match(/<div/g) || []).length;
-    if (lines <= 3) return 16 * SCALE;
-  }
-  
-  // Key-value grid
-  if (html.includes("grid-template-columns")) {
-    const items = (html.match(/<span/g) || []).length / 2;
-    const rows = Math.ceil(items / 2);
-    return rows * lineHeight + 8 * SCALE;
-  }
-  
-  // Generic text blocks
-  const divCount = (html.match(/<div/g) || []).length;
-  const textLength = html.replace(/<[^>]*>/g, "").length;
-  const estimatedLines = Math.max(divCount, Math.ceil(textLength / 60));
-  
-  return Math.max(estimatedLines * lineHeight, lineHeight) + 4 * SCALE;
 }
 
 // ==================== SURVEY PDF ====================
@@ -468,35 +401,84 @@ export async function exportSurveyPDF(
 ): Promise<void> {
   onProgress?.("กำลังเตรียมเอกสาร...");
   
-  await ensureFontLoaded();
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  await setupFont(doc);
   
-  const logoData = await loadLogoBase64(imageProxyFn, companyInfo?.logoUrl);
-  const headerColor = "#f59e0b"; // amber-500
-  const companyName = companyInfo?.companyName || "รายงานการสำรวจ Solar";
-  const contactParts: string[] = [];
-  if (companyInfo?.phone) contactParts.push(`โทร: ${companyInfo.phone}`);
-  if (companyInfo?.address) contactParts.push(companyInfo.address);
-  const contactInfo = contactParts.join("  |  ");
-  const reportTitle = "รายงานการสำรวจ Solar";
-  const now = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
-  const printDate = `พิมพ์เมื่อ: ${now}`;
+  let y = MARGIN;
   
-  // Build content blocks
-  const contentBlocks: string[] = [];
+  // ==================== HEADER ====================
+  const hasCompanyInfo = companyInfo?.companyName || companyInfo?.phone || companyInfo?.address;
+  const headerHeight = hasCompanyInfo ? 36 : 28;
+  doc.setFillColor(245, 158, 11);
+  doc.rect(0, 0, PAGE_WIDTH, headerHeight, "F");
   
-  // Status line
-  const statusLabel = STATUS_LABELS[survey.status] || survey.status;
-  let statusHtml = `<div style="font-size:${9*SCALE}px;margin-top:${4*SCALE}px;margin-bottom:${6*SCALE}px;">`;
-  statusHtml += `<span style="color:#646464;">สถานะ: </span><span style="color:#1e1e1e;">${escHtml(statusLabel)}</span>`;
-  if (survey.scheduledDate) {
-    statusHtml += `<span style="color:#646464;">  |  วันนัดสำรวจ: </span><span style="color:#1e1e1e;">${escHtml(formatDate(survey.scheduledDate))}</span>`;
+  if (hasCompanyInfo) {
+    // Company name as main title
+    doc.setFontSize(14);
+    doc.setTextColor(255, 255, 255);
+    doc.text(companyInfo?.companyName || "รายงานการสำรวจ Solar", MARGIN, 10);
+    
+    // Company contact info
+    doc.setFontSize(7);
+    doc.setTextColor(255, 255, 255);
+    let contactY = 16;
+    const contactParts: string[] = [];
+    if (companyInfo?.phone) contactParts.push(`โทร: ${companyInfo.phone}`);
+    if (companyInfo?.address) contactParts.push(companyInfo.address);
+    if (contactParts.length > 0) {
+      const contactText = contactParts.join("  |  ");
+      // Truncate if too long
+      const maxWidth = PAGE_WIDTH - MARGIN * 2 - 20;
+      let displayText = contactText;
+      if (doc.getTextWidth(displayText) > maxWidth) {
+        while (doc.getTextWidth(displayText + "...") > maxWidth && displayText.length > 0) {
+          displayText = displayText.slice(0, -1);
+        }
+        displayText += "...";
+      }
+      doc.text(displayText, MARGIN, contactY);
+    }
+    
+    // Survey info line
+    doc.setFontSize(10);
+    doc.text("รายงานการสำรวจ Solar", MARGIN, 23);
+    doc.setFontSize(9);
+    doc.text(`ลูกค้า: ${customer.name}  |  #${survey.id}`, MARGIN, 29);
+    doc.setFontSize(8);
+    const now = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    doc.text(`พิมพ์เมื่อ: ${now}`, PAGE_WIDTH - MARGIN - doc.getTextWidth(`พิมพ์เมื่อ: ${now}`), 29);
+  } else {
+    doc.setFontSize(16);
+    doc.setTextColor(255, 255, 255);
+    doc.text("รายงานการสำรวจ Solar", MARGIN, 12);
+    doc.setFontSize(10);
+    doc.text(`ลูกค้า: ${customer.name}  |  #${survey.id}`, MARGIN, 20);
+    doc.setFontSize(8);
+    const now = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    doc.text(`พิมพ์เมื่อ: ${now}`, PAGE_WIDTH - MARGIN - doc.getTextWidth(`พิมพ์เมื่อ: ${now}`), 20);
   }
-  statusHtml += `</div>`;
-  contentBlocks.push(statusHtml);
   
-  // Customer info section
+  y = headerHeight + 8;
+  
+  // ==================== STATUS ====================
+  const statusLabel = STATUS_LABELS[survey.status] || survey.status;
+  doc.setFontSize(9);
+  doc.setTextColor(100, 100, 100);
+  doc.text("สถานะ: ", MARGIN + 4, y);
+  doc.setTextColor(30, 30, 30);
+  doc.text(statusLabel, MARGIN + 4 + doc.getTextWidth("สถานะ: "), y);
+  if (survey.scheduledDate) {
+    const dateStr = formatDate(survey.scheduledDate);
+    doc.setTextColor(100, 100, 100);
+    doc.text("  |  วันนัดสำรวจ: ", MARGIN + 4 + doc.getTextWidth("สถานะ: " + statusLabel), y);
+    doc.setTextColor(30, 30, 30);
+    doc.text(dateStr, MARGIN + 4 + doc.getTextWidth("สถานะ: " + statusLabel + "  |  วันนัดสำรวจ: "), y);
+  }
+  y += SECTION_GAP + 2;
+  
+  // ==================== CUSTOMER INFO ====================
   onProgress?.("กำลังเพิ่มข้อมูลลูกค้า...");
-  contentBlocks.push(buildSectionHeaderHtml("ข้อมูลลูกค้า"));
+  y = drawSectionHeader(doc, y, "ข้อมูลลูกค้า");
   
   const customerItems: { key: string; value: string }[] = [
     { key: "ชื่อ:", value: customer.name },
@@ -514,11 +496,12 @@ export async function exportSurveyPDF(
   if (customer.meterSize) customerItems.push({ key: "ขนาดมิเตอร์:", value: customer.meterSize });
   if (customer.notes) customerItems.push({ key: "หมายเหตุ:", value: customer.notes });
   
-  contentBlocks.push(buildKeyValueGridHtml(customerItems));
+  y = drawKeyValueGrid(doc, y, customerItems);
+  y += SECTION_GAP;
   
-  // Technical info section
+  // ==================== TECHNICAL INFO ====================
   onProgress?.("กำลังเพิ่มข้อมูลเทคนิค...");
-  contentBlocks.push(buildSectionHeaderHtml("ข้อมูลทางเทคนิค"));
+  y = drawSectionHeader(doc, y, "ข้อมูลทางเทคนิค");
   
   const techItems: { key: string; value: string }[] = [];
   if (survey.systemSize) techItems.push({ key: "ขนาดระบบ:", value: `${survey.systemSize} kW` });
@@ -531,63 +514,149 @@ export async function exportSurveyPDF(
   if (survey.needOptimizer) techItems.push({ key: "Optimizer:", value: survey.needOptimizer });
   
   if (techItems.length > 0) {
-    contentBlocks.push(buildKeyValueGridHtml(techItems));
+    y = drawKeyValueGrid(doc, y, techItems);
   } else {
-    contentBlocks.push(`<div style="font-size:${9*SCALE}px;color:#969696;margin-bottom:${4*SCALE}px;">ยังไม่มีข้อมูลเทคนิค</div>`);
+    doc.setTextColor(150, 150, 150);
+    doc.text("ยังไม่มีข้อมูลเทคนิค", MARGIN + 4, y);
+    y += LINE_HEIGHT;
   }
   
-  // Survey notes
   if (survey.surveyNotes) {
-    let notesHtml = `<div style="margin-top:${3*SCALE}px;margin-bottom:${6*SCALE}px;">`;
-    notesHtml += `<div style="font-size:${9*SCALE}px;color:#646464;margin-bottom:${2*SCALE}px;">หมายเหตุสำรวจ:</div>`;
-    notesHtml += `<div style="font-size:${9*SCALE}px;color:#1e1e1e;white-space:pre-wrap;padding-left:${4*SCALE}px;">${escHtml(survey.surveyNotes)}</div>`;
-    notesHtml += `</div>`;
-    contentBlocks.push(notesHtml);
+    y += 3;
+    y = checkPageBreak(doc, y, LINE_HEIGHT * 3);
+    doc.setTextColor(100, 100, 100);
+    doc.text("หมายเหตุสำรวจ:", MARGIN + 4, y);
+    y += LINE_HEIGHT;
+    doc.setTextColor(30, 30, 30);
+    const noteLines = doc.splitTextToSize(survey.surveyNotes, CONTENT_WIDTH - 8);
+    for (const line of noteLines) {
+      y = checkPageBreak(doc, y, LINE_HEIGHT);
+      doc.text(line, MARGIN + 4, y);
+      y += LINE_HEIGHT;
+    }
   }
+  y += SECTION_GAP;
   
-  // Photos section
+  // ==================== PHOTOS ====================
   if (photos.length > 0) {
     onProgress?.(`กำลังเพิ่มรูปภาพ (${photos.length} รูป)...`);
-    contentBlocks.push(buildSectionHeaderHtml(`รูปภาพหน้างาน (${photos.length} รูป)`));
+    y = drawSectionHeader(doc, y, `รูปภาพหน้างาน (${photos.length} รูป)`);
     
-    // Load all photo data
-    const photoDataList: { url: string; dataUrl: string | null; category: string }[] = [];
+    const PHOTO_SIZE = 55; // mm per photo
+    const GAP = 5;
+    const COLS = 3;
+    
     for (let i = 0; i < photos.length; i++) {
+      const col = i % COLS;
+      if (col === 0 && i > 0) {
+        y += PHOTO_SIZE + 16;
+      }
+      if (col === 0) {
+        y = checkPageBreak(doc, y, PHOTO_SIZE + 18);
+      }
+      
+      const x = MARGIN + col * (PHOTO_SIZE + GAP);
+      
       onProgress?.(`กำลังโหลดรูปภาพ ${i + 1}/${photos.length}...`);
       const imgData = await loadImageAsBase64(photos[i].url, imageProxyFn);
-      photoDataList.push({
-        url: photos[i].url,
-        dataUrl: imgData?.data || null,
-        category: categoryMap[photos[i].category || "other"] || photos[i].category || "อื่นๆ",
-      });
+      
+      if (imgData) {
+        // Calculate aspect ratio
+        const ratio = imgData.width / imgData.height;
+        let imgW = PHOTO_SIZE;
+        let imgH = PHOTO_SIZE;
+        if (ratio > 1) {
+          imgH = PHOTO_SIZE / ratio;
+        } else {
+          imgW = PHOTO_SIZE * ratio;
+        }
+        const offsetX = (PHOTO_SIZE - imgW) / 2;
+        const offsetY = (PHOTO_SIZE - imgH) / 2;
+        
+        // Draw border
+        doc.setDrawColor(220, 220, 220);
+        doc.setLineWidth(0.3);
+        doc.rect(x, y, PHOTO_SIZE, PHOTO_SIZE);
+        
+        doc.addImage(imgData.data, "JPEG", x + offsetX, y + offsetY, imgW, imgH);
+      } else {
+        doc.setDrawColor(220, 220, 220);
+        doc.setFillColor(245, 245, 245);
+        doc.rect(x, y, PHOTO_SIZE, PHOTO_SIZE, "FD");
+        doc.setTextColor(180, 180, 180);
+        doc.setFontSize(8);
+        doc.text("โหลดรูปไม่ได้", x + PHOTO_SIZE / 2, y + PHOTO_SIZE / 2, { align: "center" });
+        doc.setFontSize(9);
+      }
+      
+      // Category label - wrap text to fit within column width
+      const catLabel = categoryMap[photos[i].category || "other"] || photos[i].category || "อื่นๆ";
+      doc.setFontSize(6.5);
+      doc.setTextColor(100, 100, 100);
+      const maxCaptionWidth = PHOTO_SIZE - 2;
+      const captionLines = doc.splitTextToSize(catLabel, maxCaptionWidth);
+      // Show max 2 lines to keep layout clean
+      const displayLines = captionLines.slice(0, 2);
+      for (let lineIdx = 0; lineIdx < displayLines.length; lineIdx++) {
+        doc.text(displayLines[lineIdx], x + PHOTO_SIZE / 2, y + PHOTO_SIZE + 4 + (lineIdx * 3.5), { align: "center" });
+      }
+      doc.setFontSize(9);
     }
     
-    // Split photos into groups of 6 (2 rows of 3) per content block for pagination
-    for (let i = 0; i < photoDataList.length; i += 6) {
-      const chunk = photoDataList.slice(i, i + 6);
-      contentBlocks.push(buildPhotoGridHtml(chunk));
-    }
+    // Move past last row of photos
+    y += PHOTO_SIZE + 16;
   }
   
-  // Paginate
-  onProgress?.("กำลังจัดหน้า...");
-  const headerFn = (pn: number, tp: number) => buildHeaderHtml(
-    headerColor, companyName, contactInfo, reportTitle,
-    customer.name, survey.id, pn, tp, logoData, printDate,
-  );
-  const footerFn = (pn: number, tp: number) => buildFooterHtml(
-    companyInfo?.companyName || "Solar Survey Management System", pn, tp,
-  );
+  // ==================== FULL HEADER (all pages) + LOGO + FOOTER ====================
+  onProgress?.("กำลังเพิ่มส่วนหัวและลายน้ำ...");
+  const logoData = await loadLogoBase64(imageProxyFn, companyInfo?.logoUrl);
   
-  const pages = paginateContent(headerFn, footerFn, contentBlocks);
+  const pageCount = doc.getNumberOfPages();
+  const footerCompanyName = companyInfo?.companyName || "Solar Survey Management System";
+  const headerColor: [number, number, number] = [245, 158, 11]; // amber-500
   
-  // Render pages to PDF
-  onProgress?.("กำลังสร้าง PDF...");
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  
-  for (let i = 0; i < pages.length; i++) {
-    onProgress?.(`กำลังเรนเดอร์หน้า ${i + 1}/${pages.length}...`);
-    await renderHtmlToPdfPage(doc, pages[i], i);
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    
+    if (i > 1) {
+      // Pages 2+: draw full header identical to page 1
+      drawFullHeader(
+        doc, i, pageCount,
+        footerCompanyName,
+        customer.name,
+        survey.id,
+        headerColor,
+        "รายงานการสำรวจ Solar",
+        companyInfo,
+        logoData,
+      );
+    } else {
+      // Page 1: add logo + page number overlay on existing header
+      if (logoData) {
+        const LOGO_SIZE = 14;
+        const LOGO_X = PAGE_WIDTH - MARGIN - LOGO_SIZE;
+        const LOGO_Y = 3;
+        try {
+          doc.setFillColor(255, 255, 255);
+          doc.setDrawColor(230, 230, 230);
+          doc.setLineWidth(0.2);
+          doc.roundedRect(LOGO_X - 1, LOGO_Y - 1, LOGO_SIZE + 2, LOGO_SIZE + 2, 2, 2, 'FD');
+          doc.addImage(logoData, 'PNG', LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE);
+        } catch { /* skip */ }
+      }
+      // Add page number to page 1 as well
+      const hasCI = companyInfo?.companyName || companyInfo?.phone || companyInfo?.address;
+      doc.setFontSize(8);
+      doc.setTextColor(255, 255, 255);
+      const p1Text = `หน้า 1/${pageCount}`;
+      const p1Y = hasCI ? 29 : 20;
+      doc.text(p1Text, PAGE_WIDTH - MARGIN - doc.getTextWidth(p1Text), p1Y);
+    }
+    
+    // Footer on all pages
+    doc.setFontSize(7);
+    doc.setTextColor(180, 180, 180);
+    doc.text(`${footerCompanyName}  |  หน้า ${i}/${pageCount}`, PAGE_WIDTH / 2, PAGE_HEIGHT - 8, { align: "center" });
   }
   
   onProgress?.("กำลังบันทึกไฟล์...");
@@ -607,35 +676,81 @@ export async function exportInstallationPDF(
 ): Promise<void> {
   onProgress?.("กำลังเตรียมเอกสาร...");
   
-  await ensureFontLoaded();
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  await setupFont(doc);
   
-  const logoData = await loadLogoBase64(imageProxyFn, companyInfo?.logoUrl);
-  const headerColor = "#10b981"; // emerald-500
-  const companyName = companyInfo?.companyName || "รายงานส่งมอบงานติดตั้ง Solar";
-  const contactParts: string[] = [];
-  if (companyInfo?.phone) contactParts.push(`โทร: ${companyInfo.phone}`);
-  if (companyInfo?.address) contactParts.push(companyInfo.address);
-  const contactInfo = contactParts.join("  |  ");
-  const reportTitle = "รายงานส่งมอบงานติดตั้ง Solar";
-  const now = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
-  const printDate = `พิมพ์เมื่อ: ${now}`;
+  let y = MARGIN;
   
-  // Build content blocks
-  const contentBlocks: string[] = [];
+  // ==================== HEADER ====================
+  const hasCompanyInfo = companyInfo?.companyName || companyInfo?.phone || companyInfo?.address;
+  const headerHeight = hasCompanyInfo ? 36 : 28;
+  doc.setFillColor(16, 185, 129); // emerald-500
+  doc.rect(0, 0, PAGE_WIDTH, headerHeight, "F");
   
-  // Installation status line
-  const installLabel = survey.installationStatus ? (INSTALLATION_STATUS_LABELS[survey.installationStatus] || survey.installationStatus) : "-";
-  let statusHtml = `<div style="font-size:${9*SCALE}px;margin-top:${4*SCALE}px;margin-bottom:${6*SCALE}px;">`;
-  statusHtml += `<span style="color:#646464;">สถานะติดตั้ง: </span><span style="color:#1e1e1e;">${escHtml(installLabel)}</span>`;
-  if (survey.installationDate) {
-    statusHtml += `<span style="color:#646464;">  |  วันติดตั้ง: </span><span style="color:#1e1e1e;">${escHtml(formatDate(survey.installationDate))}</span>`;
+  if (hasCompanyInfo) {
+    doc.setFontSize(14);
+    doc.setTextColor(255, 255, 255);
+    doc.text(companyInfo?.companyName || "รายงานส่งมอบงานติดตั้ง Solar", MARGIN, 10);
+    
+    doc.setFontSize(7);
+    doc.setTextColor(255, 255, 255);
+    const contactParts: string[] = [];
+    if (companyInfo?.phone) contactParts.push(`โทร: ${companyInfo.phone}`);
+    if (companyInfo?.address) contactParts.push(companyInfo.address);
+    if (contactParts.length > 0) {
+      const contactText = contactParts.join("  |  ");
+      const maxWidth = PAGE_WIDTH - MARGIN * 2 - 20;
+      let displayText = contactText;
+      if (doc.getTextWidth(displayText) > maxWidth) {
+        while (doc.getTextWidth(displayText + "...") > maxWidth && displayText.length > 0) {
+          displayText = displayText.slice(0, -1);
+        }
+        displayText += "...";
+      }
+      doc.text(displayText, MARGIN, 16);
+    }
+    
+    doc.setFontSize(10);
+    doc.text("รายงานส่งมอบงานติดตั้ง Solar", MARGIN, 23);
+    doc.setFontSize(9);
+    doc.text(`ลูกค้า: ${customer.name}  |  #${survey.id}`, MARGIN, 29);
+    doc.setFontSize(8);
+    const now = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    doc.text(`พิมพ์เมื่อ: ${now}`, PAGE_WIDTH - MARGIN - doc.getTextWidth(`พิมพ์เมื่อ: ${now}`), 29);
+  } else {
+    doc.setFontSize(16);
+    doc.setTextColor(255, 255, 255);
+    doc.text("รายงานส่งมอบงานติดตั้ง Solar", MARGIN, 12);
+    doc.setFontSize(10);
+    doc.text(`ลูกค้า: ${customer.name}  |  #${survey.id}`, MARGIN, 20);
+    doc.setFontSize(8);
+    const now = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    doc.text(`พิมพ์เมื่อ: ${now}`, PAGE_WIDTH - MARGIN - doc.getTextWidth(`พิมพ์เมื่อ: ${now}`), 20);
   }
-  statusHtml += `</div>`;
-  contentBlocks.push(statusHtml);
   
-  // Customer info
+  y = headerHeight + 8;
+  
+  // ==================== INSTALLATION STATUS ====================
+  const installLabel = survey.installationStatus ? (INSTALLATION_STATUS_LABELS[survey.installationStatus] || survey.installationStatus) : "-";
+  doc.setFontSize(9);
+  doc.setTextColor(100, 100, 100);
+  doc.text("สถานะติดตั้ง: ", MARGIN + 4, y);
+  doc.setTextColor(30, 30, 30);
+  doc.text(installLabel, MARGIN + 4 + doc.getTextWidth("สถานะติดตั้ง: "), y);
+  
+  if (survey.installationDate) {
+    const dateStr = formatDate(survey.installationDate);
+    const offset = doc.getTextWidth("สถานะติดตั้ง: " + installLabel + "  |  ");
+    doc.setTextColor(100, 100, 100);
+    doc.text("  |  วันติดตั้ง: ", MARGIN + 4 + doc.getTextWidth("สถานะติดตั้ง: " + installLabel), y);
+    doc.setTextColor(30, 30, 30);
+    doc.text(dateStr, MARGIN + 4 + doc.getTextWidth("สถานะติดตั้ง: " + installLabel + "  |  วันติดตั้ง: "), y);
+  }
+  y += SECTION_GAP + 2;
+  
+  // ==================== CUSTOMER INFO ====================
   onProgress?.("กำลังเพิ่มข้อมูลลูกค้า...");
-  contentBlocks.push(buildSectionHeaderHtml("ข้อมูลลูกค้า", "#10b981"));
+  y = drawSectionHeader(doc, y, "ข้อมูลลูกค้า");
   
   const customerItems: { key: string; value: string }[] = [
     { key: "ชื่อ:", value: customer.name },
@@ -646,11 +761,12 @@ export async function exportInstallationPDF(
     customerItems.push({ key: "พื้นที่:", value: [customer.subDistrict, customer.district, customer.province, customer.postalCode].filter(Boolean).join(", ") });
   }
   
-  contentBlocks.push(buildKeyValueGridHtml(customerItems));
+  y = drawKeyValueGrid(doc, y, customerItems);
+  y += SECTION_GAP;
   
-  // Technical info
+  // ==================== TECHNICAL SUMMARY ====================
   onProgress?.("กำลังเพิ่มข้อมูลเทคนิค...");
-  contentBlocks.push(buildSectionHeaderHtml("ข้อมูลระบบที่ติดตั้ง", "#10b981"));
+  y = drawSectionHeader(doc, y, "ข้อมูลระบบที่ติดตั้ง");
   
   const techItems: { key: string; value: string }[] = [];
   if (survey.systemSize) techItems.push({ key: "ขนาดระบบ:", value: `${survey.systemSize} kW` });
@@ -660,12 +776,13 @@ export async function exportInstallationPDF(
   if (survey.systemType) techItems.push({ key: "ประเภทระบบ:", value: SYSTEM_TYPE_LABELS[survey.systemType] || survey.systemType });
   
   if (techItems.length > 0) {
-    contentBlocks.push(buildKeyValueGridHtml(techItems));
+    y = drawKeyValueGrid(doc, y, techItems);
   }
+  y += SECTION_GAP;
   
-  // Delivery info
+  // ==================== DELIVERY INFO ====================
   if (deliveryInfo) {
-    contentBlocks.push(buildSectionHeaderHtml("ข้อมูลส่งมอบงาน", "#10b981"));
+    y = drawSectionHeader(doc, y, "ข้อมูลส่งมอบงาน");
     
     const deliveryStatusLabels: Record<string, string> = {
       pending: "รอส่งมอบ",
@@ -681,61 +798,139 @@ export async function exportInstallationPDF(
     if (deliveryInfo.deliveryRejectionReason) delItems.push({ key: "เหตุผลปฏิเสธ:", value: deliveryInfo.deliveryRejectionReason });
     
     if (delItems.length > 0) {
-      contentBlocks.push(buildKeyValueGridHtml(delItems));
+      y = drawKeyValueGrid(doc, y, delItems);
     }
+    y += SECTION_GAP;
   }
   
-  // Installation photos
+  // ==================== INSTALLATION PHOTOS ====================
   if (installPhotos.length > 0) {
     onProgress?.(`กำลังเพิ่มรูปติดตั้ง (${installPhotos.length} รูป)...`);
-    contentBlocks.push(buildSectionHeaderHtml(`รูปภาพการติดตั้ง (${installPhotos.length} รูป)`, "#10b981"));
+    y = drawSectionHeader(doc, y, `รูปภาพการติดตั้ง (${installPhotos.length} รูป)`);
     
-    const photoDataList: { url: string; dataUrl: string | null; category: string }[] = [];
+    const PHOTO_SIZE = 55;
+    const GAP = 5;
+    const COLS = 3;
+    
     for (let i = 0; i < installPhotos.length; i++) {
+      const col = i % COLS;
+      if (col === 0 && i > 0) {
+        y += PHOTO_SIZE + 16;
+      }
+      if (col === 0) {
+        y = checkPageBreak(doc, y, PHOTO_SIZE + 18);
+      }
+      
+      const x = MARGIN + col * (PHOTO_SIZE + GAP);
+      
       onProgress?.(`กำลังโหลดรูปภาพ ${i + 1}/${installPhotos.length}...`);
       const imgData = await loadImageAsBase64(installPhotos[i].url, imageProxyFn);
-      photoDataList.push({
-        url: installPhotos[i].url,
-        dataUrl: imgData?.data || null,
-        category: categoryMap[installPhotos[i].category || "other"] || installPhotos[i].category || "อื่นๆ",
-      });
+      
+      if (imgData) {
+        const ratio = imgData.width / imgData.height;
+        let imgW = PHOTO_SIZE;
+        let imgH = PHOTO_SIZE;
+        if (ratio > 1) {
+          imgH = PHOTO_SIZE / ratio;
+        } else {
+          imgW = PHOTO_SIZE * ratio;
+        }
+        const offsetX = (PHOTO_SIZE - imgW) / 2;
+        const offsetY = (PHOTO_SIZE - imgH) / 2;
+        
+        doc.setDrawColor(220, 220, 220);
+        doc.setLineWidth(0.3);
+        doc.rect(x, y, PHOTO_SIZE, PHOTO_SIZE);
+        doc.addImage(imgData.data, "JPEG", x + offsetX, y + offsetY, imgW, imgH);
+      } else {
+        doc.setDrawColor(220, 220, 220);
+        doc.setFillColor(245, 245, 245);
+        doc.rect(x, y, PHOTO_SIZE, PHOTO_SIZE, "FD");
+        doc.setTextColor(180, 180, 180);
+        doc.setFontSize(8);
+        doc.text("โหลดรูปไม่ได้", x + PHOTO_SIZE / 2, y + PHOTO_SIZE / 2, { align: "center" });
+        doc.setFontSize(9);
+      }
+      
+      const catLabel = categoryMap[installPhotos[i].category || "other"] || installPhotos[i].category || "อื่นๆ";
+      doc.setFontSize(6.5);
+      doc.setTextColor(100, 100, 100);
+      const maxCaptionWidth = PHOTO_SIZE - 2;
+      const captionLines = doc.splitTextToSize(catLabel, maxCaptionWidth);
+      // Show max 2 lines to keep layout clean
+      const displayLines = captionLines.slice(0, 2);
+      for (let lineIdx = 0; lineIdx < displayLines.length; lineIdx++) {
+        doc.text(displayLines[lineIdx], x + PHOTO_SIZE / 2, y + PHOTO_SIZE + 4 + (lineIdx * 3.5), { align: "center" });
+      }
+      doc.setFontSize(9);
     }
     
-    for (let i = 0; i < photoDataList.length; i += 6) {
-      const chunk = photoDataList.slice(i, i + 6);
-      contentBlocks.push(buildPhotoGridHtml(chunk));
-    }
+    y += PHOTO_SIZE + 16;
   }
   
-  // Completion note
+  // ==================== COMPLETION NOTE ====================
   if (survey.completedAt) {
-    contentBlocks.push(`
-      <div style="margin-top:${5*SCALE}px;padding:${4*SCALE}px;background:#f0fdf4;border-radius:${2*SCALE}px;">
-        <div style="font-size:${10*SCALE}px;color:#16a34a;font-weight:bold;">✓ ติดตั้งเสร็จสิ้น</div>
-        <div style="font-size:${8*SCALE}px;color:#16a34a;margin-top:${2*SCALE}px;">วันที่เสร็จ: ${escHtml(formatDate(survey.completedAt))}</div>
-      </div>
-    `);
+    y = checkPageBreak(doc, y, 20);
+    y += 5;
+    doc.setFillColor(240, 253, 244); // green-50
+    doc.rect(MARGIN, y - 4, CONTENT_WIDTH, 14, "F");
+    doc.setFontSize(10);
+    doc.setTextColor(22, 163, 74); // green-600
+    doc.text("✓ ติดตั้งเสร็จสิ้น", MARGIN + 4, y + 2);
+    doc.setFontSize(8);
+    doc.text(`วันที่เสร็จ: ${formatDate(survey.completedAt)}`, MARGIN + 4, y + 8);
   }
   
-  // Paginate
-  onProgress?.("กำลังจัดหน้า...");
-  const headerFn = (pn: number, tp: number) => buildHeaderHtml(
-    headerColor, companyName, contactInfo, reportTitle,
-    customer.name, survey.id, pn, tp, logoData, printDate,
-  );
-  const footerFn = (pn: number, tp: number) => buildFooterHtml(
-    companyInfo?.companyName || "Solar Survey Management System", pn, tp,
-  );
+  // ==================== FULL HEADER (all pages) + LOGO + FOOTER ====================
+  onProgress?.("กำลังเพิ่มส่วนหัวและลายน้ำ...");
+  const logoData = await loadLogoBase64(imageProxyFn, companyInfo?.logoUrl);
   
-  const pages = paginateContent(headerFn, footerFn, contentBlocks);
+  const pageCount = doc.getNumberOfPages();
+  const footerCompanyName = companyInfo?.companyName || "Solar Survey Management System";
+  const headerColor: [number, number, number] = [16, 185, 129]; // emerald-500
   
-  // Render pages to PDF
-  onProgress?.("กำลังสร้าง PDF...");
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  
-  for (let i = 0; i < pages.length; i++) {
-    onProgress?.(`กำลังเรนเดอร์หน้า ${i + 1}/${pages.length}...`);
-    await renderHtmlToPdfPage(doc, pages[i], i);
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    
+    if (i > 1) {
+      // Pages 2+: draw full header identical to page 1
+      drawFullHeader(
+        doc, i, pageCount,
+        footerCompanyName,
+        customer.name,
+        survey.id,
+        headerColor,
+        "รายงานส่งมอบงานติดตั้ง Solar",
+        companyInfo,
+        logoData,
+      );
+    } else {
+      // Page 1: add logo + page number overlay on existing header
+      if (logoData) {
+        const LOGO_SIZE = 14;
+        const LOGO_X = PAGE_WIDTH - MARGIN - LOGO_SIZE;
+        const LOGO_Y = 3;
+        try {
+          doc.setFillColor(255, 255, 255);
+          doc.setDrawColor(230, 230, 230);
+          doc.setLineWidth(0.2);
+          doc.roundedRect(LOGO_X - 1, LOGO_Y - 1, LOGO_SIZE + 2, LOGO_SIZE + 2, 2, 2, 'FD');
+          doc.addImage(logoData, 'PNG', LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE);
+        } catch { /* skip */ }
+      }
+      // Add page number to page 1 as well
+      const hasCI = companyInfo?.companyName || companyInfo?.phone || companyInfo?.address;
+      doc.setFontSize(8);
+      doc.setTextColor(255, 255, 255);
+      const p1Text = `หน้า 1/${pageCount}`;
+      const p1Y = hasCI ? 29 : 20;
+      doc.text(p1Text, PAGE_WIDTH - MARGIN - doc.getTextWidth(p1Text), p1Y);
+    }
+    
+    // Footer on all pages
+    doc.setFontSize(7);
+    doc.setTextColor(180, 180, 180);
+    doc.text(`${footerCompanyName}  |  หน้า ${i}/${pageCount}`, PAGE_WIDTH / 2, PAGE_HEIGHT - 8, { align: "center" });
   }
   
   onProgress?.("กำลังบันทึกไฟล์...");
