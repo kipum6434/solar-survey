@@ -1,0 +1,90 @@
+{
+  "query": "SELECT source, COUNT(*) as cnt FROM customers GROUP BY source ORDER BY cnt DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT source, COUNT(*) as cnt FROM customers GROUP BY source ORDER BY cnt DESC LIMIT 20;",
+  "rows": [
+    {
+      "source": "KEN",
+      "cnt": "59"
+    },
+    {
+      "source": "SET - Facebook",
+      "cnt": "30"
+    },
+    {
+      "source": "other",
+      "cnt": "30"
+    },
+    {
+      "source": "ไมโคร - Facebook",
+      "cnt": "29"
+    },
+    {
+      "source": "SET - Line",
+      "cnt": "28"
+    },
+    {
+      "source": "fb",
+      "cnt": "16"
+    },
+    {
+      "source": "ส่วนตัว",
+      "cnt": "15"
+    },
+    {
+      "source": "หมีโซล่า - Facebook",
+      "cnt": "11"
+    },
+    {
+      "source": "หมีโซล่า - Line",
+      "cnt": "9"
+    },
+    {
+      "source": "ไมโคร - Line",
+      "cnt": "7"
+    },
+    {
+      "source": "facebook",
+      "cnt": "7"
+    },
+    {
+      "source": "ไมโคร",
+      "cnt": "7"
+    },
+    {
+      "source": "SET",
+      "cnt": "5"
+    },
+    {
+      "source": "Line-Set",
+      "cnt": "4"
+    },
+    {
+      "source": "LINE",
+      "cnt": "4"
+    },
+    {
+      "source": "SET - โทร",
+      "cnt": "3"
+    },
+    {
+      "source": "หมีโซล่า",
+      "cnt": "3"
+    },
+    {
+      "source": "FB เพจ micro",
+      "cnt": "2"
+    },
+    {
+      "source": "FB เพจ หมี",
+      "cnt": "2"
+    },
+    {
+      "source": "Gulf",
+      "cnt": "2"
+    }
+  ],
+  "messages": [],
+  "stdout": "source\tcnt\nKEN\t59\nSET - Facebook\t30\nother\t30\nไมโคร - Facebook\t29\nSET - Line\t28\nfb\t16\nส่วนตัว\t15\nหมีโซล่า - Facebook\t11\nหมีโซล่า - Line\t9\nไมโคร - Line\t7\nfacebook\t7\nไมโคร\t7\nSET\t5\nLine-Set\t4\nLINE\t4\nSET - โทร\t3\nหมีโซล่า\t3\nFB เพจ micro\t2\nFB เพจ หมี\t2\nGulf\t2\n",
+  "stderr": "",
+  "execution_time_ms": 1851
+}

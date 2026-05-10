@@ -1,0 +1,195 @@
+{
+  "query": "SELECT id, name, groupName FROM sources ORDER BY groupName, name LIMIT 40;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT id, name, groupName FROM sources ORDER BY groupName, name LIMIT 40;",
+  "rows": [
+    {
+      "id": "810004",
+      "name": "Gulf",
+      "groupName": "Gulf"
+    },
+    {
+      "id": "300019",
+      "name": "KEN",
+      "groupName": "MEA"
+    },
+    {
+      "id": "810008",
+      "name": "MEA",
+      "groupName": "MEA"
+    },
+    {
+      "id": "600001",
+      "name": "facebook",
+      "groupName": "TCS"
+    },
+    {
+      "id": "510001",
+      "name": "fb",
+      "groupName": "TCS"
+    },
+    {
+      "id": "300022",
+      "name": "FB เพจ Duplicate Test",
+      "groupName": "TCS"
+    },
+    {
+      "id": "750001",
+      "name": "FB เพจ micro",
+      "groupName": "TCS"
+    },
+    {
+      "id": "210001",
+      "name": "FB เพจ SET",
+      "groupName": "TCS"
+    },
+    {
+      "id": "210005",
+      "name": "FB เพจ TCS Test",
+      "groupName": "TCS"
+    },
+    {
+      "id": "240001",
+      "name": "FB เพจ หมี",
+      "groupName": "TCS"
+    },
+    {
+      "id": "270002",
+      "name": "FB เพจ ไมโคร",
+      "groupName": "TCS"
+    },
+    {
+      "id": "630001",
+      "name": "FB-Set",
+      "groupName": "TCS"
+    },
+    {
+      "id": "780001",
+      "name": "li",
+      "groupName": "TCS"
+    },
+    {
+      "id": "540004",
+      "name": "LINE",
+      "groupName": "TCS"
+    },
+    {
+      "id": "420001",
+      "name": "LINE SET",
+      "groupName": "TCS"
+    },
+    {
+      "id": "810015",
+      "name": "LINE ส่วนตัว",
+      "groupName": "TCS"
+    },
+    {
+      "id": "540003",
+      "name": "LINE เพจ Set",
+      "groupName": "TCS"
+    },
+    {
+      "id": "690001",
+      "name": "Line-Roof",
+      "groupName": "TCS"
+    },
+    {
+      "id": "660001",
+      "name": "Line-Set",
+      "groupName": "TCS"
+    },
+    {
+      "id": "300021",
+      "name": "other",
+      "groupName": "TCS"
+    },
+    {
+      "id": "300011",
+      "name": "roof - Line",
+      "groupName": "TCS"
+    },
+    {
+      "id": "300015",
+      "name": "SET",
+      "groupName": "TCS"
+    },
+    {
+      "id": "300006",
+      "name": "SET - Facebook",
+      "groupName": "TCS"
+    },
+    {
+      "id": "300007",
+      "name": "SET - Line",
+      "groupName": "TCS"
+    },
+    {
+      "id": "300013",
+      "name": "SET - โทร",
+      "groupName": "TCS"
+    },
+    {
+      "id": "810016",
+      "name": "Tiktok",
+      "groupName": "TCS"
+    },
+    {
+      "id": "360001",
+      "name": "website",
+      "groupName": "TCS"
+    },
+    {
+      "id": "300018",
+      "name": "กรีน - Facebook",
+      "groupName": "TCS"
+    },
+    {
+      "id": "210002",
+      "name": "ทดสอบ",
+      "groupName": "TCS"
+    },
+    {
+      "id": "720001",
+      "name": "ปริ้นท์",
+      "groupName": "TCS"
+    },
+    {
+      "id": "300016",
+      "name": "ส่วนตัว",
+      "groupName": "TCS"
+    },
+    {
+      "id": "300012",
+      "name": "หมีโซล่า",
+      "groupName": "TCS"
+    },
+    {
+      "id": "300009",
+      "name": "หมีโซล่า - Facebook",
+      "groupName": "TCS"
+    },
+    {
+      "id": "300017",
+      "name": "หมีโซล่า - Line",
+      "groupName": "TCS"
+    },
+    {
+      "id": "300010",
+      "name": "ไมโคร",
+      "groupName": "TCS"
+    },
+    {
+      "id": "300008",
+      "name": "ไมโคร - Facebook",
+      "groupName": "TCS"
+    },
+    {
+      "id": "300014",
+      "name": "ไมโคร - Line",
+      "groupName": "TCS"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tgroupName\n810004\tGulf\tGulf\n300019\tKEN\tMEA\n810008\tMEA\tMEA\n600001\tfacebook\tTCS\n510001\tfb\tTCS\n300022\tFB เพจ Duplicate Test\tTCS\n750001\tFB เพจ micro\tTCS\n210001\tFB เพจ SET\tTCS\n210005\tFB เพจ TCS Test\tTCS\n240001\tFB เพจ หมี\tTCS\n270002\tFB เพจ ไมโคร\tTCS\n630001\tFB-Set\tTCS\n780001\tli\tTCS\n540004\tLINE\tTCS\n420001\tLINE SET\tTCS\n810015\tLINE ส่วนตัว\tTCS\n540003\tLINE เพจ Set\tTCS\n690001\tLine-Roof\tTCS\n660001\tLine-Set\tTCS\n300021\tother\tTCS\n300011\troof - Line\tTCS\n300015\tSET\tTCS\n300006\tSET - Facebook\tTCS\n300007\tSET - Line\tTCS\n300013\tSET - โทร\tTCS\n810016\tTiktok\tTCS\n360001\twebsite\tTCS\n300018\tกรีน - Facebook\tTCS\n210002\tทดสอบ\tTCS\n720001\tปริ้นท์\tTCS\n300016\tส่วนตัว\tTCS\n300012\tหมีโซล่า\tTCS\n300009\tหมีโซล่า - Facebook\tTCS\n300017\tหมีโซล่า - Line\tTCS\n300010\tไมโคร\tTCS\n300008\tไมโคร - Facebook\tTCS\n300014\tไมโคร - Line\tTCS\n",
+  "stderr": "",
+  "execution_time_ms": 1901
+}

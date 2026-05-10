@@ -1156,3 +1156,8 @@
 - [x] กดที่ฟิลด์ → เปิด Sheet (side panel) ด้านขวา บอกชัดว่ากำลังแก้ไขฟิลด์อะไร
 - [x] ยังสามารถเพิ่ม/ลบ/ลากเรียงฟิลด์ได้
 - [x] Side panel แสดงชื่อฟิลด์ + ประเภท + section ที่กำลังแก้ไขชัดเจน
+
+## Bug Fix: ตัวเลข icon รูปคนในหน้า SourceManagement แสดง 0 ทั้งหมด
+
+- [x] ตรวจสอบแล้ว query ถูกต้อง (COUNT customers WHERE source = sources.name)
+- [x] ตรวจสอบแล้ว frontend แสดงถูกต้อง (ต้อง publish ใหม่เพื่อให้ production อัพเดท)
