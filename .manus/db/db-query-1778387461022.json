@@ -1,0 +1,13 @@
+{
+  "query": "SELECT id FROM sources WHERE name = 'Gulf';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT id FROM sources WHERE name = 'Gulf';",
+  "rows": [
+    {
+      "id": "810004"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\n810004\n",
+  "stderr": "",
+  "execution_time_ms": 1808
+}

@@ -1,0 +1,13 @@
+{
+  "query": "SELECT id FROM surveys WHERE customerId = 1440115 ORDER BY id DESC LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT id FROM surveys WHERE customerId = 1440115 ORDER BY id DESC LIMIT 1;",
+  "rows": [
+    {
+      "id": "1410094"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\n1410094\n",
+  "stderr": "",
+  "execution_time_ms": 1770
+}

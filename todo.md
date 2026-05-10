@@ -1073,3 +1073,10 @@
 
 ### Bug: เมนู Gulf ซ้อนทับกับจัดการสถานะใน Sidebar
 - [x] แก้ไข layout ของเมนู Gulf ใน DashboardLayout ไม่ให้ซ้อนทับเมนูอื่น
+
+### Feature: สร้าง Template Gulf SSR จริง + ทดสอบงานสำรวจ
+- [x] สร้าง Template "Gulf SSR" พร้อมฟิลด์ 39 รายการ (10 sections) ตาม PDF ตัวอย่าง (seeded via SQL, templateId=3, sourceId=810004)
+- [x] สร้างงานสำรวจ Gulf ทดสอบ 1 งาน (customerId=1440115, surveyId=1410094)
+
+### Feature: จัดกลุ่มเมนู "ตั้งค่า" ใน sidebar
+- [x] ย้าย Template ฟอร์ม / ตั้งค่า LINE / ตั้งค่าบริษัท / แจ้งเตือน ไปรวมเป็นกลุ่ม "ตั้งค่า" แบบ collapsible

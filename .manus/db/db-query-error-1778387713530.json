@@ -1,0 +1,8 @@
+{
+  "query": "INSERT INTO customers (name, phone, province, district, source, roofType, electricityPhase, createdAt, updatedAt) \nVALUES ('ทดสอบ Gulf - คุณสมชาย', '081-234-5678', 'กรุงเทพมหานคร', 'บางนา', 'Gulf', 'หลังคาเมทัลชีท', '3_phase', NOW(), NOW());",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute INSERT INTO customers (name, phone, province, district, source, roofType, electricityPhase, createdAt, updatedAt) \nVALUES ('ทดสอบ Gulf - คุณสมชาย', '081-234-5678', 'กรุงเทพมหานคร', 'บางนา', 'Gulf', 'หลังคาเมทัลชีท', '3_phase', NOW(), NOW());",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'electricityPhase' in 'field list'"
+  ]
+}

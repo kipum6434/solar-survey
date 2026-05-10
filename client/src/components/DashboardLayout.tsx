@@ -49,6 +49,7 @@ import {
   FileText,
   Zap,
   ChevronDown,
+  Settings,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation, Redirect } from "wouter";
@@ -73,8 +74,11 @@ const baseMenuItems = [
   { icon: Tags, label: "จัดการสถานะ", path: "/status-management" },
   { icon: FolderOpen, label: "จัดการไฟล์", path: "/file-management" },
   { icon: CalendarDays, label: "ปฏิทิน", path: "/calendar" },
-  { icon: MessageSquare, label: "ตั้งค่า LINE", path: "/line-settings", superadminOnly: true },
+];
+
+const settingsMenuItems = [
   { icon: FileText, label: "Template ฟอร์ม", path: "/survey-templates" },
+  { icon: MessageSquare, label: "ตั้งค่า LINE", path: "/line-settings", superadminOnly: true },
   { icon: Building2, label: "ตั้งค่าบริษัท", path: "/company-settings" },
   { icon: Bell, label: "แจ้งเตือน", path: "/notifications" },
 ];
@@ -148,9 +152,15 @@ function DashboardLayoutContent({
     if ((item as any).superadminOnly && user?.role !== "superadmin") return false;
     return true;
   });
-  const activeMenuItem = menuItems.find((item) => item.path === location) || gulfMenuItems.find((item) => item.path === location);
+  const settingsItems = settingsMenuItems.filter((item) => {
+    if ((item as any).superadminOnly && user?.role !== "superadmin") return false;
+    return true;
+  });
+  const settingsPaths = settingsItems.map(i => i.path);
+  const activeMenuItem = menuItems.find((item) => item.path === location) || gulfMenuItems.find((item) => item.path === location) || settingsItems.find((item) => item.path === location);
   const isMobile = useIsMobile();
   const [gulfExpanded, setGulfExpanded] = useState(() => location.startsWith("/gulf/"));
+  const [settingsExpanded, setSettingsExpanded] = useState(() => settingsPaths.includes(location));
 
   const { data: unreadCount } = trpc.notification.unreadCount.useQuery(undefined, {
     refetchInterval: 30000,
@@ -243,16 +253,6 @@ function DashboardLayoutContent({
                     >
                       <item.icon className="h-4 w-4" />
                       <span className="flex-1">{item.label}</span>
-                      {item.path === "/notifications" &&
-                        unreadCount !== undefined &&
-                        unreadCount > 0 && (
-                          <Badge
-                            variant="destructive"
-                            className="h-5 min-w-5 px-1.5 text-[10px] font-bold rounded-full"
-                          >
-                            {unreadCount > 99 ? "99+" : unreadCount}
-                          </Badge>
-                        )}
                       {isActive && !isCollapsed && (
                         <ChevronRight className="h-3 w-3 opacity-50" />
                       )}
@@ -296,6 +296,59 @@ function DashboardLayoutContent({
                     >
                       <item.icon className="h-4 w-4" />
                       <span className="flex-1">{item.label.replace(" Gulf", "")}</span>
+                      {isActive && !isCollapsed && (
+                        <ChevronRight className="h-3 w-3 opacity-50" />
+                      )}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+
+            {/* Settings Section */}
+            <SidebarSeparator className="my-2" />
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => setSettingsExpanded(!settingsExpanded)}
+                  tooltip="ตั้งค่า"
+                  className={`h-10 transition-all font-normal rounded-lg ${
+                    settingsPaths.includes(location)
+                      ? "text-amber-600 font-medium"
+                      : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                  }`}
+                >
+                  <Settings className="h-4 w-4 text-amber-500" />
+                  <span className="flex-1 font-semibold">ตั้งค่า</span>
+                  <ChevronDown className={`h-3 w-3 transition-transform ${settingsExpanded ? "" : "-rotate-90"}`} />
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              {settingsExpanded && settingsItems.map((item) => {
+                const isActive = location === item.path || location.startsWith(item.path + "/");
+                return (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      onClick={() => setLocation(item.path)}
+                      tooltip={item.label}
+                      className={`h-9 pl-8 transition-all font-normal rounded-lg ${
+                        isActive
+                          ? "bg-amber-50 text-amber-700 font-medium dark:bg-amber-950/50 dark:text-amber-400"
+                          : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                      }`}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span className="flex-1">{item.label}</span>
+                      {item.path === "/notifications" &&
+                        unreadCount !== undefined &&
+                        unreadCount > 0 && (
+                          <Badge
+                            variant="destructive"
+                            className="h-5 min-w-5 px-1.5 text-[10px] font-bold rounded-full"
+                          >
+                            {unreadCount > 99 ? "99+" : unreadCount}
+                          </Badge>
+                        )}
                       {isActive && !isCollapsed && (
                         <ChevronRight className="h-3 w-3 opacity-50" />
                       )}

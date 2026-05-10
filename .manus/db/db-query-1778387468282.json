@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO survey_templates (name, sourceId, pdfHeaderTitle, pdfHeaderSubtitle, isActive, createdAt, updatedAt) VALUES ('Gulf SSR', 810004, 'ปันอาทิตย์ by GULF1', 'Site Survey Report', 1, NOW(), NOW());",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute INSERT INTO survey_templates (name, sourceId, pdfHeaderTitle, pdfHeaderSubtitle, isActive, createdAt, updatedAt) VALUES ('Gulf SSR', 810004, 'ปันอาทิตย์ by GULF1', 'Site Survey Report', 1, NOW(), NOW());",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1811
+}
