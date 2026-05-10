@@ -1425,6 +1425,8 @@ const storageRouter = router({
 // ==================== SOURCES ROUTER ====================
 const sourceRouter = router({
   list: protectedProcedure.query(() => db.getSources()),
+  listWithStats: protectedProcedure.query(() => db.getSourcesWithStats()),
+  listGroups: protectedProcedure.query(() => db.getSourceGroups()),
   sourceNamesByGroup: protectedProcedure.query(async () => {
     const allSources = await db.getSources();
     const result: Record<string, string[]> = {};
@@ -1437,6 +1439,9 @@ const sourceRouter = router({
     }
     return result;
   }),
+  getCustomersBySource: protectedProcedure
+    .input(z.object({ sourceId: z.number() }))
+    .query(({ input }) => db.getCustomersBySourceId(input.sourceId)),
   create: protectedProcedure
     .input(z.object({ name: z.string().min(1), category: z.string().optional() }))
     .mutation(async ({ input }) => {
@@ -1448,6 +1453,13 @@ const sourceRouter = router({
     .mutation(async ({ input }) => {
       await db.updateSource(input.id, { name: input.name, category: input.category, groupName: input.groupName });
       return { success: true };
+    }),
+  createGroup: adminProcedure
+    .input(z.object({ name: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      // Groups are just distinct groupName values on sources, no separate table needed
+      // This just validates the name is non-empty
+      return { name: input.name };
     }),
   delete: adminProcedure
     .input(z.object({ id: z.number() }))

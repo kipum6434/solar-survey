@@ -1090,6 +1090,46 @@ export async function updateSource(id: number, data: { name?: string; category?:
   }
 }
 
+export async function getSourcesWithStats() {
+  const db = await getDb();
+  if (!db) return [];
+  const result = await db.select({
+    id: sources.id,
+    name: sources.name,
+    category: sources.category,
+    usageCount: sources.usageCount,
+    groupName: sources.groupName,
+    createdAt: sources.createdAt,
+    customerCount: sql<number>`(SELECT COUNT(*) FROM customers WHERE customers.source = ${sources.name})`,
+  }).from(sources).orderBy(desc(sources.usageCount));
+  return result;
+}
+
+export async function getSourceGroups() {
+  const db = await getDb();
+  if (!db) return [];
+  const result = await db.selectDistinct({ groupName: sources.groupName }).from(sources).where(isNotNull(sources.groupName));
+  return result.map(r => r.groupName).filter(Boolean) as string[];
+}
+
+export async function getCustomersBySourceId(sourceId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  // First get the source name
+  const sourceRow = await db.select().from(sources).where(eq(sources.id, sourceId)).limit(1);
+  if (!sourceRow.length) return [];
+  const sourceName = sourceRow[0].name;
+  return db.select({
+    id: customers.id,
+    name: customers.name,
+    phone: customers.phone,
+    address: customers.address,
+    province: customers.province,
+    district: customers.district,
+    createdAt: customers.createdAt,
+  }).from(customers).where(eq(customers.source, sourceName)).orderBy(desc(customers.createdAt));
+}
+
 export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; adminSenderId?: number; closerId?: number; page?: number; limit?: number; search?: string; month?: number; year?: number; source?: string; sourceGroup?: "tcs" | "gulf" | "mea"; district?: string; province?: string; scopedSurveyIds?: number[]; sortBy?: string; sortDirection?: "asc" | "desc"; filterDate?: number; filterDateEnd?: number }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };

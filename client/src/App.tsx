@@ -29,6 +29,7 @@ import CompanySettings from "./pages/CompanySettings";
 import Approvals from "./pages/Approvals";
 import Finance from "./pages/Finance";
 import ChecklistTemplates from "./pages/ChecklistTemplates";
+import SourceManagement from "./pages/SourceManagement";
 
 function Router() {
   return (
@@ -58,7 +59,8 @@ function Router() {
       <Route path="/finance/tcs">{() => <Finance sourceMode="tcs" />}</Route>
       <Route path="/finance/gulf">{() => <Finance sourceMode="gulf" />}</Route>
       <Route path="/finance/mea">{() => <Finance sourceMode="mea" />}</Route>
-      <Route path={"/checklist-templates"} component={ChecklistTemplates} />
+      <Route path="/source-management" component={SourceManagement} />
+      <Route path="/checklist-templates" component={ChecklistTemplates} />
       {/* TCS group routes */}
       <Route path="/tcs/customers" component={Customers} />
       <Route path="/tcs/customers/:id" component={CustomerDetail} />

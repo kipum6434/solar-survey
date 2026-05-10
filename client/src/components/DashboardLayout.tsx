@@ -51,8 +51,9 @@ import {
   Settings,
   Banknote,
   CheckSquare,
+  Globe,
 } from "lucide-react";
-import { CSSProperties, useEffect, useRef, useState } from "react";
+import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Redirect } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
@@ -64,35 +65,26 @@ const topMenuItems = [
   { icon: LayoutDashboard, label: "แดชบอร์ด", path: "/" },
 ];
 
-// TCS source group items
-const tcsMenuItems = [
-  { icon: BarChart3, label: "Dashboard", path: "/tcs/dashboard" },
-  { icon: Users, label: "ลูกค้า", path: "/tcs/customers" },
-  { icon: ClipboardList, label: "งานสำรวจ", path: "/tcs/surveys" },
-  { icon: PhoneCall, label: "งานติดตาม", path: "/tcs/follow-ups" },
-  { icon: Wrench, label: "งานติดตั้ง", path: "/tcs/installations" },
-  { icon: Banknote, label: "การเงิน", path: "/finance/tcs" },
+// Color themes for source groups (cycles if more than 3 groups)
+const GROUP_THEMES = [
+  { icon: Sun, color: "amber", activeClass: "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400", headerClass: "text-amber-600", iconClass: "text-amber-500" },
+  { icon: Zap, color: "blue", activeClass: "bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400", headerClass: "text-blue-600", iconClass: "text-blue-500" },
+  { icon: Zap, color: "green", activeClass: "bg-green-50 text-green-700 dark:bg-green-950/50 dark:text-green-400", headerClass: "text-green-600", iconClass: "text-green-500" },
+  { icon: Zap, color: "purple", activeClass: "bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-400", headerClass: "text-purple-600", iconClass: "text-purple-500" },
+  { icon: Zap, color: "rose", activeClass: "bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-400", headerClass: "text-rose-600", iconClass: "text-rose-500" },
 ];
 
-// Gulf source group items
-const gulfMenuItems = [
-  { icon: BarChart3, label: "Dashboard", path: "/gulf/dashboard" },
-  { icon: Users, label: "ลูกค้า", path: "/gulf/customers" },
-  { icon: ClipboardList, label: "งานสำรวจ", path: "/gulf/surveys" },
-  { icon: PhoneCall, label: "งานติดตาม", path: "/gulf/follow-ups" },
-  { icon: Wrench, label: "งานติดตั้ง", path: "/gulf/installations" },
-  { icon: Banknote, label: "การเงิน", path: "/finance/gulf" },
-];
-
-// MEA source group items
-const meaMenuItems = [
-  { icon: BarChart3, label: "Dashboard", path: "/mea/dashboard" },
-  { icon: Users, label: "ลูกค้า", path: "/mea/customers" },
-  { icon: ClipboardList, label: "งานสำรวจ", path: "/mea/surveys" },
-  { icon: PhoneCall, label: "งานติดตาม", path: "/mea/follow-ups" },
-  { icon: Wrench, label: "งานติดตั้ง", path: "/mea/installations" },
-  { icon: Banknote, label: "การเงิน", path: "/finance/mea" },
-];
+// Sub-menu items for each source group (generated dynamically)
+function getGroupMenuItems(slug: string) {
+  return [
+    { icon: BarChart3, label: "Dashboard", path: `/${slug}/dashboard` },
+    { icon: Users, label: "ลูกค้า", path: `/${slug}/customers` },
+    { icon: ClipboardList, label: "งานสำรวจ", path: `/${slug}/surveys` },
+    { icon: PhoneCall, label: "งานติดตาม", path: `/${slug}/follow-ups` },
+    { icon: Wrench, label: "งานติดตั้ง", path: `/${slug}/installations` },
+    { icon: Banknote, label: "การเงิน", path: `/finance/${slug}` },
+  ];
+}
 
 // Common items (shared across all sources)
 const commonMenuItems = [
@@ -113,6 +105,7 @@ const settingsMenuItems = [
   { icon: FileText, label: "Template ฟอร์ม", path: "/survey-templates" },
   { icon: MessageSquare, label: "ตั้งค่า LINE", path: "/line-settings", superadminOnly: true },
   { icon: Building2, label: "ตั้งค่าบริษัท", path: "/company-settings" },
+  { icon: Globe, label: "จัดการแหล่งที่มา", path: "/source-management" },
   { icon: Bell, label: "แจ้งเตือน", path: "/notifications" },
 ];
 
@@ -120,6 +113,9 @@ const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 260;
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 400;
+
+// Fallback groups when DB hasn't loaded yet
+const FALLBACK_GROUPS = ["TCS", "Gulf", "MEA"];
 
 export default function DashboardLayout({
   children,
@@ -182,13 +178,60 @@ function DashboardLayoutContent({
   const commonItems = filterByRole(commonMenuItems);
   const settingsItems = filterByRole(settingsMenuItems);
   const settingsPaths = settingsItems.map(i => i.path);
-  const allMenuItems = [...topItems, ...tcsMenuItems, ...gulfMenuItems, ...meaMenuItems, ...commonItems, ...settingsItems];
+
+  // Fetch source groups dynamically from DB
+  const { data: sourceGroups } = trpc.source.listGroups.useQuery(undefined, {
+    staleTime: 60000, // cache for 1 minute
+  });
+
+  // Use fetched groups or fallback
+  const groups = sourceGroups && sourceGroups.length > 0 ? sourceGroups : FALLBACK_GROUPS;
+
+  // Build dynamic group data
+  const dynamicGroups = useMemo(() => {
+    return groups.map((groupName, idx) => {
+      const slug = groupName.toLowerCase();
+      const theme = GROUP_THEMES[idx % GROUP_THEMES.length];
+      const menuItems = getGroupMenuItems(slug);
+      return { groupName, slug, theme, menuItems };
+    });
+  }, [groups]);
+
+  // Expanded state for each group (keyed by group name)
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    for (const g of FALLBACK_GROUPS) {
+      const slug = g.toLowerCase();
+      initial[g] = location.startsWith(`/${slug}/`) || location.startsWith(`/finance/${slug}`);
+    }
+    return initial;
+  });
+
+  // Update expanded state when groups change
+  useEffect(() => {
+    setExpandedGroups(prev => {
+      const next = { ...prev };
+      for (const g of groups) {
+        if (!(g in next)) {
+          const slug = g.toLowerCase();
+          next[g] = location.startsWith(`/${slug}/`) || location.startsWith(`/finance/${slug}`);
+        }
+      }
+      return next;
+    });
+  }, [groups]);
+
+  const toggleGroup = (groupName: string) => {
+    setExpandedGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }));
+  };
+
+  const [settingsExpanded, setSettingsExpanded] = useState(() => settingsPaths.includes(location));
+
+  // Build allMenuItems for active detection
+  const allGroupMenuItems = useMemo(() => dynamicGroups.flatMap(g => g.menuItems), [dynamicGroups]);
+  const allMenuItems = [...topItems, ...allGroupMenuItems, ...commonItems, ...settingsItems];
   const activeMenuItem = allMenuItems.find((item) => item.path === location);
   const isMobile = useIsMobile();
-  const [tcsExpanded, setTcsExpanded] = useState(() => location.startsWith("/tcs/") || location.startsWith("/finance/tcs"));
-  const [gulfExpanded, setGulfExpanded] = useState(() => location.startsWith("/gulf/") || location.startsWith("/finance/gulf"));
-  const [meaExpanded, setMeaExpanded] = useState(() => location.startsWith("/mea/") || location.startsWith("/finance/mea"));
-  const [settingsExpanded, setSettingsExpanded] = useState(() => settingsPaths.includes(location));
 
   const { data: unreadCount } = trpc.notification.unreadCount.useQuery(undefined, {
     refetchInterval: 30000,
@@ -281,96 +324,43 @@ function DashboardLayoutContent({
                 );
               })}
 
-              {/* ===== TCS Source Group ===== */}
-              <li aria-hidden="true" className="my-2 mx-2 h-px bg-sidebar-border" />
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={() => setTcsExpanded(!tcsExpanded)}
-                  tooltip="งาน TCS"
-                  className={`h-10 transition-all font-normal rounded-lg ${location.startsWith("/tcs/") || location.startsWith("/finance/tcs") ? "text-amber-600 font-medium" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"}`}
-                >
-                  <Sun className="h-4 w-4 text-amber-500" />
-                  <span className="flex-1 font-semibold">งาน TCS</span>
-                  <ChevronDown className={`h-3 w-3 transition-transform ${tcsExpanded ? "" : "-rotate-90"}`} />
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              {tcsExpanded && tcsMenuItems.map((item) => {
-                const isActive = location.startsWith(item.path);
+              {/* ===== Dynamic Source Groups ===== */}
+              {dynamicGroups.map((group) => {
+                const isGroupActive = location.startsWith(`/${group.slug}/`) || location.startsWith(`/finance/${group.slug}`);
+                const isExpanded = expandedGroups[group.groupName] ?? false;
+                const GroupIcon = group.theme.icon;
                 return (
-                  <SidebarMenuItem key={item.path}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      onClick={() => setLocation(item.path)}
-                      tooltip={item.label}
-                      className={`h-9 pl-8 transition-all font-normal rounded-lg ${isActive ? "bg-amber-50 text-amber-700 font-medium dark:bg-amber-950/50 dark:text-amber-400" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"}`}
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span className="flex-1">{item.label}</span>
-                      {isActive && !isCollapsed && <ChevronRight className="h-3 w-3 opacity-50" />}
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-
-              {/* ===== Gulf Source Group ===== */}
-              <li aria-hidden="true" className="my-2 mx-2 h-px bg-sidebar-border" />
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={() => setGulfExpanded(!gulfExpanded)}
-                  tooltip="Gulf"
-                  className={`h-10 transition-all font-normal rounded-lg ${location.startsWith("/gulf/") || location.startsWith("/finance/gulf") ? "text-blue-600 font-medium" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"}`}
-                >
-                  <Zap className="h-4 w-4 text-blue-500" />
-                  <span className="flex-1 font-semibold">Gulf</span>
-                  <ChevronDown className={`h-3 w-3 transition-transform ${gulfExpanded ? "" : "-rotate-90"}`} />
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              {gulfExpanded && gulfMenuItems.map((item) => {
-                const isActive = location.startsWith(item.path);
-                return (
-                  <SidebarMenuItem key={item.path}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      onClick={() => setLocation(item.path)}
-                      tooltip={item.label}
-                      className={`h-9 pl-8 transition-all font-normal rounded-lg ${isActive ? "bg-blue-50 text-blue-700 font-medium dark:bg-blue-950/50 dark:text-blue-400" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"}`}
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span className="flex-1">{item.label}</span>
-                      {isActive && !isCollapsed && <ChevronRight className="h-3 w-3 opacity-50" />}
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-
-              {/* ===== MEA Source Group ===== */}
-              <li aria-hidden="true" className="my-2 mx-2 h-px bg-sidebar-border" />
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={() => setMeaExpanded(!meaExpanded)}
-                  tooltip="MEA"
-                  className={`h-10 transition-all font-normal rounded-lg ${location.startsWith("/mea/") || location.startsWith("/finance/mea") ? "text-green-600 font-medium" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"}`}
-                >
-                  <Zap className="h-4 w-4 text-green-500" />
-                  <span className="flex-1 font-semibold">MEA</span>
-                  <ChevronDown className={`h-3 w-3 transition-transform ${meaExpanded ? "" : "-rotate-90"}`} />
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              {meaExpanded && meaMenuItems.map((item) => {
-                const isActive = location.startsWith(item.path);
-                return (
-                  <SidebarMenuItem key={item.path}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      onClick={() => setLocation(item.path)}
-                      tooltip={item.label}
-                      className={`h-9 pl-8 transition-all font-normal rounded-lg ${isActive ? "bg-green-50 text-green-700 font-medium dark:bg-green-950/50 dark:text-green-400" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"}`}
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span className="flex-1">{item.label}</span>
-                      {isActive && !isCollapsed && <ChevronRight className="h-3 w-3 opacity-50" />}
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                  <div key={group.groupName}>
+                    <li aria-hidden="true" className="my-2 mx-2 h-px bg-sidebar-border" />
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={() => toggleGroup(group.groupName)}
+                        tooltip={`งาน ${group.groupName}`}
+                        className={`h-10 transition-all font-normal rounded-lg ${isGroupActive ? `${group.theme.headerClass} font-medium` : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"}`}
+                      >
+                        <GroupIcon className={`h-4 w-4 ${group.theme.iconClass}`} />
+                        <span className="flex-1 font-semibold">งาน {group.groupName}</span>
+                        <ChevronDown className={`h-3 w-3 transition-transform ${isExpanded ? "" : "-rotate-90"}`} />
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    {isExpanded && group.menuItems.map((item) => {
+                      const isActive = location.startsWith(item.path);
+                      return (
+                        <SidebarMenuItem key={item.path}>
+                          <SidebarMenuButton
+                            isActive={isActive}
+                            onClick={() => setLocation(item.path)}
+                            tooltip={item.label}
+                            className={`h-9 pl-8 transition-all font-normal rounded-lg ${isActive ? group.theme.activeClass : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"}`}
+                          >
+                            <item.icon className="h-4 w-4" />
+                            <span className="flex-1">{item.label}</span>
+                            {isActive && !isCollapsed && <ChevronRight className="h-3 w-3 opacity-50" />}
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
+                  </div>
                 );
               })}
 

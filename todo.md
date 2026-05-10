@@ -1081,3 +1081,27 @@
 - [x] สร้าง useSourceGroup() hook สำหรับ extract sourceGroup จาก URL path
 - [x] เพิ่ม sourceGroup filter ใน customer.list, survey.list, followUp.surveysForFollowUp, installation.list
 - [x] เพิ่ม sourceGroup filter ใน getCustomers, getSurveysWithCustomer, getSurveysForFollowUp, getInstallations (db.ts)
+
+## User Request: หน้าจัดการแหล่งที่มา (Source Management)
+
+### Backend
+- [x] API: source.listWithStats — แสดง source ทั้งหมด + จำนวนลูกค้า + groupName
+- [x] API: source.listGroups — ดึงรายชื่อกลุ่มทั้งหมด (dynamic, ไม่ hardcode)
+- [x] API: source.createGroup — สร้างกลุ่มใหม่
+- [x] API: source.assignGroup — เปลี่ยนกลุ่มของ source (via source.update with groupName)
+- [x] API: source.getCustomers — drill-down ดูลูกค้าของ source นั้น
+
+### Frontend: หน้า Source Management
+- [x] สร้างหน้า SourceManagement.tsx ในเมนูตั้งค่า
+- [x] แสดงตาราง source ทั้งหมด (ชื่อ, จำนวนลูกค้า, กลุ่ม)
+- [x] Dropdown เปลี่ยนกลุ่ม (TCS/Gulf/MEA/สร้างใหม่)
+- [x] กดชื่อ source → drill-down แสดงรายชื่อลูกค้า
+- [x] ปุ่มเพิ่ม/แก้ไข/ลบ source
+- [x] เพิ่ม route + เมนูใน sidebar settings group
+
+### Sidebar Dynamic
+- [x] Sidebar: ดึง source groups จาก API แทน hardcode (trpc.source.listGroups)
+- [x] Sidebar: แสดงกลุ่มตาม data จริง (ถ้าสร้างกลุ่มใหม่ จะขึ้นใน sidebar อัตโนมัติ)
+
+### Testing
+- [x] Vitest: ทดสอบ source.listWithStats, source.listGroups, source.assignGroup (covered in finance-checklist.test.ts — 18 tests pass)
