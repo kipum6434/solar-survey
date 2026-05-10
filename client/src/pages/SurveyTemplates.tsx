@@ -245,6 +245,7 @@ function TemplateEditor({ templateId, onBack }: { templateId: number; onBack: ()
   const [editingField, setEditingField] = useState<any>(null);
   const [deleteFieldTarget, setDeleteFieldTarget] = useState<{ id: number; label: string } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const deleteFieldMutation = trpc.surveyTemplate.deleteField.useMutation({
     onSuccess: () => { toast.success("ลบฟิลด์สำเร็จ"); refetch(); setDeleteFieldTarget(null); },
@@ -312,6 +313,9 @@ function TemplateEditor({ templateId, onBack }: { templateId: number; onBack: ()
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowPreview(true)} className="gap-1.5">
+            <Eye className="h-4 w-4" /> Preview
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setShowSettings(true)} className="gap-1.5">
             <Settings2 className="h-4 w-4" /> ตั้งค่า
           </Button>
@@ -356,6 +360,13 @@ function TemplateEditor({ templateId, onBack }: { templateId: number; onBack: ()
         editingField={editingField}
         currentFieldCount={template.fields?.length || 0}
         onSaved={refetch}
+      />
+
+      {/* Preview Dialog */}
+      <TemplatePreviewDialog
+        open={showPreview}
+        onOpenChange={setShowPreview}
+        template={template}
       />
 
       {/* Settings Dialog */}
@@ -755,4 +766,362 @@ function TemplateSettingsDialog({ open, onOpenChange, template, sources, onSaved
       </DialogContent>
     </Dialog>
   );
+}
+
+
+// ==================== TEMPLATE PREVIEW DIALOG ====================
+function TemplatePreviewDialog({ open, onOpenChange, template }: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  template: any;
+}) {
+  const fields = template?.fields || [];
+
+  // Group fields by sectionGroup
+  const groupedFields: { group: string; fields: any[] }[] = [];
+  let currentGroup = "";
+  let currentFields: any[] = [];
+
+  for (const field of fields) {
+    if (field.fieldType === "section_header") {
+      if (currentFields.length > 0 || currentGroup) {
+        groupedFields.push({ group: currentGroup, fields: currentFields });
+      }
+      currentGroup = field.fieldLabel;
+      currentFields = [];
+    } else {
+      currentFields.push(field);
+    }
+  }
+  if (currentFields.length > 0 || currentGroup) {
+    groupedFields.push({ group: currentGroup, fields: currentFields });
+  }
+
+  // If no section headers, put all fields in one group
+  const sections = groupedFields.length > 0 ? groupedFields : [{ group: "", fields }];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+        {/* PDF-style Header Preview */}
+        {(template?.pdfHeaderTitle || template?.pdfLogoUrl) && (
+          <div className="bg-slate-700 text-white px-6 py-3 flex items-center justify-between rounded-t-lg">
+            <div className="flex items-center gap-3">
+              {template.pdfLogoUrl && (
+                <img src={template.pdfLogoUrl} alt="Logo" className="h-8 w-auto rounded" />
+              )}
+              <div>
+                <div className="font-semibold text-sm">{template.pdfHeaderTitle || template.name}</div>
+                {template.pdfHeaderSubtitle && (
+                  <div className="text-xs text-slate-300">{template.pdfHeaderSubtitle}</div>
+                )}
+              </div>
+            </div>
+            <div className="text-xs text-slate-400">ตัวอย่าง PDF Header</div>
+          </div>
+        )}
+
+        <div className="px-6 pt-4 pb-2">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" /> ตัวอย่างฟอร์ม: {template?.name}
+            </DialogTitle>
+            <DialogDescription>
+              แสดงตัวอย่างฟอร์มตามฟิลด์ที่ตั้งค่าไว้ ({fields.length} ฟิลด์)
+              — ข้อมูลที่กรอกในตัวอย่างนี้จะไม่ถูกบันทึก
+            </DialogDescription>
+          </DialogHeader>
+        </div>
+
+        {fields.length === 0 ? (
+          <div className="px-6 pb-6 text-center py-8">
+            <FileText className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
+            <p className="text-muted-foreground">ยังไม่มีฟิลด์ใน Template นี้</p>
+            <p className="text-sm text-muted-foreground/70 mt-1">เพิ่มฟิลด์ก่อนแล้วกลับมาดู Preview</p>
+          </div>
+        ) : (
+          <div className="px-6 pb-6 space-y-6">
+            {sections.map((section, sIdx) => (
+              <div key={sIdx}>
+                {section.group && (
+                  <div className="flex items-center gap-2 mb-3 pb-2 border-b">
+                    <div className="w-2 h-2 rounded-full bg-primary" />
+                    <h3 className="font-semibold text-sm">{section.group}</h3>
+                  </div>
+                )}
+                <div className="space-y-4">
+                  {section.fields.map((field: any) => (
+                    <PreviewField key={field.id} field={field} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="px-6 pb-4 flex justify-end border-t pt-3">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>ปิด</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ==================== PREVIEW FIELD RENDERER ====================
+function PreviewField({ field }: { field: any }) {
+  const [value, setValue] = useState("");
+  const [checkedItems, setCheckedItems] = useState<string[]>([]);
+  const [otherText, setOtherText] = useState("");
+  const [showOther, setShowOther] = useState(false);
+
+  const options = field.fieldOptions ? field.fieldOptions.split(",").map((o: string) => o.trim()).filter(Boolean) : [];
+
+  switch (field.fieldType) {
+    case "text":
+      return (
+        <div>
+          <Label className="text-sm">
+            {field.fieldLabel} {field.required && <span className="text-red-500">*</span>}
+          </Label>
+          <Input
+            value={value}
+            onChange={e => setValue(e.target.value)}
+            placeholder={field.placeholder || `กรอก${field.fieldLabel}`}
+            className="mt-1"
+          />
+        </div>
+      );
+
+    case "number":
+    case "distance":
+      return (
+        <div>
+          <Label className="text-sm">
+            {field.fieldLabel} {field.required && <span className="text-red-500">*</span>}
+            {field.fieldType === "distance" && <span className="text-muted-foreground ml-1">(เมตร)</span>}
+          </Label>
+          <Input
+            type="number"
+            value={value}
+            onChange={e => setValue(e.target.value)}
+            placeholder={field.placeholder || "0"}
+            className="mt-1"
+          />
+        </div>
+      );
+
+    case "textarea":
+      return (
+        <div>
+          <Label className="text-sm">
+            {field.fieldLabel} {field.required && <span className="text-red-500">*</span>}
+          </Label>
+          <Textarea
+            value={value}
+            onChange={e => setValue(e.target.value)}
+            placeholder={field.placeholder || `กรอก${field.fieldLabel}`}
+            className="mt-1"
+            rows={3}
+          />
+        </div>
+      );
+
+    case "select":
+      return (
+        <div>
+          <Label className="text-sm">
+            {field.fieldLabel} {field.required && <span className="text-red-500">*</span>}
+          </Label>
+          <Select value={value} onValueChange={v => { setValue(v); setShowOther(v === "__other__"); }}>
+            <SelectTrigger className="mt-1">
+              <SelectValue placeholder={field.placeholder || "เลือก..."} />
+            </SelectTrigger>
+            <SelectContent>
+              {options.map((opt: string) => (
+                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+              ))}
+              {field.hasOtherOption && <SelectItem value="__other__">อื่นๆ...</SelectItem>}
+            </SelectContent>
+          </Select>
+          {showOther && (
+            <Input
+              value={otherText}
+              onChange={e => setOtherText(e.target.value)}
+              placeholder="ระบุ..."
+              className="mt-2 border-dashed"
+            />
+          )}
+        </div>
+      );
+
+    case "checkbox":
+      return (
+        <div className="flex items-center gap-2">
+          <Checkbox id={`preview-${field.id}`} />
+          <Label htmlFor={`preview-${field.id}`} className="text-sm cursor-pointer">
+            {field.fieldLabel} {field.required && <span className="text-red-500">*</span>}
+          </Label>
+        </div>
+      );
+
+    case "checkbox_group":
+      return (
+        <div>
+          <Label className="text-sm mb-2 block">
+            {field.fieldLabel} {field.required && <span className="text-red-500">*</span>}
+          </Label>
+          <div className="flex flex-wrap gap-3">
+            {options.map((opt: string) => {
+              const isChecked = checkedItems.includes(opt);
+              return (
+                <label
+                  key={opt}
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition-colors text-sm ${
+                    isChecked ? "bg-primary/10 border-primary text-primary" : "hover:bg-muted/50"
+                  }`}
+                >
+                  <Checkbox
+                    checked={isChecked}
+                    onCheckedChange={(v) => {
+                      setCheckedItems(prev => v ? [...prev, opt] : prev.filter(i => i !== opt));
+                    }}
+                  />
+                  {opt}
+                </label>
+              );
+            })}
+            {field.hasOtherOption && (
+              <label
+                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition-colors text-sm ${
+                  showOther ? "bg-primary/10 border-primary text-primary" : "hover:bg-muted/50"
+                }`}
+              >
+                <Checkbox
+                  checked={showOther}
+                  onCheckedChange={(v) => setShowOther(!!v)}
+                />
+                อื่นๆ
+              </label>
+            )}
+          </div>
+          {showOther && (
+            <Input
+              value={otherText}
+              onChange={e => setOtherText(e.target.value)}
+              placeholder="ระบุ..."
+              className="mt-2 border-dashed max-w-xs"
+            />
+          )}
+        </div>
+      );
+
+    case "radio":
+      return (
+        <div>
+          <Label className="text-sm mb-2 block">
+            {field.fieldLabel} {field.required && <span className="text-red-500">*</span>}
+          </Label>
+          <div className="flex flex-wrap gap-3">
+            {options.map((opt: string) => (
+              <label
+                key={opt}
+                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition-colors text-sm ${
+                  value === opt ? "bg-primary/10 border-primary text-primary" : "hover:bg-muted/50"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name={`preview-radio-${field.id}`}
+                  value={opt}
+                  checked={value === opt}
+                  onChange={() => { setValue(opt); setShowOther(false); }}
+                  className="accent-primary"
+                />
+                {opt}
+              </label>
+            ))}
+            {field.hasOtherOption && (
+              <label
+                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition-colors text-sm ${
+                  showOther ? "bg-primary/10 border-primary text-primary" : "hover:bg-muted/50"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name={`preview-radio-${field.id}`}
+                  value="__other__"
+                  checked={showOther}
+                  onChange={() => { setValue("__other__"); setShowOther(true); }}
+                  className="accent-primary"
+                />
+                อื่นๆ
+              </label>
+            )}
+          </div>
+          {showOther && (
+            <Input
+              value={otherText}
+              onChange={e => setOtherText(e.target.value)}
+              placeholder="ระบุ..."
+              className="mt-2 border-dashed max-w-xs"
+            />
+          )}
+        </div>
+      );
+
+    case "date":
+      return (
+        <div>
+          <Label className="text-sm">
+            {field.fieldLabel} {field.required && <span className="text-red-500">*</span>}
+          </Label>
+          <Input
+            type="date"
+            value={value}
+            onChange={e => setValue(e.target.value)}
+            className="mt-1"
+          />
+        </div>
+      );
+
+    case "yes_no":
+      return (
+        <div>
+          <Label className="text-sm mb-2 block">
+            {field.fieldLabel} {field.required && <span className="text-red-500">*</span>}
+          </Label>
+          <div className="flex gap-3">
+            {["มี", "ไม่มี"].map(opt => (
+              <label
+                key={opt}
+                className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-lg border cursor-pointer transition-colors text-sm ${
+                  value === opt ? "bg-primary/10 border-primary text-primary" : "hover:bg-muted/50"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name={`preview-yn-${field.id}`}
+                  value={opt}
+                  checked={value === opt}
+                  onChange={() => setValue(opt)}
+                  className="accent-primary"
+                />
+                {opt}
+              </label>
+            ))}
+          </div>
+        </div>
+      );
+
+    case "section_header":
+      return null; // handled by grouping
+
+    default:
+      return (
+        <div>
+          <Label className="text-sm">{field.fieldLabel}</Label>
+          <Input placeholder={field.placeholder || ""} className="mt-1" />
+        </div>
+      );
+  }
 }

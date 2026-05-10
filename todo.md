@@ -1065,3 +1065,8 @@
 - [x] เพิ่มช่องหมายเหตุ (caption) ใต้รูปภาพ (DB + UI)
 - [x] หมายเหตุรูปแสดงใน PDF ด้วย
 - [x] สร้าง PDF Export แบบ Gulf (ใช้ header/โลโก้จาก template, ฟิลด์ตาม template, รูป+caption)
+
+### Feature: ปุ่ม Preview ในหน้าจัดการ Template ฟอร์ม
+- [x] เพิ่มปุ่ม Preview ในหน้า SurveyTemplates
+- [x] สร้าง Dialog แสดงตัวอย่างฟอร์มตามฟิลด์ที่ตั้งค่าไว้ (text, number, checkbox with "อื่นๆ", select, distance)
+- [x] รองรับ mobile-friendly
