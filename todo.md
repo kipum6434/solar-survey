@@ -1161,3 +1161,9 @@
 
 - [x] ตรวจสอบแล้ว query ถูกต้อง (COUNT customers WHERE source = sources.name)
 - [x] ตรวจสอบแล้ว frontend แสดงถูกต้อง (ต้อง publish ใหม่เพื่อให้ production อัพเดท)
+
+## Feature: หมายเหตุรูปสำรวจ (Photo Caption)
+
+- [x] Backend: เพิ่ม mutation photo.updateCaption (photoId + caption)
+- [x] Backend: เพิ่ม function updatePhotoCaption ใน db.ts
+- [x] Frontend: เพิ่ม UI ให้กรอก/แก้ไขหมายเหตุใต้รูปแต่ละรูป

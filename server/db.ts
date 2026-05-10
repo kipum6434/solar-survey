@@ -542,6 +542,12 @@ export async function createSurveyPhoto(data: InsertSurveyPhoto) {
   return result[0].insertId;
 }
 
+export async function updatePhotoCaption(id: number, caption: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(surveyPhotos).set({ caption }).where(eq(surveyPhotos.id, id));
+}
+
 export async function deleteSurveyPhoto(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");

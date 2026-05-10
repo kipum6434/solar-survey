@@ -871,6 +871,14 @@ const photoRouter = router({
       return { success: true };
     }),
 
+  updateCaption: protectedProcedure
+    .input(z.object({ id: z.number(), caption: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      await db.updatePhotoCaption(input.id, input.caption);
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "photo", entityId: input.id, details: `แก้ไขหมายเหตุรูป ID: ${input.id}` });
+      return { success: true };
+    }),
+
   reorder: publicProcedure
     .input(z.object({ items: z.array(z.object({ id: z.number(), sortOrder: z.number() })).min(1).max(500) }))
     .mutation(async ({ input }) => {

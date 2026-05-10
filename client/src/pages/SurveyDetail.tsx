@@ -26,7 +26,7 @@ import {
   ArrowLeft, Camera, FileText, PhoneCall, Share2, MapPin, Calendar, User, Pencil,
   Upload, Trash2, Download, Link2, Copy, X, Image, Eye, CheckCircle2, Clock,
   Zap, Sun, Home, Gauge, Receipt, Settings2, Users, Wrench, FolderDown, Package,
-  PauseCircle, XCircle, RotateCcw, History, Plus,
+  PauseCircle, XCircle, RotateCcw, History, Plus, MessageSquare,
 } from "lucide-react";
 import { MultiUserSelect } from "@/components/MultiUserSelect";
 import { SourceCombobox } from "@/components/SourceCombobox";
@@ -46,6 +46,8 @@ export default function SurveyDetail() {
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const [confirmDeletePhoto, setConfirmDeletePhoto] = useState<number | null>(null);
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState<number | null>(null);
+  const [editingCaptionId, setEditingCaptionId] = useState<number | null>(null);
+  const [captionText, setCaptionText] = useState("");
 
   const proxyImageMut = trpc.util.proxyImage.useMutation();
   const imageProxyFn: ImageProxyFn = async (url: string) => {
@@ -184,6 +186,10 @@ export default function SurveyDetail() {
 
   const deletePhoto = trpc.photo.delete.useMutation({
     onSuccess: () => { toast.success("ลบรูปสำเร็จ"); refetchPhotos(); },
+  });
+
+  const updateCaption = trpc.photo.updateCaption.useMutation({
+    onSuccess: () => { refetchPhotos(); setEditingCaptionId(null); },
   });
 
   const uploadDoc = trpc.document.upload.useMutation({
@@ -617,20 +623,51 @@ export default function SurveyDetail() {
                           {catPhotos.length > 0 ? (
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                               {catPhotos.map((photo: any) => (
-                                <div key={photo.id} className="group relative rounded-lg overflow-hidden bg-muted aspect-square">
-                                  <img src={photo.url} alt={photo.caption || photo.fileName} className="w-full h-full object-cover cursor-pointer" onClick={() => setLightboxImg(photo.url)} loading="lazy" />
-                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-end">
-                                    <div className="w-full p-2 translate-y-full group-hover:translate-y-0 transition-transform">
-                                      <div className="flex items-center justify-end gap-1">
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-white" onClick={() => setLightboxImg(photo.url)}>
-                                          <Eye className="h-3 w-3" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-red-100" onClick={(e) => { e.stopPropagation(); setConfirmDeletePhoto(photo.id); }}>
-                                          <Trash2 className="h-3 w-3 text-destructive" />
-                                        </Button>
+                                <div key={photo.id} className="flex flex-col">
+                                  <div className="group relative rounded-lg overflow-hidden bg-muted aspect-square">
+                                    <img src={photo.url} alt={photo.caption || photo.fileName} className="w-full h-full object-cover cursor-pointer" onClick={() => setLightboxImg(photo.url)} loading="lazy" />
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-end">
+                                      <div className="w-full p-2 translate-y-full group-hover:translate-y-0 transition-transform">
+                                        <div className="flex items-center justify-end gap-1">
+                                          <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-white" onClick={() => setLightboxImg(photo.url)}>
+                                            <Eye className="h-3 w-3" />
+                                          </Button>
+                                          <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-blue-100" onClick={(e) => { e.stopPropagation(); setEditingCaptionId(photo.id); setCaptionText(photo.caption || ""); }}>
+                                            <MessageSquare className="h-3 w-3 text-blue-600" />
+                                          </Button>
+                                          <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-red-100" onClick={(e) => { e.stopPropagation(); setConfirmDeletePhoto(photo.id); }}>
+                                            <Trash2 className="h-3 w-3 text-destructive" />
+                                          </Button>
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
+                                  {/* Caption display/edit */}
+                                  {editingCaptionId === photo.id ? (
+                                    <div className="mt-1 flex gap-1">
+                                      <Input
+                                        value={captionText}
+                                        onChange={(e) => setCaptionText(e.target.value)}
+                                        placeholder="หมายเหตุ..."
+                                        className="h-7 text-xs"
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") { updateCaption.mutate({ id: photo.id, caption: captionText }); }
+                                          if (e.key === "Escape") { setEditingCaptionId(null); }
+                                        }}
+                                      />
+                                      <Button size="icon" className="h-7 w-7 shrink-0" onClick={() => updateCaption.mutate({ id: photo.id, caption: captionText })} disabled={updateCaption.isPending}>
+                                        <CheckCircle2 className="h-3 w-3" />
+                                      </Button>
+                                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setEditingCaptionId(null)}>
+                                        <X className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  ) : photo.caption ? (
+                                    <p className="mt-1 text-xs text-muted-foreground truncate cursor-pointer hover:text-foreground" onClick={() => { setEditingCaptionId(photo.id); setCaptionText(photo.caption || ""); }} title={photo.caption}>
+                                      <MessageSquare className="h-3 w-3 inline mr-1" />{photo.caption}
+                                    </p>
+                                  ) : null}
                                 </div>
                               ))}
                             </div>
