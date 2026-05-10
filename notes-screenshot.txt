@@ -1,3 +1,4 @@
-Screenshot shows sidebar with "การเงิน/บัญชี" menu item visible at bottom of sidebar.
-Need to scroll down to see "Checklist ส่งมอบ" menu item.
-TypeScript: 0 errors, server running, 18 tests passed.
+Screenshot shows sidebar with TCS, Gulf, MEA menu items (separate).
+TypeScript: 0 errors, server running.
+Finance page now shows: customer name, phone, system size, contract value, collected amount, outstanding balance.
+NaN bug fixed by converting decimal strings to numbers in getPayments.

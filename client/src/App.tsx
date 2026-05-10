@@ -54,7 +54,10 @@ function Router() {
       <Route path={"/follow-ups"} component={FollowUps} />
       <Route path={"/line-settings"} component={LineSettings} />
       <Route path={"/company-settings"} component={CompanySettings} />
-      <Route path={"/finance"} component={Finance} />
+      <Route path="/finance">{() => <Finance sourceMode="tcs" />}</Route>
+      <Route path="/finance/tcs">{() => <Finance sourceMode="tcs" />}</Route>
+      <Route path="/finance/gulf">{() => <Finance sourceMode="gulf" />}</Route>
+      <Route path="/finance/mea">{() => <Finance sourceMode="mea" />}</Route>
       <Route path={"/checklist-templates"} component={ChecklistTemplates} />
       <Route path={"/share/:token"} component={SharedSurvey} />
       <Route path={"/survey-field/:token"} component={SharedSurveyField} />

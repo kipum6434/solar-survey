@@ -2682,7 +2682,7 @@ export async function getPayments(opts: { status?: string; page?: number; limit?
   }
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
   
-  const data = await db.select({
+  const rawData = await db.select({
     id: payments.id,
     surveyId: payments.surveyId,
     customerId: payments.customerId,
@@ -2697,12 +2697,24 @@ export async function getPayments(opts: { status?: string; page?: number; limit?
     status: payments.status,
     contractValue: payments.contractValue,
     collectedAmount: payments.collectedAmount,
+    systemSize: surveys.systemSize,
+    installationStatus: surveys.installationStatus,
     createdAt: payments.createdAt,
   }).from(payments)
     .leftJoin(customers, eq(payments.customerId, customers.id))
+    .leftJoin(surveys, eq(payments.surveyId, surveys.id))
     .where(whereClause)
     .orderBy(desc(payments.createdAt))
     .limit(limit).offset(offset);
+
+  // Convert decimal strings to numbers for frontend
+  const data = rawData.map(row => ({
+    ...row,
+    amount: row.amount ? parseFloat(row.amount) : 0,
+    contractValue: row.contractValue ? parseFloat(row.contractValue) : 0,
+    collectedAmount: row.collectedAmount ? parseFloat(row.collectedAmount) : 0,
+    systemSize: row.systemSize ? parseFloat(row.systemSize) : null,
+  }));
   
   const countQ = whereClause
     ? await db.select({ count: sql<number>`count(*)` }).from(payments).leftJoin(customers, eq(payments.customerId, customers.id)).where(whereClause)

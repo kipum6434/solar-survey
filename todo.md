@@ -1059,3 +1059,13 @@
 - [x] Frontend: integrate DeliveryFormSection component ใน DeliveryTab (ก่อน comments section)
 - [x] Vitest: 18 tests passed — finance-checklist.test.ts (checklist CRUD, source groups, payment CRUD+filters, delivery form, source update)
 
+
+### Fix: หน้าการเงิน — แยกเมนู sidebar + แก้ NaN + ปรับ UI
+- [x] Bug: แก้ NaN ในยอดรวม (amount เป็น string จาก decimal column ต้องแปลงเป็น number)
+- [x] Sidebar: แยกเมนูเป็น 3 เมนู — TCS, Gulf, MEA (แทนที่จะรวมใน tabs)
+- [x] Routes: เพิ่ม /finance/tcs, /finance/gulf, /finance/mea
+- [x] UI: แสดงข้อมูลครบ — ชื่อลูกค้า, เบอร์โทร, ขนาดระบบ, มูลค่าสัญญา, ยอดเก็บแล้ว, ยอดค้าง
+- [x] UI: สถานะ 3 แบบ — รอเก็บเงิน / เก็บบางส่วน / เก็บครบแล้ว
+- [x] Stats: ทั้งหมด, รอเก็บเงิน (จำนวน+ยอด), เก็บแล้ว (จำนวน+ยอด), ยอดค้างรวม
+- [x] Backend: payment.list return customer info (name, phone, systemSize, contractValue, collectedAmount)
+
