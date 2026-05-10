@@ -1070,3 +1070,6 @@
 - [x] เพิ่มปุ่ม Preview ในหน้า SurveyTemplates
 - [x] สร้าง Dialog แสดงตัวอย่างฟอร์มตามฟิลด์ที่ตั้งค่าไว้ (text, number, checkbox with "อื่นๆ", select, distance)
 - [x] รองรับ mobile-friendly
+
+### Bug: เมนู Gulf ซ้อนทับกับจัดการสถานะใน Sidebar
+- [x] แก้ไข layout ของเมนู Gulf ใน DashboardLayout ไม่ให้ซ้อนทับเมนูอื่น

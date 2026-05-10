@@ -11,8 +11,6 @@ import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarGroup,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -266,48 +264,46 @@ function DashboardLayoutContent({
 
             {/* Gulf Channel Section */}
             <SidebarSeparator className="my-2" />
-            <SidebarGroup className="p-0">
-              <SidebarMenuButton
-                onClick={() => setGulfExpanded(!gulfExpanded)}
-                tooltip="Gulf"
-                className={`h-10 transition-all font-normal rounded-lg mx-0 ${
-                  location.startsWith("/gulf/")
-                    ? "text-blue-600 font-medium"
-                    : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-                }`}
-              >
-                <Zap className="h-4 w-4 text-blue-500" />
-                <span className="flex-1 font-semibold">Gulf</span>
-                <ChevronDown className={`h-3 w-3 transition-transform ${gulfExpanded ? "" : "-rotate-90"}`} />
-              </SidebarMenuButton>
-              {gulfExpanded && (
-                <SidebarMenu className="pl-2">
-                  {gulfMenuItems.map((item) => {
-                    const isActive = location.startsWith(item.path);
-                    return (
-                      <SidebarMenuItem key={item.path}>
-                        <SidebarMenuButton
-                          isActive={isActive}
-                          onClick={() => setLocation(item.path)}
-                          tooltip={item.label}
-                          className={`h-9 transition-all font-normal rounded-lg ${
-                            isActive
-                              ? "bg-blue-50 text-blue-700 font-medium"
-                              : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-                          }`}
-                        >
-                          <item.icon className="h-4 w-4" />
-                          <span className="flex-1">{item.label.replace(" Gulf", "")}</span>
-                          {isActive && !isCollapsed && (
-                            <ChevronRight className="h-3 w-3 opacity-50" />
-                          )}
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              )}
-            </SidebarGroup>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => setGulfExpanded(!gulfExpanded)}
+                  tooltip="Gulf"
+                  className={`h-10 transition-all font-normal rounded-lg ${
+                    location.startsWith("/gulf/")
+                      ? "text-blue-600 font-medium"
+                      : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                  }`}
+                >
+                  <Zap className="h-4 w-4 text-blue-500" />
+                  <span className="flex-1 font-semibold">Gulf</span>
+                  <ChevronDown className={`h-3 w-3 transition-transform ${gulfExpanded ? "" : "-rotate-90"}`} />
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              {gulfExpanded && gulfMenuItems.map((item) => {
+                const isActive = location.startsWith(item.path);
+                return (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      onClick={() => setLocation(item.path)}
+                      tooltip={item.label}
+                      className={`h-9 pl-8 transition-all font-normal rounded-lg ${
+                        isActive
+                          ? "bg-blue-50 text-blue-700 font-medium dark:bg-blue-950/50 dark:text-blue-400"
+                          : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                      }`}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span className="flex-1">{item.label.replace(" Gulf", "")}</span>
+                      {isActive && !isCollapsed && (
+                        <ChevronRight className="h-3 w-3 opacity-50" />
+                      )}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
           </SidebarContent>
 
           <SidebarFooter className="p-3 bg-sidebar">
