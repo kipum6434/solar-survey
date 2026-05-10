@@ -51,11 +51,11 @@ const BATTERY_MAP: Record<string, string> = {
 };
 
 export default function Surveys(props: any) {
-  const gulfMode = props?.gulfMode ?? false;
+  const sourceMode: string | false = props?.sourceMode || (props?.gulfMode ? "Gulf" : false);
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [sourceFilter, setSourceFilter] = useState(gulfMode ? "Gulf" : "");
+  const [sourceFilter, setSourceFilter] = useState(sourceMode ? sourceMode : "");
   const [surveyorFilter, setSurveyorFilter] = useState("");
   const [adminSenderFilter, setAdminSenderFilter] = useState("");
   const [closerFilter, setCloserFilter] = useState("");
@@ -280,8 +280,8 @@ export default function Surveys(props: any) {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">{gulfMode ? "งานสำรวจ Gulf" : "งานสำรวจ"}</h1>
-            <p className="text-sm text-muted-foreground mt-1">{gulfMode ? "จัดการงานสำรวจ Gulf" : "จัดการงานสำรวจทั้งหมด"}</p>
+            <h1 className="text-2xl font-bold tracking-tight">{sourceMode ? `งานสำรวจ ${sourceMode}` : "งานสำรวจ"}</h1>
+            <p className="text-sm text-muted-foreground mt-1">{sourceMode ? `จัดการงานสำรวจ ${sourceMode}` : "จัดการงานสำรวจทั้งหมด"}</p>
           </div>
           <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
             <Download className="h-4 w-4" />
@@ -352,7 +352,7 @@ export default function Surveys(props: any) {
               ))}
             </SelectContent>
           </Select>
-          {!gulfMode && (
+          {!sourceMode && (
             <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v === "_all" ? "" : v); setPage(1); }}>
               <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="แหล่งที่มา" />

@@ -1090,3 +1090,16 @@
 ### Feature: Gulf Dashboard
 - [x] สร้างหน้า Gulf Dashboard แสดงสถิติลูกค้า/สำรวจ/ติดตั้ง เฉพาะ Gulf
 - [x] เพิ่มเมนู Gulf Dashboard ใน sidebar กลุ่ม Gulf
+
+### Sidebar Restructure: Source-based groups (TCS, Gulf, MEA)
+- [x] ย้ายเมนู ลูกค้า/งานสำรวจ/งานติดตาม/งานติดตั้ง เดิมเข้ากลุ่ม "งาน TCS" แบบ collapsible
+- [x] สร้าง TCS Dashboard แสดงสถิติเฉพาะ TCS source
+- [x] สร้าง source "MEA" ในฐานข้อมูล (id=810008)
+- [x] สร้างหน้า MEA (ลูกค้า/สำรวจ/ติดตาม/ติดตั้ง) + MEA Dashboard (pending)
+- [x] เพิ่มกลุ่ม MEA ใน sidebar แบบ collapsible
+- [x] แดชบอร์ดหลักยังแสดงข้อมูลรวมทุก source เหมือนเดิม
+- [x] โครงสร้าง sidebar รองรับเพิ่มกลุ่มใหม่ง่ายในอนาคต
+
+### Feature: หมายเหตุใต้รูป (Photo Notes)
+- [x] เพิ่มช่อง notes (optional) ใต้รูปแต่ละรูปในหน้าสำรวจ (มีอยู่แล้ว - PhotoCaptionInput component)
+- [x] แสดงหมายเหตุใน PDF export (มีอยู่แล้ว - exportGulfSurveyPDF)

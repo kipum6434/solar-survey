@@ -857,11 +857,16 @@ export async function getDashboardStats(scopedSurveyIds?: number[], scopedCustom
 }
 
 // ==================== GULF DASHBOARD ====================
+// Keep backward compat
 export async function getGulfDashboardStats() {
+  return getSourceDashboardStats("Gulf");
+}
+
+export async function getSourceDashboardStats(sourceName: string) {
   const db = await getDb();
   if (!db) return { totalCustomers: 0, totalSurveys: 0, pendingSurveys: 0, completedSurveys: 0, wonDeals: 0, pendingFollowUps: 0, totalInstallations: 0, completedInstallations: 0, inProgressInstallations: 0, recentSurveys: [] };
 
-  const gulfSource = "Gulf";
+  const gulfSource = sourceName;
   // Gulf customers
   const [custCount] = await db.select({ count: sql<number>`count(*)` }).from(customers).where(eq(customers.source, gulfSource));
   // Gulf surveys (join customers)

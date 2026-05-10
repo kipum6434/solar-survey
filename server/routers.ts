@@ -1285,6 +1285,20 @@ const dashboardRouter = router({
   gulfStats: protectedProcedure.query(async () => {
     return db.getGulfDashboardStats();
   }),
+
+  tcsStats: protectedProcedure.query(async () => {
+    return db.getSourceDashboardStats("TCS");
+  }),
+
+  meaStats: protectedProcedure.query(async () => {
+    return db.getSourceDashboardStats("MEA");
+  }),
+
+  sourceStats: protectedProcedure
+    .input(z.object({ source: z.string() }))
+    .query(async ({ input }) => {
+      return db.getSourceDashboardStats(input.source);
+    }),
   recentActivities: protectedProcedure
     .input(z.object({ limit: z.number().default(20) }).optional())
     .query(({ input }) => db.getRecentActivities(input?.limit)),

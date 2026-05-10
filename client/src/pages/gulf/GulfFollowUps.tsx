@@ -1,5 +1,5 @@
 import FollowUps from "@/pages/FollowUps";
 
 export default function GulfFollowUps() {
-  return <FollowUps gulfMode />;
+  return <FollowUps sourceMode="Gulf" />;
 }
