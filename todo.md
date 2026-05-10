@@ -1125,3 +1125,7 @@
 - [x] ติดตั้ง @dnd-kit/core + @dnd-kit/sortable
 - [x] UI: แสดง source แยกตามกลุ่ม (Kanban-style columns)
 - [x] เมื่อลาก source ไปวางในกลุ่มอื่น จะอัปเดต groupName อัตโนมัติ
+
+## Bug Fix: Template สำรวจงานกัลฟ์หายจากหน้า /survey-templates
+
+- [x] ตรวจสอบว่า Template สำรวจงานกัลฟ์เคยอยู่ที่ไหนและนำกลับมาแสดง — restore surveyTemplateRouter + SurveyTemplates.tsx + schema

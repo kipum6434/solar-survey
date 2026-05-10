@@ -29,6 +29,7 @@ import CompanySettings from "./pages/CompanySettings";
 import Approvals from "./pages/Approvals";
 import Finance from "./pages/Finance";
 import ChecklistTemplates from "./pages/ChecklistTemplates";
+import SurveyTemplates from "./pages/SurveyTemplates";
 import SourceManagement from "./pages/SourceManagement";
 
 function Router() {
@@ -58,7 +59,7 @@ function Router() {
       <Route path="/finance">{() => <Finance sourceMode="tcs" />}</Route>
       <Route path="/finance/:group">{(params) => <Finance sourceMode={params.group} />}</Route>
       <Route path="/source-management" component={SourceManagement} />
-      <Route path="/survey-templates" component={ChecklistTemplates} />
+      <Route path="/survey-templates" component={SurveyTemplates} />
       <Route path="/checklist-templates" component={ChecklistTemplates} />
       <Route path="/share/:token" component={SharedSurvey} />
       <Route path="/survey-field/:token" component={SharedSurveyField} />

@@ -1,6 +1,6 @@
 import { eq, and, or, like, desc, gte, lte, sql, inArray, not, asc, isNotNull, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory, installerTeams, InsertInstallerTeam, deliveryComments, InsertDeliveryComment, lineGroups, InsertLineGroup, lineNotificationTargets, InsertLineNotificationTarget, companySettings, InsertCompanySettings, postponeCancelLogs, InsertPostponeCancelLog, deliveryForms, InsertDeliveryForm, deliveryChecklistTemplates, InsertDeliveryChecklistTemplate, payments, InsertPayment, sourceGroups, InsertSourceGroup } from "../drizzle/schema";
+import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory, installerTeams, InsertInstallerTeam, deliveryComments, InsertDeliveryComment, lineGroups, InsertLineGroup, lineNotificationTargets, InsertLineNotificationTarget, companySettings, InsertCompanySettings, postponeCancelLogs, InsertPostponeCancelLog, deliveryForms, InsertDeliveryForm, deliveryChecklistTemplates, InsertDeliveryChecklistTemplate, payments, InsertPayment, sourceGroups, InsertSourceGroup, surveyTemplates, InsertSurveyTemplate, surveyTemplateFields, InsertSurveyTemplateField, surveyTemplateData, InsertSurveyTemplateData } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -2853,4 +2853,95 @@ export async function updatePayment(id: number, data: { amount?: number; payment
   if (data.contractValue !== undefined) updateData.contractValue = data.contractValue;
   if (data.collectedAmount !== undefined) updateData.collectedAmount = data.collectedAmount;
   await db.update(payments).set(updateData).where(eq(payments.id, id));
+}
+
+// ==================== SURVEY TEMPLATES ====================
+export async function getSurveyTemplates() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(surveyTemplates).orderBy(desc(surveyTemplates.createdAt));
+}
+export async function getSurveyTemplateById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(surveyTemplates).where(eq(surveyTemplates.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+export async function getSurveyTemplateBySourceId(sourceId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(surveyTemplates)
+    .where(and(eq(surveyTemplates.sourceId, sourceId), eq(surveyTemplates.isActive, true)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+export async function createSurveyTemplate(data: InsertSurveyTemplate) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(surveyTemplates).values(data);
+  return { id: result[0].insertId };
+}
+export async function updateSurveyTemplate(id: number, data: Partial<InsertSurveyTemplate>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(surveyTemplates).set(data).where(eq(surveyTemplates.id, id));
+}
+export async function deleteSurveyTemplate(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(surveyTemplateFields).where(eq(surveyTemplateFields.templateId, id));
+  await db.delete(surveyTemplateData).where(eq(surveyTemplateData.templateId, id));
+  await db.delete(surveyTemplates).where(eq(surveyTemplates.id, id));
+}
+// ==================== SURVEY TEMPLATE FIELDS ====================
+export async function getTemplateFields(templateId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(surveyTemplateFields)
+    .where(eq(surveyTemplateFields.templateId, templateId))
+    .orderBy(asc(surveyTemplateFields.sortOrder));
+}
+export async function createTemplateField(data: InsertSurveyTemplateField) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(surveyTemplateFields).values(data);
+  return { id: result[0].insertId };
+}
+export async function updateTemplateField(id: number, data: Partial<InsertSurveyTemplateField>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(surveyTemplateFields).set(data).where(eq(surveyTemplateFields.id, id));
+}
+export async function deleteTemplateField(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(surveyTemplateData).where(eq(surveyTemplateData.fieldId, id));
+  await db.delete(surveyTemplateFields).where(eq(surveyTemplateFields.id, id));
+}
+export async function reorderTemplateFields(templateId: number, fieldIds: number[]) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  for (let i = 0; i < fieldIds.length; i++) {
+    await db.update(surveyTemplateFields)
+      .set({ sortOrder: i })
+      .where(and(eq(surveyTemplateFields.id, fieldIds[i]), eq(surveyTemplateFields.templateId, templateId)));
+  }
+}
+// ==================== SURVEY TEMPLATE DATA (filled values) ====================
+export async function getTemplateDataBySurvey(surveyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(surveyTemplateData)
+    .where(eq(surveyTemplateData.surveyId, surveyId));
+}
+export async function saveTemplateData(surveyId: number, templateId: number, entries: { fieldId: number; value: string | null; otherValue: string | null }[]) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(surveyTemplateData)
+    .where(and(eq(surveyTemplateData.surveyId, surveyId), eq(surveyTemplateData.templateId, templateId)));
+  if (entries.length > 0) {
+    await db.insert(surveyTemplateData).values(
+      entries.map(e => ({ surveyId, templateId, fieldId: e.fieldId, value: e.value, otherValue: e.otherValue }))
+    );
+  }
 }

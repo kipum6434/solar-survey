@@ -1,0 +1,19 @@
+{
+  "query": "SHOW TABLES LIKE 'survey_template%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SHOW TABLES LIKE 'survey_template%';",
+  "rows": [
+    {
+      "Tables_in_6acGApiU8Bjnxuzxb5vkwU (survey_template%)": "survey_template_data"
+    },
+    {
+      "Tables_in_6acGApiU8Bjnxuzxb5vkwU (survey_template%)": "survey_template_fields"
+    },
+    {
+      "Tables_in_6acGApiU8Bjnxuzxb5vkwU (survey_template%)": "survey_templates"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_6acGApiU8Bjnxuzxb5vkwU (survey_template%)\nsurvey_template_data\nsurvey_template_fields\nsurvey_templates\n",
+  "stderr": "",
+  "execution_time_ms": 1881
+}
