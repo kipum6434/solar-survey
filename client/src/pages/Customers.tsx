@@ -91,7 +91,9 @@ export default function Customers(props: any) {
   const [filterByMonth, setFilterByMonth] = useState(false);
   const [districtFilter, setDistrictFilter] = useState("");
   const [provinceFilter, setProvinceFilter] = useState("");
-  const [sourceFilter, setSourceFilter] = useState(sourceMode ? sourceMode : "");
+  // TCS mode uses exclusion (everything NOT Gulf/MEA), others use exact match
+  const isTcsMode = sourceMode === "TCS";
+  const [sourceFilter, setSourceFilter] = useState(sourceMode && !isTcsMode ? sourceMode : "");
   const [statusFilter, setStatusFilter] = useState("");
 
   const { data: distinctValues } = trpc.customer.distinctValues.useQuery();
@@ -108,8 +110,9 @@ export default function Customers(props: any) {
     district: districtFilter || undefined,
     province: provinceFilter || undefined,
     source: sourceFilter || undefined,
+    sourceExclude: isTcsMode ? ["Gulf", "MEA"] : undefined,
     surveyStatus: statusFilter || undefined,
-  }), [search, page, filterByMonth, selectedMonth, selectedYear, districtFilter, provinceFilter, sourceFilter, statusFilter]);
+  }), [search, page, filterByMonth, selectedMonth, selectedYear, districtFilter, provinceFilter, sourceFilter, statusFilter, isTcsMode]);
 
   const { data, isLoading, refetch } = trpc.customer.list.useQuery(queryInput);
   const createMutation = trpc.customer.create.useMutation({

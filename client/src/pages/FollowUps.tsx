@@ -27,6 +27,7 @@ const FOLLOW_UP_STATUSES = ["follow_up", "quoted", "negotiating"] as const;
 
 export default function FollowUps(props: any) {
   const sourceMode: string | false = props?.sourceMode || (props?.gulfMode ? "Gulf" : false);
+  const isTcsMode = sourceMode === "TCS";
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -73,11 +74,12 @@ export default function FollowUps(props: any) {
       startDate,
       endDate,
       search: search || undefined,
-      source: sourceMode ? sourceMode : undefined,
+      source: sourceMode && !isTcsMode ? sourceMode : undefined,
+      sourceExclude: isTcsMode ? ["Gulf", "MEA"] : undefined,
       page,
       limit: 50,
     };
-  }, [filterByMonth, selectedMonth, selectedYear, search, page, sourceMode]);
+  }, [filterByMonth, selectedMonth, selectedYear, search, page, sourceMode, isTcsMode]);
 
   const { data, isLoading } = trpc.followUp.surveysForFollowUp.useQuery(queryInput);
   // Filter by status on client side

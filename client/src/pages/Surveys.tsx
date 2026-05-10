@@ -55,7 +55,8 @@ export default function Surveys(props: any) {
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [sourceFilter, setSourceFilter] = useState(sourceMode ? sourceMode : "");
+  const isTcsMode = sourceMode === "TCS";
+  const [sourceFilter, setSourceFilter] = useState(sourceMode && !isTcsMode ? sourceMode : "");
   const [surveyorFilter, setSurveyorFilter] = useState("");
   const [adminSenderFilter, setAdminSenderFilter] = useState("");
   const [closerFilter, setCloserFilter] = useState("");
@@ -95,6 +96,7 @@ export default function Surveys(props: any) {
     search,
     status: statusFilter === "all" ? undefined : statusFilter,
     source: sourceFilter || undefined,
+    sourceExclude: isTcsMode ? ["Gulf", "MEA"] : undefined,
     assignedTo: surveyorFilter ? Number(surveyorFilter) : undefined,
     adminSenderId: adminSenderFilter ? Number(adminSenderFilter) : undefined,
     closerId: closerFilter ? Number(closerFilter) : undefined,
@@ -108,7 +110,7 @@ export default function Surveys(props: any) {
     filterDateEnd: filterDateEnd ? filterDateEnd.getTime() : undefined,
     sortBy: sortBy || undefined,
     sortDirection: sortDirection || undefined,
-  }), [search, statusFilter, sourceFilter, surveyorFilter, adminSenderFilter, closerFilter, districtFilter, provinceFilter, page, filterByMonth, selectedMonth, selectedYear, filterDate, filterDateEnd, sortBy, sortDirection]);
+  }), [search, statusFilter, sourceFilter, surveyorFilter, adminSenderFilter, closerFilter, districtFilter, provinceFilter, page, filterByMonth, selectedMonth, selectedYear, filterDate, filterDateEnd, sortBy, sortDirection, isTcsMode]);
 
   const { data, isLoading, refetch } = trpc.survey.list.useQuery(queryInput);
 

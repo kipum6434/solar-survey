@@ -1,4 +1,4 @@
-import { eq, and, or, like, desc, gte, lte, sql, inArray, asc, isNotNull, isNull } from "drizzle-orm";
+import { eq, and, or, like, desc, gte, lte, sql, inArray, notInArray, asc, isNotNull, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory, installerTeams, InsertInstallerTeam, deliveryComments, InsertDeliveryComment, lineGroups, InsertLineGroup, lineNotificationTargets, InsertLineNotificationTarget, companySettings, InsertCompanySettings, postponeCancelLogs, InsertPostponeCancelLog, surveyTemplates, InsertSurveyTemplate, surveyTemplateFields, InsertSurveyTemplateField, surveyTemplateData, InsertSurveyTemplateData } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -90,10 +90,10 @@ export async function getUserByOpenId(openId: string) {
 }
 
 // ==================== CUSTOMER QUERIES ====================
-export async function getCustomers(opts: { search?: string; page?: number; limit?: number; month?: number; year?: number; district?: string; province?: string; source?: string; surveyStatus?: string; scopedCustomerIds?: number[] }) {
+export async function getCustomers(opts: { search?: string; page?: number; limit?: number; month?: number; year?: number; district?: string; province?: string; source?: string; sourceExclude?: string[]; surveyStatus?: string; scopedCustomerIds?: number[] }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { search, page = 1, limit = 20, month, year, district, province, source, surveyStatus, scopedCustomerIds } = opts;
+  const { search, page = 1, limit = 20, month, year, district, province, source, sourceExclude, surveyStatus, scopedCustomerIds } = opts;
   const offset = (page - 1) * limit;
   const conditions: any[] = [];
   // Data scoping: เซลล์เห็นเฉพาะลูกค้าที่เกี่ยวข้องกับงานของตัวเอง
@@ -111,6 +111,7 @@ export async function getCustomers(opts: { search?: string; page?: number; limit
   if (district) conditions.push(eq(customers.district, district));
   if (province) conditions.push(eq(customers.province, province));
   if (source) conditions.push(eq(customers.source, source));
+  if (sourceExclude && sourceExclude.length > 0) conditions.push(or(isNull(customers.source), notInArray(customers.source, sourceExclude)));
   if (month && year) {
     conditions.push(sql`MONTH(${customers.createdAt}) = ${month}`);
     conditions.push(sql`YEAR(${customers.createdAt}) = ${year}`);
@@ -581,7 +582,7 @@ export async function getFollowUps(opts: { surveyId?: number; customerId?: numbe
   return db.select().from(followUps).where(whereClause).orderBy(followUps.dueDate);
 }
 
-export async function getSurveysForFollowUp(opts: { search?: string; startDate?: number; endDate?: number; page?: number; limit?: number; source?: string }) {
+export async function getSurveysForFollowUp(opts: { search?: string; startDate?: number; endDate?: number; page?: number; limit?: number; source?: string; sourceExclude?: string[] }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
   const page = opts.page ?? 1;
@@ -605,6 +606,7 @@ export async function getSurveysForFollowUp(opts: { search?: string; startDate?:
   if (opts.startDate) conditions.push(gte(surveys.updatedAt, new Date(opts.startDate)));
   if (opts.endDate) conditions.push(lte(surveys.updatedAt, new Date(opts.endDate)));
   if (opts.source) conditions.push(eq(customers.source, opts.source));
+  if (opts.sourceExclude && opts.sourceExclude.length > 0) conditions.push(or(isNull(customers.source), notInArray(customers.source, opts.sourceExclude)));
   const whereClause = and(...conditions);
 
   // Count total
@@ -866,11 +868,15 @@ export async function getSourceDashboardStats(sourceName: string) {
   const db = await getDb();
   if (!db) return { totalCustomers: 0, totalSurveys: 0, pendingSurveys: 0, completedSurveys: 0, wonDeals: 0, pendingFollowUps: 0, totalInstallations: 0, completedInstallations: 0, inProgressInstallations: 0, recentSurveys: [] };
 
-  const gulfSource = sourceName;
-  // Gulf customers
-  const [custCount] = await db.select({ count: sql<number>`count(*)` }).from(customers).where(eq(customers.source, gulfSource));
-  // Gulf surveys (join customers)
-  const gulfSurveyBase = and(eq(customers.source, gulfSource));
+  // TCS = everything NOT Gulf and NOT MEA (including null source)
+  const isTcsMode = sourceName === "TCS";
+  const sourceCondition = isTcsMode
+    ? or(isNull(customers.source), notInArray(customers.source, ["Gulf", "MEA"]))
+    : eq(customers.source, sourceName);
+  // Source customers
+  const [custCount] = await db.select({ count: sql<number>`count(*)` }).from(customers).where(sourceCondition);
+  // Source surveys (join customers)
+  const gulfSurveyBase = and(sourceCondition);
   const [survCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(gulfSurveyBase);
   const [pendCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(and(gulfSurveyBase, inArray(surveys.status, ["pending", "scheduled"])));
   const [compCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(and(gulfSurveyBase, eq(surveys.status, "surveyed")));
@@ -1131,10 +1137,10 @@ export async function deleteSource(id: number) {
   await db.delete(sources).where(eq(sources.id, id));
 }
 
-export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; adminSenderId?: number; closerId?: number; page?: number; limit?: number; search?: string; month?: number; year?: number; source?: string; district?: string; province?: string; scopedSurveyIds?: number[]; sortBy?: string; sortDirection?: "asc" | "desc"; filterDate?: number; filterDateEnd?: number }) {
+export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; adminSenderId?: number; closerId?: number; page?: number; limit?: number; search?: string; month?: number; year?: number; source?: string; sourceExclude?: string[]; district?: string; province?: string; scopedSurveyIds?: number[]; sortBy?: string; sortDirection?: "asc" | "desc"; filterDate?: number; filterDateEnd?: number }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { status, assignedTo, adminSenderId, closerId, page = 1, limit = 20, search, month, year, source, district, province, scopedSurveyIds, filterDate, filterDateEnd } = opts;
+  const { status, assignedTo, adminSenderId, closerId, page = 1, limit = 20, search, month, year, source, sourceExclude, district, province, scopedSurveyIds, filterDate, filterDateEnd } = opts;
   const offset = (page - 1) * limit;
 
   // If filtering by team member (any role), find matching survey IDs first
@@ -1166,6 +1172,7 @@ export async function getSurveysWithCustomer(opts: { status?: string; assignedTo
     ));
   }
   if (source) conditions.push(eq(customers.source, source));
+  if (sourceExclude && sourceExclude.length > 0) conditions.push(or(isNull(customers.source), notInArray(customers.source, sourceExclude)));
   if (district) conditions.push(eq(customers.district, district));
   if (province) conditions.push(eq(customers.province, province));
   if (filterDate) {
@@ -1457,7 +1464,7 @@ export async function updateInstallationStatus(surveyId: number, installationSta
 export async function getInstallations(opts: any) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { page = 1, limit = 20, search, month, year, district, province, installationStatus, surveyorId, closerId, installerTeamId, scopedSurveyIds, source } = opts;
+  const { page = 1, limit = 20, search, month, year, district, province, installationStatus, surveyorId, closerId, installerTeamId, scopedSurveyIds, source, sourceExclude } = opts;
   const offset = (page - 1) * limit;
 
   // Data scoping: เซลล์เห็นเฉพาะงานติดตั้งที่ตัวเองเกี่ยวข้อง
@@ -1477,6 +1484,7 @@ export async function getInstallations(opts: any) {
   if (district) conditions.push(eq(customers.district, district));
   if (province) conditions.push(eq(customers.province, province));
   if (source) conditions.push(eq(customers.source, source));
+  if (sourceExclude && sourceExclude.length > 0) conditions.push(or(isNull(customers.source), notInArray(customers.source, sourceExclude)));
   if (month && year) {
     // Filter by installation month/year (UTC+7 Thailand: +25200 seconds)
     conditions.push(sql`MONTH(FROM_UNIXTIME(${surveys.installationDate} / 1000 + 25200)) = ${month}`);

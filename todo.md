@@ -1103,3 +1103,10 @@
 ### Feature: หมายเหตุใต้รูป (Photo Notes)
 - [x] เพิ่มช่อง notes (optional) ใต้รูปแต่ละรูปในหน้าสำรวจ (มีอยู่แล้ว - PhotoCaptionInput component)
 - [x] แสดงหมายเหตุใน PDF export (มีอยู่แล้ว - exportGulfSurveyPDF)
+
+### Bug: TCS filter แสดง 0 ลูกค้า
+- [x] แก้ TCS source filter: TCS = ทุกอย่างที่ไม่ใช่ Gulf และไม่ใช่ MEA (รวม null/source อื่นๆ)
+- [x] แก้ TCS Dashboard stats ใช้ exclusion logic เดียวกัน
+- [x] เพิ่ม sourceExclude parameter ใน customer.list, survey.list, followUp.surveysForFollowUp, installation.list
+- [x] เพิ่ม sourceExclude logic ใน getCustomers, getSurveysWithCustomer, getSurveysForFollowUp, getInstallations (db.ts)
+- [x] แก้ getSourceDashboardStats ให้ TCS ใช้ exclusion logic (NOT Gulf, NOT MEA) แทน eq(source, 'TCS')
