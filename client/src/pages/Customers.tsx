@@ -91,9 +91,16 @@ export default function Customers(props: any) {
   const [filterByMonth, setFilterByMonth] = useState(false);
   const [districtFilter, setDistrictFilter] = useState("");
   const [provinceFilter, setProvinceFilter] = useState("");
-  // TCS mode uses exclusion (everything NOT Gulf/MEA), others use exact match
+  // TCS mode uses exclusion (everything NOT in named groups), others use source names from group
   const isTcsMode = sourceMode === "TCS";
-  const [sourceFilter, setSourceFilter] = useState(sourceMode && !isTcsMode ? sourceMode : "");
+  const isGroupMode = sourceMode && !isTcsMode; // Gulf, MEA, etc.
+  // Fetch dynamic source names for group-based filtering
+  const { data: nonTcsNames } = trpc.source.nonTcsSourceNames.useQuery(undefined, { enabled: isTcsMode });
+  const { data: groupSourceNames } = trpc.source.sourceNamesByGroup.useQuery(
+    { groupName: sourceMode as string },
+    { enabled: !!isGroupMode }
+  );
+  const [sourceFilter, setSourceFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
   const { data: distinctValues } = trpc.customer.distinctValues.useQuery();
@@ -109,8 +116,8 @@ export default function Customers(props: any) {
     year: filterByMonth ? selectedYear : undefined,
     district: districtFilter || undefined,
     province: provinceFilter || undefined,
-    source: sourceFilter || undefined,
-    sourceExclude: isTcsMode ? ["Gulf", "MEA"] : undefined,
+    source: isGroupMode ? undefined : (sourceFilter || undefined),
+    sourceExclude: isTcsMode ? (nonTcsNames && nonTcsNames.length > 0 ? nonTcsNames : ["Gulf", "MEA"]) : undefined,
     surveyStatus: statusFilter || undefined,
   }), [search, page, filterByMonth, selectedMonth, selectedYear, districtFilter, provinceFilter, sourceFilter, statusFilter, isTcsMode]);
 

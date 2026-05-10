@@ -1460,11 +1460,36 @@ const storageRouter = router({
 // ==================== SOURCES ROUTER ====================
 const sourceRouter = router({
   list: protectedProcedure.query(() => db.getSources()),
+  listWithStats: protectedProcedure.query(() => db.getSourcesWithStats()),
+  distinctGroups: protectedProcedure.query(() => db.getDistinctGroups()),
+  sourceNamesByGroup: protectedProcedure
+    .input(z.object({ groupName: z.string() }))
+    .query(({ input }) => db.getSourceNamesByGroup(input.groupName)),
+  nonTcsSourceNames: protectedProcedure.query(() => db.getNonTcsSourceNames()),
+  customersBySource: protectedProcedure
+    .input(z.object({ sourceName: z.string(), page: z.number().optional(), limit: z.number().optional() }))
+    .query(({ input }) => db.getCustomersBySourceName(input.sourceName, { page: input.page, limit: input.limit })),
   create: protectedProcedure
-    .input(z.object({ name: z.string().min(1), category: z.string().optional() }))
+    .input(z.object({ name: z.string().min(1), category: z.string().optional(), groupName: z.string().nullable().optional() }))
     .mutation(async ({ input }) => {
       const source = await db.getOrCreateSource(input.name, input.category);
+      if (input.groupName !== undefined && source && 'id' in source) {
+        await db.updateSource(source.id, { groupName: input.groupName });
+      }
       return source;
+    }),
+  update: adminProcedure
+    .input(z.object({ id: z.number(), name: z.string().optional(), groupName: z.string().nullable().optional() }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await db.updateSource(id, data);
+      return { success: true };
+    }),
+  updateGroup: adminProcedure
+    .input(z.object({ id: z.number(), groupName: z.string().nullable() }))
+    .mutation(async ({ input }) => {
+      await db.updateSource(input.id, { groupName: input.groupName });
+      return { success: true };
     }),
   delete: adminProcedure
     .input(z.object({ id: z.number() }))

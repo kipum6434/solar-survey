@@ -56,7 +56,13 @@ export default function Surveys(props: any) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const isTcsMode = sourceMode === "TCS";
-  const [sourceFilter, setSourceFilter] = useState(sourceMode && !isTcsMode ? sourceMode : "");
+  const isGroupMode = sourceMode && !isTcsMode;
+  const { data: nonTcsNames } = trpc.source.nonTcsSourceNames.useQuery(undefined, { enabled: isTcsMode });
+  const { data: groupSourceNames } = trpc.source.sourceNamesByGroup.useQuery(
+    { groupName: sourceMode as string },
+    { enabled: !!isGroupMode }
+  );
+  const [sourceFilter, setSourceFilter] = useState("");
   const [surveyorFilter, setSurveyorFilter] = useState("");
   const [adminSenderFilter, setAdminSenderFilter] = useState("");
   const [closerFilter, setCloserFilter] = useState("");
@@ -95,8 +101,8 @@ export default function Surveys(props: any) {
   const queryInput = useMemo(() => ({
     search,
     status: statusFilter === "all" ? undefined : statusFilter,
-    source: sourceFilter || undefined,
-    sourceExclude: isTcsMode ? ["Gulf", "MEA"] : undefined,
+    source: isGroupMode ? undefined : (sourceFilter || undefined),
+    sourceExclude: isTcsMode ? (nonTcsNames && nonTcsNames.length > 0 ? nonTcsNames : ["Gulf", "MEA"]) : undefined,
     assignedTo: surveyorFilter ? Number(surveyorFilter) : undefined,
     adminSenderId: adminSenderFilter ? Number(adminSenderFilter) : undefined,
     closerId: closerFilter ? Number(closerFilter) : undefined,

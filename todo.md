@@ -1118,3 +1118,13 @@
 ### UX: ปุ่มบันทึกทั้งหมด + indicator บันทึกแล้ว (Photo Caption)
 - [x] เพิ่มปุ่ม "บันทึกทั้งหมด" สำหรับบันทึกหมายเหตุหลายรูปพร้อมกันทีเดียว
 - [x] เพิ่ม indicator "บันทึกแล้ว" (เครื่องหมายถูกสีเขียว) ใต้รูปที่มีหมายเหตุบันทึกแล้ว
+
+### Feature: จัดการแหล่งที่มา (Source Management)
+- [x] สร้าง groupName column ใน sources table (ใช้ sources table เดิม + เพิ่ม groupName)
+- [x] สร้าง backend CRUD procedures: เพิ่ม/แก้ไข/ลบ source + กำหนดกลุ่ม
+- [x] สร้าง backend procedure: list customers by source (getCustomersBySourceName)
+- [x] สร้างหน้า "จัดการแหล่งที่มา" ในเมนูตั้งค่า (ตาราง source + จำนวนลูกค้า + กลุ่ม)
+- [x] กดเข้าแต่ละ source → drill-down แสดงรายชื่อลูกค้าทั้งหมดของ source นั้น
+- [x] เชื่อม mapping กับ sidebar filter logic (TCS/Gulf/MEA ใช้ mapping แทน hardcode)
+- [x] เพิ่ม/แก้ไข/ลบ source ได้จากหน้า UI
+- [x] เปลี่ยนกลุ่มของ source ได้ (dropdown เลือก TCS/Gulf/MEA + สร้างกลุ่มใหม่ได้)

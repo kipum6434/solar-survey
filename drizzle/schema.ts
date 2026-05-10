@@ -133,6 +133,7 @@ export const sources = mysqlTable("sources", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 255 }).notNull().unique(),
   category: varchar("category", { length: 100 }),
+  groupName: varchar("groupName", { length: 100 }), // "Gulf", "MEA", or NULL (= TCS)
   usageCount: int("usageCount").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });

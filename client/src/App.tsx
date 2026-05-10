@@ -43,6 +43,7 @@ import MeaCustomers from "./pages/mea/MeaCustomers";
 import MeaSurveys from "./pages/mea/MeaSurveys";
 import MeaFollowUps from "./pages/mea/MeaFollowUps";
 import MeaInstallations from "./pages/mea/MeaInstallations";
+import SourceManagement from "./pages/SourceManagement";
 
 function Router() {
   return (
@@ -84,6 +85,7 @@ function Router() {
       <Route path={"/mea/surveys"} component={MeaSurveys} />
       <Route path={"/mea/follow-ups"} component={MeaFollowUps} />
       <Route path={"/mea/installations"} component={MeaInstallations} />
+      <Route path={"/source-management"} component={SourceManagement} />
       <Route path={"/share/:token"} component={SharedSurvey} />
       <Route path={"/survey-field/:token"} component={SharedSurveyField} />
       <Route path={"/404"} component={NotFound} />

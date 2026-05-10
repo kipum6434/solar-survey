@@ -868,11 +868,23 @@ export async function getSourceDashboardStats(sourceName: string) {
   const db = await getDb();
   if (!db) return { totalCustomers: 0, totalSurveys: 0, pendingSurveys: 0, completedSurveys: 0, wonDeals: 0, pendingFollowUps: 0, totalInstallations: 0, completedInstallations: 0, inProgressInstallations: 0, recentSurveys: [] };
 
-  // TCS = everything NOT Gulf and NOT MEA (including null source)
+  // TCS = everything NOT in any named group (Gulf, MEA, etc.) - use dynamic mapping
   const isTcsMode = sourceName === "TCS";
-  const sourceCondition = isTcsMode
-    ? or(isNull(customers.source), notInArray(customers.source, ["Gulf", "MEA"]))
-    : eq(customers.source, sourceName);
+  let sourceCondition;
+  if (isTcsMode) {
+    const nonTcsNames = await getNonTcsSourceNames();
+    sourceCondition = nonTcsNames.length > 0
+      ? or(isNull(customers.source), notInArray(customers.source, nonTcsNames))
+      : sql`1=1`; // no exclusions, show all
+  } else {
+    // For Gulf/MEA: get all source names in that group
+    const groupSourceNames = await getSourceNamesByGroup(sourceName);
+    if (groupSourceNames.length > 0) {
+      sourceCondition = inArray(customers.source, groupSourceNames);
+    } else {
+      sourceCondition = eq(customers.source, sourceName);
+    }
+  }
   // Source customers
   const [custCount] = await db.select({ count: sql<number>`count(*)` }).from(customers).where(sourceCondition);
   // Source surveys (join customers)
@@ -1135,6 +1147,65 @@ export async function deleteSource(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.delete(sources).where(eq(sources.id, id));
+}
+
+export async function updateSource(id: number, data: { name?: string; groupName?: string | null; category?: string | null }) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(sources).set(data).where(eq(sources.id, id));
+}
+
+export async function getSourcesWithStats() {
+  const db = await getDb();
+  if (!db) return [];
+  // Get all sources with actual customer count from customers table
+  const allSources = await db.select().from(sources).orderBy(desc(sources.usageCount));
+  // Get actual customer counts per source name
+  const customerCounts = await db.select({
+    source: customers.source,
+    count: sql<number>`COUNT(*)`,
+  }).from(customers).groupBy(customers.source);
+  const countMap = new Map(customerCounts.map(c => [c.source, Number(c.count)]));
+  return allSources.map(s => ({
+    ...s,
+    customerCount: countMap.get(s.name) || 0,
+  }));
+}
+
+export async function getCustomersBySourceName(sourceName: string, opts: { page?: number; limit?: number } = {}) {
+  const db = await getDb();
+  if (!db) return { data: [], total: 0 };
+  const { page = 1, limit = 20 } = opts;
+  const offset = (page - 1) * limit;
+  const conditions = sourceName === 'other' || sourceName === 'null'
+    ? or(eq(customers.source, 'other'), isNull(customers.source))
+    : eq(customers.source, sourceName);
+  const [countResult] = await db.select({ count: sql<number>`COUNT(*)` }).from(customers).where(conditions!);
+  const data = await db.select().from(customers).where(conditions!).orderBy(desc(customers.createdAt)).limit(limit).offset(offset);
+  return { data, total: Number(countResult?.count || 0) };
+}
+
+export async function getDistinctGroups() {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.selectDistinct({ groupName: sources.groupName }).from(sources).where(sql`${sources.groupName} IS NOT NULL`);
+  return rows.map(r => r.groupName).filter(Boolean) as string[];
+}
+
+// Get all source names that belong to a specific group
+export async function getSourceNamesByGroup(groupName: string): Promise<string[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({ name: sources.name }).from(sources).where(eq(sources.groupName, groupName));
+  return rows.map(r => r.name);
+}
+
+// Get all source names NOT in TCS (i.e., belonging to any named group like Gulf, MEA)
+export async function getNonTcsSourceNames(): Promise<string[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({ name: sources.name }).from(sources).where(and(isNotNull(sources.groupName), sql`${sources.groupName} != 'TCS'`));
+  return rows.map(r => r.name);
 }
 
 export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; adminSenderId?: number; closerId?: number; page?: number; limit?: number; search?: string; month?: number; year?: number; source?: string; sourceExclude?: string[]; district?: string; province?: string; scopedSurveyIds?: number[]; sortBy?: string; sortDirection?: "asc" | "desc"; filterDate?: number; filterDateEnd?: number }) {

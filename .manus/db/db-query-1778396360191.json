@@ -1,0 +1,70 @@
+{
+  "query": "SELECT source, COUNT(*) as customer_count FROM customers GROUP BY source ORDER BY customer_count ASC LIMIT 15;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT source, COUNT(*) as customer_count FROM customers GROUP BY source ORDER BY customer_count ASC LIMIT 15;",
+  "rows": [
+    {
+      "source": "LINE ส่วนตัว",
+      "customer_count": "1"
+    },
+    {
+      "source": "FB เพจ micro",
+      "customer_count": "1"
+    },
+    {
+      "source": "Line-Roof",
+      "customer_count": "1"
+    },
+    {
+      "source": "LINE SET",
+      "customer_count": "1"
+    },
+    {
+      "source": "ปริ้นท์",
+      "customer_count": "1"
+    },
+    {
+      "source": "Gulf",
+      "customer_count": "1"
+    },
+    {
+      "source": "LINE เพจ Set",
+      "customer_count": "1"
+    },
+    {
+      "source": "FB-Set",
+      "customer_count": "2"
+    },
+    {
+      "source": "กรีน - Facebook",
+      "customer_count": "2"
+    },
+    {
+      "source": "FB เพจ หมี",
+      "customer_count": "2"
+    },
+    {
+      "source": "FB เพจ SET",
+      "customer_count": "2"
+    },
+    {
+      "source": "roof - Line",
+      "customer_count": "2"
+    },
+    {
+      "source": "FB เพจ ไมโคร",
+      "customer_count": "2"
+    },
+    {
+      "source": "li",
+      "customer_count": "2"
+    },
+    {
+      "source": "SET - โทร",
+      "customer_count": "3"
+    }
+  ],
+  "messages": [],
+  "stdout": "source\tcustomer_count\nLINE ส่วนตัว\t1\nFB เพจ micro\t1\nLine-Roof\t1\nLINE SET\t1\nปริ้นท์\t1\nGulf\t1\nLINE เพจ Set\t1\nFB-Set\t2\nกรีน - Facebook\t2\nFB เพจ หมี\t2\nFB เพจ SET\t2\nroof - Line\t2\nFB เพจ ไมโคร\t2\nli\t2\nSET - โทร\t3\n",
+  "stderr": "",
+  "execution_time_ms": 1902
+}

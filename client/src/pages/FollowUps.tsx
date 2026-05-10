@@ -28,6 +28,12 @@ const FOLLOW_UP_STATUSES = ["follow_up", "quoted", "negotiating"] as const;
 export default function FollowUps(props: any) {
   const sourceMode: string | false = props?.sourceMode || (props?.gulfMode ? "Gulf" : false);
   const isTcsMode = sourceMode === "TCS";
+  const isGroupMode = sourceMode && !isTcsMode;
+  const { data: nonTcsNames } = trpc.source.nonTcsSourceNames.useQuery(undefined, { enabled: isTcsMode });
+  const { data: groupSourceNames } = trpc.source.sourceNamesByGroup.useQuery(
+    { groupName: sourceMode as string },
+    { enabled: !!isGroupMode }
+  );
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -74,8 +80,8 @@ export default function FollowUps(props: any) {
       startDate,
       endDate,
       search: search || undefined,
-      source: sourceMode && !isTcsMode ? sourceMode : undefined,
-      sourceExclude: isTcsMode ? ["Gulf", "MEA"] : undefined,
+      source: isGroupMode ? (sourceMode as string) : undefined,
+      sourceExclude: isTcsMode ? (nonTcsNames && nonTcsNames.length > 0 ? nonTcsNames : ["Gulf", "MEA"]) : undefined,
       page,
       limit: 50,
     };

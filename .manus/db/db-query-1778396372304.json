@@ -1,0 +1,88 @@
+{
+  "query": "DESCRIBE sources; SELECT * FROM sources;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute DESCRIBE sources; SELECT * FROM sources;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "name",
+      "Type": "varchar(255)",
+      "Null": "NO",
+      "Key": "UNI",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "category",
+      "Type": "varchar(100)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "usageCount",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "createdAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    }
+  ],
+  "messages": [
+    "id\tname\tcategory\tusageCount\tcreatedAt",
+    "210001\tFB เพจ SET\tNULL\t4\t2026-04-25 14:53:48",
+    "210002\tทดสอบ\tNULL\t384\t2026-04-25 16:04:22",
+    "210005\tFB เพจ TCS Test\tNULL\t53\t2026-04-25 16:04:33",
+    "240001\tFB เพจ หมี\tNULL\t6\t2026-04-28 09:17:10",
+    "270002\tFB เพจ ไมโคร\tNULL\t4\t2026-04-28 10:28:27",
+    "300006\tSET - Facebook\tNULL\t66\t2026-04-28 14:35:12",
+    "300007\tSET - Line\tNULL\t56\t2026-04-28 14:35:12",
+    "300008\tไมโคร - Facebook\tNULL\t55\t2026-04-28 14:35:12",
+    "300009\tหมีโซล่า - Facebook\tNULL\t17\t2026-04-28 14:35:12",
+    "300010\tไมโคร\tNULL\t12\t2026-04-28 14:35:12",
+    "300011\troof - Line\tNULL\t4\t2026-04-28 14:35:12",
+    "300012\tหมีโซล่า\tNULL\t6\t2026-04-28 14:35:12",
+    "300013\tSET - โทร\tNULL\t7\t2026-04-28 14:35:12",
+    "300014\tไมโคร - Line\tNULL\t15\t2026-04-28 14:35:12",
+    "300015\tSET\tNULL\t9\t2026-04-28 14:35:12",
+    "300016\tส่วนตัว\tNULL\t27\t2026-04-28 14:35:13",
+    "300017\tหมีโซล่า - Line\tNULL\t20\t2026-04-28 14:35:13",
+    "300018\tกรีน - Facebook\tNULL\t4\t2026-04-28 14:35:15",
+    "300019\tKEN\tNULL\t62\t2026-04-28 14:35:16",
+    "300021\tother\tNULL\t43\t2026-04-28 17:30:27",
+    "300022\tFB เพจ Duplicate Test\tNULL\t79\t2026-04-28 17:30:38",
+    "360001\twebsite\tNULL\t198\t2026-05-01 05:18:01",
+    "420001\tLINE SET\tNULL\t0\t2026-05-01 15:21:19",
+    "510001\tfb\tNULL\t21\t2026-05-04 04:32:01",
+    "540003\tLINE เพจ Set\tNULL\t2\t2026-05-04 10:34:04",
+    "540004\tLINE\tNULL\t3\t2026-05-04 11:24:08",
+    "600001\tfacebook\tNULL\t5\t2026-05-05 11:06:58",
+    "630001\tFB-Set\tNULL\t1\t2026-05-05 11:29:37",
+    "660001\tLine-Set\tNULL\t4\t2026-05-06 11:06:53",
+    "690001\tLine-Roof\tNULL\t0\t2026-05-07 10:54:32",
+    "720001\tปริ้นท์\tNULL\t1\t2026-05-07 11:45:09",
+    "750001\tFB เพจ micro\tNULL\t0\t2026-05-08 07:03:08",
+    "780001\tli\tNULL\t1\t2026-05-08 11:05:57",
+    "810004\tGulf\tpartner\t0\t2026-05-10 04:30:54",
+    "810008\tMEA\tpartner\t0\t2026-05-10 05:24:15",
+    "810015\tLINE ส่วนตัว\tNULL\t1\t2026-05-10 06:53:55"
+  ],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint\tNO\tPRI\tNULL\tauto_increment\nname\tvarchar(255)\tNO\tUNI\tNULL\t\ncategory\tvarchar(100)\tYES\t\tNULL\t\nusageCount\tint\tNO\t\t0\t\ncreatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nid\tname\tcategory\tusageCount\tcreatedAt\n210001\tFB เพจ SET\tNULL\t4\t2026-04-25 14:53:48\n210002\tทดสอบ\tNULL\t384\t2026-04-25 16:04:22\n210005\tFB เพจ TCS Test\tNULL\t53\t2026-04-25 16:04:33\n240001\tFB เพจ หมี\tNULL\t6\t2026-04-28 09:17:10\n270002\tFB เพจ ไมโคร\tNULL\t4\t2026-04-28 10:28:27\n300006\tSET - Facebook\tNULL\t66\t2026-04-28 14:35:12\n300007\tSET - Line\tNULL\t56\t2026-04-28 14:35:12\n300008\tไมโคร - Facebook\tNULL\t55\t2026-04-28 14:35:12\n300009\tหมีโซล่า - Facebook\tNULL\t17\t2026-04-28 14:35:12\n300010\tไมโคร\tNULL\t12\t2026-04-28 14:35:12\n300011\troof - Line\tNULL\t4\t2026-04-28 14:35:12\n300012\tหมีโซล่า\tNULL\t6\t2026-04-28 14:35:12\n300013\tSET - โทร\tNULL\t7\t2026-04-28 14:35:12\n300014\tไมโคร - Line\tNULL\t15\t2026-04-28 14:35:12\n300015\tSET\tNULL\t9\t2026-04-28 14:35:12\n300016\tส่วนตัว\tNULL\t27\t2026-04-28 14:35:13\n300017\tหมีโซล่า - Line\tNULL\t20\t2026-04-28 14:35:13\n300018\tกรีน - Facebook\tNULL\t4\t2026-04-28 14:35:15\n300019\tKEN\tNULL\t62\t2026-04-28 14:35:16\n300021\tother\tNULL\t43\t2026-04-28 17:30:27\n300022\tFB เพจ Duplicate Test\tNULL\t79\t2026-04-28 17:30:38\n360001\twebsite\tNULL\t198\t2026-05-01 05:18:01\n420001\tLINE SET\tNULL\t0\t2026-05-01 15:21:19\n510001\tfb\tNULL\t21\t2026-05-04 04:32:01\n540003\tLINE เพจ Set\tNULL\t2\t2026-05-04 10:34:04\n540004\tLINE\tNULL\t3\t2026-05-04 11:24:08\n600001\tfacebook\tNULL\t5\t2026-05-05 11:06:58\n630001\tFB-Set\tNULL\t1\t2026-05-05 11:29:37\n660001\tLine-Set\tNULL\t4\t2026-05-06 11:06:53\n690001\tLine-Roof\tNULL\t0\t2026-05-07 10:54:32\n720001\tปริ้นท์\tNULL\t1\t2026-05-07 11:45:09\n750001\tFB เพจ micro\tNULL\t0\t2026-05-08 07:03:08\n780001\tli\tNULL\t1\t2026-05-08 11:05:57\n810004\tGulf\tpartner\t0\t2026-05-10 04:30:54\n810008\tMEA\tpartner\t0\t2026-05-10 05:24:15\n810015\tLINE ส่วนตัว\tNULL\t1\t2026-05-10 06:53:55\n",
+  "stderr": "",
+  "execution_time_ms": 2167
+}

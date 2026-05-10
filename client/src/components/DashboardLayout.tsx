@@ -50,6 +50,7 @@ import {
   Zap,
   ChevronDown,
   Settings,
+  Globe,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation, Redirect } from "wouter";
@@ -97,6 +98,7 @@ const commonMenuItems = [
 
 const settingsMenuItems = [
   { icon: FileText, label: "Template ฟอร์ม", path: "/survey-templates" },
+  { icon: Globe, label: "จัดการแหล่งที่มา", path: "/source-management" },
   { icon: MessageSquare, label: "ตั้งค่า LINE", path: "/line-settings", superadminOnly: true },
   { icon: Building2, label: "ตั้งค่าบริษัท", path: "/company-settings" },
   { icon: Bell, label: "แจ้งเตือน", path: "/notifications" },
