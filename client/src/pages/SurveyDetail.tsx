@@ -1992,38 +1992,55 @@ function ShareLinkList({ links, linkType, onRevoke }: { links: any[]; linkType: 
 // ==================== PHOTO CAPTION INPUT ====================
 function PhotoCaptionInput({ photoId, initialCaption }: { photoId: number; initialCaption: string }) {
   const [caption, setCaption] = useState(initialCaption);
-  const [isSaving, setIsSaving] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [savedCaption, setSavedCaption] = useState(initialCaption);
   const updateCaption = trpc.photo.updateCaption.useMutation();
 
-  const save = useCallback((value: string) => {
-    setIsSaving(true);
+  const isDirty = caption !== savedCaption;
+
+  const handleSave = useCallback(() => {
     updateCaption.mutate(
-      { id: photoId, caption: value.trim() || null },
+      { id: photoId, caption: caption.trim() || null },
       {
-        onSuccess: () => setIsSaving(false),
-        onError: () => { toast.error("บันทึกหมายเหตุไม่สำเร็จ"); setIsSaving(false); },
+        onSuccess: () => {
+          setSavedCaption(caption);
+          toast.success("บันทึกหมายเหตุสำเร็จ");
+        },
+        onError: () => toast.error("บันทึกหมายเหตุไม่สำเร็จ"),
       }
     );
-  }, [photoId, updateCaption]);
+  }, [photoId, caption, updateCaption]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const v = e.target.value;
-    setCaption(v);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => save(v), 800);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && isDirty) {
+      e.preventDefault();
+      handleSave();
+    }
   };
 
   return (
-    <div className="mt-1.5 relative">
+    <div className="mt-1.5 flex items-center gap-1">
       <input
         type="text"
         value={caption}
-        onChange={handleChange}
+        onChange={(e) => setCaption(e.target.value)}
+        onKeyDown={handleKeyDown}
         placeholder="หมายเหตุ..."
-        className="w-full text-[11px] px-2 py-1 rounded border border-transparent hover:border-border focus:border-primary focus:ring-1 focus:ring-primary/30 bg-muted/30 focus:bg-background outline-none transition-all placeholder:text-muted-foreground/50"
+        className="flex-1 text-[11px] px-2 py-1 rounded border border-transparent hover:border-border focus:border-primary focus:ring-1 focus:ring-primary/30 bg-muted/30 focus:bg-background outline-none transition-all placeholder:text-muted-foreground/50"
       />
-      {isSaving && <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-muted-foreground">กำลังบันทึก...</span>}
+      {isDirty && (
+        <button
+          onClick={handleSave}
+          disabled={updateCaption.isPending}
+          className="shrink-0 flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+        >
+          {updateCaption.isPending ? (
+            <RotateCcw className="h-3 w-3 animate-spin" />
+          ) : (
+            <CheckCircle2 className="h-3 w-3" />
+          )}
+          บันทึก
+        </button>
+      )}
     </div>
   );
 }

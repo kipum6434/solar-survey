@@ -1110,3 +1110,7 @@
 - [x] เพิ่ม sourceExclude parameter ใน customer.list, survey.list, followUp.surveysForFollowUp, installation.list
 - [x] เพิ่ม sourceExclude logic ใน getCustomers, getSurveysWithCustomer, getSurveysForFollowUp, getInstallations (db.ts)
 - [x] แก้ getSourceDashboardStats ให้ TCS ใช้ exclusion logic (NOT Gulf, NOT MEA) แทน eq(source, 'TCS')
+
+### UX: ปุ่มบันทึกหมายเหตุใต้รูป (Photo Caption)
+- [x] แก้ไข PhotoCaptionInput ให้มีปุ่ม "บันทึก" แทนการบันทึกอัตโนมัติ (debounce)
+- [x] ยังแก้ไขได้ตลอด แต่ต้องกดบันทึกเพื่อยืนยัน
