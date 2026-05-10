@@ -407,11 +407,20 @@ function SortableField({ field, onEdit, onDelete }: { field: any; onEdit: () => 
 
   const isSectionHeader = field.fieldType === "section_header";
 
+  // กดที่แถวฟิลด์ → เปิดฟอร์มแก้ไข (เหมือนกดปุ่มดินสอ)
+  const handleRowClick = (e: React.MouseEvent) => {
+    // ไม่เปิด edit ถ้ากดปุ่ม delete หรือ drag handle (ปุ่มเหล่านั้นมี stopPropagation เอง)
+    const target = e.target as HTMLElement;
+    if (target.closest('button')) return; // ปุ่มต่างๆ จัดการเอง
+    onEdit();
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 px-3 py-2.5 sm:px-4 sm:py-3 group ${isSectionHeader ? "bg-muted/50" : ""}`}
+      className={`flex items-center gap-3 px-3 py-2.5 sm:px-4 sm:py-3 group cursor-pointer hover:bg-accent/50 transition-colors ${isSectionHeader ? "bg-muted/50 hover:bg-muted/70" : ""}`}
+      onClick={handleRowClick}
     >
       <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none p-1 -m-1 text-muted-foreground/40 hover:text-muted-foreground">
         <GripVertical className="h-4 w-4" />
@@ -434,11 +443,11 @@ function SortableField({ field, onEdit, onDelete }: { field: any; onEdit: () => 
           )}
         </div>
       </div>
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onEdit}>
+      <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
           <Pencil className="h-3.5 w-3.5" />
         </Button>
-        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={onDelete}>
+        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
       </div>

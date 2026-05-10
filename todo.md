@@ -1135,3 +1135,9 @@
 - [x] เพิ่มปุ่ม "ดูตัวอย่าง" ข้างแต่ละ template
 - [x] Dialog/Modal แสดง preview ฟอร์มตาม fields ของ template นั้น
 - [x] แสดงทุก field type (text, number, select, checkbox, radio, date, distance, yes_no, section_header) ในรูปแบบที่จะเห็นจริง
+
+## Feature: Inline edit ฟิลด์ template — กดที่แถวได้เลย
+
+- [x] กดที่แถวฟิลด์ → เปิดฟอร์มแก้ไข inline (เหมือนกดปุ่มดินสอ)
+- [x] กดปุ่มดินสอก็ทำงานเหมือนเดิม
+- [x] แก้ไขชื่อ, ประเภท, กลุ่ม, ตัวเลือก, required ได้ทันที
