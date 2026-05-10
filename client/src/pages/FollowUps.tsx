@@ -25,15 +25,7 @@ const THAI_MONTHS_SHORT = [
 // Statuses we show on this page
 const FOLLOW_UP_STATUSES = ["follow_up", "quoted", "negotiating"] as const;
 
-export default function FollowUps(props: any) {
-  const sourceMode: string | false = props?.sourceMode || (props?.gulfMode ? "Gulf" : false);
-  const isTcsMode = sourceMode === "TCS";
-  const isGroupMode = sourceMode && !isTcsMode;
-  const { data: nonTcsNames } = trpc.source.nonTcsSourceNames.useQuery(undefined, { enabled: isTcsMode });
-  const { data: groupSourceNames } = trpc.source.sourceNamesByGroup.useQuery(
-    { groupName: sourceMode as string },
-    { enabled: !!isGroupMode }
-  );
+export default function FollowUps() {
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -80,12 +72,10 @@ export default function FollowUps(props: any) {
       startDate,
       endDate,
       search: search || undefined,
-      source: isGroupMode ? (sourceMode as string) : undefined,
-      sourceExclude: isTcsMode ? (nonTcsNames && nonTcsNames.length > 0 ? nonTcsNames : ["Gulf", "MEA"]) : undefined,
       page,
       limit: 50,
     };
-  }, [filterByMonth, selectedMonth, selectedYear, search, page, sourceMode, isTcsMode]);
+  }, [filterByMonth, selectedMonth, selectedYear, search, page]);
 
   const { data, isLoading } = trpc.followUp.surveysForFollowUp.useQuery(queryInput);
   // Filter by status on client side
@@ -150,8 +140,8 @@ export default function FollowUps(props: any) {
       <div className="space-y-4">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{sourceMode ? `งานติดตาม ${sourceMode}` : "งานติดตาม"}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{sourceMode ? `ติดตามลูกค้า ${sourceMode}` : "ติดตามลูกค้าหลังจากสำรวจ — แสดงงานที่สถานะ รอติดตาม, เสนอราคาแล้ว, เจรจาต่อรอง"}</p>
+          <h1 className="text-2xl font-bold tracking-tight">งานติดตาม</h1>
+          <p className="text-sm text-muted-foreground mt-1">ติดตามลูกค้าหลังจากสำรวจ — แสดงงานที่สถานะ รอติดตาม, เสนอราคาแล้ว, เจรจาต่อรอง</p>
         </div>
 
         {/* Stats Cards */}

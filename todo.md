@@ -1037,94 +1037,25 @@
 ### Feature: เพิ่มประเภทระบบ "Hybrid"
 - [x] เพิ่ม "hybrid" ใน systemType enum (schema + migration + server router + frontend dropdowns + PDF labels)
 
-### Feature: ระบบ Gulf Channel + Dynamic Template ฟอร์มสำรวจ
+## User Request - Round 56: ระบบการเงิน/บัญชี + Checklist ส่งมอบ + ใบส่งมอบงาน
 
-## รอบ 1: ระบบ Template ฟอร์ม
-- [x] สร้าง DB table: survey_templates (id, name, sourceId, pdfHeaderTitle, pdfHeaderSubtitle, pdfLogoUrl, createdAt, updatedAt)
-- [x] สร้าง DB table: survey_template_fields (id, templateId, fieldName, fieldType, fieldOptions JSON, sortOrder, required, createdAt)
-- [x] สร้าง DB table: survey_template_data (surveyId, templateId, fieldId, value, otherValue)
-- [x] Migration SQL apply via webdev_execute_sql
-- [x] Server: db helpers สำหรับ CRUD template + fields
-- [x] Server: tRPC routers สำหรับ template management (create, update, delete, list, getById, reorderField- [x] Frontend: หน้าจัดการ Template ฟอร์ม (สร้าง/แก้ไข/ลบ template)
-- [x] Frontend: เพิ่ม/ลบ/แก้ไขฟิลด์ใน template (text, number, checkbox, select, distance)
-- [x] Frontend: ลากจัดลำดับฟิลด์ (drag & drop)
-- [x] Frontend: ผูก template กับแหล่งที่มา (source)
-- [x] Frontend: ตั้งค่า PDF header/subtitle/โลโก้ใน template)
+### Feature: ระบบการเงิน/บัญชี (Finance)
+- [x] Schema: sync payments table ให้ตรง DB จริง (amount, status, notes, slipUrl, paymentDate, contractValue, collectedAmount)
+- [x] Backend: payment.list รองรับ source/sourceExclude filter (join customers → source)
+- [x] Backend: source.sourceNamesByGroup procedure (group sources by groupName)
+- [x] Backend: source.update + source.updateGroup procedures
+- [x] Frontend: สร้างหน้า Finance.tsx — 3 tabs (TCS/Gulf/MEA) + ตาราง + stats cards + อัพสลิป + filter สถานะ/เดือน/ปี
+- [x] Frontend: เพิ่ม route /finance ใน App.tsx
+- [x] Sidebar: เพิ่มเมนู "การเงิน/บัญชี" (Banknote icon)
 
-## รอบ 2: ฟอร์มสำรวจ Gulf + Dynamic Fields
-- [x] สร้าง DB table: survey_template_data (id, surveyId, templateId, fieldId, value JSON, createdAt, updatedAt)
-- [x] Migration SQL apply
-- [x] Server: db helpers + tRPC routers สำหรับ save/load template data
-- [x] Frontend: ฟอร์มสำรวจ Gulf แสดงฟิลด์ตาม template อัตโนมัติ
-- [x] Frontend: checkbox "อื่นๆ" มีช่องกรอกเพิ่มเติม
-- [x] Frontend: บันทึก/โหลดข้อมูลฟอร์ม Gulf
+### Feature: จัดการ Checklist Template ส่งมอบงาน
+- [x] Schema: sync delivery_checklist_templates table ให้ตรง DB จริง (name, items, isDefault, createdBy)
+- [x] Backend: checklistTemplate CRUD (list, listAll, create, update, delete) — admin only
+- [x] Frontend: สร้างหน้า ChecklistTemplates.tsx — เพิ่ม/แก้ไข/ลบ template + set default
+- [x] Frontend: เพิ่ม route /checklist-templates ใน App.tsx
+- [x] Sidebar: เพิ่มเมนู "Checklist ส่งมอบ" (CheckSquare icon)
 
-## รอบ 3: Sidebar Gulf + หมายเหตุรูป + PDF Export
-- [x] เพิ่ม Sidebar เมนู Gulf (ลูกค้า/สำรวจ/ติดตาม/ติดตั้ง Gulf)
-- [x] หน้ารายการ Gulf filter เฉพาะ source = Gulf
-- [x] เพิ่มช่องหมายเหตุ (caption) ใต้รูปภาพ (DB + UI)
-- [x] หมายเหตุรูปแสดงใน PDF ด้วย
-- [x] สร้าง PDF Export แบบ Gulf (ใช้ header/โลโก้จาก template, ฟิลด์ตาม template, รูป+caption)
+### Feature: ใบส่งมอบงาน (DeliveryFormSection) ใน DeliveryTab
+- [x] Frontend: integrate DeliveryFormSection component ใน DeliveryTab (ก่อน comments section)
+- [x] Vitest: 18 tests passed — finance-checklist.test.ts (checklist CRUD, source groups, payment CRUD+filters, delivery form, source update)
 
-### Feature: ปุ่ม Preview ในหน้าจัดการ Template ฟอร์ม
-- [x] เพิ่มปุ่ม Preview ในหน้า SurveyTemplates
-- [x] สร้าง Dialog แสดงตัวอย่างฟอร์มตามฟิลด์ที่ตั้งค่าไว้ (text, number, checkbox with "อื่นๆ", select, distance)
-- [x] รองรับ mobile-friendly
-
-### Bug: เมนู Gulf ซ้อนทับกับจัดการสถานะใน Sidebar
-- [x] แก้ไข layout ของเมนู Gulf ใน DashboardLayout ไม่ให้ซ้อนทับเมนูอื่น
-
-### Feature: สร้าง Template Gulf SSR จริง + ทดสอบงานสำรวจ
-- [x] สร้าง Template "Gulf SSR" พร้อมฟิลด์ 39 รายการ (10 sections) ตาม PDF ตัวอย่าง (seeded via SQL, templateId=3, sourceId=810004)
-- [x] สร้างงานสำรวจ Gulf ทดสอบ 1 งาน (customerId=1440115, surveyId=1410094)
-
-### Feature: จัดกลุ่มเมนู "ตั้งค่า" ใน sidebar
-- [x] ย้าย Template ฟอร์ม / ตั้งค่า LINE / ตั้งค่าบริษัท / แจ้งเตือน ไปรวมเป็นกลุ่ม "ตั้งค่า" แบบ collapsible
-
-### Bug: Sidebar Gulf + ตั้งค่า ซ้อนทับเมนูอื่น
-- [x] แก้ไข sidebar Gulf และ ตั้งค่า collapsible ไม่ให้ซ้อนทับกับเมนูอื่น — รวมทุกอย่างเข้า SidebarMenu เดียว + flex-shrink-0
-
-### Feature: ปุ่ม Duplicate Template
-- [x] เพิ่มปุ่ม Duplicate Template ในหน้า SurveyTemplates เพื่อสร้าง template ใหม่จาก template เดิม (backend + frontend)
-
-### Feature: Gulf Dashboard
-- [x] สร้างหน้า Gulf Dashboard แสดงสถิติลูกค้า/สำรวจ/ติดตั้ง เฉพาะ Gulf
-- [x] เพิ่มเมนู Gulf Dashboard ใน sidebar กลุ่ม Gulf
-
-### Sidebar Restructure: Source-based groups (TCS, Gulf, MEA)
-- [x] ย้ายเมนู ลูกค้า/งานสำรวจ/งานติดตาม/งานติดตั้ง เดิมเข้ากลุ่ม "งาน TCS" แบบ collapsible
-- [x] สร้าง TCS Dashboard แสดงสถิติเฉพาะ TCS source
-- [x] สร้าง source "MEA" ในฐานข้อมูล (id=810008)
-- [x] สร้างหน้า MEA (ลูกค้า/สำรวจ/ติดตาม/ติดตั้ง) + MEA Dashboard (pending)
-- [x] เพิ่มกลุ่ม MEA ใน sidebar แบบ collapsible
-- [x] แดชบอร์ดหลักยังแสดงข้อมูลรวมทุก source เหมือนเดิม
-- [x] โครงสร้าง sidebar รองรับเพิ่มกลุ่มใหม่ง่ายในอนาคต
-
-### Feature: หมายเหตุใต้รูป (Photo Notes)
-- [x] เพิ่มช่อง notes (optional) ใต้รูปแต่ละรูปในหน้าสำรวจ (มีอยู่แล้ว - PhotoCaptionInput component)
-- [x] แสดงหมายเหตุใน PDF export (มีอยู่แล้ว - exportGulfSurveyPDF)
-
-### Bug: TCS filter แสดง 0 ลูกค้า
-- [x] แก้ TCS source filter: TCS = ทุกอย่างที่ไม่ใช่ Gulf และไม่ใช่ MEA (รวม null/source อื่นๆ)
-- [x] แก้ TCS Dashboard stats ใช้ exclusion logic เดียวกัน
-- [x] เพิ่ม sourceExclude parameter ใน customer.list, survey.list, followUp.surveysForFollowUp, installation.list
-- [x] เพิ่ม sourceExclude logic ใน getCustomers, getSurveysWithCustomer, getSurveysForFollowUp, getInstallations (db.ts)
-- [x] แก้ getSourceDashboardStats ให้ TCS ใช้ exclusion logic (NOT Gulf, NOT MEA) แทน eq(source, 'TCS')
-
-### UX: ปุ่มบันทึกหมายเหตุใต้รูป (Photo Caption)
-- [x] แก้ไข PhotoCaptionInput ให้มีปุ่ม "บันทึก" แทนการบันทึกอัตโนมัติ (debounce)
-- [x] ยังแก้ไขได้ตลอด แต่ต้องกดบันทึกเพื่อยืนยัน
-
-### UX: ปุ่มบันทึกทั้งหมด + indicator บันทึกแล้ว (Photo Caption)
-- [x] เพิ่มปุ่ม "บันทึกทั้งหมด" สำหรับบันทึกหมายเหตุหลายรูปพร้อมกันทีเดียว
-- [x] เพิ่ม indicator "บันทึกแล้ว" (เครื่องหมายถูกสีเขียว) ใต้รูปที่มีหมายเหตุบันทึกแล้ว
-
-### Feature: จัดการแหล่งที่มา (Source Management)
-- [x] สร้าง groupName column ใน sources table (ใช้ sources table เดิม + เพิ่ม groupName)
-- [x] สร้าง backend CRUD procedures: เพิ่ม/แก้ไข/ลบ source + กำหนดกลุ่ม
-- [x] สร้าง backend procedure: list customers by source (getCustomersBySourceName)
-- [x] สร้างหน้า "จัดการแหล่งที่มา" ในเมนูตั้งค่า (ตาราง source + จำนวนลูกค้า + กลุ่ม)
-- [x] กดเข้าแต่ละ source → drill-down แสดงรายชื่อลูกค้าทั้งหมดของ source นั้น
-- [x] เชื่อม mapping กับ sidebar filter logic (TCS/Gulf/MEA ใช้ mapping แทน hardcode)
-- [x] เพิ่ม/แก้ไข/ลบ source ได้จากหน้า UI
-- [x] เปลี่ยนกลุ่มของ source ได้ (dropdown เลือก TCS/Gulf/MEA + สร้างกลุ่มใหม่ได้)

@@ -27,23 +27,8 @@ import LineSettings from "./pages/LineSettings";
 import FollowUps from "./pages/FollowUps";
 import CompanySettings from "./pages/CompanySettings";
 import Approvals from "./pages/Approvals";
-import SurveyTemplates from "./pages/SurveyTemplates";
-import GulfCustomers from "./pages/gulf/GulfCustomers";
-import GulfSurveys from "./pages/gulf/GulfSurveys";
-import GulfFollowUps from "./pages/gulf/GulfFollowUps";
-import GulfInstallations from "./pages/gulf/GulfInstallations";
-import GulfDashboard from "./pages/gulf/GulfDashboard";
-import TcsDashboard from "./pages/tcs/TcsDashboard";
-import TcsCustomers from "./pages/tcs/TcsCustomers";
-import TcsSurveys from "./pages/tcs/TcsSurveys";
-import TcsFollowUps from "./pages/tcs/TcsFollowUps";
-import TcsInstallations from "./pages/tcs/TcsInstallations";
-import MeaDashboard from "./pages/mea/MeaDashboard";
-import MeaCustomers from "./pages/mea/MeaCustomers";
-import MeaSurveys from "./pages/mea/MeaSurveys";
-import MeaFollowUps from "./pages/mea/MeaFollowUps";
-import MeaInstallations from "./pages/mea/MeaInstallations";
-import SourceManagement from "./pages/SourceManagement";
+import Finance from "./pages/Finance";
+import ChecklistTemplates from "./pages/ChecklistTemplates";
 
 function Router() {
   return (
@@ -69,23 +54,8 @@ function Router() {
       <Route path={"/follow-ups"} component={FollowUps} />
       <Route path={"/line-settings"} component={LineSettings} />
       <Route path={"/company-settings"} component={CompanySettings} />
-      <Route path={"/survey-templates"} component={SurveyTemplates} />
-      <Route path={"/gulf/dashboard"} component={GulfDashboard} />
-      <Route path={"/gulf/customers"} component={GulfCustomers} />
-      <Route path={"/gulf/surveys"} component={GulfSurveys} />
-      <Route path={"/gulf/follow-ups"} component={GulfFollowUps} />
-      <Route path={"/gulf/installations"} component={GulfInstallations} />
-      <Route path={"/tcs/dashboard"} component={TcsDashboard} />
-      <Route path={"/tcs/customers"} component={TcsCustomers} />
-      <Route path={"/tcs/surveys"} component={TcsSurveys} />
-      <Route path={"/tcs/follow-ups"} component={TcsFollowUps} />
-      <Route path={"/tcs/installations"} component={TcsInstallations} />
-      <Route path={"/mea/dashboard"} component={MeaDashboard} />
-      <Route path={"/mea/customers"} component={MeaCustomers} />
-      <Route path={"/mea/surveys"} component={MeaSurveys} />
-      <Route path={"/mea/follow-ups"} component={MeaFollowUps} />
-      <Route path={"/mea/installations"} component={MeaInstallations} />
-      <Route path={"/source-management"} component={SourceManagement} />
+      <Route path={"/finance"} component={Finance} />
+      <Route path={"/checklist-templates"} component={ChecklistTemplates} />
       <Route path={"/share/:token"} component={SharedSurvey} />
       <Route path={"/survey-field/:token"} component={SharedSurveyField} />
       <Route path={"/404"} component={NotFound} />

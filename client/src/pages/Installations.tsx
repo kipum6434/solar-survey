@@ -87,15 +87,7 @@ function InstallationStatusBadge({ status, surveyId, onChanged }: { status: stri
   );
 }
 
-export default function Installations(props: any) {
-  const sourceMode: string | false = props?.sourceMode || (props?.gulfMode ? "Gulf" : false);
-  const isTcsMode = sourceMode === "TCS";
-  const isGroupMode = sourceMode && !isTcsMode;
-  const { data: nonTcsNames } = trpc.source.nonTcsSourceNames.useQuery(undefined, { enabled: isTcsMode });
-  const { data: groupSourceNames } = trpc.source.sourceNamesByGroup.useQuery(
-    { groupName: sourceMode as string },
-    { enabled: !!isGroupMode }
-  );
+export default function Installations() {
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [statusTab, setStatusTab] = useState<string>("all");
@@ -144,9 +136,7 @@ export default function Installations(props: any) {
     closerId: filterCloser !== "all" ? Number(filterCloser) : undefined,
     installerTeamId: filterInstallerTeam !== "all" ? Number(filterInstallerTeam) : undefined,
     installationStatus: statusTab as any,
-    source: isGroupMode ? (sourceMode as string) : undefined,
-    sourceExclude: isTcsMode ? (nonTcsNames && nonTcsNames.length > 0 ? nonTcsNames : ["Gulf", "MEA"]) : undefined,
-  }), [page, search, filterByMonth, selectedMonth, selectedYear, statusTab, filterProvince, filterDistrict, filterSurveyor, filterCloser, filterInstallerTeam, sourceMode, isTcsMode]);
+  }), [page, search, filterByMonth, selectedMonth, selectedYear, statusTab, filterProvince, filterDistrict, filterSurveyor, filterCloser, filterInstallerTeam]);
 
   const { data, isLoading } = trpc.installation.list.useQuery(queryInput);
   const items = data?.data ?? [];
@@ -306,9 +296,9 @@ export default function Installations(props: any) {
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
               <Wrench className="h-6 w-6 text-primary" />
-              {sourceMode ? `งานติดตั้ง ${sourceMode}` : "งานติดตั้ง"}
+              งานติดตั้ง
             </h1>
-            <p className="text-muted-foreground text-sm">{sourceMode ? `จัดการงานติดตั้ง ${sourceMode}` : "จัดการงานติดตั้งที่ปิดการขายแล้ว"}</p>
+            <p className="text-muted-foreground text-sm">จัดการงานติดตั้งที่ปิดการขายแล้ว</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-sm text-muted-foreground">

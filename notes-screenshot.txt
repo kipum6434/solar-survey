@@ -1,0 +1,3 @@
+Screenshot shows sidebar with "การเงิน/บัญชี" menu item visible at bottom of sidebar.
+Need to scroll down to see "Checklist ส่งมอบ" menu item.
+TypeScript: 0 errors, server running, 18 tests passed.

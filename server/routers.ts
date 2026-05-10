@@ -27,7 +27,6 @@ const customerRouter = router({
       district: z.string().optional(),
       province: z.string().optional(),
       source: z.string().optional(),
-      sourceExclude: z.array(z.string()).optional(),
       surveyStatus: z.string().optional(),
     }))
     .query(async ({ input, ctx }) => {
@@ -245,7 +244,6 @@ const surveyRouter = router({
       month: z.number().min(1).max(12).optional(),
       year: z.number().optional(),
       source: z.string().optional(),
-      sourceExclude: z.array(z.string()).optional(),
       district: z.string().optional(),
       province: z.string().optional(),
       sortBy: z.string().optional(),
@@ -871,22 +869,6 @@ const photoRouter = router({
       return { success: true };
     }),
 
-  updateCaption: protectedProcedure
-    .input(z.object({ id: z.number(), caption: z.string().nullable() }))
-    .mutation(async ({ input }) => {
-      await db.updateSurveyPhotoCaption(input.id, input.caption);
-      return { success: true };
-    }),
-
-  batchUpdateCaptions: protectedProcedure
-    .input(z.object({ updates: z.array(z.object({ id: z.number(), caption: z.string().nullable() })).min(1).max(500) }))
-    .mutation(async ({ input }) => {
-      for (const u of input.updates) {
-        await db.updateSurveyPhotoCaption(u.id, u.caption);
-      }
-      return { success: true, count: input.updates.length };
-    }),
-
   reorder: publicProcedure
     .input(z.object({ items: z.array(z.object({ id: z.number(), sortOrder: z.number() })).min(1).max(500) }))
     .mutation(async ({ input }) => {
@@ -1003,8 +985,6 @@ const followUpRouter = router({
       endDate: z.number().optional(),
       page: z.number().default(1),
       limit: z.number().default(50),
-      source: z.string().optional(),
-      sourceExclude: z.array(z.string()).optional(),
     }))
     .query(({ input }) => db.getSurveysForFollowUp(input)),
 
@@ -1293,24 +1273,6 @@ const dashboardRouter = router({
     const scope = await getUserScope(ctx.user);
     return db.getDashboardStats(scope?.surveyIds, scope?.customerIds);
   }),
-
-  gulfStats: protectedProcedure.query(async () => {
-    return db.getGulfDashboardStats();
-  }),
-
-  tcsStats: protectedProcedure.query(async () => {
-    return db.getSourceDashboardStats("TCS");
-  }),
-
-  meaStats: protectedProcedure.query(async () => {
-    return db.getSourceDashboardStats("MEA");
-  }),
-
-  sourceStats: protectedProcedure
-    .input(z.object({ source: z.string() }))
-    .query(async ({ input }) => {
-      return db.getSourceDashboardStats(input.source);
-    }),
   recentActivities: protectedProcedure
     .input(z.object({ limit: z.number().default(20) }).optional())
     .query(({ input }) => db.getRecentActivities(input?.limit)),
@@ -1460,35 +1422,28 @@ const storageRouter = router({
 // ==================== SOURCES ROUTER ====================
 const sourceRouter = router({
   list: protectedProcedure.query(() => db.getSources()),
-  listWithStats: protectedProcedure.query(() => db.getSourcesWithStats()),
-  distinctGroups: protectedProcedure.query(() => db.getDistinctGroups()),
-  sourceNamesByGroup: protectedProcedure
-    .input(z.object({ groupName: z.string() }))
-    .query(({ input }) => db.getSourceNamesByGroup(input.groupName)),
-  nonTcsSourceNames: protectedProcedure.query(() => db.getNonTcsSourceNames()),
-  customersBySource: protectedProcedure
-    .input(z.object({ sourceName: z.string(), page: z.number().optional(), limit: z.number().optional() }))
-    .query(({ input }) => db.getCustomersBySourceName(input.sourceName, { page: input.page, limit: input.limit })),
+  sourceNamesByGroup: protectedProcedure.query(async () => {
+    const allSources = await db.getSources();
+    const result: Record<string, string[]> = {};
+    for (const s of allSources) {
+      const group = (s as any).groupName;
+      if (group) {
+        if (!result[group]) result[group] = [];
+        result[group].push(s.name);
+      }
+    }
+    return result;
+  }),
   create: protectedProcedure
-    .input(z.object({ name: z.string().min(1), category: z.string().optional(), groupName: z.string().nullable().optional() }))
+    .input(z.object({ name: z.string().min(1), category: z.string().optional() }))
     .mutation(async ({ input }) => {
       const source = await db.getOrCreateSource(input.name, input.category);
-      if (input.groupName !== undefined && source && 'id' in source) {
-        await db.updateSource(source.id, { groupName: input.groupName });
-      }
       return source;
     }),
-  update: adminProcedure
-    .input(z.object({ id: z.number(), name: z.string().optional(), groupName: z.string().nullable().optional() }))
+  update: protectedProcedure
+    .input(z.object({ id: z.number(), name: z.string().optional(), category: z.string().optional(), groupName: z.string().nullable().optional() }))
     .mutation(async ({ input }) => {
-      const { id, ...data } = input;
-      await db.updateSource(id, data);
-      return { success: true };
-    }),
-  updateGroup: adminProcedure
-    .input(z.object({ id: z.number(), groupName: z.string().nullable() }))
-    .mutation(async ({ input }) => {
-      await db.updateSource(input.id, { groupName: input.groupName });
+      await db.updateSource(input.id, { name: input.name, category: input.category, groupName: input.groupName });
       return { success: true };
     }),
   delete: adminProcedure
@@ -1747,8 +1702,6 @@ const installationRouter = router({
       closerId: z.number().optional(),
       installerTeamId: z.number().optional(),
       installationStatus: z.enum(['all', 'upcoming', 'today', 'overdue', 'completed']).optional(),
-      source: z.string().optional(),
-      sourceExclude: z.array(z.string()).optional(),
     }))
     .query(async ({ input, ctx }) => {
       const scope = await getUserScope(ctx.user);
@@ -1756,7 +1709,8 @@ const installationRouter = router({
       return db.getInstallations({ ...rest, installationStatus: installationStatus === 'all' ? undefined : installationStatus, scopedSurveyIds: scope?.surveyIds });
     }),
 });
-// ==================== DOCUMENT CATEGORY ROUTERR ====================
+
+// ==================== DOCUMENT CATEGORY ROUTER ====================
 const documentCategoryRouter = router({
   list: publicProcedure
     .query(() => db.getDocumentCategories()),
@@ -2584,212 +2538,201 @@ const companySettingsRouter = router({
   }),
 });
 
-// ==================== SURVEY TEMPLATE ROUTER ====================
-const surveyTemplateRouter = router({
-  list: protectedProcedure.query(async () => {
-    const templates = await db.getSurveyTemplates();
-    return templates;
-  }),
-
-  getById: protectedProcedure
-    .input(z.object({ id: z.number() }))
+// ==================== DELIVERY FORM ROUTER ====================
+const deliveryFormRouter = router({
+  get: protectedProcedure
+    .input(z.object({ surveyId: z.number() }))
     .query(async ({ input }) => {
-      const template = await db.getSurveyTemplateById(input.id);
-      if (!template) throw new TRPCError({ code: "NOT_FOUND", message: "Template not found" });
-      const fields = await db.getTemplateFields(input.id);
-      return { ...template, fields };
+      const form = await db.getDeliveryFormBySurveyId(input.surveyId);
+      if (!form) return null;
+      return {
+        ...form,
+        checklistItems: form.checklistData ? JSON.parse(form.checklistData) : [],
+      };
     }),
 
-  getBySourceId: protectedProcedure
-    .input(z.object({ sourceId: z.number() }))
-    .query(async ({ input }) => {
-      const template = await db.getSurveyTemplateBySourceId(input.sourceId);
-      if (!template) return null;
-      const fields = await db.getTemplateFields(template.id);
-      return { ...template, fields };
-    }),
-
-  getBySourceName: protectedProcedure
-    .input(z.object({ sourceName: z.string() }))
-    .query(async ({ input }) => {
-      // Find source by name, then find template by sourceId
-      const allSources = await db.getSources();
-      const source = allSources.find((s: any) => s.name === input.sourceName);
-      if (!source) return null;
-      const template = await db.getSurveyTemplateBySourceId(source.id);
-      if (!template) return null;
-      const fields = await db.getTemplateFields(template.id);
-      return { ...template, fields };
-    }),
-
-  create: adminProcedure
+  create: protectedProcedure
     .input(z.object({
-      name: z.string().min(1),
-      sourceId: z.number().nullable().optional(),
-      pdfHeaderTitle: z.string().optional(),
-      pdfHeaderSubtitle: z.string().optional(),
-      pdfLogoUrl: z.string().optional(),
-      pdfLogoFileKey: z.string().optional(),
+      surveyId: z.number(),
+      checklistItems: z.array(z.object({ templateId: z.number().optional(), label: z.string(), checked: z.boolean() })).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      return db.createSurveyTemplate({ ...input, createdBy: ctx.user.id });
+      // Get survey to find customerId
+      const survey = await db.getSurveyById(input.surveyId);
+      if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบงานสำรวจ" });
+      const checklistData = JSON.stringify(input.checklistItems || []);
+      return db.createDeliveryForm({
+        surveyId: input.surveyId,
+        customerId: survey.customerId,
+        checklistData,
+        createdBy: ctx.user.id,
+      });
+    }),
+
+  updateChecklist: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      checklistItems: z.array(z.object({ templateId: z.number().optional(), label: z.string(), checked: z.boolean() })),
+    }))
+    .mutation(async ({ input }) => {
+      await db.updateDeliveryFormChecklist(input.id, JSON.stringify(input.checklistItems));
+      return { success: true };
+    }),
+
+  saveSignature: protectedProcedure
+    .input(z.object({
+      surveyId: z.number(),
+      type: z.enum(["customer", "technician"]),
+      signatureData: z.string(), // base64 data URL
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const form = await db.getDeliveryFormBySurveyId(input.surveyId);
+      if (!form) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบใบส่งมอบงาน" });
+      
+      // Upload signature to S3
+      const base64Data = input.signatureData.replace(/^data:image\/\w+;base64,/, "");
+      const buffer = Buffer.from(base64Data, "base64");
+      const key = `signatures/${form.surveyId}_${input.type}_${Date.now()}_${nanoid(6)}.png`;
+      const { url } = await storagePut(key, buffer, "image/png");
+      
+      const updateData: any = {};
+      if (input.type === "customer") {
+        updateData.customerSignatureUrl = url;
+        updateData.customerSignatureKey = key;
+      } else {
+        updateData.technicianSignatureUrl = url;
+        updateData.technicianSignatureKey = key;
+        updateData.technicianName = ctx.user.name || "ช่าง";
+      }
+      
+      // Check if both signatures exist after this update
+      const hasCustomerSig = input.type === "customer" ? true : !!form.customerSignatureUrl;
+      const hasTechSig = input.type === "technician" ? true : !!form.technicianSignatureUrl;
+      if (hasCustomerSig && hasTechSig) {
+        updateData.status = "signed";
+        updateData.signedAt = Date.now();
+      }
+      
+      await db.updateDeliveryFormSignature(form.id, updateData);
+      return { success: true, url };
+    }),
+
+  updateNotes: protectedProcedure
+    .input(z.object({ id: z.number(), notes: z.string() }))
+    .mutation(async ({ input }) => {
+      await db.updateDeliveryFormNotes(input.id, input.notes);
+      return { success: true };
+    }),
+});
+
+// ==================== CHECKLIST TEMPLATE ROUTER ====================
+const checklistTemplateRouter = router({
+  list: protectedProcedure.query(async () => {
+    return db.getChecklistTemplates();
+  }),
+
+  listAll: adminProcedure.query(async () => {
+    return db.getAllChecklistTemplates();
+  }),
+
+  create: adminProcedure
+    .input(z.object({ name: z.string().min(1), items: z.string().optional(), isDefault: z.boolean().optional() }))
+    .mutation(async ({ input, ctx }) => {
+      return db.createChecklistTemplate({ ...input, createdBy: ctx.user.id });
     }),
 
   update: adminProcedure
-    .input(z.object({
-      id: z.number(),
-      name: z.string().min(1).optional(),
-      sourceId: z.number().nullable().optional(),
-      pdfHeaderTitle: z.string().nullable().optional(),
-      pdfHeaderSubtitle: z.string().nullable().optional(),
-      pdfLogoUrl: z.string().nullable().optional(),
-      pdfLogoFileKey: z.string().nullable().optional(),
-      isActive: z.boolean().optional(),
-    }))
+    .input(z.object({ id: z.number(), name: z.string().optional(), items: z.string().optional(), isDefault: z.boolean().optional() }))
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
-      await db.updateSurveyTemplate(id, data);
+      await db.updateChecklistTemplate(id, data);
       return { success: true };
     }),
 
   delete: adminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
-      await db.deleteSurveyTemplate(input.id);
-      return { success: true };
-    }),
-
-  duplicate: adminProcedure
-    .input(z.object({ id: z.number(), name: z.string().min(1).optional() }))
-    .mutation(async ({ input, ctx }) => {
-      // Get original template
-      const original = await db.getSurveyTemplateById(input.id);
-      if (!original) throw new TRPCError({ code: "NOT_FOUND", message: "Template not found" });
-      const fields = await db.getTemplateFields(input.id);
-      // Create new template (copy)
-      const newName = input.name || `${original.name} (สำเนา)`;
-      const newTemplate = await db.createSurveyTemplate({
-        name: newName,
-        sourceId: null, // Don't copy sourceId to avoid conflict
-        pdfHeaderTitle: original.pdfHeaderTitle,
-        pdfHeaderSubtitle: original.pdfHeaderSubtitle,
-        pdfLogoUrl: original.pdfLogoUrl,
-        pdfLogoFileKey: original.pdfLogoFileKey,
-        createdBy: ctx.user.id,
-      });
-      // Copy all fields
-      for (const field of fields) {
-        await db.createTemplateField({
-          templateId: newTemplate.id,
-          fieldName: field.fieldName,
-          fieldLabel: field.fieldLabel,
-          fieldType: field.fieldType,
-          fieldOptions: field.fieldOptions,
-          hasOtherOption: field.hasOtherOption,
-          placeholder: field.placeholder,
-          defaultValue: field.defaultValue,
-          required: field.required,
-          sectionGroup: field.sectionGroup,
-          sortOrder: field.sortOrder,
-        });
-      }
-      return { id: newTemplate.id, name: newName, fieldCount: fields.length };
-    }),
-
-  uploadLogo: adminProcedure
-    .input(z.object({
-      templateId: z.number(),
-      fileName: z.string(),
-      base64: z.string(),
-      mimeType: z.string(),
-    }))
-    .mutation(async ({ input }) => {
-      const buffer = Buffer.from(input.base64, "base64");
-      const fileKey = `template-logos/${input.templateId}-${Date.now()}-${input.fileName}`;
-      const { url } = await storagePut(fileKey, buffer, input.mimeType);
-      await db.updateSurveyTemplate(input.templateId, { pdfLogoUrl: url, pdfLogoFileKey: fileKey });
-      return { url, fileKey };
-    }),
-
-  // Field management
-  addField: adminProcedure
-    .input(z.object({
-      templateId: z.number(),
-      fieldName: z.string().min(1),
-      fieldLabel: z.string().min(1),
-      fieldType: z.enum(["text", "number", "textarea", "select", "checkbox", "checkbox_group", "radio", "date", "distance", "yes_no", "section_header"]),
-      fieldOptions: z.string().nullable().optional(),
-      hasOtherOption: z.boolean().optional(),
-      placeholder: z.string().optional(),
-      defaultValue: z.string().optional(),
-      required: z.boolean().optional(),
-      sectionGroup: z.string().optional(),
-      sortOrder: z.number().optional(),
-    }))
-    .mutation(async ({ input }) => {
-      return db.createTemplateField(input);
-    }),
-
-  updateField: adminProcedure
-    .input(z.object({
-      id: z.number(),
-      fieldName: z.string().min(1).optional(),
-      fieldLabel: z.string().min(1).optional(),
-      fieldType: z.enum(["text", "number", "textarea", "select", "checkbox", "checkbox_group", "radio", "date", "distance", "yes_no", "section_header"]).optional(),
-      fieldOptions: z.string().nullable().optional(),
-      hasOtherOption: z.boolean().optional(),
-      placeholder: z.string().nullable().optional(),
-      defaultValue: z.string().nullable().optional(),
-      required: z.boolean().optional(),
-      sectionGroup: z.string().nullable().optional(),
-    }))
-    .mutation(async ({ input }) => {
-      const { id, ...data } = input;
-      await db.updateTemplateField(id, data);
-      return { success: true };
-    }),
-
-  deleteField: adminProcedure
-    .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
-      await db.deleteTemplateField(input.id);
-      return { success: true };
-    }),
-
-  reorderFields: adminProcedure
-    .input(z.object({
-      templateId: z.number(),
-      fieldIds: z.array(z.number()),
-    }))
-    .mutation(async ({ input }) => {
-      await db.reorderTemplateFields(input.templateId, input.fieldIds);
-      return { success: true };
-    }),
-
-  // Template data (filled values for a survey)
-  getData: protectedProcedure
-    .input(z.object({ surveyId: z.number() }))
-    .query(async ({ input }) => {
-      return db.getTemplateDataBySurvey(input.surveyId);
-    }),
-
-  saveData: protectedProcedure
-    .input(z.object({
-      surveyId: z.number(),
-      templateId: z.number(),
-      entries: z.array(z.object({
-        fieldId: z.number(),
-        value: z.string().nullable(),
-        otherValue: z.string().nullable(),
-      })),
-    }))
-    .mutation(async ({ input }) => {
-      await db.saveTemplateData(input.surveyId, input.templateId, input.entries);
+      await db.deleteChecklistTemplate(input.id);
       return { success: true };
     }),
 });
 
-// ==================== APP ROUTER ====================
+// ==================== PAYMENT ROUTER ====================
+const paymentRouter = router({
+  get: protectedProcedure
+    .input(z.object({ surveyId: z.number() }))
+    .query(async ({ input }) => {
+      return db.getPaymentBySurveyId(input.surveyId);
+    }),
+
+  create: protectedProcedure
+    .input(z.object({
+      surveyId: z.number(),
+      amount: z.number().optional(),
+      paymentMethod: z.string().optional(),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const survey = await db.getSurveyById(input.surveyId);
+      if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบงานสำรวจ" });
+      return db.createPayment({
+        ...input,
+        customerId: survey.customerId,
+        createdBy: ctx.user.id,
+      });
+    }),
+
+  list: protectedProcedure
+    .input(z.object({ status: z.string().optional(), page: z.number().optional(), limit: z.number().optional(), source: z.string().optional(), sourceExclude: z.array(z.string()).optional() }))
+    .query(async ({ input }) => {
+      return db.getPayments(input);
+    }),
+
+  update: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      amount: z.number().optional(),
+      paymentDate: z.number().optional(),
+      paymentMethod: z.string().optional(),
+      notes: z.string().optional(),
+      status: z.enum(["pending", "partial", "paid", "overdue"]).optional(),
+      contractValue: z.number().optional(),
+      collectedAmount: z.number().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await db.updatePayment(id, data);
+      return { success: true };
+    }),
+
+  uploadSlip: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      base64Data: z.string(),
+      fileName: z.string(),
+      mimeType: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      const buffer = Buffer.from(input.base64Data, "base64");
+      if (buffer.length > 5 * 1024 * 1024) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "ไฟล์ต้องมีขนาดไม่เกิน 5MB" });
+      }
+      const ext = input.fileName.split(".").pop() || "jpg";
+      const key = `payment-slips/${input.id}_${Date.now()}_${nanoid(6)}.${ext}`;
+      const { url } = await storagePut(key, buffer, input.mimeType);
+      await db.updatePayment(input.id, { slipUrl: url, slipFileKey: key, status: "paid", paymentDate: Date.now() });
+      return { success: true, url };
+    }),
+
+  confirm: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await db.updatePayment(input.id, { status: "paid" });
+      return { success: true };
+    }),
+});
+
+// ==================== APP ROUTER ==
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -2828,7 +2771,9 @@ export const appRouter = router({
   lineSettings: lineSettingsRouter,
   gallery: galleryRouter,
   companySettings: companySettingsRouter,
-  surveyTemplate: surveyTemplateRouter,
+  deliveryForm: deliveryFormRouter,
+  checklistTemplate: checklistTemplateRouter,
+  payment: paymentRouter,
   util: router({
     proxyImage: publicProcedure
       .input(z.object({ url: z.string().url() }))

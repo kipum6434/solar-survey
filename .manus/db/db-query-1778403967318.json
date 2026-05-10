@@ -1,0 +1,31 @@
+{
+  "query": "SHOW TABLES LIKE '%delivery%'; SHOW TABLES LIKE '%payment%'; SHOW TABLES LIKE '%checklist%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SHOW TABLES LIKE '%delivery%'; SHOW TABLES LIKE '%payment%'; SHOW TABLES LIKE '%checklist%';",
+  "rows": [
+    {
+      "Tables_in_6acGApiU8Bjnxuzxb5vkwU (%delivery%)": "delivery_checklist_templates"
+    },
+    {
+      "Tables_in_6acGApiU8Bjnxuzxb5vkwU (%delivery%)": "delivery_comments"
+    },
+    {
+      "Tables_in_6acGApiU8Bjnxuzxb5vkwU (%delivery%)": "delivery_forms"
+    },
+    {
+      "Tables_in_6acGApiU8Bjnxuzxb5vkwU (%delivery%)": "Tables_in_6acGApiU8Bjnxuzxb5vkwU (%payment%)"
+    },
+    {
+      "Tables_in_6acGApiU8Bjnxuzxb5vkwU (%delivery%)": "payments"
+    },
+    {
+      "Tables_in_6acGApiU8Bjnxuzxb5vkwU (%delivery%)": "Tables_in_6acGApiU8Bjnxuzxb5vkwU (%checklist%)"
+    },
+    {
+      "Tables_in_6acGApiU8Bjnxuzxb5vkwU (%delivery%)": "delivery_checklist_templates"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_6acGApiU8Bjnxuzxb5vkwU (%delivery%)\ndelivery_checklist_templates\ndelivery_comments\ndelivery_forms\nTables_in_6acGApiU8Bjnxuzxb5vkwU (%payment%)\npayments\nTables_in_6acGApiU8Bjnxuzxb5vkwU (%checklist%)\ndelivery_checklist_templates\n",
+  "stderr": "",
+  "execution_time_ms": 2240
+}

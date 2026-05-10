@@ -50,18 +50,10 @@ const BATTERY_MAP: Record<string, string> = {
   undecided: "ยังไม่ตัดสินใจ",
 };
 
-export default function Surveys(props: any) {
-  const sourceMode: string | false = props?.sourceMode || (props?.gulfMode ? "Gulf" : false);
+export default function Surveys() {
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const isTcsMode = sourceMode === "TCS";
-  const isGroupMode = sourceMode && !isTcsMode;
-  const { data: nonTcsNames } = trpc.source.nonTcsSourceNames.useQuery(undefined, { enabled: isTcsMode });
-  const { data: groupSourceNames } = trpc.source.sourceNamesByGroup.useQuery(
-    { groupName: sourceMode as string },
-    { enabled: !!isGroupMode }
-  );
   const [sourceFilter, setSourceFilter] = useState("");
   const [surveyorFilter, setSurveyorFilter] = useState("");
   const [adminSenderFilter, setAdminSenderFilter] = useState("");
@@ -101,8 +93,7 @@ export default function Surveys(props: any) {
   const queryInput = useMemo(() => ({
     search,
     status: statusFilter === "all" ? undefined : statusFilter,
-    source: isGroupMode ? undefined : (sourceFilter || undefined),
-    sourceExclude: isTcsMode ? (nonTcsNames && nonTcsNames.length > 0 ? nonTcsNames : ["Gulf", "MEA"]) : undefined,
+    source: sourceFilter || undefined,
     assignedTo: surveyorFilter ? Number(surveyorFilter) : undefined,
     adminSenderId: adminSenderFilter ? Number(adminSenderFilter) : undefined,
     closerId: closerFilter ? Number(closerFilter) : undefined,
@@ -116,7 +107,7 @@ export default function Surveys(props: any) {
     filterDateEnd: filterDateEnd ? filterDateEnd.getTime() : undefined,
     sortBy: sortBy || undefined,
     sortDirection: sortDirection || undefined,
-  }), [search, statusFilter, sourceFilter, surveyorFilter, adminSenderFilter, closerFilter, districtFilter, provinceFilter, page, filterByMonth, selectedMonth, selectedYear, filterDate, filterDateEnd, sortBy, sortDirection, isTcsMode]);
+  }), [search, statusFilter, sourceFilter, surveyorFilter, adminSenderFilter, closerFilter, districtFilter, provinceFilter, page, filterByMonth, selectedMonth, selectedYear, filterDate, filterDateEnd, sortBy, sortDirection]);
 
   const { data, isLoading, refetch } = trpc.survey.list.useQuery(queryInput);
 
@@ -288,8 +279,8 @@ export default function Surveys(props: any) {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">{sourceMode ? `งานสำรวจ ${sourceMode}` : "งานสำรวจ"}</h1>
-            <p className="text-sm text-muted-foreground mt-1">{sourceMode ? `จัดการงานสำรวจ ${sourceMode}` : "จัดการงานสำรวจทั้งหมด"}</p>
+            <h1 className="text-2xl font-bold tracking-tight">งานสำรวจ</h1>
+            <p className="text-sm text-muted-foreground mt-1">จัดการงานสำรวจทั้งหมด</p>
           </div>
           <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
             <Download className="h-4 w-4" />
@@ -360,19 +351,17 @@ export default function Surveys(props: any) {
               ))}
             </SelectContent>
           </Select>
-          {!sourceMode && (
-            <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v === "_all" ? "" : v); setPage(1); }}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="แหล่งที่มา" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="_all">ทุกแหล่งที่มา</SelectItem>
-                {(sourcesData || []).map((s: any) => (
-                  <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v === "_all" ? "" : v); setPage(1); }}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="แหล่งที่มา" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">ทุกแหล่งที่มา</SelectItem>
+              {(sourcesData || []).map((s: any) => (
+                <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {/* Role filters */}
           <Select value={surveyorFilter} onValueChange={(v) => { setSurveyorFilter(v === "_all" ? "" : v); setPage(1); }}>
             <SelectTrigger className="w-[140px]">

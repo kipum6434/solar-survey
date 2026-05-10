@@ -16,7 +16,7 @@ import { SURVEY_STATUS_MAP, INSTALLATION_STATUS_MAP, DOC_TYPE_MAP, FOLLOW_UP_MET
 import { formatPhone } from "@/lib/formatPhone";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useParams, useLocation } from "wouter";
-import React, { useState, useRef, useCallback, useEffect, useMemo, useContext, createContext } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { compressImages } from "@/lib/imageCompression";
 import { useUploadWithRetry } from "@/hooks/useUploadWithRetry";
 import { UploadStatusBar } from "@/components/UploadStatusBar";
@@ -25,14 +25,13 @@ import {
   ArrowLeft, Camera, FileText, PhoneCall, Share2, MapPin, Calendar, User, Pencil,
   Upload, Trash2, Download, Link2, Copy, X, Image, Eye, CheckCircle2, Clock,
   Zap, Sun, Home, Gauge, Receipt, Settings2, Users, Wrench, FolderDown, Package,
-  PauseCircle, XCircle, RotateCcw, History, Plus, ClipboardList,
+  PauseCircle, XCircle, RotateCcw, History, Plus,
 } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
 import { MultiUserSelect } from "@/components/MultiUserSelect";
 import { SourceCombobox } from "@/components/SourceCombobox";
 import { StatusDropdown } from "@/components/StatusDropdown";
 import DeliveryTab from "@/components/DeliveryTab";
-import { exportSurveyPDF, exportGulfSurveyPDF, type ImageProxyFn, type CompanyInfo } from "@/lib/pdfExport";
+import { exportSurveyPDF, type ImageProxyFn, type CompanyInfo } from "@/lib/pdfExport";
 import { FileDown } from "lucide-react";
 
 export default function SurveyDetail() {
@@ -91,21 +90,6 @@ export default function SurveyDetail() {
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [newCategoryLabel, setNewCategoryLabel] = useState("");
   const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<{ id: number; label: string } | null>(null);
-
-  // Template form: load template by customer source name
-  const customerSource = data?.customer?.source || "";
-  const { data: templateForSource } = trpc.surveyTemplate.getBySourceName.useQuery(
-    { sourceName: customerSource },
-    { enabled: !!customerSource }
-  );
-  const { data: templateData, refetch: refetchTemplateData } = trpc.surveyTemplate.getData.useQuery(
-    { surveyId },
-    { enabled: !!templateForSource }
-  );
-  const saveTemplateData = trpc.surveyTemplate.saveData.useMutation({
-    onSuccess: () => { toast.success("บันทึกข้อมูลฟอร์มสำเร็จ"); refetchTemplateData(); },
-    onError: (e: any) => toast.error(e.message),
-  });
 
   // Build category map: merge static fallback + DB categories
   const categoryMap = useMemo(() => {
@@ -385,54 +369,30 @@ export default function SurveyDetail() {
               onClick={async () => {
                 try {
                   toast.info("กำลังสร้าง PDF...");
-                  const surveyDataForPdf = {
-                    id: s.id, status: s.status, scheduledDate: s.scheduledDate,
-                    systemSize: s.systemSize, panelCount: s.panelCount,
-                    panelBrand: s.panelBrand, inverterModel: s.inverterModel,
-                    quotedPrice: s.quotedPrice, systemType: s.systemType,
-                    needBattery: s.needBattery, needOptimizer: s.needOptimizer,
-                    surveyNotes: s.surveyNotes,
-                  };
-                  const customerDataForPdf = {
-                    name: c.name, phone: c.phone, email: c.email,
-                    fullAddress: c.fullAddress, subDistrict: c.subDistrict,
-                    district: c.district, province: c.province,
-                    postalCode: c.postalCode, electricityBill: c.electricityBill,
-                    roofType: c.roofType, roofArea: c.roofArea,
-                    phaseType: c.phaseType, meterSize: c.meterSize, notes: c.notes,
-                  };
-                  const photosForPdf = (photos || []).map((p: any) => ({ url: p.url, category: p.category, caption: p.caption }));
-                  if (templateForSource) {
-                    await exportGulfSurveyPDF(
-                      surveyDataForPdf,
-                      customerDataForPdf,
-                      photosForPdf,
-                      categoryMap,
-                      {
-                        name: templateForSource.name,
-                        pdfHeaderTitle: templateForSource.pdfHeaderTitle,
-                        pdfHeaderSubtitle: templateForSource.pdfHeaderSubtitle,
-                        pdfLogoUrl: templateForSource.pdfLogoUrl,
-                      },
-                      templateForSource.fields || [],
-                      (templateData || []).map((d: any) => ({ fieldId: d.fieldId, value: d.value, otherValue: d.otherValue })),
-                      undefined,
-                      imageProxyFn,
-                      companyInfoForPdf,
-                      categoryOrder,
-                    );
-                  } else {
-                    await exportSurveyPDF(
-                      surveyDataForPdf,
-                      customerDataForPdf,
-                      photosForPdf,
-                      categoryMap,
-                      undefined,
-                      imageProxyFn,
-                      companyInfoForPdf,
-                      categoryOrder,
-                    );
-                  }
+                  await exportSurveyPDF(
+                    {
+                      id: s.id, status: s.status, scheduledDate: s.scheduledDate,
+                      systemSize: s.systemSize, panelCount: s.panelCount,
+                      panelBrand: s.panelBrand, inverterModel: s.inverterModel,
+                      quotedPrice: s.quotedPrice, systemType: s.systemType,
+                      needBattery: s.needBattery, needOptimizer: s.needOptimizer,
+                      surveyNotes: s.surveyNotes,
+                    },
+                    {
+                      name: c.name, phone: c.phone, email: c.email,
+                      fullAddress: c.fullAddress, subDistrict: c.subDistrict,
+                      district: c.district, province: c.province,
+                      postalCode: c.postalCode, electricityBill: c.electricityBill,
+                      roofType: c.roofType, roofArea: c.roofArea,
+                      phaseType: c.phaseType, meterSize: c.meterSize, notes: c.notes,
+                    },
+                    (photos || []).map((p: any) => ({ url: p.url, category: p.category, caption: p.caption })),
+                    categoryMap,
+                    undefined,
+                    imageProxyFn,
+                    companyInfoForPdf,
+                    categoryOrder,
+                  );
                   toast.success("Export PDF สำเร็จ");
                 } catch (err: any) {
                   toast.error(err?.message || "Export PDF ล้มเหลว");
@@ -570,7 +530,6 @@ export default function SurveyDetail() {
             <TabsTrigger value="share" className="gap-1.5"><Share2 className="h-3.5 w-3.5" /> แชร์ ({shareLinks?.length ?? 0})</TabsTrigger>
             <TabsTrigger value="delivery" className="gap-1.5"><Package className="h-3.5 w-3.5" /> ส่งมอบงาน</TabsTrigger>
             <TabsTrigger value="history" className="gap-1.5"><History className="h-3.5 w-3.5" /> ประวัติ ({postponeLogs?.length ?? 0})</TabsTrigger>
-            {templateForSource && <TabsTrigger value="templateForm" className="gap-1.5"><ClipboardList className="h-3.5 w-3.5" /> {templateForSource.name}</TabsTrigger>}
           </TabsList>
 
           {/* Photos Tab - Grouped by Category */}
@@ -630,15 +589,67 @@ export default function SurveyDetail() {
                 </div>
               </CardHeader>
               <CardContent>
-                <PhotoSectionWithSaveAll
-                  allPhotoCategories={allPhotoCategories}
-                  photosByCategory={photosByCategory}
-                  categoryMap={categoryMap}
-                  startUpload={startUpload}
-                  uploadState={uploadState}
-                  setLightboxImg={setLightboxImg}
-                  setConfirmDeletePhoto={setConfirmDeletePhoto}
-                />
+                {allPhotoCategories.length > 0 ? (
+                  <div className="space-y-6">
+                    {allPhotoCategories.map((catKey) => {
+                      const catPhotos = photosByCategory[catKey] || [];
+                      return (
+                        <div key={catKey}>
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-medium flex items-center gap-2">
+                              <Camera className="h-4 w-4 text-muted-foreground" />
+                              {categoryMap[catKey] || catKey}
+                              <Badge variant="secondary" className="text-[10px]">{catPhotos.length}</Badge>
+                            </h4>
+                            <div className="flex items-center gap-1.5">
+                              <Button variant="outline" size="sm" className="text-xs gap-1 h-7" onClick={() => startUpload(catKey)} disabled={uploadState.isUploading}>
+                                <Camera className="h-3 w-3" /> ถ่ายรูป
+                              </Button>
+                              <Button size="sm" className="text-xs gap-1 h-7" onClick={() => startUpload(catKey)} disabled={uploadState.isUploading}>
+                                <Upload className="h-3 w-3" /> เลือกรูป
+                              </Button>
+                            </div>
+                          </div>
+                          {catPhotos.length > 0 ? (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                              {catPhotos.map((photo: any) => (
+                                <div key={photo.id} className="group relative rounded-lg overflow-hidden bg-muted aspect-square">
+                                  <img src={photo.url} alt={photo.caption || photo.fileName} className="w-full h-full object-cover cursor-pointer" onClick={() => setLightboxImg(photo.url)} loading="lazy" />
+                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-end">
+                                    <div className="w-full p-2 translate-y-full group-hover:translate-y-0 transition-transform">
+                                      <div className="flex items-center justify-end gap-1">
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-white" onClick={() => setLightboxImg(photo.url)}>
+                                          <Eye className="h-3 w-3" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-red-100" onClick={(e) => { e.stopPropagation(); setConfirmDeletePhoto(photo.id); }}>
+                                          <Trash2 className="h-3 w-3 text-destructive" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-6 rounded-lg bg-muted/30 border border-dashed">
+                              <Image className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                              <p className="text-xs text-muted-foreground">ยังไม่มีรูปในหมวดนี้</p>
+                              <Button variant="outline" size="sm" className="mt-2 text-xs gap-1" onClick={() => startUpload(catKey)} disabled={uploadState.isUploading}>
+                                <Upload className="h-3 w-3" /> อัปโหลดรูป
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Image className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p className="text-sm">ยังไม่มีรูปภาพ</p>
+                    <p className="text-xs mt-1">กดปุ่มถ่ายรูปหรือเลือกรูปในแต่ละหมวดเพื่อเพิ่มรูปภาพหน้างาน</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -884,19 +895,6 @@ export default function SurveyDetail() {
               </CardContent>
             </Card>
           </TabsContent>
-
-          {/* Template Form Tab */}
-          {templateForSource && (
-            <TabsContent value="templateForm" className="mt-4">
-              <TemplateFormSection
-                template={templateForSource}
-                templateData={templateData || []}
-                surveyId={surveyId}
-                onSave={(entries) => saveTemplateData.mutate({ surveyId, templateId: templateForSource.id, entries })}
-                isSaving={saveTemplateData.isPending}
-              />
-            </TabsContent>
-          )}
         </Tabs>
 
         {/* Survey Notes */}
@@ -1931,611 +1929,4 @@ function ShareLinkList({ links, linkType, onRevoke }: { links: any[]; linkType: 
       })}
     </div>
   );
-}
-
-
-// ==================== PHOTO CAPTION INPUT ====================
-// Shared state for tracking dirty captions across all photos in a survey
-const CaptionContext = createContext<{
-  register: (id: number, getDirty: () => { id: number; caption: string | null } | null) => void;
-  unregister: (id: number) => void;
-} | null>(null);
-
-function CaptionProvider({ children, onDirtyChange }: { children: React.ReactNode; onDirtyChange: (hasDirty: boolean) => void }) {
-  const registryRef = useRef<Map<number, () => { id: number; caption: string | null } | null>>(new Map());
-
-  const register = useCallback((id: number, getDirty: () => { id: number; caption: string | null } | null) => {
-    registryRef.current.set(id, getDirty);
-  }, []);
-
-  const unregister = useCallback((id: number) => {
-    registryRef.current.delete(id);
-  }, []);
-
-  const value = useMemo(() => ({ register, unregister }), [register, unregister]);
-
-  return (
-    <CaptionContext.Provider value={value}>
-      {children}
-    </CaptionContext.Provider>
-  );
-}
-
-function useCaptionRegistry() {
-  return useContext(CaptionContext);
-}
-
-function PhotoCaptionInput({ photoId, initialCaption, onDirtyChange }: { photoId: number; initialCaption: string; onDirtyChange?: (dirty: boolean) => void }) {
-  const [caption, setCaption] = useState(initialCaption);
-  const [savedCaption, setSavedCaption] = useState(initialCaption);
-  const updateCaption = trpc.photo.updateCaption.useMutation();
-  const registry = useCaptionRegistry();
-
-  const isDirty = caption !== savedCaption;
-  const hasSavedCaption = savedCaption.trim().length > 0;
-
-  // Register with parent for batch save
-  useEffect(() => {
-    if (registry) {
-      registry.register(photoId, () => {
-        if (caption !== savedCaption) {
-          return { id: photoId, caption: caption.trim() || null };
-        }
-        return null;
-      });
-      return () => registry.unregister(photoId);
-    }
-  }, [registry, photoId, caption, savedCaption]);
-
-  // Notify parent about dirty state
-  useEffect(() => {
-    onDirtyChange?.(isDirty);
-  }, [isDirty, onDirtyChange]);
-
-  const handleSave = useCallback(() => {
-    updateCaption.mutate(
-      { id: photoId, caption: caption.trim() || null },
-      {
-        onSuccess: () => {
-          setSavedCaption(caption);
-          toast.success("บันทึกหมายเหตุสำเร็จ");
-        },
-        onError: () => toast.error("บันทึกหมายเหตุไม่สำเร็จ"),
-      }
-    );
-  }, [photoId, caption, updateCaption]);
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && isDirty) {
-      e.preventDefault();
-      handleSave();
-    }
-  };
-
-  return (
-    <div className="mt-1.5">
-      <div className="flex items-center gap-1">
-        <input
-          type="text"
-          value={caption}
-          onChange={(e) => setCaption(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="หมายเหตุ..."
-          className="flex-1 text-[11px] px-2 py-1 rounded border border-transparent hover:border-border focus:border-primary focus:ring-1 focus:ring-primary/30 bg-muted/30 focus:bg-background outline-none transition-all placeholder:text-muted-foreground/50"
-        />
-        {isDirty && (
-          <button
-            onClick={handleSave}
-            disabled={updateCaption.isPending}
-            className="shrink-0 flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-          >
-            {updateCaption.isPending ? (
-              <RotateCcw className="h-3 w-3 animate-spin" />
-            ) : (
-              <CheckCircle2 className="h-3 w-3" />
-            )}
-            บันทึก
-          </button>
-        )}
-      </div>
-      {!isDirty && hasSavedCaption && (
-        <div className="flex items-center gap-1 mt-0.5">
-          <CheckCircle2 className="h-3 w-3 text-green-500" />
-          <span className="text-[9px] text-green-600">บันทึกแล้ว</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-// ==================== PHOTO SECTION WITH SAVE ALL ====================
-function PhotoSectionWithSaveAll({
-  allPhotoCategories,
-  photosByCategory,
-  categoryMap,
-  startUpload,
-  uploadState,
-  setLightboxImg,
-  setConfirmDeletePhoto,
-}: {
-  allPhotoCategories: string[];
-  photosByCategory: Record<string, any[]>;
-  categoryMap: Record<string, string>;
-  startUpload: (cat: string) => void;
-  uploadState: { isUploading: boolean };
-  setLightboxImg: (url: string) => void;
-  setConfirmDeletePhoto: (id: number) => void;
-}) {
-  const [hasDirtyItems, setHasDirtyItems] = useState(false);
-  const dirtyMapRef = useRef<Map<number, boolean>>(new Map());
-  const registryRef = useRef<Map<number, () => { id: number; caption: string | null } | null>>(new Map());
-  const batchUpdate = trpc.photo.batchUpdateCaptions.useMutation();
-
-  const register = useCallback((id: number, getDirty: () => { id: number; caption: string | null } | null) => {
-    registryRef.current.set(id, getDirty);
-  }, []);
-
-  const unregister = useCallback((id: number) => {
-    registryRef.current.delete(id);
-    dirtyMapRef.current.delete(id);
-  }, []);
-
-  const contextValue = useMemo(() => ({ register, unregister }), [register, unregister]);
-
-  const handleDirtyChange = useCallback((photoId: number, dirty: boolean) => {
-    dirtyMapRef.current.set(photoId, dirty);
-    const anyDirty = Array.from(dirtyMapRef.current.values()).some(v => v);
-    setHasDirtyItems(anyDirty);
-  }, []);
-
-  const handleSaveAll = useCallback(() => {
-    const updates: { id: number; caption: string | null }[] = [];
-    Array.from(registryRef.current.values()).forEach((getDirty) => {
-      const result = getDirty();
-      if (result) updates.push(result);
-    });
-    if (updates.length === 0) return;
-    batchUpdate.mutate(
-      { updates },
-      {
-        onSuccess: () => {
-          toast.success(`บันทึกหมายเหตุทั้งหมด ${updates.length} รายการสำเร็จ`);
-          // Force re-render by reloading — simplest approach
-          window.location.reload();
-        },
-        onError: () => toast.error("บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง"),
-      }
-    );
-  }, [batchUpdate]);
-
-  if (allPhotoCategories.length === 0) {
-    return (
-      <div className="text-center py-12 text-muted-foreground">
-        <Image className="h-12 w-12 mx-auto mb-3 opacity-30" />
-        <p className="text-sm">ยังไม่มีรูปภาพ</p>
-        <p className="text-xs mt-1">กดปุ่มถ่ายรูปหรือเลือกรูปในแต่ละหมวดเพื่อเพิ่มรูปภาพหน้างาน</p>
-      </div>
-    );
-  }
-
-  return (
-    <CaptionContext.Provider value={contextValue}>
-      <div className="space-y-6">
-        {allPhotoCategories.map((catKey) => {
-          const catPhotos = photosByCategory[catKey] || [];
-          return (
-            <div key={catKey}>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-medium flex items-center gap-2">
-                  <Camera className="h-4 w-4 text-muted-foreground" />
-                  {categoryMap[catKey] || catKey}
-                  <Badge variant="secondary" className="text-[10px]">{catPhotos.length}</Badge>
-                </h4>
-                <div className="flex items-center gap-1.5">
-                  <Button variant="outline" size="sm" className="text-xs gap-1 h-7" onClick={() => startUpload(catKey)} disabled={uploadState.isUploading}>
-                    <Camera className="h-3 w-3" /> ถ่ายรูป
-                  </Button>
-                  <Button size="sm" className="text-xs gap-1 h-7" onClick={() => startUpload(catKey)} disabled={uploadState.isUploading}>
-                    <Upload className="h-3 w-3" /> เลือกรูป
-                  </Button>
-                </div>
-              </div>
-              {catPhotos.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  {catPhotos.map((photo: any) => (
-                    <div key={photo.id} className="flex flex-col">
-                      <div className="group relative rounded-lg overflow-hidden bg-muted aspect-square">
-                        <img src={photo.url} alt={photo.caption || photo.fileName} className="w-full h-full object-cover cursor-pointer" onClick={() => setLightboxImg(photo.url)} loading="lazy" />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-end">
-                          <div className="w-full p-2 translate-y-full group-hover:translate-y-0 transition-transform">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-white" onClick={() => setLightboxImg(photo.url)}>
-                                <Eye className="h-3 w-3" />
-                              </Button>
-                              <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-red-100" onClick={(e) => { e.stopPropagation(); setConfirmDeletePhoto(photo.id); }}>
-                                <Trash2 className="h-3 w-3 text-destructive" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <PhotoCaptionInput
-                        photoId={photo.id}
-                        initialCaption={photo.caption || ""}
-                        onDirtyChange={(dirty) => handleDirtyChange(photo.id, dirty)}
-                      />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6 rounded-lg bg-muted/30 border border-dashed">
-                  <Image className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                  <p className="text-xs text-muted-foreground">ยังไม่มีรูปในหมวดนี้</p>
-                  <Button variant="outline" size="sm" className="mt-2 text-xs gap-1" onClick={() => startUpload(catKey)} disabled={uploadState.isUploading}>
-                    <Upload className="h-3 w-3" /> อัปโหลดรูป
-                  </Button>
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {/* Save All Button */}
-        {hasDirtyItems && (
-          <div className="sticky bottom-0 bg-background/95 backdrop-blur-sm border-t pt-3 pb-2 -mx-6 px-6">
-            <Button
-              onClick={handleSaveAll}
-              disabled={batchUpdate.isPending}
-              className="w-full gap-2"
-            >
-              {batchUpdate.isPending ? (
-                <RotateCcw className="h-4 w-4 animate-spin" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4" />
-              )}
-              บันทึกหมายเหตุทั้งหมด
-            </Button>
-          </div>
-        )}
-      </div>
-    </CaptionContext.Provider>
-  );
-}
-
-// ==================== TEMPLATE FORM SECTION ====================
-function TemplateFormSection({
-  template,
-  templateData,
-  surveyId,
-  onSave,
-  isSaving,
-}: {
-  template: { id: number; name: string; fields: any[] };
-  templateData: any[];
-  surveyId: number;
-  onSave: (entries: { fieldId: number; value: string | null; otherValue: string | null }[]) => void;
-  isSaving: boolean;
-}) {
-  // Build initial values from saved data
-  const buildInitialValues = useCallback(() => {
-    const values: Record<number, { value: string; otherValue: string }> = {};
-    for (const field of template.fields) {
-      const saved = templateData.find((d: any) => d.fieldId === field.id);
-      values[field.id] = {
-        value: saved?.value || field.defaultValue || "",
-        otherValue: saved?.otherValue || "",
-      };
-    }
-    return values;
-  }, [template.fields, templateData]);
-
-  const [formValues, setFormValues] = useState<Record<number, { value: string; otherValue: string }>>(buildInitialValues);
-
-  // Reset form when template data changes
-  useEffect(() => {
-    setFormValues(buildInitialValues());
-  }, [buildInitialValues]);
-
-  const updateValue = (fieldId: number, value: string) => {
-    setFormValues(prev => ({ ...prev, [fieldId]: { ...prev[fieldId], value } }));
-  };
-
-  const updateOtherValue = (fieldId: number, otherValue: string) => {
-    setFormValues(prev => ({ ...prev, [fieldId]: { ...prev[fieldId], otherValue } }));
-  };
-
-  const handleSave = () => {
-    const entries = template.fields
-      .filter((f: any) => f.fieldType !== "section_header")
-      .map((f: any) => ({
-        fieldId: f.id,
-        value: formValues[f.id]?.value || null,
-        otherValue: formValues[f.id]?.otherValue || null,
-      }));
-    onSave(entries);
-  };
-
-  // Group fields by sectionGroup
-  const groupedFields = useMemo(() => {
-    const groups: { header: string | null; fields: any[] }[] = [];
-    let currentGroup: { header: string | null; fields: any[] } = { header: null, fields: [] };
-    for (const field of template.fields.sort((a: any, b: any) => a.sortOrder - b.sortOrder)) {
-      if (field.fieldType === "section_header") {
-        if (currentGroup.fields.length > 0 || currentGroup.header) {
-          groups.push(currentGroup);
-        }
-        currentGroup = { header: field.fieldLabel, fields: [] };
-      } else {
-        currentGroup.fields.push(field);
-      }
-    }
-    if (currentGroup.fields.length > 0 || currentGroup.header) {
-      groups.push(currentGroup);
-    }
-    return groups;
-  }, [template.fields]);
-
-  return (
-    <Card className="border-0 shadow-sm">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <ClipboardList className="h-4 w-4" />
-            {template.name}
-          </CardTitle>
-          <Button size="sm" onClick={handleSave} disabled={isSaving} className="gap-1.5">
-            {isSaving ? <><Clock className="h-3.5 w-3.5 animate-spin" /> กำลังบันทึก...</> : <><CheckCircle2 className="h-3.5 w-3.5" /> บันทึก</>}
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {groupedFields.map((group, gi) => (
-          <div key={gi}>
-            {group.header && (
-              <div className="flex items-center gap-2 mb-3 pb-2 border-b">
-                <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">{gi + 1}</span>
-                <h3 className="font-semibold text-sm">{group.header}</h3>
-              </div>
-            )}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {group.fields.map((field: any) => (
-                <TemplateFieldInput
-                  key={field.id}
-                  field={field}
-                  value={formValues[field.id]?.value || ""}
-                  otherValue={formValues[field.id]?.otherValue || ""}
-                  onChange={(v) => updateValue(field.id, v)}
-                  onOtherChange={(v) => updateOtherValue(field.id, v)}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
-
-// ==================== TEMPLATE FIELD INPUT ====================
-function TemplateFieldInput({
-  field,
-  value,
-  otherValue,
-  onChange,
-  onOtherChange,
-}: {
-  field: any;
-  value: string;
-  otherValue: string;
-  onChange: (v: string) => void;
-  onOtherChange: (v: string) => void;
-}) {
-  const options: string[] = field.fieldOptions ? (() => { try { return JSON.parse(field.fieldOptions); } catch { return []; } })() : [];
-
-  switch (field.fieldType) {
-    case "text":
-      return (
-        <div className={field.fieldType === "textarea" ? "col-span-2" : ""}>
-          <Label className="text-xs font-medium">{field.fieldLabel}{field.required && <span className="text-destructive ml-0.5">*</span>}</Label>
-          <Input value={value} onChange={e => onChange(e.target.value)} placeholder={field.placeholder || ""} className="mt-1" />
-        </div>
-      );
-
-    case "number":
-      return (
-        <div>
-          <Label className="text-xs font-medium">{field.fieldLabel}{field.required && <span className="text-destructive ml-0.5">*</span>}</Label>
-          <Input type="number" value={value} onChange={e => onChange(e.target.value)} placeholder={field.placeholder || ""} className="mt-1" />
-        </div>
-      );
-
-    case "textarea":
-      return (
-        <div className="col-span-2">
-          <Label className="text-xs font-medium">{field.fieldLabel}{field.required && <span className="text-destructive ml-0.5">*</span>}</Label>
-          <Textarea value={value} onChange={e => onChange(e.target.value)} placeholder={field.placeholder || ""} rows={3} className="mt-1" />
-        </div>
-      );
-
-    case "select":
-      return (
-        <div>
-          <Label className="text-xs font-medium">{field.fieldLabel}{field.required && <span className="text-destructive ml-0.5">*</span>}</Label>
-          <Select value={value || undefined} onValueChange={onChange}>
-            <SelectTrigger className="mt-1"><SelectValue placeholder="เลือก..." /></SelectTrigger>
-            <SelectContent>
-              {options.map((opt: string) => (
-                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {field.hasOtherOption && value === "อื่นๆ" && (
-            <Input value={otherValue} onChange={e => onOtherChange(e.target.value)} placeholder="ระบุ..." className="mt-1.5" />
-          )}
-        </div>
-      );
-
-    case "checkbox":
-      return (
-        <div className="flex items-center gap-2">
-          <Checkbox checked={value === "true"} onCheckedChange={(checked) => onChange(checked ? "true" : "false")} />
-          <Label className="text-xs font-medium">{field.fieldLabel}</Label>
-        </div>
-      );
-
-    case "checkbox_group": {
-      let selected: string[] = [];
-      try { selected = value ? JSON.parse(value) : []; } catch { selected = []; }
-
-      const toggleOption = (opt: string) => {
-        const newSelected = selected.includes(opt)
-          ? selected.filter(s => s !== opt)
-          : [...selected, opt];
-        onChange(JSON.stringify(newSelected));
-      };
-
-      const hasOther = field.hasOtherOption;
-      const otherSelected = selected.includes("อื่นๆ");
-
-      return (
-        <div className="col-span-2">
-          <Label className="text-xs font-medium mb-2 block">{field.fieldLabel}{field.required && <span className="text-destructive ml-0.5">*</span>}</Label>
-          <div className="flex flex-wrap gap-2">
-            {options.map((opt: string) => {
-              const isChecked = selected.includes(opt);
-              return (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => toggleOption(opt)}
-                  className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
-                    isChecked
-                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                      : "bg-background hover:bg-muted border-border"
-                  }`}
-                >
-                  {isChecked && <CheckCircle2 className="h-3 w-3 inline mr-1" />}
-                  {opt === "อื่นๆ" && otherSelected && otherValue ? `Other: ${otherValue}` : opt}
-                </button>
-              );
-            })}
-            {hasOther && !options.includes("อื่นๆ") && (
-              <button
-                type="button"
-                onClick={() => toggleOption("อื่นๆ")}
-                className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
-                  otherSelected
-                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                    : "bg-background hover:bg-muted border-border"
-                }`}
-              >
-                {otherSelected && <CheckCircle2 className="h-3 w-3 inline mr-1" />}
-                {otherSelected && otherValue ? `Other: ${otherValue}` : "อื่นๆ"}
-              </button>
-            )}
-          </div>
-          {otherSelected && (
-            <Input value={otherValue} onChange={e => onOtherChange(e.target.value)} placeholder="ระบุรายละเอียด..." className="mt-2 max-w-xs" />
-          )}
-        </div>
-      );
-    }
-
-    case "radio":
-      return (
-        <div>
-          <Label className="text-xs font-medium mb-2 block">{field.fieldLabel}{field.required && <span className="text-destructive ml-0.5">*</span>}</Label>
-          <div className="flex flex-wrap gap-2">
-            {options.map((opt: string) => (
-              <button
-                key={opt}
-                type="button"
-                onClick={() => onChange(opt)}
-                className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
-                  value === opt
-                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                    : "bg-background hover:bg-muted border-border"
-                }`}
-              >
-                {value === opt && <CheckCircle2 className="h-3 w-3 inline mr-1" />}
-                {opt}
-              </button>
-            ))}
-          </div>
-          {field.hasOtherOption && value === "อื่นๆ" && (
-            <Input value={otherValue} onChange={e => onOtherChange(e.target.value)} placeholder="ระบุ..." className="mt-1.5 max-w-xs" />
-          )}
-        </div>
-      );
-
-    case "yes_no":
-      return (
-        <div>
-          <Label className="text-xs font-medium mb-2 block">{field.fieldLabel}</Label>
-          <div className="flex gap-2">
-            {["มี", "ไม่มี"].map(opt => (
-              <button
-                key={opt}
-                type="button"
-                onClick={() => onChange(opt)}
-                className={`px-4 py-1.5 rounded-lg border text-xs font-medium transition-all ${
-                  value === opt
-                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                    : "bg-background hover:bg-muted border-border"
-                }`}
-              >
-                {value === opt && <CheckCircle2 className="h-3 w-3 inline mr-1" />}
-                {opt}
-              </button>
-            ))}
-          </div>
-        </div>
-      );
-
-    case "date":
-      return (
-        <div>
-          <Label className="text-xs font-medium">{field.fieldLabel}{field.required && <span className="text-destructive ml-0.5">*</span>}</Label>
-          <Input type="date" value={value} onChange={e => onChange(e.target.value)} className="mt-1" />
-        </div>
-      );
-
-    case "distance": {
-      // Distance fields: parse JSON object { label1: val1, label2: val2, ... }
-      let distObj: Record<string, string> = {};
-      try { distObj = value ? JSON.parse(value) : {}; } catch { distObj = {}; }
-      const distLabels = options.length > 0 ? options : ["ระยะทาง"];
-
-      return (
-        <div className="col-span-2">
-          <Label className="text-xs font-medium mb-2 block">{field.fieldLabel}{field.required && <span className="text-destructive ml-0.5">*</span>}</Label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {distLabels.map((label: string) => (
-              <div key={label}>
-                <Label className="text-[10px] text-muted-foreground">{label}</Label>
-                <Input
-                  value={distObj[label] || ""}
-                  onChange={e => {
-                    const newObj = { ...distObj, [label]: e.target.value };
-                    onChange(JSON.stringify(newObj));
-                  }}
-                  placeholder="เมตร"
-                  className="mt-0.5"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
-
-    default:
-      return (
-        <div>
-          <Label className="text-xs font-medium">{field.fieldLabel}</Label>
-          <Input value={value} onChange={e => onChange(e.target.value)} className="mt-1" />
-        </div>
-      );
-  }
 }

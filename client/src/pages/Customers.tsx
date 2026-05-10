@@ -47,8 +47,7 @@ const THAI_MONTHS = [
   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
 ];
 
-export default function Customers(props: any) {
-  const sourceMode: string | false = props?.sourceMode || (props?.gulfMode ? "Gulf" : false);
+export default function Customers() {
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -91,15 +90,6 @@ export default function Customers(props: any) {
   const [filterByMonth, setFilterByMonth] = useState(false);
   const [districtFilter, setDistrictFilter] = useState("");
   const [provinceFilter, setProvinceFilter] = useState("");
-  // TCS mode uses exclusion (everything NOT in named groups), others use source names from group
-  const isTcsMode = sourceMode === "TCS";
-  const isGroupMode = sourceMode && !isTcsMode; // Gulf, MEA, etc.
-  // Fetch dynamic source names for group-based filtering
-  const { data: nonTcsNames } = trpc.source.nonTcsSourceNames.useQuery(undefined, { enabled: isTcsMode });
-  const { data: groupSourceNames } = trpc.source.sourceNamesByGroup.useQuery(
-    { groupName: sourceMode as string },
-    { enabled: !!isGroupMode }
-  );
   const [sourceFilter, setSourceFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
@@ -116,10 +106,9 @@ export default function Customers(props: any) {
     year: filterByMonth ? selectedYear : undefined,
     district: districtFilter || undefined,
     province: provinceFilter || undefined,
-    source: isGroupMode ? undefined : (sourceFilter || undefined),
-    sourceExclude: isTcsMode ? (nonTcsNames && nonTcsNames.length > 0 ? nonTcsNames : ["Gulf", "MEA"]) : undefined,
+    source: sourceFilter || undefined,
     surveyStatus: statusFilter || undefined,
-  }), [search, page, filterByMonth, selectedMonth, selectedYear, districtFilter, provinceFilter, sourceFilter, statusFilter, isTcsMode]);
+  }), [search, page, filterByMonth, selectedMonth, selectedYear, districtFilter, provinceFilter, sourceFilter, statusFilter]);
 
   const { data, isLoading, refetch } = trpc.customer.list.useQuery(queryInput);
   const createMutation = trpc.customer.create.useMutation({
@@ -228,8 +217,8 @@ export default function Customers(props: any) {
       <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">{sourceMode ? `ลูกค้า ${sourceMode}` : "ลูกค้า"}</h1>
-            <p className="text-sm text-muted-foreground mt-1">{sourceMode ? `จัดการข้อมูลลูกค้า ${sourceMode}` : "จัดการข้อมูลลูกค้าทั้งหมด"}</p>
+            <h1 className="text-2xl font-bold tracking-tight">ลูกค้า</h1>
+            <p className="text-sm text-muted-foreground mt-1">จัดการข้อมูลลูกค้าทั้งหมด</p>
           </div>
           <div className="flex gap-2 flex-wrap">
             <Button variant="outline" onClick={() => setShowTemplate(true)} className="gap-2 border-green-300 text-green-700 hover:bg-green-50">
@@ -331,19 +320,17 @@ export default function Customers(props: any) {
               ))}
             </SelectContent>
           </Select>
-          {!sourceMode && (
-            <Select value={sourceFilter || "_all"} onValueChange={(v) => { setSourceFilter(v === "_all" ? "" : v); setPage(1); }}>
-              <SelectTrigger className="w-[130px] h-9 text-xs">
-                <SelectValue placeholder="แหล่งที่มา" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="_all">แหล่งที่มาทั้งหมด</SelectItem>
-                {(distinctValues?.sources ?? []).map((s: string) => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <Select value={sourceFilter || "_all"} onValueChange={(v) => { setSourceFilter(v === "_all" ? "" : v); setPage(1); }}>
+            <SelectTrigger className="w-[130px] h-9 text-xs">
+              <SelectValue placeholder="แหล่งที่มา" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">แหล่งที่มาทั้งหมด</SelectItem>
+              {(distinctValues?.sources ?? []).map((s: string) => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <div className="flex items-center border rounded-md">
             <Button
               variant={viewMode === "grid" ? "default" : "ghost"}
@@ -455,7 +442,7 @@ export default function Customers(props: any) {
       </div>
 
       {/* Add Customer Dialog */}
-      <AddCustomerDialog open={showAdd} onOpenChange={setShowAdd} onSubmit={(d) => createMutation.mutate(d)} loading={createMutation.isPending} gulfMode={!!sourceMode} sourceMode={sourceMode || undefined} />
+      <AddCustomerDialog open={showAdd} onOpenChange={setShowAdd} onSubmit={(d) => createMutation.mutate(d)} loading={createMutation.isPending} />
 
       {/* Import Excel Dialog */}
       <ImportExcelDialog
@@ -804,8 +791,8 @@ function CustomerGridView({ data, onRowClick, onEdit, onDelete, selectedIds, onT
 }
 
 /* ==================== ADD CUSTOMER DIALOG ==================== */
-function AddCustomerDialog({ open, onOpenChange, onSubmit, loading, gulfMode, sourceMode }: { open: boolean; onOpenChange: (v: boolean) => void; onSubmit: (d: any) => void; loading: boolean; gulfMode?: boolean; sourceMode?: string }) {
-  const [form, setForm] = useState({ name: "", phone: "", address: "", district: "", province: "", source: (sourceMode || (gulfMode ? "Gulf" : "other")) as string, notes: "", electricityBill: "", roofType: "", phaseType: "" as string, fullAddress: "", facebookName: "", surveyorId: null as number | null });
+function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: boolean; onOpenChange: (v: boolean) => void; onSubmit: (d: any) => void; loading: boolean }) {
+  const [form, setForm] = useState({ name: "", phone: "", address: "", district: "", province: "", source: "other" as string, notes: "", electricityBill: "", roofType: "", phaseType: "" as string, fullAddress: "", facebookName: "", surveyorId: null as number | null });
   const { data: teamSurveyors } = trpc.teamMember.listAll.useQuery();
   const [showLinePaste, setShowLinePaste] = useState(false);
   const [lineText, setLineText] = useState("");

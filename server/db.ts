@@ -1,6 +1,6 @@
-import { eq, and, or, like, desc, gte, lte, sql, inArray, notInArray, asc, isNotNull, isNull } from "drizzle-orm";
+import { eq, and, or, like, desc, gte, lte, sql, inArray, not, asc, isNotNull, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory, installerTeams, InsertInstallerTeam, deliveryComments, InsertDeliveryComment, lineGroups, InsertLineGroup, lineNotificationTargets, InsertLineNotificationTarget, companySettings, InsertCompanySettings, postponeCancelLogs, InsertPostponeCancelLog, surveyTemplates, InsertSurveyTemplate, surveyTemplateFields, InsertSurveyTemplateField, surveyTemplateData, InsertSurveyTemplateData } from "../drizzle/schema";
+import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory, installerTeams, InsertInstallerTeam, deliveryComments, InsertDeliveryComment, lineGroups, InsertLineGroup, lineNotificationTargets, InsertLineNotificationTarget, companySettings, InsertCompanySettings, postponeCancelLogs, InsertPostponeCancelLog, deliveryForms, InsertDeliveryForm, deliveryChecklistTemplates, InsertDeliveryChecklistTemplate, payments, InsertPayment } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -90,10 +90,10 @@ export async function getUserByOpenId(openId: string) {
 }
 
 // ==================== CUSTOMER QUERIES ====================
-export async function getCustomers(opts: { search?: string; page?: number; limit?: number; month?: number; year?: number; district?: string; province?: string; source?: string; sourceExclude?: string[]; surveyStatus?: string; scopedCustomerIds?: number[] }) {
+export async function getCustomers(opts: { search?: string; page?: number; limit?: number; month?: number; year?: number; district?: string; province?: string; source?: string; surveyStatus?: string; scopedCustomerIds?: number[] }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { search, page = 1, limit = 20, month, year, district, province, source, sourceExclude, surveyStatus, scopedCustomerIds } = opts;
+  const { search, page = 1, limit = 20, month, year, district, province, source, surveyStatus, scopedCustomerIds } = opts;
   const offset = (page - 1) * limit;
   const conditions: any[] = [];
   // Data scoping: เซลล์เห็นเฉพาะลูกค้าที่เกี่ยวข้องกับงานของตัวเอง
@@ -111,7 +111,6 @@ export async function getCustomers(opts: { search?: string; page?: number; limit
   if (district) conditions.push(eq(customers.district, district));
   if (province) conditions.push(eq(customers.province, province));
   if (source) conditions.push(eq(customers.source, source));
-  if (sourceExclude && sourceExclude.length > 0) conditions.push(or(isNull(customers.source), notInArray(customers.source, sourceExclude)));
   if (month && year) {
     conditions.push(sql`MONTH(${customers.createdAt}) = ${month}`);
     conditions.push(sql`YEAR(${customers.createdAt}) = ${year}`);
@@ -582,7 +581,7 @@ export async function getFollowUps(opts: { surveyId?: number; customerId?: numbe
   return db.select().from(followUps).where(whereClause).orderBy(followUps.dueDate);
 }
 
-export async function getSurveysForFollowUp(opts: { search?: string; startDate?: number; endDate?: number; page?: number; limit?: number; source?: string; sourceExclude?: string[] }) {
+export async function getSurveysForFollowUp(opts: { search?: string; startDate?: number; endDate?: number; page?: number; limit?: number }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
   const page = opts.page ?? 1;
@@ -605,8 +604,6 @@ export async function getSurveysForFollowUp(opts: { search?: string; startDate?:
   }
   if (opts.startDate) conditions.push(gte(surveys.updatedAt, new Date(opts.startDate)));
   if (opts.endDate) conditions.push(lte(surveys.updatedAt, new Date(opts.endDate)));
-  if (opts.source) conditions.push(eq(customers.source, opts.source));
-  if (opts.sourceExclude && opts.sourceExclude.length > 0) conditions.push(or(isNull(customers.source), notInArray(customers.source, opts.sourceExclude)));
   const whereClause = and(...conditions);
 
   // Count total
@@ -858,87 +855,6 @@ export async function getDashboardStats(scopedSurveyIds?: number[], scopedCustom
   };
 }
 
-// ==================== GULF DASHBOARD ====================
-// Keep backward compat
-export async function getGulfDashboardStats() {
-  return getSourceDashboardStats("Gulf");
-}
-
-export async function getSourceDashboardStats(sourceName: string) {
-  const db = await getDb();
-  if (!db) return { totalCustomers: 0, totalSurveys: 0, pendingSurveys: 0, completedSurveys: 0, wonDeals: 0, pendingFollowUps: 0, totalInstallations: 0, completedInstallations: 0, inProgressInstallations: 0, recentSurveys: [] };
-
-  // TCS = everything NOT in any named group (Gulf, MEA, etc.) - use dynamic mapping
-  const isTcsMode = sourceName === "TCS";
-  let sourceCondition;
-  if (isTcsMode) {
-    const nonTcsNames = await getNonTcsSourceNames();
-    sourceCondition = nonTcsNames.length > 0
-      ? or(isNull(customers.source), notInArray(customers.source, nonTcsNames))
-      : sql`1=1`; // no exclusions, show all
-  } else {
-    // For Gulf/MEA: get all source names in that group
-    const groupSourceNames = await getSourceNamesByGroup(sourceName);
-    if (groupSourceNames.length > 0) {
-      sourceCondition = inArray(customers.source, groupSourceNames);
-    } else {
-      sourceCondition = eq(customers.source, sourceName);
-    }
-  }
-  // Source customers
-  const [custCount] = await db.select({ count: sql<number>`count(*)` }).from(customers).where(sourceCondition);
-  // Source surveys (join customers)
-  const gulfSurveyBase = and(sourceCondition);
-  const [survCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(gulfSurveyBase);
-  const [pendCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(and(gulfSurveyBase, inArray(surveys.status, ["pending", "scheduled"])));
-  const [compCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(and(gulfSurveyBase, eq(surveys.status, "surveyed")));
-  const [wonCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(and(gulfSurveyBase, eq(surveys.status, "won")));
-  // Follow-ups for Gulf surveys
-  const gulfSurveyIds = await db.select({ id: surveys.id }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(gulfSurveyBase);
-  const gulfIds = gulfSurveyIds.map(s => s.id);
-  let pendingFollowUps = 0;
-  let totalInstallations = 0;
-  let completedInstallations = 0;
-  let inProgressInstallations = 0;
-  if (gulfIds.length > 0) {
-    const [fuCount] = await db.select({ count: sql<number>`count(*)` }).from(followUps).where(and(eq(followUps.status, "pending"), inArray(followUps.surveyId, gulfIds)));
-    pendingFollowUps = fuCount?.count ?? 0;
-    // Installation stats
-    const [instTotal] = await db.select({ count: sql<number>`count(*)` }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(and(gulfSurveyBase, isNotNull(surveys.installationDate)));
-    totalInstallations = instTotal?.count ?? 0;
-    const [instCompleted] = await db.select({ count: sql<number>`count(*)` }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(and(gulfSurveyBase, eq(surveys.installationStatus, "completed")));
-    completedInstallations = instCompleted?.count ?? 0;
-    const [instInProgress] = await db.select({ count: sql<number>`count(*)` }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(and(gulfSurveyBase, eq(surveys.installationStatus, "in_progress")));
-    inProgressInstallations = instInProgress?.count ?? 0;
-  }
-  // Recent Gulf surveys
-  const recentSurveys = await db.select({
-    id: surveys.id,
-    status: surveys.status,
-    scheduledDate: surveys.scheduledDate,
-    customerName: customers.name,
-    customerPhone: customers.phone,
-    installationStatus: surveys.installationStatus,
-  }).from(surveys)
-    .innerJoin(customers, eq(surveys.customerId, customers.id))
-    .where(gulfSurveyBase)
-    .orderBy(desc(surveys.createdAt))
-    .limit(10);
-
-  return {
-    totalCustomers: custCount?.count ?? 0,
-    totalSurveys: survCount?.count ?? 0,
-    pendingSurveys: pendCount?.count ?? 0,
-    completedSurveys: compCount?.count ?? 0,
-    wonDeals: wonCount?.count ?? 0,
-    pendingFollowUps,
-    totalInstallations,
-    completedInstallations,
-    inProgressInstallations,
-    recentSurveys,
-  };
-}
-
 // ==================== CALENDAR QUERIES ====================
 export async function getCalendarEvents(startDate: number, endDate: number) {
   const db = await getDb();
@@ -991,12 +907,6 @@ export async function getSurveyPhotoById(id: number) {
   if (!db) return undefined;
   const result = await db.select().from(surveyPhotos).where(eq(surveyPhotos.id, id)).limit(1);
   return result[0];
-}
-
-export async function updateSurveyPhotoCaption(id: number, caption: string | null) {
-  const db = await getDb();
-  if (!db) return;
-  await db.update(surveyPhotos).set({ caption }).where(eq(surveyPhotos.id, id));
 }
 
 export async function getSurveyDocumentById(id: number) {
@@ -1149,69 +1059,22 @@ export async function deleteSource(id: number) {
   await db.delete(sources).where(eq(sources.id, id));
 }
 
-export async function updateSource(id: number, data: { name?: string; groupName?: string | null; category?: string | null }) {
+export async function updateSource(id: number, data: { name?: string; category?: string; groupName?: string | null }) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  await db.update(sources).set(data).where(eq(sources.id, id));
+  const updateData: any = {};
+  if (data.name !== undefined) updateData.name = data.name;
+  if (data.category !== undefined) updateData.category = data.category;
+  if (data.groupName !== undefined) updateData.groupName = data.groupName;
+  if (Object.keys(updateData).length > 0) {
+    await db.update(sources).set(updateData).where(eq(sources.id, id));
+  }
 }
 
-export async function getSourcesWithStats() {
-  const db = await getDb();
-  if (!db) return [];
-  // Get all sources with actual customer count from customers table
-  const allSources = await db.select().from(sources).orderBy(desc(sources.usageCount));
-  // Get actual customer counts per source name
-  const customerCounts = await db.select({
-    source: customers.source,
-    count: sql<number>`COUNT(*)`,
-  }).from(customers).groupBy(customers.source);
-  const countMap = new Map(customerCounts.map(c => [c.source, Number(c.count)]));
-  return allSources.map(s => ({
-    ...s,
-    customerCount: countMap.get(s.name) || 0,
-  }));
-}
-
-export async function getCustomersBySourceName(sourceName: string, opts: { page?: number; limit?: number } = {}) {
+export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; adminSenderId?: number; closerId?: number; page?: number; limit?: number; search?: string; month?: number; year?: number; source?: string; district?: string; province?: string; scopedSurveyIds?: number[]; sortBy?: string; sortDirection?: "asc" | "desc"; filterDate?: number; filterDateEnd?: number }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { page = 1, limit = 20 } = opts;
-  const offset = (page - 1) * limit;
-  const conditions = sourceName === 'other' || sourceName === 'null'
-    ? or(eq(customers.source, 'other'), isNull(customers.source))
-    : eq(customers.source, sourceName);
-  const [countResult] = await db.select({ count: sql<number>`COUNT(*)` }).from(customers).where(conditions!);
-  const data = await db.select().from(customers).where(conditions!).orderBy(desc(customers.createdAt)).limit(limit).offset(offset);
-  return { data, total: Number(countResult?.count || 0) };
-}
-
-export async function getDistinctGroups() {
-  const db = await getDb();
-  if (!db) return [];
-  const rows = await db.selectDistinct({ groupName: sources.groupName }).from(sources).where(sql`${sources.groupName} IS NOT NULL`);
-  return rows.map(r => r.groupName).filter(Boolean) as string[];
-}
-
-// Get all source names that belong to a specific group
-export async function getSourceNamesByGroup(groupName: string): Promise<string[]> {
-  const db = await getDb();
-  if (!db) return [];
-  const rows = await db.select({ name: sources.name }).from(sources).where(eq(sources.groupName, groupName));
-  return rows.map(r => r.name);
-}
-
-// Get all source names NOT in TCS (i.e., belonging to any named group like Gulf, MEA)
-export async function getNonTcsSourceNames(): Promise<string[]> {
-  const db = await getDb();
-  if (!db) return [];
-  const rows = await db.select({ name: sources.name }).from(sources).where(and(isNotNull(sources.groupName), sql`${sources.groupName} != 'TCS'`));
-  return rows.map(r => r.name);
-}
-
-export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; adminSenderId?: number; closerId?: number; page?: number; limit?: number; search?: string; month?: number; year?: number; source?: string; sourceExclude?: string[]; district?: string; province?: string; scopedSurveyIds?: number[]; sortBy?: string; sortDirection?: "asc" | "desc"; filterDate?: number; filterDateEnd?: number }) {
-  const db = await getDb();
-  if (!db) return { data: [], total: 0 };
-  const { status, assignedTo, adminSenderId, closerId, page = 1, limit = 20, search, month, year, source, sourceExclude, district, province, scopedSurveyIds, filterDate, filterDateEnd } = opts;
+  const { status, assignedTo, adminSenderId, closerId, page = 1, limit = 20, search, month, year, source, district, province, scopedSurveyIds, filterDate, filterDateEnd } = opts;
   const offset = (page - 1) * limit;
 
   // If filtering by team member (any role), find matching survey IDs first
@@ -1243,7 +1106,6 @@ export async function getSurveysWithCustomer(opts: { status?: string; assignedTo
     ));
   }
   if (source) conditions.push(eq(customers.source, source));
-  if (sourceExclude && sourceExclude.length > 0) conditions.push(or(isNull(customers.source), notInArray(customers.source, sourceExclude)));
   if (district) conditions.push(eq(customers.district, district));
   if (province) conditions.push(eq(customers.province, province));
   if (filterDate) {
@@ -1535,7 +1397,7 @@ export async function updateInstallationStatus(surveyId: number, installationSta
 export async function getInstallations(opts: any) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { page = 1, limit = 20, search, month, year, district, province, installationStatus, surveyorId, closerId, installerTeamId, scopedSurveyIds, source, sourceExclude } = opts;
+  const { page = 1, limit = 20, search, month, year, district, province, installationStatus, surveyorId, closerId, installerTeamId, scopedSurveyIds } = opts;
   const offset = (page - 1) * limit;
 
   // Data scoping: เซลล์เห็นเฉพาะงานติดตั้งที่ตัวเองเกี่ยวข้อง
@@ -1554,8 +1416,6 @@ export async function getInstallations(opts: any) {
   }
   if (district) conditions.push(eq(customers.district, district));
   if (province) conditions.push(eq(customers.province, province));
-  if (source) conditions.push(eq(customers.source, source));
-  if (sourceExclude && sourceExclude.length > 0) conditions.push(or(isNull(customers.source), notInArray(customers.source, sourceExclude)));
   if (month && year) {
     // Filter by installation month/year (UTC+7 Thailand: +25200 seconds)
     conditions.push(sql`MONTH(FROM_UNIXTIME(${surveys.installationDate} / 1000 + 25200)) = ${month}`);
@@ -2690,108 +2550,179 @@ export async function getPostponeCancelLogs(surveyId: number) {
 }
 
 
-// ==================== SURVEY TEMPLATES ====================
-export async function getSurveyTemplates() {
+// ==================== DELIVERY FORM QUERIES ====================
+export async function createDeliveryForm(data: { surveyId: number; customerId: number; checklistData?: string; createdBy?: number }) {
   const db = await getDb();
-  if (!db) return [];
-  return db.select().from(surveyTemplates).orderBy(desc(surveyTemplates.createdAt));
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(deliveryForms).values({
+    surveyId: data.surveyId,
+    customerId: data.customerId,
+    checklistData: data.checklistData || "[]",
+    status: "draft",
+    createdBy: data.createdBy,
+  });
+  return { id: Number(result[0].insertId) };
 }
 
-export async function getSurveyTemplateById(id: number) {
+export async function getDeliveryFormBySurveyId(surveyId: number) {
   const db = await getDb();
   if (!db) return null;
-  const rows = await db.select().from(surveyTemplates).where(eq(surveyTemplates.id, id)).limit(1);
-  return rows[0] ?? null;
+  const result = await db.select().from(deliveryForms).where(eq(deliveryForms.surveyId, surveyId)).limit(1);
+  return result.length > 0 ? result[0] : null;
 }
 
-export async function getSurveyTemplateBySourceId(sourceId: number) {
+export async function updateDeliveryFormChecklist(id: number, checklistData: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(deliveryForms).set({ checklistData }).where(eq(deliveryForms.id, id));
+}
+
+export async function updateDeliveryFormSignature(id: number, data: { customerSignatureUrl?: string; customerSignatureKey?: string; technicianSignatureUrl?: string; technicianSignatureKey?: string; technicianName?: string; signedAt?: number; status?: "draft" | "signed" | "completed" }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const updateData: any = {};
+  if (data.customerSignatureUrl !== undefined) updateData.customerSignatureUrl = data.customerSignatureUrl;
+  if (data.customerSignatureKey !== undefined) updateData.customerSignatureKey = data.customerSignatureKey;
+  if (data.technicianSignatureUrl !== undefined) updateData.technicianSignatureUrl = data.technicianSignatureUrl;
+  if (data.technicianSignatureKey !== undefined) updateData.technicianSignatureKey = data.technicianSignatureKey;
+  if (data.technicianName !== undefined) updateData.technicianName = data.technicianName;
+  if (data.signedAt !== undefined) updateData.signedAt = data.signedAt;
+  if (data.status !== undefined) updateData.status = data.status;
+  await db.update(deliveryForms).set(updateData).where(eq(deliveryForms.id, id));
+}
+
+export async function updateDeliveryFormNotes(id: number, notes: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(deliveryForms).set({ notes }).where(eq(deliveryForms.id, id));
+}
+
+export async function updateDeliveryFormPdf(id: number, pdfUrl: string, pdfFileKey: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(deliveryForms).set({ pdfUrl, pdfFileKey }).where(eq(deliveryForms.id, id));
+}
+
+// ==================== DELIVERY CHECKLIST TEMPLATE QUERIES ====================
+export async function getChecklistTemplates() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(deliveryChecklistTemplates).orderBy(asc(deliveryChecklistTemplates.id));
+}
+
+export async function getAllChecklistTemplates() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(deliveryChecklistTemplates).orderBy(asc(deliveryChecklistTemplates.id));
+}
+
+export async function createChecklistTemplate(data: { name: string; items?: string; isDefault?: boolean; createdBy?: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(deliveryChecklistTemplates).values({
+    name: data.name,
+    items: data.items || "[]",
+    isDefault: data.isDefault ?? false,
+    createdBy: data.createdBy,
+  });
+  return { id: Number(result[0].insertId) };
+}
+
+export async function updateChecklistTemplate(id: number, data: { name?: string; items?: string; isDefault?: boolean }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const updateData: any = {};
+  if (data.name !== undefined) updateData.name = data.name;
+  if (data.items !== undefined) updateData.items = data.items;
+  if (data.isDefault !== undefined) updateData.isDefault = data.isDefault;
+  await db.update(deliveryChecklistTemplates).set(updateData).where(eq(deliveryChecklistTemplates.id, id));
+}
+
+export async function deleteChecklistTemplate(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(deliveryChecklistTemplates).where(eq(deliveryChecklistTemplates.id, id));
+}
+
+// ==================== PAYMENT QUERIES ====================
+export async function createPayment(data: { surveyId: number; customerId: number; amount?: number; paymentMethod?: string; notes?: string; createdBy?: number; contractValue?: number; collectedAmount?: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(payments).values({
+    surveyId: data.surveyId,
+    customerId: data.customerId,
+    amount: data.amount != null ? String(data.amount) : undefined,
+    paymentMethod: data.paymentMethod,
+    notes: data.notes,
+    status: "pending",
+    createdBy: data.createdBy,
+    contractValue: data.contractValue != null ? String(data.contractValue) : undefined,
+    collectedAmount: data.collectedAmount != null ? String(data.collectedAmount) : undefined,
+  });
+  return { id: Number(result[0].insertId) };
+}
+
+export async function getPaymentBySurveyId(surveyId: number) {
   const db = await getDb();
   if (!db) return null;
-  const rows = await db.select().from(surveyTemplates)
-    .where(and(eq(surveyTemplates.sourceId, sourceId), eq(surveyTemplates.isActive, true)))
-    .limit(1);
-  return rows[0] ?? null;
+  const result = await db.select().from(payments).where(eq(payments.surveyId, surveyId)).limit(1);
+  return result.length > 0 ? result[0] : null;
 }
 
-export async function createSurveyTemplate(data: InsertSurveyTemplate) {
+export async function getPayments(opts: { status?: string; page?: number; limit?: number; source?: string; sourceExclude?: string[] }) {
   const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  const result = await db.insert(surveyTemplates).values(data);
-  return { id: result[0].insertId };
-}
-
-export async function updateSurveyTemplate(id: number, data: Partial<InsertSurveyTemplate>) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  await db.update(surveyTemplates).set(data).where(eq(surveyTemplates.id, id));
-}
-
-export async function deleteSurveyTemplate(id: number) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  // Delete fields first, then template
-  await db.delete(surveyTemplateFields).where(eq(surveyTemplateFields.templateId, id));
-  await db.delete(surveyTemplateData).where(eq(surveyTemplateData.templateId, id));
-  await db.delete(surveyTemplates).where(eq(surveyTemplates.id, id));
-}
-
-// ==================== SURVEY TEMPLATE FIELDS ====================
-export async function getTemplateFields(templateId: number) {
-  const db = await getDb();
-  if (!db) return [];
-  return db.select().from(surveyTemplateFields)
-    .where(eq(surveyTemplateFields.templateId, templateId))
-    .orderBy(asc(surveyTemplateFields.sortOrder));
-}
-
-export async function createTemplateField(data: InsertSurveyTemplateField) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  const result = await db.insert(surveyTemplateFields).values(data);
-  return { id: result[0].insertId };
-}
-
-export async function updateTemplateField(id: number, data: Partial<InsertSurveyTemplateField>) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  await db.update(surveyTemplateFields).set(data).where(eq(surveyTemplateFields.id, id));
-}
-
-export async function deleteTemplateField(id: number) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  // Also delete any filled data for this field
-  await db.delete(surveyTemplateData).where(eq(surveyTemplateData.fieldId, id));
-  await db.delete(surveyTemplateFields).where(eq(surveyTemplateFields.id, id));
-}
-
-export async function reorderTemplateFields(templateId: number, fieldIds: number[]) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  for (let i = 0; i < fieldIds.length; i++) {
-    await db.update(surveyTemplateFields)
-      .set({ sortOrder: i })
-      .where(and(eq(surveyTemplateFields.id, fieldIds[i]), eq(surveyTemplateFields.templateId, templateId)));
+  if (!db) return { data: [], total: 0 };
+  const { status, page = 1, limit = 20, source, sourceExclude } = opts;
+  const offset = (page - 1) * limit;
+  const conditions: any[] = [];
+  if (status) conditions.push(eq(payments.status, status as any));
+  if (source) conditions.push(eq(customers.source, source));
+  if (sourceExclude && sourceExclude.length > 0) {
+    conditions.push(or(isNull(customers.source), not(inArray(customers.source, sourceExclude))));
   }
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  
+  const data = await db.select({
+    id: payments.id,
+    surveyId: payments.surveyId,
+    customerId: payments.customerId,
+    customerName: customers.name,
+    customerPhone: customers.phone,
+    source: customers.source,
+    amount: payments.amount,
+    paymentDate: payments.paymentDate,
+    paymentMethod: payments.paymentMethod,
+    slipUrl: payments.slipUrl,
+    notes: payments.notes,
+    status: payments.status,
+    contractValue: payments.contractValue,
+    collectedAmount: payments.collectedAmount,
+    createdAt: payments.createdAt,
+  }).from(payments)
+    .leftJoin(customers, eq(payments.customerId, customers.id))
+    .where(whereClause)
+    .orderBy(desc(payments.createdAt))
+    .limit(limit).offset(offset);
+  
+  const countQ = whereClause
+    ? await db.select({ count: sql<number>`count(*)` }).from(payments).leftJoin(customers, eq(payments.customerId, customers.id)).where(whereClause)
+    : await db.select({ count: sql<number>`count(*)` }).from(payments);
+  
+  return { data, total: countQ[0]?.count ?? 0 };
 }
 
-// ==================== SURVEY TEMPLATE DATA (filled values) ====================
-export async function getTemplateDataBySurvey(surveyId: number) {
+export async function updatePayment(id: number, data: { amount?: number; paymentDate?: number; paymentMethod?: string; slipUrl?: string; slipFileKey?: string; notes?: string; status?: "pending" | "partial" | "paid" | "overdue"; contractValue?: number; collectedAmount?: number }) {
   const db = await getDb();
-  if (!db) return [];
-  return db.select().from(surveyTemplateData)
-    .where(eq(surveyTemplateData.surveyId, surveyId));
-}
-
-export async function saveTemplateData(surveyId: number, templateId: number, entries: { fieldId: number; value: string | null; otherValue: string | null }[]) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  // Delete existing data for this survey+template, then insert fresh
-  await db.delete(surveyTemplateData)
-    .where(and(eq(surveyTemplateData.surveyId, surveyId), eq(surveyTemplateData.templateId, templateId)));
-  if (entries.length > 0) {
-    await db.insert(surveyTemplateData).values(
-      entries.map(e => ({ surveyId, templateId, fieldId: e.fieldId, value: e.value, otherValue: e.otherValue }))
-    );
-  }
+  if (!db) throw new Error("Database not available");
+  const updateData: any = {};
+  if (data.amount !== undefined) updateData.amount = data.amount;
+  if (data.paymentDate !== undefined) updateData.paymentDate = data.paymentDate;
+  if (data.paymentMethod !== undefined) updateData.paymentMethod = data.paymentMethod;
+  if (data.slipUrl !== undefined) updateData.slipUrl = data.slipUrl;
+  if (data.slipFileKey !== undefined) updateData.slipFileKey = data.slipFileKey;
+  if (data.notes !== undefined) updateData.notes = data.notes;
+  if (data.status !== undefined) updateData.status = data.status;
+  if (data.contractValue !== undefined) updateData.contractValue = data.contractValue;
+  if (data.collectedAmount !== undefined) updateData.collectedAmount = data.collectedAmount;
+  await db.update(payments).set(updateData).where(eq(payments.id, id));
 }

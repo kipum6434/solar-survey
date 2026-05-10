@@ -1,9 +1,0 @@
-{
-  "query": "INSERT INTO customers (name, phone, province, district, source, roofType, phaseType, createdAt, updatedAt, createdBy) \nVALUES ('ทดสอบ Gulf - คุณสมชาย', '081-234-5678', 'กรุงเทพมหานคร', 'บางนา', 'Gulf', 'หลังคาเมทัลชีท', 'three', NOW(), NOW(), 90361);",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute INSERT INTO customers (name, phone, province, district, source, roofType, phaseType, createdAt, updatedAt, createdBy) \nVALUES ('ทดสอบ Gulf - คุณสมชาย', '081-234-5678', 'กรุงเทพมหานคร', 'บางนา', 'Gulf', 'หลังคาเมทัลชีท', 'three', NOW(), NOW(), 90361);",
-  "rows": [],
-  "messages": [],
-  "stdout": "",
-  "stderr": "",
-  "execution_time_ms": 1803
-}

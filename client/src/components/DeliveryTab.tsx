@@ -25,6 +25,7 @@ import {
   MessageSquare, SendHorizontal, CircleAlert, CircleCheck, Info, FileDown,
 } from "lucide-react";
 import { exportInstallationPDF, type ImageProxyFn, type CompanyInfo } from "@/lib/pdfExport";
+import DeliveryFormSection from "@/components/DeliveryFormSection";
 
 interface DeliveryTabProps {
   surveyId: number;
@@ -857,6 +858,15 @@ export default function DeliveryTab({ surveyId, installationStatus, surveyData, 
         }}
         onDismiss={clearUploadState}
       />
+
+      {/* ใบส่งมอบงาน (Checklist + ลายเซ็น + PDF) */}
+      <DeliveryFormSection
+        surveyId={surveyId}
+        installationStatus={installationStatus}
+        surveyData={surveyData}
+        customerData={customerData}
+      />
+
     </div>
   );
 }

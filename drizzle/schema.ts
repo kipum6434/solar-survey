@@ -133,8 +133,8 @@ export const sources = mysqlTable("sources", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 255 }).notNull().unique(),
   category: varchar("category", { length: 100 }),
-  groupName: varchar("groupName", { length: 100 }), // "Gulf", "MEA", or NULL (= TCS)
   usageCount: int("usageCount").default(0).notNull(),
+  groupName: varchar("groupName", { length: 100 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -417,67 +417,61 @@ export const postponeCancelLogs = mysqlTable("postpone_cancel_logs", {
 export type PostponeCancelLog = typeof postponeCancelLogs.$inferSelect;
 export type InsertPostponeCancelLog = typeof postponeCancelLogs.$inferInsert;
 
-// ==================== SURVEY TEMPLATES ====================
-export const surveyTemplates = mysqlTable("survey_templates", {
+
+// ==================== DELIVERY FORMS ====================
+export const deliveryForms = mysqlTable("delivery_forms", {
   id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  sourceId: int("sourceId"), // link to sources table (e.g. Gulf)
-  pdfHeaderTitle: varchar("pdfHeaderTitle", { length: 255 }),
-  pdfHeaderSubtitle: varchar("pdfHeaderSubtitle", { length: 255 }),
-  pdfLogoUrl: text("pdfLogoUrl"),
-  pdfLogoFileKey: varchar("pdfLogoFileKey", { length: 512 }),
-  isActive: boolean("isActive").default(true).notNull(),
+  surveyId: int("surveyId").notNull(),
+  customerId: int("customerId").notNull(),
+  checklistTemplateId: int("checklistTemplateId"),
+  checklistData: text("checklistData"), // JSON: [{label, checked}]
+  customerSignatureUrl: text("customerSignatureUrl"),
+  customerSignatureKey: varchar("customerSignatureKey", { length: 512 }),
+  technicianSignatureUrl: text("technicianSignatureUrl"),
+  technicianSignatureKey: varchar("technicianSignatureKey", { length: 512 }),
+  technicianName: varchar("technicianName", { length: 255 }),
+  notes: text("notes"),
+  pdfUrl: text("pdfUrl"),
+  pdfFileKey: varchar("pdfFileKey", { length: 512 }),
+  status: mysqlEnum("status", ["draft", "signed", "completed"]).notNull().default("draft"),
+  signedAt: bigint("signedAt", { mode: "number" }),
   createdBy: int("createdBy"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
+export type DeliveryForm = typeof deliveryForms.$inferSelect;
+export type InsertDeliveryForm = typeof deliveryForms.$inferInsert;
 
-export type SurveyTemplate = typeof surveyTemplates.$inferSelect;
-export type InsertSurveyTemplate = typeof surveyTemplates.$inferInsert;
-
-// ==================== SURVEY TEMPLATE FIELDS ====================
-export const surveyTemplateFields = mysqlTable("survey_template_fields", {
+// ==================== DELIVERY CHECKLIST TEMPLATES ====================
+export const deliveryChecklistTemplates = mysqlTable("delivery_checklist_templates", {
   id: int("id").autoincrement().primaryKey(),
-  templateId: int("templateId").notNull(),
-  fieldName: varchar("fieldName", { length: 255 }).notNull(),
-  fieldLabel: varchar("fieldLabel", { length: 255 }).notNull(),
-  fieldType: mysqlEnum("fieldType", [
-    "text",
-    "number",
-    "textarea",
-    "select",
-    "checkbox",
-    "checkbox_group",
-    "radio",
-    "date",
-    "distance",
-    "yes_no",
-    "section_header"
-  ]).notNull(),
-  fieldOptions: text("fieldOptions"), // JSON string for select/checkbox_group/radio options e.g. ["3kW 1P","5kW 1P","อื่นๆ"]
-  hasOtherOption: boolean("hasOtherOption").default(false).notNull(), // show "อื่นๆ" text field when checked
-  placeholder: varchar("placeholder", { length: 255 }),
-  defaultValue: text("defaultValue"),
-  required: boolean("required").default(false).notNull(),
-  sectionGroup: varchar("sectionGroup", { length: 100 }), // group fields under a section header
-  sortOrder: int("sortOrder").default(0).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type SurveyTemplateField = typeof surveyTemplateFields.$inferSelect;
-export type InsertSurveyTemplateField = typeof surveyTemplateFields.$inferInsert;
-
-// ==================== SURVEY TEMPLATE DATA (filled values) ====================
-export const surveyTemplateData = mysqlTable("survey_template_data", {
-  id: int("id").autoincrement().primaryKey(),
-  surveyId: int("surveyId").notNull(),
-  templateId: int("templateId").notNull(),
-  fieldId: int("fieldId").notNull(),
-  value: text("value"), // JSON string: string for text, number; array for checkbox_group; object for distance
-  otherValue: text("otherValue"), // value when "อื่นๆ" is selected
+  name: varchar("name", { length: 255 }).notNull(),
+  items: text("items").notNull(), // JSON array of checklist item strings
+  isDefault: boolean("isDefault").default(false).notNull(),
+  createdBy: int("createdBy"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
+export type DeliveryChecklistTemplate = typeof deliveryChecklistTemplates.$inferSelect;
+export type InsertDeliveryChecklistTemplate = typeof deliveryChecklistTemplates.$inferInsert;
 
-export type SurveyTemplateData = typeof surveyTemplateData.$inferSelect;
-export type InsertSurveyTemplateData = typeof surveyTemplateData.$inferInsert;
+// ==================== PAYMENTS ====================
+export const payments = mysqlTable("payments", {
+  id: int("id").autoincrement().primaryKey(),
+  surveyId: int("surveyId").notNull(),
+  customerId: int("customerId").notNull(),
+  amount: decimal("amount", { precision: 12, scale: 2 }),
+  paymentDate: bigint("paymentDate", { mode: "number" }),
+  slipUrl: text("slipUrl"),
+  slipFileKey: varchar("slipFileKey", { length: 512 }),
+  status: mysqlEnum("status", ["pending", "partial", "paid", "overdue"]).notNull().default("pending"),
+  paymentMethod: varchar("paymentMethod", { length: 100 }),
+  notes: text("notes"),
+  contractValue: decimal("contractValue", { precision: 12, scale: 2 }),
+  collectedAmount: decimal("collectedAmount", { precision: 12, scale: 2 }).default("0"),
+  createdBy: int("createdBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Payment = typeof payments.$inferSelect;
+export type InsertPayment = typeof payments.$inferInsert;

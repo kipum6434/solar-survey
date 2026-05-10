@@ -1,8 +1,0 @@
-{
-  "query": "INSERT INTO sources (name, category, usage_count) VALUES ('Gulf', 'partner', 0);",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute INSERT INTO sources (name, category, usage_count) VALUES ('Gulf', 'partner', 0);",
-  "returncode": 1,
-  "logs": [
-    "ERROR 1054 (42S22) at line 1: Unknown column 'usage_count' in 'field list'"
-  ]
-}
