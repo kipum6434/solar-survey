@@ -1281,6 +1281,10 @@ const dashboardRouter = router({
     const scope = await getUserScope(ctx.user);
     return db.getDashboardStats(scope?.surveyIds, scope?.customerIds);
   }),
+
+  gulfStats: protectedProcedure.query(async () => {
+    return db.getGulfDashboardStats();
+  }),
   recentActivities: protectedProcedure
     .input(z.object({ limit: z.number().default(20) }).optional())
     .query(({ input }) => db.getRecentActivities(input?.limit)),
@@ -2601,6 +2605,43 @@ const surveyTemplateRouter = router({
     .mutation(async ({ input }) => {
       await db.deleteSurveyTemplate(input.id);
       return { success: true };
+    }),
+
+  duplicate: adminProcedure
+    .input(z.object({ id: z.number(), name: z.string().min(1).optional() }))
+    .mutation(async ({ input, ctx }) => {
+      // Get original template
+      const original = await db.getSurveyTemplateById(input.id);
+      if (!original) throw new TRPCError({ code: "NOT_FOUND", message: "Template not found" });
+      const fields = await db.getTemplateFields(input.id);
+      // Create new template (copy)
+      const newName = input.name || `${original.name} (สำเนา)`;
+      const newTemplate = await db.createSurveyTemplate({
+        name: newName,
+        sourceId: null, // Don't copy sourceId to avoid conflict
+        pdfHeaderTitle: original.pdfHeaderTitle,
+        pdfHeaderSubtitle: original.pdfHeaderSubtitle,
+        pdfLogoUrl: original.pdfLogoUrl,
+        pdfLogoFileKey: original.pdfLogoFileKey,
+        createdBy: ctx.user.id,
+      });
+      // Copy all fields
+      for (const field of fields) {
+        await db.createTemplateField({
+          templateId: newTemplate.id,
+          fieldName: field.fieldName,
+          fieldLabel: field.fieldLabel,
+          fieldType: field.fieldType,
+          fieldOptions: field.fieldOptions,
+          hasOtherOption: field.hasOtherOption,
+          placeholder: field.placeholder,
+          defaultValue: field.defaultValue,
+          required: field.required,
+          sectionGroup: field.sectionGroup,
+          sortOrder: field.sortOrder,
+        });
+      }
+      return { id: newTemplate.id, name: newName, fieldCount: fields.length };
     }),
 
   uploadLogo: adminProcedure

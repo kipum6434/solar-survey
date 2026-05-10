@@ -18,7 +18,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, FileText, GripVertical, Upload, Image, ArrowLeft, Eye, EyeOff, Settings2, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, GripVertical, Upload, Image, ArrowLeft, Eye, EyeOff, Settings2, ChevronRight, Copy } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
@@ -73,6 +73,11 @@ function TemplateList({ onSelect }: { onSelect: (id: number) => void }) {
 
   const deleteMutation = trpc.surveyTemplate.delete.useMutation({
     onSuccess: () => { toast.success("ลบ Template สำเร็จ"); refetch(); setDeleteTarget(null); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const duplicateMutation = trpc.surveyTemplate.duplicate.useMutation({
+    onSuccess: (data) => { toast.success(`สำเนา Template สำเร็จ (${data.fieldCount} ฟิลด์)`); refetch(); onSelect(data.id); },
     onError: (e) => toast.error(e.message),
   });
 
@@ -139,14 +144,26 @@ function TemplateList({ onSelect }: { onSelect: (id: number) => void }) {
                 <span className="text-xs text-muted-foreground">
                   สร้างเมื่อ {new Date(t.createdAt).toLocaleDateString("th-TH")}
                 </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: t.id, name: t.name }); }}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                    title="สำเนา Template"
+                    onClick={(e) => { e.stopPropagation(); duplicateMutation.mutate({ id: t.id }); }}
+                    disabled={duplicateMutation.isPending}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                    onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: t.id, name: t.name }); }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
             </Card>
           ))}

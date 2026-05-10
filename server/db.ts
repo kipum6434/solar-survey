@@ -856,6 +856,66 @@ export async function getDashboardStats(scopedSurveyIds?: number[], scopedCustom
   };
 }
 
+// ==================== GULF DASHBOARD ====================
+export async function getGulfDashboardStats() {
+  const db = await getDb();
+  if (!db) return { totalCustomers: 0, totalSurveys: 0, pendingSurveys: 0, completedSurveys: 0, wonDeals: 0, pendingFollowUps: 0, totalInstallations: 0, completedInstallations: 0, inProgressInstallations: 0, recentSurveys: [] };
+
+  const gulfSource = "Gulf";
+  // Gulf customers
+  const [custCount] = await db.select({ count: sql<number>`count(*)` }).from(customers).where(eq(customers.source, gulfSource));
+  // Gulf surveys (join customers)
+  const gulfSurveyBase = and(eq(customers.source, gulfSource));
+  const [survCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(gulfSurveyBase);
+  const [pendCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(and(gulfSurveyBase, inArray(surveys.status, ["pending", "scheduled"])));
+  const [compCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(and(gulfSurveyBase, eq(surveys.status, "surveyed")));
+  const [wonCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(and(gulfSurveyBase, eq(surveys.status, "won")));
+  // Follow-ups for Gulf surveys
+  const gulfSurveyIds = await db.select({ id: surveys.id }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(gulfSurveyBase);
+  const gulfIds = gulfSurveyIds.map(s => s.id);
+  let pendingFollowUps = 0;
+  let totalInstallations = 0;
+  let completedInstallations = 0;
+  let inProgressInstallations = 0;
+  if (gulfIds.length > 0) {
+    const [fuCount] = await db.select({ count: sql<number>`count(*)` }).from(followUps).where(and(eq(followUps.status, "pending"), inArray(followUps.surveyId, gulfIds)));
+    pendingFollowUps = fuCount?.count ?? 0;
+    // Installation stats
+    const [instTotal] = await db.select({ count: sql<number>`count(*)` }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(and(gulfSurveyBase, isNotNull(surveys.installationDate)));
+    totalInstallations = instTotal?.count ?? 0;
+    const [instCompleted] = await db.select({ count: sql<number>`count(*)` }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(and(gulfSurveyBase, eq(surveys.installationStatus, "completed")));
+    completedInstallations = instCompleted?.count ?? 0;
+    const [instInProgress] = await db.select({ count: sql<number>`count(*)` }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(and(gulfSurveyBase, eq(surveys.installationStatus, "in_progress")));
+    inProgressInstallations = instInProgress?.count ?? 0;
+  }
+  // Recent Gulf surveys
+  const recentSurveys = await db.select({
+    id: surveys.id,
+    status: surveys.status,
+    scheduledDate: surveys.scheduledDate,
+    customerName: customers.name,
+    customerPhone: customers.phone,
+    installationStatus: surveys.installationStatus,
+  }).from(surveys)
+    .innerJoin(customers, eq(surveys.customerId, customers.id))
+    .where(gulfSurveyBase)
+    .orderBy(desc(surveys.createdAt))
+    .limit(10);
+
+  return {
+    totalCustomers: custCount?.count ?? 0,
+    totalSurveys: survCount?.count ?? 0,
+    pendingSurveys: pendCount?.count ?? 0,
+    completedSurveys: compCount?.count ?? 0,
+    wonDeals: wonCount?.count ?? 0,
+    pendingFollowUps,
+    totalInstallations,
+    completedInstallations,
+    inProgressInstallations,
+    recentSurveys,
+  };
+}
+
 // ==================== CALENDAR QUERIES ====================
 export async function getCalendarEvents(startDate: number, endDate: number) {
   const db = await getDb();

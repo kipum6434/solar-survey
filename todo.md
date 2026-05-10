@@ -1080,3 +1080,13 @@
 
 ### Feature: จัดกลุ่มเมนู "ตั้งค่า" ใน sidebar
 - [x] ย้าย Template ฟอร์ม / ตั้งค่า LINE / ตั้งค่าบริษัท / แจ้งเตือน ไปรวมเป็นกลุ่ม "ตั้งค่า" แบบ collapsible
+
+### Bug: Sidebar Gulf + ตั้งค่า ซ้อนทับเมนูอื่น
+- [x] แก้ไข sidebar Gulf และ ตั้งค่า collapsible ไม่ให้ซ้อนทับกับเมนูอื่น — รวมทุกอย่างเข้า SidebarMenu เดียว + flex-shrink-0
+
+### Feature: ปุ่ม Duplicate Template
+- [x] เพิ่มปุ่ม Duplicate Template ในหน้า SurveyTemplates เพื่อสร้าง template ใหม่จาก template เดิม (backend + frontend)
+
+### Feature: Gulf Dashboard
+- [x] สร้างหน้า Gulf Dashboard แสดงสถิติลูกค้า/สำรวจ/ติดตั้ง เฉพาะ Gulf
+- [x] เพิ่มเมนู Gulf Dashboard ใน sidebar กลุ่ม Gulf

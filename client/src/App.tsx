@@ -32,6 +32,7 @@ import GulfCustomers from "./pages/gulf/GulfCustomers";
 import GulfSurveys from "./pages/gulf/GulfSurveys";
 import GulfFollowUps from "./pages/gulf/GulfFollowUps";
 import GulfInstallations from "./pages/gulf/GulfInstallations";
+import GulfDashboard from "./pages/gulf/GulfDashboard";
 
 function Router() {
   return (
@@ -58,6 +59,7 @@ function Router() {
       <Route path={"/line-settings"} component={LineSettings} />
       <Route path={"/company-settings"} component={CompanySettings} />
       <Route path={"/survey-templates"} component={SurveyTemplates} />
+      <Route path={"/gulf/dashboard"} component={GulfDashboard} />
       <Route path={"/gulf/customers"} component={GulfCustomers} />
       <Route path={"/gulf/surveys"} component={GulfSurveys} />
       <Route path={"/gulf/follow-ups"} component={GulfFollowUps} />

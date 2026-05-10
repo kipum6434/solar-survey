@@ -84,6 +84,7 @@ const settingsMenuItems = [
 ];
 
 const gulfMenuItems = [
+  { icon: BarChart3, label: "Dashboard Gulf", path: "/gulf/dashboard" },
   { icon: Users, label: "ลูกค้า Gulf", path: "/gulf/customers" },
   { icon: ClipboardList, label: "งานสำรวจ Gulf", path: "/gulf/surveys" },
   { icon: PhoneCall, label: "งานติดตาม Gulf", path: "/gulf/follow-ups" },
@@ -232,8 +233,9 @@ function DashboardLayoutContent({
             </div>
           </SidebarHeader>
 
-          <SidebarContent className="gap-0 bg-sidebar px-2 pt-2">
-            <SidebarMenu>
+          <SidebarContent className="bg-sidebar px-2 pt-2 overflow-y-auto">
+            <SidebarMenu className="flex-shrink-0">
+              {/* Base menu items */}
               {menuItems.map((item) => {
                 const isActive =
                   item.path === "/"
@@ -260,11 +262,11 @@ function DashboardLayoutContent({
                   </SidebarMenuItem>
                 );
               })}
-            </SidebarMenu>
 
-            {/* Gulf Channel Section */}
-            <SidebarSeparator className="my-2" />
-            <SidebarMenu>
+              {/* Gulf Channel Section - divider */}
+              <li aria-hidden="true" className="my-2 mx-2 h-px bg-sidebar-border" />
+
+              {/* Gulf group header */}
               <SidebarMenuItem>
                 <SidebarMenuButton
                   onClick={() => setGulfExpanded(!gulfExpanded)}
@@ -280,6 +282,8 @@ function DashboardLayoutContent({
                   <ChevronDown className={`h-3 w-3 transition-transform ${gulfExpanded ? "" : "-rotate-90"}`} />
                 </SidebarMenuButton>
               </SidebarMenuItem>
+
+              {/* Gulf sub-items */}
               {gulfExpanded && gulfMenuItems.map((item) => {
                 const isActive = location.startsWith(item.path);
                 return (
@@ -303,11 +307,11 @@ function DashboardLayoutContent({
                   </SidebarMenuItem>
                 );
               })}
-            </SidebarMenu>
 
-            {/* Settings Section */}
-            <SidebarSeparator className="my-2" />
-            <SidebarMenu>
+              {/* Settings Section - divider */}
+              <li aria-hidden="true" className="my-2 mx-2 h-px bg-sidebar-border" />
+
+              {/* Settings group header */}
               <SidebarMenuItem>
                 <SidebarMenuButton
                   onClick={() => setSettingsExpanded(!settingsExpanded)}
@@ -323,6 +327,8 @@ function DashboardLayoutContent({
                   <ChevronDown className={`h-3 w-3 transition-transform ${settingsExpanded ? "" : "-rotate-90"}`} />
                 </SidebarMenuButton>
               </SidebarMenuItem>
+
+              {/* Settings sub-items */}
               {settingsExpanded && settingsItems.map((item) => {
                 const isActive = location === item.path || location.startsWith(item.path + "/");
                 return (
