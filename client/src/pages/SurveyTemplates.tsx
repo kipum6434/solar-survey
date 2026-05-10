@@ -18,7 +18,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, FileText, GripVertical, Upload, Image, ArrowLeft, Eye, EyeOff, Settings2, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, GripVertical, Upload, Image, ArrowLeft, Eye, EyeOff, Settings2, ChevronRight, Monitor } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
@@ -245,6 +245,7 @@ function TemplateEditor({ templateId, onBack }: { templateId: number; onBack: ()
   const [editingField, setEditingField] = useState<any>(null);
   const [deleteFieldTarget, setDeleteFieldTarget] = useState<{ id: number; label: string } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const deleteFieldMutation = trpc.surveyTemplate.deleteField.useMutation({
     onSuccess: () => { toast.success("ลบฟิลด์สำเร็จ"); refetch(); setDeleteFieldTarget(null); },
@@ -312,6 +313,9 @@ function TemplateEditor({ templateId, onBack }: { templateId: number; onBack: ()
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowPreview(true)} className="gap-1.5">
+            <Monitor className="h-4 w-4" /> ดูตัวอย่าง
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setShowSettings(true)} className="gap-1.5">
             <Settings2 className="h-4 w-4" /> ตั้งค่า
           </Button>
@@ -356,6 +360,13 @@ function TemplateEditor({ templateId, onBack }: { templateId: number; onBack: ()
         editingField={editingField}
         currentFieldCount={template.fields?.length || 0}
         onSaved={refetch}
+      />
+
+      {/* Preview Dialog */}
+      <FormPreviewDialog
+        open={showPreview}
+        onOpenChange={setShowPreview}
+        template={template}
       />
 
       {/* Settings Dialog */}
@@ -754,5 +765,231 @@ function TemplateSettingsDialog({ open, onOpenChange, template, sources, onSaved
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ==================== FORM PREVIEW DIALOG ====================
+function FormPreviewDialog({ open, onOpenChange, template }: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  template: any;
+}) {
+  if (!template) return null;
+
+  const fields = template.fields || [];
+
+  // Group fields by sectionGroup
+  const groupedFields: { section: string | null; fields: any[] }[] = [];
+  let currentSection: string | null = null;
+  let currentGroup: any[] = [];
+
+  fields.forEach((field: any) => {
+    if (field.fieldType === "section_header") {
+      if (currentGroup.length > 0 || currentSection !== null) {
+        groupedFields.push({ section: currentSection, fields: currentGroup });
+      }
+      currentSection = field.fieldLabel;
+      currentGroup = [];
+    } else {
+      currentGroup.push(field);
+    }
+  });
+  if (currentGroup.length > 0 || currentSection !== null) {
+    groupedFields.push({ section: currentSection, fields: currentGroup });
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Monitor className="h-5 w-5" /> ตัวอย่างฟอร์ม: {template.name}
+          </DialogTitle>
+          <DialogDescription>
+            แสดงตัวอย่างฟอร์มที่ผู้ใช้จะเห็นเมื่อกรอกข้อมูลสำรวจ (ข้อมูลที่กรอกในตัวอย่างจะไม่ถูกบันทึก)
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6 py-4">
+          {/* PDF Header Preview */}
+          {(template.pdfLogoUrl || template.pdfHeaderTitle) && (
+            <div className="border rounded-lg p-4 bg-muted/30">
+              <div className="flex items-center gap-3">
+                {template.pdfLogoUrl && (
+                  <img src={template.pdfLogoUrl} alt="Logo" className="h-10 w-auto" />
+                )}
+                <div>
+                  {template.pdfHeaderTitle && <p className="font-semibold text-sm">{template.pdfHeaderTitle}</p>}
+                  {template.pdfHeaderSubtitle && <p className="text-xs text-muted-foreground">{template.pdfHeaderSubtitle}</p>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Form Fields */}
+          {groupedFields.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <FileText className="h-12 w-12 mx-auto mb-3 opacity-40" />
+              <p>ยังไม่มีฟิลด์ใน Template นี้</p>
+            </div>
+          ) : (
+            groupedFields.map((group, gi) => (
+              <div key={gi} className="space-y-4">
+                {group.section && (
+                  <div className="border-b pb-2">
+                    <h3 className="font-semibold text-base text-foreground">{group.section}</h3>
+                  </div>
+                )}
+                {group.fields.map((field: any) => (
+                  <PreviewField key={field.id} field={field} />
+                ))}
+              </div>
+            ))
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>ปิด</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ==================== PREVIEW FIELD RENDERER ====================
+function PreviewField({ field }: { field: any }) {
+  const options = field.fieldOptions ? field.fieldOptions.split(",").map((o: string) => o.trim()).filter(Boolean) : [];
+
+  return (
+    <div className="space-y-1.5">
+      <Label className="flex items-center gap-1">
+        {field.fieldLabel}
+        {field.required && <span className="text-red-500 text-xs">*</span>}
+      </Label>
+
+      {field.fieldType === "text" && (
+        <Input
+          placeholder={field.placeholder || `กรอก${field.fieldLabel}`}
+          defaultValue={field.defaultValue || ""}
+          disabled
+          className="bg-background"
+        />
+      )}
+
+      {field.fieldType === "number" && (
+        <Input
+          type="number"
+          placeholder={field.placeholder || "0"}
+          defaultValue={field.defaultValue || ""}
+          disabled
+          className="bg-background"
+        />
+      )}
+
+      {field.fieldType === "textarea" && (
+        <Textarea
+          placeholder={field.placeholder || `กรอก${field.fieldLabel}`}
+          defaultValue={field.defaultValue || ""}
+          disabled
+          rows={3}
+          className="bg-background"
+        />
+      )}
+
+      {field.fieldType === "select" && (
+        <Select disabled defaultValue={field.defaultValue || undefined}>
+          <SelectTrigger className="bg-background">
+            <SelectValue placeholder={field.placeholder || "เลือก..."} />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map((opt: string, i: number) => (
+              <SelectItem key={i} value={opt}>{opt}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+
+      {field.fieldType === "checkbox" && (
+        <div className="flex items-center gap-2">
+          <Checkbox disabled defaultChecked={field.defaultValue === "true"} />
+          <span className="text-sm text-muted-foreground">{field.placeholder || field.fieldLabel}</span>
+        </div>
+      )}
+
+      {field.fieldType === "checkbox_group" && (
+        <div className="space-y-2">
+          {options.map((opt: string, i: number) => (
+            <div key={i} className="flex items-center gap-2">
+              <Checkbox disabled />
+              <span className="text-sm">{opt}</span>
+            </div>
+          ))}
+          {field.hasOtherOption && (
+            <div className="flex items-center gap-2">
+              <Checkbox disabled />
+              <span className="text-sm">อื่นๆ:</span>
+              <Input disabled placeholder="ระบุ..." className="h-7 text-sm flex-1 bg-background" />
+            </div>
+          )}
+        </div>
+      )}
+
+      {field.fieldType === "radio" && (
+        <div className="space-y-2">
+          {options.map((opt: string, i: number) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/40" />
+              <span className="text-sm">{opt}</span>
+            </div>
+          ))}
+          {field.hasOtherOption && (
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/40" />
+              <span className="text-sm">อื่นๆ:</span>
+              <Input disabled placeholder="ระบุ..." className="h-7 text-sm flex-1 bg-background" />
+            </div>
+          )}
+        </div>
+      )}
+
+      {field.fieldType === "date" && (
+        <Input
+          type="date"
+          disabled
+          defaultValue={field.defaultValue || ""}
+          className="bg-background"
+        />
+      )}
+
+      {field.fieldType === "distance" && (
+        <div className="flex items-center gap-2">
+          <Input
+            type="number"
+            placeholder={field.placeholder || "0"}
+            defaultValue={field.defaultValue || ""}
+            disabled
+            className="bg-background flex-1"
+          />
+          <span className="text-sm text-muted-foreground whitespace-nowrap">เมตร</span>
+        </div>
+      )}
+
+      {field.fieldType === "yes_no" && (
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/40" />
+            <span className="text-sm">มี</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/40" />
+            <span className="text-sm">ไม่มี</span>
+          </div>
+        </div>
+      )}
+
+      {field.sectionGroup && (
+        <p className="text-[10px] text-muted-foreground">กลุ่ม: {field.sectionGroup}</p>
+      )}
+    </div>
   );
 }

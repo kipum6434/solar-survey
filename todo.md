@@ -1129,3 +1129,9 @@
 ## Bug Fix: Template สำรวจงานกัลฟ์หายจากหน้า /survey-templates
 
 - [x] ตรวจสอบว่า Template สำรวจงานกัลฟ์เคยอยู่ที่ไหนและนำกลับมาแสดง — restore surveyTemplateRouter + SurveyTemplates.tsx + schema
+
+## Feature: ปุ่ม "ดูตัวอย่างฟอร์ม" ในหน้า Template
+
+- [x] เพิ่มปุ่ม "ดูตัวอย่าง" ข้างแต่ละ template
+- [x] Dialog/Modal แสดง preview ฟอร์มตาม fields ของ template นั้น
+- [x] แสดงทุก field type (text, number, select, checkbox, radio, date, distance, yes_no, section_header) ในรูปแบบที่จะเห็นจริง
