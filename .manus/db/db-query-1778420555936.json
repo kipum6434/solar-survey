@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE sources SET groupName = 'TCS' WHERE groupName IS NULL OR groupName = '';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute UPDATE sources SET groupName = 'TCS' WHERE groupName IS NULL OR groupName = '';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1873
+}

@@ -56,35 +56,17 @@ function Router() {
       <Route path={"/line-settings"} component={LineSettings} />
       <Route path={"/company-settings"} component={CompanySettings} />
       <Route path="/finance">{() => <Finance sourceMode="tcs" />}</Route>
-      <Route path="/finance/tcs">{() => <Finance sourceMode="tcs" />}</Route>
-      <Route path="/finance/gulf">{() => <Finance sourceMode="gulf" />}</Route>
-      <Route path="/finance/mea">{() => <Finance sourceMode="mea" />}</Route>
+      <Route path="/finance/:group">{(params) => <Finance sourceMode={params.group} />}</Route>
       <Route path="/source-management" component={SourceManagement} />
       <Route path="/checklist-templates" component={ChecklistTemplates} />
-      {/* TCS group routes */}
-      <Route path="/tcs/customers" component={Customers} />
-      <Route path="/tcs/customers/:id" component={CustomerDetail} />
-      <Route path="/tcs/surveys" component={Surveys} />
-      <Route path="/tcs/surveys/:id" component={SurveyDetail} />
-      <Route path="/tcs/follow-ups" component={FollowUps} />
-      <Route path="/tcs/installations" component={Installations} />
-      <Route path="/tcs/finance">{() => <Finance sourceMode="tcs" />}</Route>
-      {/* Gulf group routes */}
-      <Route path="/gulf/customers" component={Customers} />
-      <Route path="/gulf/customers/:id" component={CustomerDetail} />
-      <Route path="/gulf/surveys" component={Surveys} />
-      <Route path="/gulf/surveys/:id" component={SurveyDetail} />
-      <Route path="/gulf/follow-ups" component={FollowUps} />
-      <Route path="/gulf/installations" component={Installations} />
-      <Route path="/gulf/finance">{() => <Finance sourceMode="gulf" />}</Route>
-      {/* MEA group routes */}
-      <Route path="/mea/customers" component={Customers} />
-      <Route path="/mea/customers/:id" component={CustomerDetail} />
-      <Route path="/mea/surveys" component={Surveys} />
-      <Route path="/mea/surveys/:id" component={SurveyDetail} />
-      <Route path="/mea/follow-ups" component={FollowUps} />
-      <Route path="/mea/installations" component={Installations} />
-      <Route path="/mea/finance">{() => <Finance sourceMode="mea" />}</Route>
+      {/* Dynamic group routes - works for any group (tcs, gulf, mea, or new ones) */}
+      <Route path="/:group/customers" component={Customers} />
+      <Route path="/:group/customers/:id" component={CustomerDetail} />
+      <Route path="/:group/surveys" component={Surveys} />
+      <Route path="/:group/surveys/:id" component={SurveyDetail} />
+      <Route path="/:group/follow-ups" component={FollowUps} />
+      <Route path="/:group/installations" component={Installations} />
+      <Route path="/:group/finance">{(params) => <Finance sourceMode={params.group} />}</Route>
       <Route path={"/share/:token"} component={SharedSurvey} />
       <Route path={"/survey-field/:token"} component={SharedSurveyField} />
       <Route path={"/404"} component={NotFound} />

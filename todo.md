@@ -1105,3 +1105,7 @@
 
 ### Testing
 - [x] Vitest: ทดสอบ source.listWithStats, source.listGroups, source.assignGroup (covered in finance-checklist.test.ts — 18 tests pass)
+
+## Bug Fix: TCS หายจาก sidebar
+
+- [x] Sidebar ต้องแสดง TCS เสมอ — แก้โดย assign groupName='TCS' ให้ sources ที่ยังไม่มีกลุ่ม + ทำ dynamic routes/filter ทั้งระบบ

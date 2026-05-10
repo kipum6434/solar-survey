@@ -25,7 +25,7 @@ const PAYMENT_STATUS_MAP: Record<string, { label: string; color: string; icon: a
 };
 
 interface FinanceProps {
-  sourceMode?: "tcs" | "gulf" | "mea" | null;
+  sourceMode?: string | null;
 }
 
 export default function Finance(props: FinanceProps & Record<string, any>) {
@@ -40,18 +40,18 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
   // Get source names by group for dynamic filtering
   const { data: sourceNamesByGroup } = trpc.source.sourceNamesByGroup.useQuery();
 
-  // Determine source/sourceExclude based on sourceMode
+  // Determine source/sourceExclude based on sourceMode (dynamic)
   const sourceFilter = useMemo(() => {
     if (!sourceMode || !sourceNamesByGroup) return {};
-    if (sourceMode === "tcs") {
-      const excludeNames = [
-        ...(sourceNamesByGroup["Gulf"] || []),
-        ...(sourceNamesByGroup["MEA"] || []),
-      ];
-      return excludeNames.length > 0 ? { sourceExclude: excludeNames } : {};
+    // Find the matching group name (case-insensitive)
+    const matchedGroup = Object.keys(sourceNamesByGroup).find(
+      (g) => g.toLowerCase() === sourceMode.toLowerCase()
+    );
+    if (matchedGroup) {
+      const groupNames = sourceNamesByGroup[matchedGroup] || [];
+      return groupNames.length > 0 ? { sourceInclude: groupNames } : {};
     }
-    const groupNames = sourceNamesByGroup[sourceMode === "gulf" ? "Gulf" : "MEA"] || [];
-    return groupNames.length > 0 ? { source: groupNames[0] } : { source: sourceMode };
+    return { source: sourceMode };
   }, [sourceMode, sourceNamesByGroup]);
 
   // Get payments list
@@ -149,7 +149,7 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
     return phone;
   };
 
-  const groupTitle = sourceMode === "gulf" ? "Gulf" : sourceMode === "mea" ? "MEA" : sourceMode === "tcs" ? "TCS" : "";
+  const groupTitle = sourceMode ? sourceMode.toUpperCase() : "";
 
   return (
     <div className="space-y-6">

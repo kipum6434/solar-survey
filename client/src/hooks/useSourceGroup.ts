@@ -1,18 +1,19 @@
 import { useLocation } from "wouter";
 
-export type SourceGroup = "tcs" | "gulf" | "mea" | undefined;
-
 /**
- * Extracts source group from URL path.
- * /tcs/customers → "tcs"
- * /gulf/surveys → "gulf"
- * /mea/installations → "mea"
+ * Extracts source group from URL path dynamically.
+ * /<group>/customers → "<group>"
  * /customers → undefined (no filter)
+ *
+ * Known group prefixes are detected by checking if the first path segment
+ * is followed by a known sub-route (customers, surveys, follow-ups, installations, finance).
  */
-export function useSourceGroup(): SourceGroup {
+export function useSourceGroup(): string | undefined {
   const [location] = useLocation();
-  if (location.startsWith("/tcs/")) return "tcs";
-  if (location.startsWith("/gulf/")) return "gulf";
-  if (location.startsWith("/mea/")) return "mea";
+  const knownSubRoutes = ["customers", "surveys", "follow-ups", "installations", "finance"];
+  const parts = location.split("/").filter(Boolean);
+  if (parts.length >= 2 && knownSubRoutes.includes(parts[1])) {
+    return parts[0]; // e.g. "tcs", "gulf", "mea", or any new group
+  }
   return undefined;
 }

@@ -90,7 +90,7 @@ export async function getUserByOpenId(openId: string) {
 }
 
 // ==================== CUSTOMER QUERIES ====================
-export async function getCustomers(opts: { search?: string; page?: number; limit?: number; month?: number; year?: number; district?: string; province?: string; source?: string; sourceGroup?: "tcs" | "gulf" | "mea"; surveyStatus?: string; scopedCustomerIds?: number[] }) {
+export async function getCustomers(opts: { search?: string; page?: number; limit?: number; month?: number; year?: number; district?: string; province?: string; source?: string; sourceGroup?: string; surveyStatus?: string; scopedCustomerIds?: number[] }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
   const { search, page = 1, limit = 20, month, year, district, province, source, sourceGroup, surveyStatus, scopedCustomerIds } = opts;
@@ -112,13 +112,13 @@ export async function getCustomers(opts: { search?: string; page?: number; limit
   if (province) conditions.push(eq(customers.province, province));
   if (source) conditions.push(eq(customers.source, source));
   if (sourceGroup) {
-    if (sourceGroup === 'tcs') {
-      // TCS = everything NOT Gulf and NOT MEA
-      conditions.push(or(isNull(customers.source), not(inArray(customers.source, ['Gulf', 'MEA']))));
-    } else if (sourceGroup === 'gulf') {
-      conditions.push(eq(customers.source, 'Gulf'));
-    } else if (sourceGroup === 'mea') {
-      conditions.push(eq(customers.source, 'MEA'));
+    // Dynamic: get source names belonging to this group from the sources table
+    const groupSources = await getSourceNamesByGroupName(sourceGroup);
+    if (groupSources.length > 0) {
+      conditions.push(inArray(customers.source, groupSources));
+    } else {
+      // No sources in this group - return empty
+      conditions.push(sql`1=0`);
     }
   }
   if (month && year) {
@@ -591,7 +591,7 @@ export async function getFollowUps(opts: { surveyId?: number; customerId?: numbe
   return db.select().from(followUps).where(whereClause).orderBy(followUps.dueDate);
 }
 
-export async function getSurveysForFollowUp(opts: { search?: string; startDate?: number; endDate?: number; page?: number; limit?: number; sourceGroup?: "tcs" | "gulf" | "mea" }) {
+export async function getSurveysForFollowUp(opts: { search?: string; startDate?: number; endDate?: number; page?: number; limit?: number; sourceGroup?: string }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
   const page = opts.page ?? 1;
@@ -615,12 +615,11 @@ export async function getSurveysForFollowUp(opts: { search?: string; startDate?:
   if (opts.startDate) conditions.push(gte(surveys.updatedAt, new Date(opts.startDate)));
   if (opts.endDate) conditions.push(lte(surveys.updatedAt, new Date(opts.endDate)));
   if (opts.sourceGroup) {
-    if (opts.sourceGroup === 'tcs') {
-      conditions.push(or(isNull(customers.source), not(inArray(customers.source, ['Gulf', 'MEA']))));
-    } else if (opts.sourceGroup === 'gulf') {
-      conditions.push(eq(customers.source, 'Gulf'));
-    } else if (opts.sourceGroup === 'mea') {
-      conditions.push(eq(customers.source, 'MEA'));
+    const groupSources = await getSourceNamesByGroupName(opts.sourceGroup);
+    if (groupSources.length > 0) {
+      conditions.push(inArray(customers.source, groupSources));
+    } else {
+      conditions.push(sql`1=0`);
     }
   }
   const whereClause = and(...conditions);
@@ -1112,6 +1111,16 @@ export async function getSourceGroups() {
   return result.map(r => r.groupName).filter(Boolean) as string[];
 }
 
+// Get all source names belonging to a specific group (case-insensitive match)
+export async function getSourceNamesByGroupName(groupName: string): Promise<string[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const result = await db.select({ name: sources.name }).from(sources).where(
+    sql`LOWER(${sources.groupName}) = LOWER(${groupName})`
+  );
+  return result.map(r => r.name);
+}
+
 export async function getCustomersBySourceId(sourceId: number) {
   const db = await getDb();
   if (!db) return [];
@@ -1130,7 +1139,7 @@ export async function getCustomersBySourceId(sourceId: number) {
   }).from(customers).where(eq(customers.source, sourceName)).orderBy(desc(customers.createdAt));
 }
 
-export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; adminSenderId?: number; closerId?: number; page?: number; limit?: number; search?: string; month?: number; year?: number; source?: string; sourceGroup?: "tcs" | "gulf" | "mea"; district?: string; province?: string; scopedSurveyIds?: number[]; sortBy?: string; sortDirection?: "asc" | "desc"; filterDate?: number; filterDateEnd?: number }) {
+export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; adminSenderId?: number; closerId?: number; page?: number; limit?: number; search?: string; month?: number; year?: number; source?: string; sourceGroup?: string; district?: string; province?: string; scopedSurveyIds?: number[]; sortBy?: string; sortDirection?: "asc" | "desc"; filterDate?: number; filterDateEnd?: number }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
   const { status, assignedTo, adminSenderId, closerId, page = 1, limit = 20, search, month, year, source, sourceGroup, district, province, scopedSurveyIds, filterDate, filterDateEnd } = opts;
@@ -1166,12 +1175,11 @@ export async function getSurveysWithCustomer(opts: { status?: string; assignedTo
   }
   if (source) conditions.push(eq(customers.source, source));
   if (sourceGroup) {
-    if (sourceGroup === 'tcs') {
-      conditions.push(or(isNull(customers.source), not(inArray(customers.source, ['Gulf', 'MEA']))));
-    } else if (sourceGroup === 'gulf') {
-      conditions.push(eq(customers.source, 'Gulf'));
-    } else if (sourceGroup === 'mea') {
-      conditions.push(eq(customers.source, 'MEA'));
+    const groupSources = await getSourceNamesByGroupName(sourceGroup);
+    if (groupSources.length > 0) {
+      conditions.push(inArray(customers.source, groupSources));
+    } else {
+      conditions.push(sql`1=0`);
     }
   }
   if (district) conditions.push(eq(customers.district, district));
@@ -1502,12 +1510,11 @@ export async function getInstallations(opts: any) {
     conditions.push(eq(surveys.installerTeamId, installerTeamId));
   }
   if (sourceGroup) {
-    if (sourceGroup === 'tcs') {
-      conditions.push(or(isNull(customers.source), not(inArray(customers.source, ['Gulf', 'MEA']))));
-    } else if (sourceGroup === 'gulf') {
-      conditions.push(eq(customers.source, 'Gulf'));
-    } else if (sourceGroup === 'mea') {
-      conditions.push(eq(customers.source, 'MEA'));
+    const groupSources = await getSourceNamesByGroupName(sourceGroup);
+    if (groupSources.length > 0) {
+      conditions.push(inArray(customers.source, groupSources));
+    } else {
+      conditions.push(sql`1=0`);
     }
   }
   // installationStatus: upcoming (future), today, overdue (past, not completed), completed
@@ -2746,14 +2753,17 @@ export async function getPaymentBySurveyId(surveyId: number) {
   return result.length > 0 ? result[0] : null;
 }
 
-export async function getPayments(opts: { status?: string; page?: number; limit?: number; source?: string; sourceExclude?: string[] }) {
+export async function getPayments(opts: { status?: string; page?: number; limit?: number; source?: string; sourceExclude?: string[]; sourceInclude?: string[] }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { status, page = 1, limit = 20, source, sourceExclude } = opts;
+  const { status, page = 1, limit = 20, source, sourceExclude, sourceInclude } = opts;
   const offset = (page - 1) * limit;
   const conditions: any[] = [];
   if (status) conditions.push(eq(payments.status, status as any));
   if (source) conditions.push(eq(customers.source, source));
+  if (sourceInclude && sourceInclude.length > 0) {
+    conditions.push(inArray(customers.source, sourceInclude));
+  }
   if (sourceExclude && sourceExclude.length > 0) {
     conditions.push(or(isNull(customers.source), not(inArray(customers.source, sourceExclude))));
   }

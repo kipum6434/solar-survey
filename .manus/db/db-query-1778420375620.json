@@ -1,0 +1,158 @@
+{
+  "query": "SELECT name, groupName FROM sources ORDER BY groupName, name;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT name, groupName FROM sources ORDER BY groupName, name;",
+  "rows": [
+    {
+      "name": "facebook",
+      "groupName": "NULL"
+    },
+    {
+      "name": "fb",
+      "groupName": "NULL"
+    },
+    {
+      "name": "FB เพจ Duplicate Test",
+      "groupName": "NULL"
+    },
+    {
+      "name": "FB เพจ micro",
+      "groupName": "NULL"
+    },
+    {
+      "name": "FB เพจ SET",
+      "groupName": "NULL"
+    },
+    {
+      "name": "FB เพจ TCS Test",
+      "groupName": "NULL"
+    },
+    {
+      "name": "FB เพจ หมี",
+      "groupName": "NULL"
+    },
+    {
+      "name": "FB เพจ ไมโคร",
+      "groupName": "NULL"
+    },
+    {
+      "name": "FB-Set",
+      "groupName": "NULL"
+    },
+    {
+      "name": "li",
+      "groupName": "NULL"
+    },
+    {
+      "name": "LINE",
+      "groupName": "NULL"
+    },
+    {
+      "name": "LINE SET",
+      "groupName": "NULL"
+    },
+    {
+      "name": "LINE ส่วนตัว",
+      "groupName": "NULL"
+    },
+    {
+      "name": "LINE เพจ Set",
+      "groupName": "NULL"
+    },
+    {
+      "name": "Line-Roof",
+      "groupName": "NULL"
+    },
+    {
+      "name": "Line-Set",
+      "groupName": "NULL"
+    },
+    {
+      "name": "other",
+      "groupName": "NULL"
+    },
+    {
+      "name": "roof - Line",
+      "groupName": "NULL"
+    },
+    {
+      "name": "SET",
+      "groupName": "NULL"
+    },
+    {
+      "name": "SET - Facebook",
+      "groupName": "NULL"
+    },
+    {
+      "name": "SET - Line",
+      "groupName": "NULL"
+    },
+    {
+      "name": "SET - โทร",
+      "groupName": "NULL"
+    },
+    {
+      "name": "Tiktok",
+      "groupName": "NULL"
+    },
+    {
+      "name": "website",
+      "groupName": "NULL"
+    },
+    {
+      "name": "กรีน - Facebook",
+      "groupName": "NULL"
+    },
+    {
+      "name": "ทดสอบ",
+      "groupName": "NULL"
+    },
+    {
+      "name": "ปริ้นท์",
+      "groupName": "NULL"
+    },
+    {
+      "name": "ส่วนตัว",
+      "groupName": "NULL"
+    },
+    {
+      "name": "หมีโซล่า",
+      "groupName": "NULL"
+    },
+    {
+      "name": "หมีโซล่า - Facebook",
+      "groupName": "NULL"
+    },
+    {
+      "name": "หมีโซล่า - Line",
+      "groupName": "NULL"
+    },
+    {
+      "name": "ไมโคร",
+      "groupName": "NULL"
+    },
+    {
+      "name": "ไมโคร - Facebook",
+      "groupName": "NULL"
+    },
+    {
+      "name": "ไมโคร - Line",
+      "groupName": "NULL"
+    },
+    {
+      "name": "Gulf",
+      "groupName": "Gulf"
+    },
+    {
+      "name": "KEN",
+      "groupName": "MEA"
+    },
+    {
+      "name": "MEA",
+      "groupName": "MEA"
+    }
+  ],
+  "messages": [],
+  "stdout": "name\tgroupName\nfacebook\tNULL\nfb\tNULL\nFB เพจ Duplicate Test\tNULL\nFB เพจ micro\tNULL\nFB เพจ SET\tNULL\nFB เพจ TCS Test\tNULL\nFB เพจ หมี\tNULL\nFB เพจ ไมโคร\tNULL\nFB-Set\tNULL\nli\tNULL\nLINE\tNULL\nLINE SET\tNULL\nLINE ส่วนตัว\tNULL\nLINE เพจ Set\tNULL\nLine-Roof\tNULL\nLine-Set\tNULL\nother\tNULL\nroof - Line\tNULL\nSET\tNULL\nSET - Facebook\tNULL\nSET - Line\tNULL\nSET - โทร\tNULL\nTiktok\tNULL\nwebsite\tNULL\nกรีน - Facebook\tNULL\nทดสอบ\tNULL\nปริ้นท์\tNULL\nส่วนตัว\tNULL\nหมีโซล่า\tNULL\nหมีโซล่า - Facebook\tNULL\nหมีโซล่า - Line\tNULL\nไมโคร\tNULL\nไมโคร - Facebook\tNULL\nไมโคร - Line\tNULL\nGulf\tGulf\nKEN\tMEA\nMEA\tMEA\n",
+  "stderr": "",
+  "execution_time_ms": 1855
+}
