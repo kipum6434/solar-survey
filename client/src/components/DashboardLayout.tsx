@@ -45,6 +45,10 @@ import {
   PhoneCall,
   Building2,
   FileCheck,
+  FileText,
+  Zap,
+  ChevronDown,
+  Settings,
   Banknote,
   CheckSquare,
 } from "lucide-react";
@@ -55,12 +59,43 @@ import { Button } from "./ui/button";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "./ui/badge";
 
-const baseMenuItems = [
+// Top-level items (always visible)
+const topMenuItems = [
   { icon: LayoutDashboard, label: "แดชบอร์ด", path: "/" },
-  { icon: Users, label: "ลูกค้า", path: "/customers" },
-  { icon: ClipboardList, label: "งานสำรวจ", path: "/surveys" },
-  { icon: PhoneCall, label: "งานติดตาม", path: "/follow-ups" },
-  { icon: Wrench, label: "งานติดตั้ง", path: "/installations" },
+];
+
+// TCS source group items
+const tcsMenuItems = [
+  { icon: BarChart3, label: "Dashboard", path: "/tcs/dashboard" },
+  { icon: Users, label: "ลูกค้า", path: "/tcs/customers" },
+  { icon: ClipboardList, label: "งานสำรวจ", path: "/tcs/surveys" },
+  { icon: PhoneCall, label: "งานติดตาม", path: "/tcs/follow-ups" },
+  { icon: Wrench, label: "งานติดตั้ง", path: "/tcs/installations" },
+  { icon: Banknote, label: "การเงิน", path: "/finance/tcs" },
+];
+
+// Gulf source group items
+const gulfMenuItems = [
+  { icon: BarChart3, label: "Dashboard", path: "/gulf/dashboard" },
+  { icon: Users, label: "ลูกค้า", path: "/gulf/customers" },
+  { icon: ClipboardList, label: "งานสำรวจ", path: "/gulf/surveys" },
+  { icon: PhoneCall, label: "งานติดตาม", path: "/gulf/follow-ups" },
+  { icon: Wrench, label: "งานติดตั้ง", path: "/gulf/installations" },
+  { icon: Banknote, label: "การเงิน", path: "/finance/gulf" },
+];
+
+// MEA source group items
+const meaMenuItems = [
+  { icon: BarChart3, label: "Dashboard", path: "/mea/dashboard" },
+  { icon: Users, label: "ลูกค้า", path: "/mea/customers" },
+  { icon: ClipboardList, label: "งานสำรวจ", path: "/mea/surveys" },
+  { icon: PhoneCall, label: "งานติดตาม", path: "/mea/follow-ups" },
+  { icon: Wrench, label: "งานติดตั้ง", path: "/mea/installations" },
+  { icon: Banknote, label: "การเงิน", path: "/finance/mea" },
+];
+
+// Common items (shared across all sources)
+const commonMenuItems = [
   { icon: FileCheck, label: "รออนุมัติ", path: "/approvals" },
   { icon: TrendingUp, label: "ผลงานทีม", path: "/team-performance" },
   { icon: Users2, label: "จัดการทีมงาน", path: "/team" },
@@ -68,13 +103,14 @@ const baseMenuItems = [
   { icon: HardHat, label: "ทีมช่างติดตั้ง", path: "/installer-teams" },
   { icon: BarChart3, label: "สรุปผลงานช่าง", path: "/installer-team-report" },
   { icon: ImageIcon, label: "แกลลอรี่รูปติดตั้ง", path: "/gallery" },
-  { icon: Banknote, label: "TCS", path: "/finance/tcs" },
-  { icon: Banknote, label: "Gulf", path: "/finance/gulf" },
-  { icon: Banknote, label: "MEA", path: "/finance/mea" },
-  { icon: Tags, label: "จัดการสถานะ", path: "/status-management" },
   { icon: CheckSquare, label: "Checklist ส่งมอบ", path: "/checklist-templates" },
+  { icon: Tags, label: "จัดการสถานะ", path: "/status-management" },
   { icon: FolderOpen, label: "จัดการไฟล์", path: "/file-management" },
   { icon: CalendarDays, label: "ปฏิทิน", path: "/calendar" },
+];
+
+const settingsMenuItems = [
+  { icon: FileText, label: "Template ฟอร์ม", path: "/survey-templates" },
   { icon: MessageSquare, label: "ตั้งค่า LINE", path: "/line-settings", superadminOnly: true },
   { icon: Building2, label: "ตั้งค่าบริษัท", path: "/company-settings" },
   { icon: Bell, label: "แจ้งเตือน", path: "/notifications" },
@@ -138,12 +174,21 @@ function DashboardLayoutContent({
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const menuItems = baseMenuItems.filter((item) => {
+  const filterByRole = (items: typeof commonMenuItems) => items.filter((item) => {
     if ((item as any).superadminOnly && user?.role !== "superadmin") return false;
     return true;
   });
-  const activeMenuItem = menuItems.find((item) => item.path === location);
+  const topItems = topMenuItems;
+  const commonItems = filterByRole(commonMenuItems);
+  const settingsItems = filterByRole(settingsMenuItems);
+  const settingsPaths = settingsItems.map(i => i.path);
+  const allMenuItems = [...topItems, ...tcsMenuItems, ...gulfMenuItems, ...meaMenuItems, ...commonItems, ...settingsItems];
+  const activeMenuItem = allMenuItems.find((item) => item.path === location);
   const isMobile = useIsMobile();
+  const [tcsExpanded, setTcsExpanded] = useState(() => location.startsWith("/tcs/") || location.startsWith("/finance/tcs"));
+  const [gulfExpanded, setGulfExpanded] = useState(() => location.startsWith("/gulf/") || location.startsWith("/finance/gulf"));
+  const [meaExpanded, setMeaExpanded] = useState(() => location.startsWith("/mea/") || location.startsWith("/finance/mea"));
+  const [settingsExpanded, setSettingsExpanded] = useState(() => settingsPaths.includes(location));
 
   const { data: unreadCount } = trpc.notification.unreadCount.useQuery(undefined, {
     refetchInterval: 30000,
@@ -215,40 +260,171 @@ function DashboardLayoutContent({
             </div>
           </SidebarHeader>
 
-          <SidebarContent className="gap-0 bg-sidebar px-2 pt-2">
-            <SidebarMenu>
-              {menuItems.map((item) => {
-                const isActive =
-                  item.path === "/"
-                    ? location === "/"
-                    : location.startsWith(item.path);
+          <SidebarContent className="bg-sidebar px-2 pt-2 overflow-y-auto">
+            <SidebarMenu className="flex-shrink-0">
+              {/* Dashboard (top level) */}
+              {topItems.map((item) => {
+                const isActive = item.path === "/" ? location === "/" : location.startsWith(item.path);
                 return (
                   <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton
                       isActive={isActive}
                       onClick={() => setLocation(item.path)}
                       tooltip={item.label}
-                      className={`h-10 transition-all font-normal rounded-lg ${
-                        isActive
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                          : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-                      }`}
+                      className={`h-10 transition-all font-normal rounded-lg ${isActive ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"}`}
                     >
                       <item.icon className="h-4 w-4" />
                       <span className="flex-1">{item.label}</span>
-                      {item.path === "/notifications" &&
-                        unreadCount !== undefined &&
-                        unreadCount > 0 && (
-                          <Badge
-                            variant="destructive"
-                            className="h-5 min-w-5 px-1.5 text-[10px] font-bold rounded-full"
-                          >
-                            {unreadCount > 99 ? "99+" : unreadCount}
-                          </Badge>
-                        )}
-                      {isActive && !isCollapsed && (
-                        <ChevronRight className="h-3 w-3 opacity-50" />
+                      {isActive && !isCollapsed && <ChevronRight className="h-3 w-3 opacity-50" />}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+
+              {/* ===== TCS Source Group ===== */}
+              <li aria-hidden="true" className="my-2 mx-2 h-px bg-sidebar-border" />
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => setTcsExpanded(!tcsExpanded)}
+                  tooltip="งาน TCS"
+                  className={`h-10 transition-all font-normal rounded-lg ${location.startsWith("/tcs/") || location.startsWith("/finance/tcs") ? "text-amber-600 font-medium" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"}`}
+                >
+                  <Sun className="h-4 w-4 text-amber-500" />
+                  <span className="flex-1 font-semibold">งาน TCS</span>
+                  <ChevronDown className={`h-3 w-3 transition-transform ${tcsExpanded ? "" : "-rotate-90"}`} />
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              {tcsExpanded && tcsMenuItems.map((item) => {
+                const isActive = location.startsWith(item.path);
+                return (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      onClick={() => setLocation(item.path)}
+                      tooltip={item.label}
+                      className={`h-9 pl-8 transition-all font-normal rounded-lg ${isActive ? "bg-amber-50 text-amber-700 font-medium dark:bg-amber-950/50 dark:text-amber-400" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"}`}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span className="flex-1">{item.label}</span>
+                      {isActive && !isCollapsed && <ChevronRight className="h-3 w-3 opacity-50" />}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+
+              {/* ===== Gulf Source Group ===== */}
+              <li aria-hidden="true" className="my-2 mx-2 h-px bg-sidebar-border" />
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => setGulfExpanded(!gulfExpanded)}
+                  tooltip="Gulf"
+                  className={`h-10 transition-all font-normal rounded-lg ${location.startsWith("/gulf/") || location.startsWith("/finance/gulf") ? "text-blue-600 font-medium" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"}`}
+                >
+                  <Zap className="h-4 w-4 text-blue-500" />
+                  <span className="flex-1 font-semibold">Gulf</span>
+                  <ChevronDown className={`h-3 w-3 transition-transform ${gulfExpanded ? "" : "-rotate-90"}`} />
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              {gulfExpanded && gulfMenuItems.map((item) => {
+                const isActive = location.startsWith(item.path);
+                return (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      onClick={() => setLocation(item.path)}
+                      tooltip={item.label}
+                      className={`h-9 pl-8 transition-all font-normal rounded-lg ${isActive ? "bg-blue-50 text-blue-700 font-medium dark:bg-blue-950/50 dark:text-blue-400" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"}`}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span className="flex-1">{item.label}</span>
+                      {isActive && !isCollapsed && <ChevronRight className="h-3 w-3 opacity-50" />}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+
+              {/* ===== MEA Source Group ===== */}
+              <li aria-hidden="true" className="my-2 mx-2 h-px bg-sidebar-border" />
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => setMeaExpanded(!meaExpanded)}
+                  tooltip="MEA"
+                  className={`h-10 transition-all font-normal rounded-lg ${location.startsWith("/mea/") || location.startsWith("/finance/mea") ? "text-green-600 font-medium" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"}`}
+                >
+                  <Zap className="h-4 w-4 text-green-500" />
+                  <span className="flex-1 font-semibold">MEA</span>
+                  <ChevronDown className={`h-3 w-3 transition-transform ${meaExpanded ? "" : "-rotate-90"}`} />
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              {meaExpanded && meaMenuItems.map((item) => {
+                const isActive = location.startsWith(item.path);
+                return (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      onClick={() => setLocation(item.path)}
+                      tooltip={item.label}
+                      className={`h-9 pl-8 transition-all font-normal rounded-lg ${isActive ? "bg-green-50 text-green-700 font-medium dark:bg-green-950/50 dark:text-green-400" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"}`}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span className="flex-1">{item.label}</span>
+                      {isActive && !isCollapsed && <ChevronRight className="h-3 w-3 opacity-50" />}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+
+              {/* ===== Common Items ===== */}
+              <li aria-hidden="true" className="my-2 mx-2 h-px bg-sidebar-border" />
+              {commonItems.map((item) => {
+                const isActive = location === item.path || location.startsWith(item.path + "/");
+                return (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      onClick={() => setLocation(item.path)}
+                      tooltip={item.label}
+                      className={`h-10 transition-all font-normal rounded-lg ${isActive ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"}`}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span className="flex-1">{item.label}</span>
+                      {isActive && !isCollapsed && <ChevronRight className="h-3 w-3 opacity-50" />}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+
+              {/* ===== Settings Group ===== */}
+              <li aria-hidden="true" className="my-2 mx-2 h-px bg-sidebar-border" />
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => setSettingsExpanded(!settingsExpanded)}
+                  tooltip="ตั้งค่า"
+                  className={`h-10 transition-all font-normal rounded-lg ${settingsPaths.includes(location) ? "text-amber-600 font-medium" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"}`}
+                >
+                  <Settings className="h-4 w-4 text-amber-500" />
+                  <span className="flex-1 font-semibold">ตั้งค่า</span>
+                  <ChevronDown className={`h-3 w-3 transition-transform ${settingsExpanded ? "" : "-rotate-90"}`} />
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              {settingsExpanded && settingsItems.map((item) => {
+                const isActive = location === item.path || location.startsWith(item.path + "/");
+                return (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      onClick={() => setLocation(item.path)}
+                      tooltip={item.label}
+                      className={`h-9 pl-8 transition-all font-normal rounded-lg ${isActive ? "bg-amber-50 text-amber-700 font-medium dark:bg-amber-950/50 dark:text-amber-400" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"}`}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span className="flex-1">{item.label}</span>
+                      {item.path === "/notifications" && unreadCount !== undefined && unreadCount > 0 && (
+                        <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-[10px] font-bold rounded-full">
+                          {unreadCount > 99 ? "99+" : unreadCount}
+                        </Badge>
                       )}
+                      {isActive && !isCollapsed && <ChevronRight className="h-3 w-3 opacity-50" />}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );

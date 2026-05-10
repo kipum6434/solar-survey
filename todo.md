@@ -1069,3 +1069,8 @@
 - [x] Stats: ทั้งหมด, รอเก็บเงิน (จำนวน+ยอด), เก็บแล้ว (จำนวน+ยอด), ยอดค้างรวม
 - [x] Backend: payment.list return customer info (name, phone, systemSize, contractValue, collectedAmount)
 
+### Fix: กู้คืน sidebar โครงสร้างเดิม (TCS/Gulf/MEA collapsible groups)
+- [x] Sidebar: กู้คืน TCS/Gulf/MEA เป็น collapsible groups พร้อม submenu ย่อย (Dashboard, ลูกค้า, งานสำรวจ, งานติดตาม, งานติดตั้ง, การเงิน)
+- [x] Sidebar: เพิ่มเมนู "Checklist ส่งมอบ" ในส่วน common items
+- [x] Sidebar: คงเมนู common items (รออนุมัติ, ผลงานทีม, จัดการทีมงาน, ฯลฯ) ไว้ด้านล่าง
+- [x] Sidebar: คงเมนู settings group (Template ฟอร์ม, LINE, บริษัท, แจ้งเตือน) ไว้ด้านล่างสุด
