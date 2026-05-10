@@ -1109,3 +1109,10 @@
 ## Bug Fix: TCS หายจาก sidebar
 
 - [x] Sidebar ต้องแสดง TCS เสมอ — แก้โดย assign groupName='TCS' ให้ sources ที่ยังไม่มีกลุ่ม + ทำ dynamic routes/filter ทั้งระบบ
+
+## Bug Fix: Multiple issues after dynamic routes
+
+- [x] /tcs/dashboard → 404 — เพิ่ม /:group/dashboard route
+- [x] Sidebar ลำดับผิด — แก้ sort TCS ก่อน, Gulf, MEA
+- [x] /survey-templates → 404 — ย้าย route ไปก่อน wildcard
+- [x] Source Management มี sidebar + จำนวนลูกค้าแสดงถูกต้อง (DB คืนค่าถูก ต้อง publish ใหม่)

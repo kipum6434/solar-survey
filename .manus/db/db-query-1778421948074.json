@@ -1,0 +1,60 @@
+{
+  "query": "SELECT s.name, s.groupName, (SELECT COUNT(*) FROM customers WHERE customers.source = s.name) as customerCount FROM sources s ORDER BY customerCount DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT s.name, s.groupName, (SELECT COUNT(*) FROM customers WHERE customers.source = s.name) as customerCount FROM sources s ORDER BY customerCount DESC LIMIT 10;",
+  "rows": [
+    {
+      "name": "KEN",
+      "groupName": "MEA",
+      "customerCount": "59"
+    },
+    {
+      "name": "other",
+      "groupName": "TCS",
+      "customerCount": "30"
+    },
+    {
+      "name": "SET - Facebook",
+      "groupName": "TCS",
+      "customerCount": "30"
+    },
+    {
+      "name": "ไมโคร - Facebook",
+      "groupName": "TCS",
+      "customerCount": "29"
+    },
+    {
+      "name": "SET - Line",
+      "groupName": "TCS",
+      "customerCount": "28"
+    },
+    {
+      "name": "fb",
+      "groupName": "TCS",
+      "customerCount": "16"
+    },
+    {
+      "name": "ส่วนตัว",
+      "groupName": "TCS",
+      "customerCount": "15"
+    },
+    {
+      "name": "หมีโซล่า - Facebook",
+      "groupName": "TCS",
+      "customerCount": "11"
+    },
+    {
+      "name": "หมีโซล่า - Line",
+      "groupName": "TCS",
+      "customerCount": "9"
+    },
+    {
+      "name": "ไมโคร - Line",
+      "groupName": "TCS",
+      "customerCount": "7"
+    }
+  ],
+  "messages": [],
+  "stdout": "name\tgroupName\tcustomerCount\nKEN\tMEA\t59\nother\tTCS\t30\nSET - Facebook\tTCS\t30\nไมโคร - Facebook\tTCS\t29\nSET - Line\tTCS\t28\nfb\tTCS\t16\nส่วนตัว\tTCS\t15\nหมีโซล่า - Facebook\tTCS\t11\nหมีโซล่า - Line\tTCS\t9\nไมโคร - Line\tTCS\t7\n",
+  "stderr": "",
+  "execution_time_ms": 2279
+}

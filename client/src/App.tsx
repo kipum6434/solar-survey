@@ -58,8 +58,13 @@ function Router() {
       <Route path="/finance">{() => <Finance sourceMode="tcs" />}</Route>
       <Route path="/finance/:group">{(params) => <Finance sourceMode={params.group} />}</Route>
       <Route path="/source-management" component={SourceManagement} />
+      <Route path="/survey-templates" component={ChecklistTemplates} />
       <Route path="/checklist-templates" component={ChecklistTemplates} />
-      {/* Dynamic group routes - works for any group (tcs, gulf, mea, or new ones) */}
+      <Route path="/share/:token" component={SharedSurvey} />
+      <Route path="/survey-field/:token" component={SharedSurveyField} />
+      <Route path="/404" component={NotFound} />
+      {/* Dynamic group routes - MUST be after all specific routes to avoid catching them */}
+      <Route path="/:group/dashboard" component={Customers} />
       <Route path="/:group/customers" component={Customers} />
       <Route path="/:group/customers/:id" component={CustomerDetail} />
       <Route path="/:group/surveys" component={Surveys} />
@@ -67,9 +72,6 @@ function Router() {
       <Route path="/:group/follow-ups" component={FollowUps} />
       <Route path="/:group/installations" component={Installations} />
       <Route path="/:group/finance">{(params) => <Finance sourceMode={params.group} />}</Route>
-      <Route path={"/share/:token"} component={SharedSurvey} />
-      <Route path={"/survey-field/:token"} component={SharedSurveyField} />
-      <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
   );

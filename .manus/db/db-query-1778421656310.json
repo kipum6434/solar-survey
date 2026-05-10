@@ -1,0 +1,70 @@
+{
+  "query": "SELECT s.id, s.name, s.groupName, (SELECT COUNT(*) FROM customers WHERE customers.source = s.name) as customerCount FROM sources s ORDER BY customerCount DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT s.id, s.name, s.groupName, (SELECT COUNT(*) FROM customers WHERE customers.source = s.name) as customerCount FROM sources s ORDER BY customerCount DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "300019",
+      "name": "KEN",
+      "groupName": "MEA",
+      "customerCount": "59"
+    },
+    {
+      "id": "300021",
+      "name": "other",
+      "groupName": "TCS",
+      "customerCount": "30"
+    },
+    {
+      "id": "300006",
+      "name": "SET - Facebook",
+      "groupName": "TCS",
+      "customerCount": "30"
+    },
+    {
+      "id": "300008",
+      "name": "ไมโคร - Facebook",
+      "groupName": "TCS",
+      "customerCount": "29"
+    },
+    {
+      "id": "300007",
+      "name": "SET - Line",
+      "groupName": "TCS",
+      "customerCount": "28"
+    },
+    {
+      "id": "510001",
+      "name": "fb",
+      "groupName": "TCS",
+      "customerCount": "16"
+    },
+    {
+      "id": "300016",
+      "name": "ส่วนตัว",
+      "groupName": "TCS",
+      "customerCount": "15"
+    },
+    {
+      "id": "300009",
+      "name": "หมีโซล่า - Facebook",
+      "groupName": "TCS",
+      "customerCount": "11"
+    },
+    {
+      "id": "300017",
+      "name": "หมีโซล่า - Line",
+      "groupName": "TCS",
+      "customerCount": "9"
+    },
+    {
+      "id": "300014",
+      "name": "ไมโคร - Line",
+      "groupName": "TCS",
+      "customerCount": "7"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tgroupName\tcustomerCount\n300019\tKEN\tMEA\t59\n300021\tother\tTCS\t30\n300006\tSET - Facebook\tTCS\t30\n300008\tไมโคร - Facebook\tTCS\t29\n300007\tSET - Line\tTCS\t28\n510001\tfb\tTCS\t16\n300016\tส่วนตัว\tTCS\t15\n300009\tหมีโซล่า - Facebook\tTCS\t11\n300017\tหมีโซล่า - Line\tTCS\t9\n300014\tไมโคร - Line\tTCS\t7\n",
+  "stderr": "",
+  "execution_time_ms": 1854
+}

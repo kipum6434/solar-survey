@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -99,6 +100,7 @@ export default function SourceManagement() {
   if (selectedSourceId) {
     const selectedSource = sourcesWithStats.find((s: any) => s.id === selectedSourceId);
     return (
+      <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => setSelectedSourceId(null)}>
@@ -143,10 +145,12 @@ export default function SourceManagement() {
           </CardContent>
         </Card>
       </div>
+      </DashboardLayout>
     );
   }
 
   return (
+    <DashboardLayout>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -390,5 +394,6 @@ export default function SourceManagement() {
         </DialogContent>
       </Dialog>
     </div>
+    </DashboardLayout>
   );
 }

@@ -184,8 +184,18 @@ function DashboardLayoutContent({
     staleTime: 60000, // cache for 1 minute
   });
 
-  // Use fetched groups or fallback
-  const groups = sourceGroups && sourceGroups.length > 0 ? sourceGroups : FALLBACK_GROUPS;
+  // Use fetched groups or fallback, sorted with preferred order (TCS, Gulf, MEA, then others)
+  const groups = useMemo(() => {
+    const raw = sourceGroups && sourceGroups.length > 0 ? sourceGroups : FALLBACK_GROUPS;
+    const preferredOrder = ["TCS", "Gulf", "MEA"];
+    return [...raw].sort((a, b) => {
+      const ai = preferredOrder.findIndex(p => p.toLowerCase() === a.toLowerCase());
+      const bi = preferredOrder.findIndex(p => p.toLowerCase() === b.toLowerCase());
+      const aIdx = ai >= 0 ? ai : preferredOrder.length;
+      const bIdx = bi >= 0 ? bi : preferredOrder.length;
+      return aIdx - bIdx;
+    });
+  }, [sourceGroups]);
 
   // Build dynamic group data
   const dynamicGroups = useMemo(() => {
