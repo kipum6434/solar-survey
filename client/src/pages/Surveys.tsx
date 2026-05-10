@@ -16,6 +16,7 @@ import { useState, useMemo, useCallback } from "react";
 import { SortableHeader } from "@/components/SortableHeader";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useLocation } from "wouter";
+import { useSourceGroup } from "@/hooks/useSourceGroup";
 import { toast } from "sonner";
 import {
   Search, ClipboardList, Calendar as CalendarIcon, User, ChevronLeft, ChevronRight, Filter,
@@ -52,6 +53,7 @@ const BATTERY_MAP: Record<string, string> = {
 
 export default function Surveys() {
   const [, setLocation] = useLocation();
+  const sourceGroup = useSourceGroup();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("");
@@ -94,6 +96,7 @@ export default function Surveys() {
     search,
     status: statusFilter === "all" ? undefined : statusFilter,
     source: sourceFilter || undefined,
+    sourceGroup,
     assignedTo: surveyorFilter ? Number(surveyorFilter) : undefined,
     adminSenderId: adminSenderFilter ? Number(adminSenderFilter) : undefined,
     closerId: closerFilter ? Number(closerFilter) : undefined,
@@ -107,7 +110,7 @@ export default function Surveys() {
     filterDateEnd: filterDateEnd ? filterDateEnd.getTime() : undefined,
     sortBy: sortBy || undefined,
     sortDirection: sortDirection || undefined,
-  }), [search, statusFilter, sourceFilter, surveyorFilter, adminSenderFilter, closerFilter, districtFilter, provinceFilter, page, filterByMonth, selectedMonth, selectedYear, filterDate, filterDateEnd, sortBy, sortDirection]);
+  }), [search, statusFilter, sourceFilter, surveyorFilter, adminSenderFilter, closerFilter, districtFilter, provinceFilter, page, filterByMonth, selectedMonth, selectedYear, filterDate, filterDateEnd, sortBy, sortDirection, sourceGroup]);
 
   const { data, isLoading, refetch } = trpc.survey.list.useQuery(queryInput);
 

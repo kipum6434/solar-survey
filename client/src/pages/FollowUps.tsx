@@ -11,6 +11,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Pagination } from "@/components/Pagination";
 import { useState, useMemo, useCallback } from "react";
 import { useLocation } from "wouter";
+import { useSourceGroup } from "@/hooks/useSourceGroup";
 import {
   Search, PhoneCall, ChevronLeft, ChevronRight, Calendar, Clock, User,
   CheckCircle2, AlertCircle, Timer, MapPin, FileText, Zap,
@@ -27,6 +28,7 @@ const FOLLOW_UP_STATUSES = ["follow_up", "quoted", "negotiating"] as const;
 
 export default function FollowUps() {
   const [, setLocation] = useLocation();
+  const sourceGroup = useSourceGroup();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -74,8 +76,9 @@ export default function FollowUps() {
       search: search || undefined,
       page,
       limit: 50,
+      sourceGroup,
     };
-  }, [filterByMonth, selectedMonth, selectedYear, search, page]);
+  }, [filterByMonth, selectedMonth, selectedYear, search, page, sourceGroup]);
 
   const { data, isLoading } = trpc.followUp.surveysForFollowUp.useQuery(queryInput);
   // Filter by status on client side

@@ -1,4 +1,5 @@
-Screenshot shows sidebar with TCS, Gulf, MEA menu items (separate).
+Screenshot shows sidebar with TCS, Gulf, MEA as collapsible groups with submenu items.
+Each group has: Dashboard, ลูกค้า, งานสำรวจ, งานติดตาม, งานติดตั้ง, การเงิน
+Routes added: /tcs/customers, /tcs/surveys, /tcs/follow-ups, /tcs/installations, /tcs/finance (same for gulf/mea)
+All pages use useSourceGroup() hook to filter by source group.
 TypeScript: 0 errors, server running.
-Finance page now shows: customer name, phone, system size, contract value, collected amount, outstanding balance.
-NaN bug fixed by converting decimal strings to numbers in getPayments.

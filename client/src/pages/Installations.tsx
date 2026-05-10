@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { useLocation } from "wouter";
+import { useSourceGroup } from "@/hooks/useSourceGroup";
 import { toast } from "sonner";
 import {
   Search, Wrench, Calendar, ChevronLeft, ChevronRight,
@@ -89,6 +90,7 @@ function InstallationStatusBadge({ status, surveyId, onChanged }: { status: stri
 
 export default function Installations() {
   const [, setLocation] = useLocation();
+  const sourceGroup = useSourceGroup();
   const [search, setSearch] = useState("");
   const [statusTab, setStatusTab] = useState<string>("all");
   const [page, setPage] = useState(1);
@@ -136,7 +138,8 @@ export default function Installations() {
     closerId: filterCloser !== "all" ? Number(filterCloser) : undefined,
     installerTeamId: filterInstallerTeam !== "all" ? Number(filterInstallerTeam) : undefined,
     installationStatus: statusTab as any,
-  }), [page, search, filterByMonth, selectedMonth, selectedYear, statusTab, filterProvince, filterDistrict, filterSurveyor, filterCloser, filterInstallerTeam]);
+    sourceGroup,
+  }), [page, search, filterByMonth, selectedMonth, selectedYear, statusTab, filterProvince, filterDistrict, filterSurveyor, filterCloser, filterInstallerTeam, sourceGroup]);
 
   const { data, isLoading } = trpc.installation.list.useQuery(queryInput);
   const items = data?.data ?? [];

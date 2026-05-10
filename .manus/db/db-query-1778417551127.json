@@ -1,0 +1,20 @@
+{
+  "query": "SELECT id, name, groupName FROM sources WHERE groupName IS NOT NULL LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT id, name, groupName FROM sources WHERE groupName IS NOT NULL LIMIT 20;",
+  "rows": [
+    {
+      "id": "810004",
+      "name": "Gulf",
+      "groupName": "Gulf"
+    },
+    {
+      "id": "810008",
+      "name": "MEA",
+      "groupName": "MEA"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tgroupName\n810004\tGulf\tGulf\n810008\tMEA\tMEA\n",
+  "stderr": "",
+  "execution_time_ms": 1793
+}

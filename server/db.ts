@@ -90,10 +90,10 @@ export async function getUserByOpenId(openId: string) {
 }
 
 // ==================== CUSTOMER QUERIES ====================
-export async function getCustomers(opts: { search?: string; page?: number; limit?: number; month?: number; year?: number; district?: string; province?: string; source?: string; surveyStatus?: string; scopedCustomerIds?: number[] }) {
+export async function getCustomers(opts: { search?: string; page?: number; limit?: number; month?: number; year?: number; district?: string; province?: string; source?: string; sourceGroup?: "tcs" | "gulf" | "mea"; surveyStatus?: string; scopedCustomerIds?: number[] }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { search, page = 1, limit = 20, month, year, district, province, source, surveyStatus, scopedCustomerIds } = opts;
+  const { search, page = 1, limit = 20, month, year, district, province, source, sourceGroup, surveyStatus, scopedCustomerIds } = opts;
   const offset = (page - 1) * limit;
   const conditions: any[] = [];
   // Data scoping: เซลล์เห็นเฉพาะลูกค้าที่เกี่ยวข้องกับงานของตัวเอง
@@ -111,6 +111,16 @@ export async function getCustomers(opts: { search?: string; page?: number; limit
   if (district) conditions.push(eq(customers.district, district));
   if (province) conditions.push(eq(customers.province, province));
   if (source) conditions.push(eq(customers.source, source));
+  if (sourceGroup) {
+    if (sourceGroup === 'tcs') {
+      // TCS = everything NOT Gulf and NOT MEA
+      conditions.push(or(isNull(customers.source), not(inArray(customers.source, ['Gulf', 'MEA']))));
+    } else if (sourceGroup === 'gulf') {
+      conditions.push(eq(customers.source, 'Gulf'));
+    } else if (sourceGroup === 'mea') {
+      conditions.push(eq(customers.source, 'MEA'));
+    }
+  }
   if (month && year) {
     conditions.push(sql`MONTH(${customers.createdAt}) = ${month}`);
     conditions.push(sql`YEAR(${customers.createdAt}) = ${year}`);
@@ -581,7 +591,7 @@ export async function getFollowUps(opts: { surveyId?: number; customerId?: numbe
   return db.select().from(followUps).where(whereClause).orderBy(followUps.dueDate);
 }
 
-export async function getSurveysForFollowUp(opts: { search?: string; startDate?: number; endDate?: number; page?: number; limit?: number }) {
+export async function getSurveysForFollowUp(opts: { search?: string; startDate?: number; endDate?: number; page?: number; limit?: number; sourceGroup?: "tcs" | "gulf" | "mea" }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
   const page = opts.page ?? 1;
@@ -604,6 +614,15 @@ export async function getSurveysForFollowUp(opts: { search?: string; startDate?:
   }
   if (opts.startDate) conditions.push(gte(surveys.updatedAt, new Date(opts.startDate)));
   if (opts.endDate) conditions.push(lte(surveys.updatedAt, new Date(opts.endDate)));
+  if (opts.sourceGroup) {
+    if (opts.sourceGroup === 'tcs') {
+      conditions.push(or(isNull(customers.source), not(inArray(customers.source, ['Gulf', 'MEA']))));
+    } else if (opts.sourceGroup === 'gulf') {
+      conditions.push(eq(customers.source, 'Gulf'));
+    } else if (opts.sourceGroup === 'mea') {
+      conditions.push(eq(customers.source, 'MEA'));
+    }
+  }
   const whereClause = and(...conditions);
 
   // Count total
@@ -1071,10 +1090,10 @@ export async function updateSource(id: number, data: { name?: string; category?:
   }
 }
 
-export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; adminSenderId?: number; closerId?: number; page?: number; limit?: number; search?: string; month?: number; year?: number; source?: string; district?: string; province?: string; scopedSurveyIds?: number[]; sortBy?: string; sortDirection?: "asc" | "desc"; filterDate?: number; filterDateEnd?: number }) {
+export async function getSurveysWithCustomer(opts: { status?: string; assignedTo?: number; adminSenderId?: number; closerId?: number; page?: number; limit?: number; search?: string; month?: number; year?: number; source?: string; sourceGroup?: "tcs" | "gulf" | "mea"; district?: string; province?: string; scopedSurveyIds?: number[]; sortBy?: string; sortDirection?: "asc" | "desc"; filterDate?: number; filterDateEnd?: number }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { status, assignedTo, adminSenderId, closerId, page = 1, limit = 20, search, month, year, source, district, province, scopedSurveyIds, filterDate, filterDateEnd } = opts;
+  const { status, assignedTo, adminSenderId, closerId, page = 1, limit = 20, search, month, year, source, sourceGroup, district, province, scopedSurveyIds, filterDate, filterDateEnd } = opts;
   const offset = (page - 1) * limit;
 
   // If filtering by team member (any role), find matching survey IDs first
@@ -1106,6 +1125,15 @@ export async function getSurveysWithCustomer(opts: { status?: string; assignedTo
     ));
   }
   if (source) conditions.push(eq(customers.source, source));
+  if (sourceGroup) {
+    if (sourceGroup === 'tcs') {
+      conditions.push(or(isNull(customers.source), not(inArray(customers.source, ['Gulf', 'MEA']))));
+    } else if (sourceGroup === 'gulf') {
+      conditions.push(eq(customers.source, 'Gulf'));
+    } else if (sourceGroup === 'mea') {
+      conditions.push(eq(customers.source, 'MEA'));
+    }
+  }
   if (district) conditions.push(eq(customers.district, district));
   if (province) conditions.push(eq(customers.province, province));
   if (filterDate) {
@@ -1397,7 +1425,7 @@ export async function updateInstallationStatus(surveyId: number, installationSta
 export async function getInstallations(opts: any) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { page = 1, limit = 20, search, month, year, district, province, installationStatus, surveyorId, closerId, installerTeamId, scopedSurveyIds } = opts;
+  const { page = 1, limit = 20, search, month, year, district, province, installationStatus, surveyorId, closerId, installerTeamId, scopedSurveyIds, sourceGroup } = opts;
   const offset = (page - 1) * limit;
 
   // Data scoping: เซลล์เห็นเฉพาะงานติดตั้งที่ตัวเองเกี่ยวข้อง
@@ -1432,6 +1460,15 @@ export async function getInstallations(opts: any) {
   }
   if (installerTeamId) {
     conditions.push(eq(surveys.installerTeamId, installerTeamId));
+  }
+  if (sourceGroup) {
+    if (sourceGroup === 'tcs') {
+      conditions.push(or(isNull(customers.source), not(inArray(customers.source, ['Gulf', 'MEA']))));
+    } else if (sourceGroup === 'gulf') {
+      conditions.push(eq(customers.source, 'Gulf'));
+    } else if (sourceGroup === 'mea') {
+      conditions.push(eq(customers.source, 'MEA'));
+    }
   }
   // installationStatus: upcoming (future), today, overdue (past, not completed), completed
   const now = Date.now();

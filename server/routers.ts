@@ -27,6 +27,7 @@ const customerRouter = router({
       district: z.string().optional(),
       province: z.string().optional(),
       source: z.string().optional(),
+      sourceGroup: z.enum(["tcs", "gulf", "mea"]).optional(),
       surveyStatus: z.string().optional(),
     }))
     .query(async ({ input, ctx }) => {
@@ -244,6 +245,7 @@ const surveyRouter = router({
       month: z.number().min(1).max(12).optional(),
       year: z.number().optional(),
       source: z.string().optional(),
+      sourceGroup: z.enum(["tcs", "gulf", "mea"]).optional(),
       district: z.string().optional(),
       province: z.string().optional(),
       sortBy: z.string().optional(),
@@ -985,6 +987,7 @@ const followUpRouter = router({
       endDate: z.number().optional(),
       page: z.number().default(1),
       limit: z.number().default(50),
+      sourceGroup: z.enum(["tcs", "gulf", "mea"]).optional(),
     }))
     .query(({ input }) => db.getSurveysForFollowUp(input)),
 
@@ -1702,6 +1705,7 @@ const installationRouter = router({
       closerId: z.number().optional(),
       installerTeamId: z.number().optional(),
       installationStatus: z.enum(['all', 'upcoming', 'today', 'overdue', 'completed']).optional(),
+      sourceGroup: z.enum(["tcs", "gulf", "mea"]).optional(),
     }))
     .query(async ({ input, ctx }) => {
       const scope = await getUserScope(ctx.user);

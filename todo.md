@@ -1074,3 +1074,10 @@
 - [x] Sidebar: เพิ่มเมนู "Checklist ส่งมอบ" ในส่วน common items
 - [x] Sidebar: คงเมนู common items (รออนุมัติ, ผลงานทีม, จัดการทีมงาน, ฯลฯ) ไว้ด้านล่าง
 - [x] Sidebar: คงเมนู settings group (Template ฟอร์ม, LINE, บริษัท, แจ้งเตือน) ไว้ด้านล่างสุด
+
+### Fix: 404 on /tcs/customers, /gulf/customers, /mea/customers routes
+- [x] เพิ่ม routes สำหรับ /tcs/*, /gulf/*, /mea/* paths ใน App.tsx
+- [x] Routes ต้องชี้ไปที่หน้า Customers/Surveys/FollowUps/Installations พร้อม filter ตาม source group
+- [x] สร้าง useSourceGroup() hook สำหรับ extract sourceGroup จาก URL path
+- [x] เพิ่ม sourceGroup filter ใน customer.list, survey.list, followUp.surveysForFollowUp, installation.list
+- [x] เพิ่ม sourceGroup filter ใน getCustomers, getSurveysWithCustomer, getSurveysForFollowUp, getInstallations (db.ts)

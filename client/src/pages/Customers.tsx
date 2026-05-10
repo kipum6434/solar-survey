@@ -11,6 +11,7 @@ import { Pagination } from "@/components/Pagination";
 import { SortableHeader } from "@/components/SortableHeader";
 import { StatusDropdown } from "@/components/StatusDropdown";
 import { useLocation } from "wouter";
+import { useSourceGroup } from "@/hooks/useSourceGroup";
 import {
   Users, Plus, Search, Phone, MapPin, ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Trash2, Eye,
   LayoutList, Table2, Zap, FileUp, Download, ExternalLink, X, MessageSquareText, Sparkles, Loader2, ClipboardPaste,
@@ -49,6 +50,7 @@ const THAI_MONTHS = [
 
 export default function Customers() {
   const [, setLocation] = useLocation();
+  const sourceGroup = useSourceGroup();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [showAdd, setShowAdd] = useState(false);
@@ -107,8 +109,9 @@ export default function Customers() {
     district: districtFilter || undefined,
     province: provinceFilter || undefined,
     source: sourceFilter || undefined,
+    sourceGroup,
     surveyStatus: statusFilter || undefined,
-  }), [search, page, filterByMonth, selectedMonth, selectedYear, districtFilter, provinceFilter, sourceFilter, statusFilter]);
+  }), [search, page, filterByMonth, selectedMonth, selectedYear, districtFilter, provinceFilter, sourceFilter, statusFilter, sourceGroup]);
 
   const { data, isLoading, refetch } = trpc.customer.list.useQuery(queryInput);
   const createMutation = trpc.customer.create.useMutation({
