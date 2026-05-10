@@ -1141,3 +1141,10 @@
 - [x] กดที่แถวฟิลด์ → เปิดฟอร์มแก้ไข inline (เหมือนกดปุ่มดินสอ)
 - [x] กดปุ่มดินสอก็ทำงานเหมือนเดิม
 - [x] แก้ไขชื่อ, ประเภท, กลุ่ม, ตัวเลือก, required ได้ทันที
+
+## Bug Fix: Template fields ไม่แสดงในหน้า SurveyDetail เมื่อผูก source
+
+- [x] ตรวจสอบ flow สร้าง survey ว่าดึง template fields จาก source ที่ผูกไว้หรือไม่
+- [x] ตรวจสอบ SurveyDetail ว่าโหลดและแสดง template data อย่างไร
+- [x] แก้ไขให้ฟิลด์จาก Template แสดงในหน้าสำรวจที่ผูกกับ source นั้น (เพิ่ม TemplateFieldsCard component)
+- [x] ทดสอบว่าสร้างงานสำรวจใหม่ภายใต้ source ที่ผูก template → ฟิลด์แสดงถูกต้อง
