@@ -440,7 +440,7 @@ function buildKeyValueGrid(items: { key: string; value: string }[]): any {
   };
 }
 
-function buildPhotoGrid(photos: { data: string; label: string; width?: number; height?: number }[], borderColor: string = "#d4d4d4"): any[] {
+function buildPhotoGrid(photos: { data: string; label: string; caption?: string | null; width?: number; height?: number }[], borderColor: string = "#d4d4d4"): any[] {
   // Build individual rows as separate tables so each row won't break across pages
   const COLS = 3;
   const result: any[] = [];
@@ -491,11 +491,14 @@ function buildPhotoGrid(photos: { data: string; label: string; width?: number; h
             vLineAlignment: () => "center",
           },
         });
+        const labelParts: any[] = [
+          { text: photos[idx].label, fontSize: 7, color: "#646464", alignment: "center" as const },
+        ];
+        if (photos[idx].caption) {
+          labelParts.push({ text: photos[idx].caption, fontSize: 6.5, color: "#888888", italics: true, alignment: "center" as const, margin: [0, 1, 0, 0] as number[] });
+        }
         labelRow.push({
-          text: photos[idx].label,
-          fontSize: 7,
-          color: "#646464",
-          alignment: "center" as const,
+          stack: labelParts,
           margin: [0, 2, 0, 6] as number[],
         });
       } else {
@@ -624,7 +627,7 @@ export async function exportSurveyPDF(
         })
       : photos;
 
-    const loadedPhotos: { data: string; label: string; width?: number; height?: number }[] = [];
+    const loadedPhotos: { data: string; label: string; caption?: string | null; width?: number; height?: number }[] = [];
 
     for (let i = 0; i < sortedPhotos.length; i++) {
       onProgress?.(`กำลังโหลดรูปภาพ ${i + 1}/${sortedPhotos.length}...`);
@@ -632,7 +635,7 @@ export async function exportSurveyPDF(
       const catLabel = categoryMap[sortedPhotos[i].category || "other"] || sortedPhotos[i].category || "อื่นๆ";
 
       if (imgResult) {
-        loadedPhotos.push({ data: imgResult.data, label: catLabel, width: imgResult.width, height: imgResult.height });
+        loadedPhotos.push({ data: imgResult.data, label: catLabel, caption: sortedPhotos[i].caption, width: imgResult.width, height: imgResult.height });
       }
     }
 
@@ -778,7 +781,7 @@ export async function exportInstallationPDF(
         })
       : installPhotos;
 
-    const loadedPhotos: { data: string; label: string; width?: number; height?: number }[] = [];
+    const loadedPhotos: { data: string; label: string; caption?: string | null; width?: number; height?: number }[] = [];
 
     for (let i = 0; i < sortedPhotos.length; i++) {
       onProgress?.(`กำลังโหลดรูปภาพ ${i + 1}/${sortedPhotos.length}...`);
@@ -786,7 +789,7 @@ export async function exportInstallationPDF(
       const catLabel = categoryMap[sortedPhotos[i].category || "other"] || sortedPhotos[i].category || "อื่นๆ";
 
       if (imgResult) {
-        loadedPhotos.push({ data: imgResult.data, label: catLabel, width: imgResult.width, height: imgResult.height });
+        loadedPhotos.push({ data: imgResult.data, label: catLabel, caption: sortedPhotos[i].caption, width: imgResult.width, height: imgResult.height });
       }
     }
 
@@ -849,4 +852,250 @@ export async function exportInstallationPDF(
   onProgress?.("กำลังบันทึกไฟล์...");
   const pdfDoc = pdfMake.createPdf(docDefinition);
   await pdfDoc.download(`ติดตั้ง-${customer.name}-${survey.id}.pdf`);
+}
+
+// ==================== GULF SURVEY PDF EXPORT ====================
+export interface GulfTemplateField {
+  id: number;
+  fieldName: string;
+  fieldType: string;
+  fieldOptions?: any;
+  sortOrder: number;
+  required: boolean;
+}
+
+export interface GulfTemplateData {
+  fieldId: number;
+  value: string | null;
+  otherValue: string | null;
+}
+
+export interface GulfTemplateInfo {
+  name: string;
+  pdfHeaderTitle?: string | null;
+  pdfHeaderSubtitle?: string | null;
+  pdfLogoUrl?: string | null;
+}
+
+export async function exportGulfSurveyPDF(
+  survey: SurveyData,
+  customer: CustomerData,
+  photos: PhotoData[],
+  categoryMap: Record<string, string>,
+  templateInfo: GulfTemplateInfo,
+  templateFields: GulfTemplateField[],
+  templateData: GulfTemplateData[],
+  onProgress?: (step: string) => void,
+  imageProxyFn?: ImageProxyFn,
+  companyInfo?: CompanyInfo | null,
+  categoryOrder?: string[],
+): Promise<void> {
+  onProgress?.("กำลังเตรียมเอกสาร Gulf SSR...");
+  ensureFontsRegistered();
+
+  const headerColor = "#1e40af"; // blue-800 for Gulf
+  const sectionColor = "#1e40af";
+  const footerCompanyName = templateInfo.pdfHeaderTitle || companyInfo?.companyName || "Gulf Solar";
+
+  // Load logo - prefer template logo, fallback to company logo
+  onProgress?.("กำลังโหลดโลโก้...");
+  const logoSource = templateInfo.pdfLogoUrl || companyInfo?.logoUrl;
+  const logoData = await loadLogoBase64(imageProxyFn, logoSource);
+
+  const headerConfig: HeaderConfig = {
+    companyName: templateInfo.pdfHeaderTitle || footerCompanyName,
+    reportTitle: templateInfo.pdfHeaderSubtitle || "Site Survey Report",
+    customerName: customer.name,
+    surveyId: survey.id,
+    headerColor,
+    companyInfo: {
+      ...companyInfo,
+      companyName: templateInfo.pdfHeaderTitle || companyInfo?.companyName || null,
+      logoUrl: templateInfo.pdfLogoUrl || companyInfo?.logoUrl || null,
+    },
+    logoData,
+  };
+
+  // Build content
+  const content: any[] = [];
+
+  // ==================== CUSTOMER INFO ====================
+  onProgress?.("กำลังเพิ่มข้อมูลลูกค้า...");
+  content.push(buildSectionHeader("ข้อมูลลูกค้า", sectionColor));
+
+  const customerItems: { key: string; value: string }[] = [
+    { key: "ชื่อ:", value: customer.name },
+    { key: "โทรศัพท์:", value: customer.phone || "-" },
+  ];
+  if (customer.fullAddress) customerItems.push({ key: "ที่อยู่:", value: customer.fullAddress });
+  if (customer.subDistrict || customer.district || customer.province) {
+    customerItems.push({ key: "พื้นที่:", value: [customer.subDistrict, customer.district, customer.province, customer.postalCode].filter(Boolean).join(", ") });
+  }
+  if (customer.electricityBill) customerItems.push({ key: "ค่าไฟ/เดือน:", value: `${customer.electricityBill} บาท` });
+  if (customer.roofType) customerItems.push({ key: "ประเภทหลังคา:", value: customer.roofType });
+  if (customer.phaseType) customerItems.push({ key: "ระบบไฟ:", value: customer.phaseType === "single" ? "1 เฟส" : "3 เฟส" });
+
+  content.push(buildKeyValueGrid(customerItems));
+
+  // ==================== TEMPLATE FIELDS (Gulf SSR) ====================
+  onProgress?.("กำลังเพิ่มข้อมูล Gulf SSR...");
+  content.push(buildSectionHeader(`${templateInfo.name}`, sectionColor));
+
+  // Build data map for quick lookup
+  const dataMap = new Map<number, GulfTemplateData>();
+  for (const d of templateData) {
+    dataMap.set(d.fieldId, d);
+  }
+
+  // Sort fields by sortOrder
+  const sortedFields = [...templateFields].sort((a, b) => a.sortOrder - b.sortOrder);
+
+  const templateItems: { key: string; value: string }[] = [];
+
+  for (const field of sortedFields) {
+    const data = dataMap.get(field.id);
+    const rawValue = data?.value || "";
+
+    if (!rawValue && !data?.otherValue) continue; // skip empty fields
+
+    let displayValue = "";
+
+    switch (field.fieldType) {
+      case "checkbox": {
+        // Value is JSON array of selected options
+        try {
+          const selected = JSON.parse(rawValue);
+          if (Array.isArray(selected)) {
+            const labels = selected.map((s: string) => {
+              if (s === "__other__" && data?.otherValue) return `อื่นๆ: ${data.otherValue}`;
+              return s;
+            });
+            displayValue = labels.join(", ");
+          } else {
+            displayValue = rawValue;
+          }
+        } catch {
+          displayValue = rawValue;
+        }
+        break;
+      }
+      case "select": {
+        if (rawValue === "__other__" && data?.otherValue) {
+          displayValue = `อื่นๆ: ${data.otherValue}`;
+        } else {
+          displayValue = rawValue;
+        }
+        break;
+      }
+      case "distance": {
+        // Value might be JSON object with multiple distance fields
+        try {
+          const distances = JSON.parse(rawValue);
+          if (typeof distances === "object" && !Array.isArray(distances)) {
+            displayValue = Object.entries(distances)
+              .filter(([, v]) => v)
+              .map(([k, v]) => `${k}: ${v}`)
+              .join(", ");
+          } else {
+            displayValue = rawValue;
+          }
+        } catch {
+          displayValue = rawValue;
+        }
+        break;
+      }
+      default:
+        displayValue = rawValue;
+    }
+
+    if (displayValue) {
+      templateItems.push({ key: `${field.fieldName}:`, value: displayValue });
+    }
+  }
+
+  if (templateItems.length > 0) {
+    content.push(buildKeyValueGrid(templateItems));
+  } else {
+    content.push({ text: "ยังไม่มีข้อมูล Gulf SSR", fontSize: 9, color: "#969696", margin: [4, 0, 0, 4] as number[] });
+  }
+
+  // ==================== STANDARD TECHNICAL INFO ====================
+  onProgress?.("กำลังเพิ่มข้อมูลเทคนิค...");
+  content.push(buildSectionHeader("ข้อมูลทางเทคนิค", sectionColor));
+
+  const techItems: { key: string; value: string }[] = [];
+  if (survey.systemSize) techItems.push({ key: "ขนาดระบบ:", value: `${survey.systemSize} kW` });
+  if (survey.panelCount) techItems.push({ key: "จำนวนแผง:", value: `${survey.panelCount} แผง` });
+  if (survey.panelBrand) techItems.push({ key: "ยี่ห้อแผง:", value: survey.panelBrand });
+  if (survey.inverterModel) techItems.push({ key: "อินเวอร์เตอร์:", value: survey.inverterModel });
+  if (survey.quotedPrice) techItems.push({ key: "ราคาเสนอ:", value: `${formatNumber(survey.quotedPrice)} บาท` });
+  if (survey.systemType) techItems.push({ key: "ประเภทระบบ:", value: SYSTEM_TYPE_LABELS[survey.systemType] || survey.systemType });
+  if (survey.needBattery) techItems.push({ key: "แบตเตอรี่:", value: survey.needBattery });
+  if (survey.needOptimizer) techItems.push({ key: "Optimizer:", value: survey.needOptimizer });
+
+  if (techItems.length > 0) {
+    content.push(buildKeyValueGrid(techItems));
+  }
+
+  // ==================== PHOTOS ====================
+  if (photos.length > 0) {
+    onProgress?.(`กำลังเพิ่มรูปภาพ (${photos.length} รูป)...`);
+    content.push(buildSectionHeader(`รูปภาพหน้างาน (${photos.length} รูป)`, sectionColor));
+
+    const sortedPhotos = categoryOrder && categoryOrder.length > 0
+      ? [...photos].sort((a, b) => {
+          const catA = a.category || "other";
+          const catB = b.category || "other";
+          const idxA = categoryOrder.indexOf(catA);
+          const idxB = categoryOrder.indexOf(catB);
+          return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB);
+        })
+      : photos;
+
+    const loadedPhotos: { data: string; label: string; caption?: string | null; width?: number; height?: number }[] = [];
+
+    for (let i = 0; i < sortedPhotos.length; i++) {
+      onProgress?.(`กำลังโหลดรูปภาพ ${i + 1}/${sortedPhotos.length}...`);
+      const imgResult = await loadImageWithDimensions(sortedPhotos[i].url, imageProxyFn);
+      const catLabel = categoryMap[sortedPhotos[i].category || "other"] || sortedPhotos[i].category || "อื่นๆ";
+
+      if (imgResult) {
+        loadedPhotos.push({ data: imgResult.data, label: catLabel, caption: sortedPhotos[i].caption, width: imgResult.width, height: imgResult.height });
+      }
+    }
+
+    const borderColor = companyInfo?.photoBorderColor || "#1e40af";
+    if (loadedPhotos.length > 0) {
+      content.push(...buildPhotoGrid(loadedPhotos, borderColor));
+    }
+  }
+
+  // ==================== BUILD DOC DEFINITION ====================
+  onProgress?.("กำลังสร้าง PDF...");
+
+  const docDefinition: any = {
+    pageSize: "A4",
+    pageMargins: [15, 100, 15, 35],
+    defaultStyle: {
+      font: "Sarabun",
+      fontSize: 9,
+    },
+    header: (currentPage: number, pageCount: number) => {
+      return buildHeader(headerConfig, currentPage, pageCount);
+    },
+    footer: (currentPage: number, pageCount: number) => {
+      return {
+        text: `${footerCompanyName}  |  หน้า ${currentPage}/${pageCount}`,
+        alignment: "center",
+        fontSize: 7,
+        color: "#b4b4b4",
+        margin: [0, 10, 0, 0] as number[],
+      };
+    },
+    content,
+  };
+
+  onProgress?.("กำลังบันทึกไฟล์...");
+  const pdfDoc = pdfMake.createPdf(docDefinition);
+  await pdfDoc.download(`Gulf-SSR-${customer.name}-${survey.id}.pdf`);
 }

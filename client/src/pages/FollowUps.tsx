@@ -25,7 +25,8 @@ const THAI_MONTHS_SHORT = [
 // Statuses we show on this page
 const FOLLOW_UP_STATUSES = ["follow_up", "quoted", "negotiating"] as const;
 
-export default function FollowUps() {
+export default function FollowUps(props: any) {
+  const gulfMode = props?.gulfMode ?? false;
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -72,10 +73,11 @@ export default function FollowUps() {
       startDate,
       endDate,
       search: search || undefined,
+      source: gulfMode ? "Gulf" : undefined,
       page,
       limit: 50,
     };
-  }, [filterByMonth, selectedMonth, selectedYear, search, page]);
+  }, [filterByMonth, selectedMonth, selectedYear, search, page, gulfMode]);
 
   const { data, isLoading } = trpc.followUp.surveysForFollowUp.useQuery(queryInput);
   // Filter by status on client side
@@ -140,8 +142,8 @@ export default function FollowUps() {
       <div className="space-y-4">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">งานติดตาม</h1>
-          <p className="text-sm text-muted-foreground mt-1">ติดตามลูกค้าหลังจากสำรวจ — แสดงงานที่สถานะ รอติดตาม, เสนอราคาแล้ว, เจรจาต่อรอง</p>
+          <h1 className="text-2xl font-bold tracking-tight">{gulfMode ? "งานติดตาม Gulf" : "งานติดตาม"}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{gulfMode ? "ติดตามลูกค้า Gulf" : "ติดตามลูกค้าหลังจากสำรวจ — แสดงงานที่สถานะ รอติดตาม, เสนอราคาแล้ว, เจรจาต่อรอง"}</p>
         </div>
 
         {/* Stats Cards */}

@@ -87,7 +87,8 @@ function InstallationStatusBadge({ status, surveyId, onChanged }: { status: stri
   );
 }
 
-export default function Installations() {
+export default function Installations(props: any) {
+  const gulfMode = props?.gulfMode ?? false;
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [statusTab, setStatusTab] = useState<string>("all");
@@ -136,7 +137,8 @@ export default function Installations() {
     closerId: filterCloser !== "all" ? Number(filterCloser) : undefined,
     installerTeamId: filterInstallerTeam !== "all" ? Number(filterInstallerTeam) : undefined,
     installationStatus: statusTab as any,
-  }), [page, search, filterByMonth, selectedMonth, selectedYear, statusTab, filterProvince, filterDistrict, filterSurveyor, filterCloser, filterInstallerTeam]);
+    source: gulfMode ? "Gulf" : undefined,
+  }), [page, search, filterByMonth, selectedMonth, selectedYear, statusTab, filterProvince, filterDistrict, filterSurveyor, filterCloser, filterInstallerTeam, gulfMode]);
 
   const { data, isLoading } = trpc.installation.list.useQuery(queryInput);
   const items = data?.data ?? [];
@@ -296,9 +298,9 @@ export default function Installations() {
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
               <Wrench className="h-6 w-6 text-primary" />
-              งานติดตั้ง
+              {gulfMode ? "งานติดตั้ง Gulf" : "งานติดตั้ง"}
             </h1>
-            <p className="text-muted-foreground text-sm">จัดการงานติดตั้งที่ปิดการขายแล้ว</p>
+            <p className="text-muted-foreground text-sm">{gulfMode ? "จัดการงานติดตั้ง Gulf" : "จัดการงานติดตั้งที่ปิดการขายแล้ว"}</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-sm text-muted-foreground">

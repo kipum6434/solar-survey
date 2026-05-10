@@ -47,7 +47,8 @@ const THAI_MONTHS = [
   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
 ];
 
-export default function Customers() {
+export default function Customers(props: any) {
+  const gulfMode = props?.gulfMode ?? false;
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -90,7 +91,7 @@ export default function Customers() {
   const [filterByMonth, setFilterByMonth] = useState(false);
   const [districtFilter, setDistrictFilter] = useState("");
   const [provinceFilter, setProvinceFilter] = useState("");
-  const [sourceFilter, setSourceFilter] = useState("");
+  const [sourceFilter, setSourceFilter] = useState(gulfMode ? "Gulf" : "");
   const [statusFilter, setStatusFilter] = useState("");
 
   const { data: distinctValues } = trpc.customer.distinctValues.useQuery();
@@ -217,8 +218,8 @@ export default function Customers() {
       <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">ลูกค้า</h1>
-            <p className="text-sm text-muted-foreground mt-1">จัดการข้อมูลลูกค้าทั้งหมด</p>
+            <h1 className="text-2xl font-bold tracking-tight">{gulfMode ? "ลูกค้า Gulf" : "ลูกค้า"}</h1>
+            <p className="text-sm text-muted-foreground mt-1">{gulfMode ? "จัดการข้อมูลลูกค้า Gulf" : "จัดการข้อมูลลูกค้าทั้งหมด"}</p>
           </div>
           <div className="flex gap-2 flex-wrap">
             <Button variant="outline" onClick={() => setShowTemplate(true)} className="gap-2 border-green-300 text-green-700 hover:bg-green-50">
@@ -320,17 +321,19 @@ export default function Customers() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={sourceFilter || "_all"} onValueChange={(v) => { setSourceFilter(v === "_all" ? "" : v); setPage(1); }}>
-            <SelectTrigger className="w-[130px] h-9 text-xs">
-              <SelectValue placeholder="แหล่งที่มา" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="_all">แหล่งที่มาทั้งหมด</SelectItem>
-              {(distinctValues?.sources ?? []).map((s: string) => (
-                <SelectItem key={s} value={s}>{s}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {!gulfMode && (
+            <Select value={sourceFilter || "_all"} onValueChange={(v) => { setSourceFilter(v === "_all" ? "" : v); setPage(1); }}>
+              <SelectTrigger className="w-[130px] h-9 text-xs">
+                <SelectValue placeholder="แหล่งที่มา" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">แหล่งที่มาทั้งหมด</SelectItem>
+                {(distinctValues?.sources ?? []).map((s: string) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <div className="flex items-center border rounded-md">
             <Button
               variant={viewMode === "grid" ? "default" : "ghost"}
@@ -442,7 +445,7 @@ export default function Customers() {
       </div>
 
       {/* Add Customer Dialog */}
-      <AddCustomerDialog open={showAdd} onOpenChange={setShowAdd} onSubmit={(d) => createMutation.mutate(d)} loading={createMutation.isPending} />
+      <AddCustomerDialog open={showAdd} onOpenChange={setShowAdd} onSubmit={(d) => createMutation.mutate(d)} loading={createMutation.isPending} gulfMode={gulfMode} />
 
       {/* Import Excel Dialog */}
       <ImportExcelDialog
@@ -791,8 +794,8 @@ function CustomerGridView({ data, onRowClick, onEdit, onDelete, selectedIds, onT
 }
 
 /* ==================== ADD CUSTOMER DIALOG ==================== */
-function AddCustomerDialog({ open, onOpenChange, onSubmit, loading }: { open: boolean; onOpenChange: (v: boolean) => void; onSubmit: (d: any) => void; loading: boolean }) {
-  const [form, setForm] = useState({ name: "", phone: "", address: "", district: "", province: "", source: "other" as string, notes: "", electricityBill: "", roofType: "", phaseType: "" as string, fullAddress: "", facebookName: "", surveyorId: null as number | null });
+function AddCustomerDialog({ open, onOpenChange, onSubmit, loading, gulfMode }: { open: boolean; onOpenChange: (v: boolean) => void; onSubmit: (d: any) => void; loading: boolean; gulfMode?: boolean }) {
+  const [form, setForm] = useState({ name: "", phone: "", address: "", district: "", province: "", source: (gulfMode ? "Gulf" : "other") as string, notes: "", electricityBill: "", roofType: "", phaseType: "" as string, fullAddress: "", facebookName: "", surveyorId: null as number | null });
   const { data: teamSurveyors } = trpc.teamMember.listAll.useQuery();
   const [showLinePaste, setShowLinePaste] = useState(false);
   const [lineText, setLineText] = useState("");

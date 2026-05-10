@@ -415,3 +415,68 @@ export const postponeCancelLogs = mysqlTable("postpone_cancel_logs", {
 
 export type PostponeCancelLog = typeof postponeCancelLogs.$inferSelect;
 export type InsertPostponeCancelLog = typeof postponeCancelLogs.$inferInsert;
+
+// ==================== SURVEY TEMPLATES ====================
+export const surveyTemplates = mysqlTable("survey_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  sourceId: int("sourceId"), // link to sources table (e.g. Gulf)
+  pdfHeaderTitle: varchar("pdfHeaderTitle", { length: 255 }),
+  pdfHeaderSubtitle: varchar("pdfHeaderSubtitle", { length: 255 }),
+  pdfLogoUrl: text("pdfLogoUrl"),
+  pdfLogoFileKey: varchar("pdfLogoFileKey", { length: 512 }),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdBy: int("createdBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SurveyTemplate = typeof surveyTemplates.$inferSelect;
+export type InsertSurveyTemplate = typeof surveyTemplates.$inferInsert;
+
+// ==================== SURVEY TEMPLATE FIELDS ====================
+export const surveyTemplateFields = mysqlTable("survey_template_fields", {
+  id: int("id").autoincrement().primaryKey(),
+  templateId: int("templateId").notNull(),
+  fieldName: varchar("fieldName", { length: 255 }).notNull(),
+  fieldLabel: varchar("fieldLabel", { length: 255 }).notNull(),
+  fieldType: mysqlEnum("fieldType", [
+    "text",
+    "number",
+    "textarea",
+    "select",
+    "checkbox",
+    "checkbox_group",
+    "radio",
+    "date",
+    "distance",
+    "yes_no",
+    "section_header"
+  ]).notNull(),
+  fieldOptions: text("fieldOptions"), // JSON string for select/checkbox_group/radio options e.g. ["3kW 1P","5kW 1P","อื่นๆ"]
+  hasOtherOption: boolean("hasOtherOption").default(false).notNull(), // show "อื่นๆ" text field when checked
+  placeholder: varchar("placeholder", { length: 255 }),
+  defaultValue: text("defaultValue"),
+  required: boolean("required").default(false).notNull(),
+  sectionGroup: varchar("sectionGroup", { length: 100 }), // group fields under a section header
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SurveyTemplateField = typeof surveyTemplateFields.$inferSelect;
+export type InsertSurveyTemplateField = typeof surveyTemplateFields.$inferInsert;
+
+// ==================== SURVEY TEMPLATE DATA (filled values) ====================
+export const surveyTemplateData = mysqlTable("survey_template_data", {
+  id: int("id").autoincrement().primaryKey(),
+  surveyId: int("surveyId").notNull(),
+  templateId: int("templateId").notNull(),
+  fieldId: int("fieldId").notNull(),
+  value: text("value"), // JSON string: string for text, number; array for checkbox_group; object for distance
+  otherValue: text("otherValue"), // value when "อื่นๆ" is selected
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SurveyTemplateData = typeof surveyTemplateData.$inferSelect;
+export type InsertSurveyTemplateData = typeof surveyTemplateData.$inferInsert;

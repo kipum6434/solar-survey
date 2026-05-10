@@ -25,13 +25,14 @@ import {
   ArrowLeft, Camera, FileText, PhoneCall, Share2, MapPin, Calendar, User, Pencil,
   Upload, Trash2, Download, Link2, Copy, X, Image, Eye, CheckCircle2, Clock,
   Zap, Sun, Home, Gauge, Receipt, Settings2, Users, Wrench, FolderDown, Package,
-  PauseCircle, XCircle, RotateCcw, History, Plus,
+  PauseCircle, XCircle, RotateCcw, History, Plus, ClipboardList,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { MultiUserSelect } from "@/components/MultiUserSelect";
 import { SourceCombobox } from "@/components/SourceCombobox";
 import { StatusDropdown } from "@/components/StatusDropdown";
 import DeliveryTab from "@/components/DeliveryTab";
-import { exportSurveyPDF, type ImageProxyFn, type CompanyInfo } from "@/lib/pdfExport";
+import { exportSurveyPDF, exportGulfSurveyPDF, type ImageProxyFn, type CompanyInfo } from "@/lib/pdfExport";
 import { FileDown } from "lucide-react";
 
 export default function SurveyDetail() {
@@ -90,6 +91,21 @@ export default function SurveyDetail() {
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [newCategoryLabel, setNewCategoryLabel] = useState("");
   const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<{ id: number; label: string } | null>(null);
+
+  // Template form: load template by customer source name
+  const customerSource = data?.customer?.source || "";
+  const { data: templateForSource } = trpc.surveyTemplate.getBySourceName.useQuery(
+    { sourceName: customerSource },
+    { enabled: !!customerSource }
+  );
+  const { data: templateData, refetch: refetchTemplateData } = trpc.surveyTemplate.getData.useQuery(
+    { surveyId },
+    { enabled: !!templateForSource }
+  );
+  const saveTemplateData = trpc.surveyTemplate.saveData.useMutation({
+    onSuccess: () => { toast.success("บันทึกข้อมูลฟอร์มสำเร็จ"); refetchTemplateData(); },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   // Build category map: merge static fallback + DB categories
   const categoryMap = useMemo(() => {
@@ -369,30 +385,54 @@ export default function SurveyDetail() {
               onClick={async () => {
                 try {
                   toast.info("กำลังสร้าง PDF...");
-                  await exportSurveyPDF(
-                    {
-                      id: s.id, status: s.status, scheduledDate: s.scheduledDate,
-                      systemSize: s.systemSize, panelCount: s.panelCount,
-                      panelBrand: s.panelBrand, inverterModel: s.inverterModel,
-                      quotedPrice: s.quotedPrice, systemType: s.systemType,
-                      needBattery: s.needBattery, needOptimizer: s.needOptimizer,
-                      surveyNotes: s.surveyNotes,
-                    },
-                    {
-                      name: c.name, phone: c.phone, email: c.email,
-                      fullAddress: c.fullAddress, subDistrict: c.subDistrict,
-                      district: c.district, province: c.province,
-                      postalCode: c.postalCode, electricityBill: c.electricityBill,
-                      roofType: c.roofType, roofArea: c.roofArea,
-                      phaseType: c.phaseType, meterSize: c.meterSize, notes: c.notes,
-                    },
-                    (photos || []).map((p: any) => ({ url: p.url, category: p.category, caption: p.caption })),
-                    categoryMap,
-                    undefined,
-                    imageProxyFn,
-                    companyInfoForPdf,
-                    categoryOrder,
-                  );
+                  const surveyDataForPdf = {
+                    id: s.id, status: s.status, scheduledDate: s.scheduledDate,
+                    systemSize: s.systemSize, panelCount: s.panelCount,
+                    panelBrand: s.panelBrand, inverterModel: s.inverterModel,
+                    quotedPrice: s.quotedPrice, systemType: s.systemType,
+                    needBattery: s.needBattery, needOptimizer: s.needOptimizer,
+                    surveyNotes: s.surveyNotes,
+                  };
+                  const customerDataForPdf = {
+                    name: c.name, phone: c.phone, email: c.email,
+                    fullAddress: c.fullAddress, subDistrict: c.subDistrict,
+                    district: c.district, province: c.province,
+                    postalCode: c.postalCode, electricityBill: c.electricityBill,
+                    roofType: c.roofType, roofArea: c.roofArea,
+                    phaseType: c.phaseType, meterSize: c.meterSize, notes: c.notes,
+                  };
+                  const photosForPdf = (photos || []).map((p: any) => ({ url: p.url, category: p.category, caption: p.caption }));
+                  if (templateForSource) {
+                    await exportGulfSurveyPDF(
+                      surveyDataForPdf,
+                      customerDataForPdf,
+                      photosForPdf,
+                      categoryMap,
+                      {
+                        name: templateForSource.name,
+                        pdfHeaderTitle: templateForSource.pdfHeaderTitle,
+                        pdfHeaderSubtitle: templateForSource.pdfHeaderSubtitle,
+                        pdfLogoUrl: templateForSource.pdfLogoUrl,
+                      },
+                      templateForSource.fields || [],
+                      (templateData || []).map((d: any) => ({ fieldId: d.fieldId, value: d.value, otherValue: d.otherValue })),
+                      undefined,
+                      imageProxyFn,
+                      companyInfoForPdf,
+                      categoryOrder,
+                    );
+                  } else {
+                    await exportSurveyPDF(
+                      surveyDataForPdf,
+                      customerDataForPdf,
+                      photosForPdf,
+                      categoryMap,
+                      undefined,
+                      imageProxyFn,
+                      companyInfoForPdf,
+                      categoryOrder,
+                    );
+                  }
                   toast.success("Export PDF สำเร็จ");
                 } catch (err: any) {
                   toast.error(err?.message || "Export PDF ล้มเหลว");
@@ -530,6 +570,7 @@ export default function SurveyDetail() {
             <TabsTrigger value="share" className="gap-1.5"><Share2 className="h-3.5 w-3.5" /> แชร์ ({shareLinks?.length ?? 0})</TabsTrigger>
             <TabsTrigger value="delivery" className="gap-1.5"><Package className="h-3.5 w-3.5" /> ส่งมอบงาน</TabsTrigger>
             <TabsTrigger value="history" className="gap-1.5"><History className="h-3.5 w-3.5" /> ประวัติ ({postponeLogs?.length ?? 0})</TabsTrigger>
+            {templateForSource && <TabsTrigger value="templateForm" className="gap-1.5"><ClipboardList className="h-3.5 w-3.5" /> {templateForSource.name}</TabsTrigger>}
           </TabsList>
 
           {/* Photos Tab - Grouped by Category */}
@@ -613,20 +654,23 @@ export default function SurveyDetail() {
                           {catPhotos.length > 0 ? (
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                               {catPhotos.map((photo: any) => (
-                                <div key={photo.id} className="group relative rounded-lg overflow-hidden bg-muted aspect-square">
-                                  <img src={photo.url} alt={photo.caption || photo.fileName} className="w-full h-full object-cover cursor-pointer" onClick={() => setLightboxImg(photo.url)} loading="lazy" />
-                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-end">
-                                    <div className="w-full p-2 translate-y-full group-hover:translate-y-0 transition-transform">
-                                      <div className="flex items-center justify-end gap-1">
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-white" onClick={() => setLightboxImg(photo.url)}>
-                                          <Eye className="h-3 w-3" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-red-100" onClick={(e) => { e.stopPropagation(); setConfirmDeletePhoto(photo.id); }}>
-                                          <Trash2 className="h-3 w-3 text-destructive" />
-                                        </Button>
+                                <div key={photo.id} className="flex flex-col">
+                                  <div className="group relative rounded-lg overflow-hidden bg-muted aspect-square">
+                                    <img src={photo.url} alt={photo.caption || photo.fileName} className="w-full h-full object-cover cursor-pointer" onClick={() => setLightboxImg(photo.url)} loading="lazy" />
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-end">
+                                      <div className="w-full p-2 translate-y-full group-hover:translate-y-0 transition-transform">
+                                        <div className="flex items-center justify-end gap-1">
+                                          <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-white" onClick={() => setLightboxImg(photo.url)}>
+                                            <Eye className="h-3 w-3" />
+                                          </Button>
+                                          <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-red-100" onClick={(e) => { e.stopPropagation(); setConfirmDeletePhoto(photo.id); }}>
+                                            <Trash2 className="h-3 w-3 text-destructive" />
+                                          </Button>
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
+                                  <PhotoCaptionInput photoId={photo.id} initialCaption={photo.caption || ""} />
                                 </div>
                               ))}
                             </div>
@@ -895,6 +939,19 @@ export default function SurveyDetail() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Template Form Tab */}
+          {templateForSource && (
+            <TabsContent value="templateForm" className="mt-4">
+              <TemplateFormSection
+                template={templateForSource}
+                templateData={templateData || []}
+                surveyId={surveyId}
+                onSave={(entries) => saveTemplateData.mutate({ surveyId, templateId: templateForSource.id, entries })}
+                isSaving={saveTemplateData.isPending}
+              />
+            </TabsContent>
+          )}
         </Tabs>
 
         {/* Survey Notes */}
@@ -1929,4 +1986,382 @@ function ShareLinkList({ links, linkType, onRevoke }: { links: any[]; linkType: 
       })}
     </div>
   );
+}
+
+
+// ==================== PHOTO CAPTION INPUT ====================
+function PhotoCaptionInput({ photoId, initialCaption }: { photoId: number; initialCaption: string }) {
+  const [caption, setCaption] = useState(initialCaption);
+  const [isSaving, setIsSaving] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const updateCaption = trpc.photo.updateCaption.useMutation();
+
+  const save = useCallback((value: string) => {
+    setIsSaving(true);
+    updateCaption.mutate(
+      { id: photoId, caption: value.trim() || null },
+      {
+        onSuccess: () => setIsSaving(false),
+        onError: () => { toast.error("บันทึกหมายเหตุไม่สำเร็จ"); setIsSaving(false); },
+      }
+    );
+  }, [photoId, updateCaption]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    setCaption(v);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => save(v), 800);
+  };
+
+  return (
+    <div className="mt-1.5 relative">
+      <input
+        type="text"
+        value={caption}
+        onChange={handleChange}
+        placeholder="หมายเหตุ..."
+        className="w-full text-[11px] px-2 py-1 rounded border border-transparent hover:border-border focus:border-primary focus:ring-1 focus:ring-primary/30 bg-muted/30 focus:bg-background outline-none transition-all placeholder:text-muted-foreground/50"
+      />
+      {isSaving && <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-muted-foreground">กำลังบันทึก...</span>}
+    </div>
+  );
+}
+
+
+// ==================== TEMPLATE FORM SECTION ====================
+function TemplateFormSection({
+  template,
+  templateData,
+  surveyId,
+  onSave,
+  isSaving,
+}: {
+  template: { id: number; name: string; fields: any[] };
+  templateData: any[];
+  surveyId: number;
+  onSave: (entries: { fieldId: number; value: string | null; otherValue: string | null }[]) => void;
+  isSaving: boolean;
+}) {
+  // Build initial values from saved data
+  const buildInitialValues = useCallback(() => {
+    const values: Record<number, { value: string; otherValue: string }> = {};
+    for (const field of template.fields) {
+      const saved = templateData.find((d: any) => d.fieldId === field.id);
+      values[field.id] = {
+        value: saved?.value || field.defaultValue || "",
+        otherValue: saved?.otherValue || "",
+      };
+    }
+    return values;
+  }, [template.fields, templateData]);
+
+  const [formValues, setFormValues] = useState<Record<number, { value: string; otherValue: string }>>(buildInitialValues);
+
+  // Reset form when template data changes
+  useEffect(() => {
+    setFormValues(buildInitialValues());
+  }, [buildInitialValues]);
+
+  const updateValue = (fieldId: number, value: string) => {
+    setFormValues(prev => ({ ...prev, [fieldId]: { ...prev[fieldId], value } }));
+  };
+
+  const updateOtherValue = (fieldId: number, otherValue: string) => {
+    setFormValues(prev => ({ ...prev, [fieldId]: { ...prev[fieldId], otherValue } }));
+  };
+
+  const handleSave = () => {
+    const entries = template.fields
+      .filter((f: any) => f.fieldType !== "section_header")
+      .map((f: any) => ({
+        fieldId: f.id,
+        value: formValues[f.id]?.value || null,
+        otherValue: formValues[f.id]?.otherValue || null,
+      }));
+    onSave(entries);
+  };
+
+  // Group fields by sectionGroup
+  const groupedFields = useMemo(() => {
+    const groups: { header: string | null; fields: any[] }[] = [];
+    let currentGroup: { header: string | null; fields: any[] } = { header: null, fields: [] };
+    for (const field of template.fields.sort((a: any, b: any) => a.sortOrder - b.sortOrder)) {
+      if (field.fieldType === "section_header") {
+        if (currentGroup.fields.length > 0 || currentGroup.header) {
+          groups.push(currentGroup);
+        }
+        currentGroup = { header: field.fieldLabel, fields: [] };
+      } else {
+        currentGroup.fields.push(field);
+      }
+    }
+    if (currentGroup.fields.length > 0 || currentGroup.header) {
+      groups.push(currentGroup);
+    }
+    return groups;
+  }, [template.fields]);
+
+  return (
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <ClipboardList className="h-4 w-4" />
+            {template.name}
+          </CardTitle>
+          <Button size="sm" onClick={handleSave} disabled={isSaving} className="gap-1.5">
+            {isSaving ? <><Clock className="h-3.5 w-3.5 animate-spin" /> กำลังบันทึก...</> : <><CheckCircle2 className="h-3.5 w-3.5" /> บันทึก</>}
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {groupedFields.map((group, gi) => (
+          <div key={gi}>
+            {group.header && (
+              <div className="flex items-center gap-2 mb-3 pb-2 border-b">
+                <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">{gi + 1}</span>
+                <h3 className="font-semibold text-sm">{group.header}</h3>
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {group.fields.map((field: any) => (
+                <TemplateFieldInput
+                  key={field.id}
+                  field={field}
+                  value={formValues[field.id]?.value || ""}
+                  otherValue={formValues[field.id]?.otherValue || ""}
+                  onChange={(v) => updateValue(field.id, v)}
+                  onOtherChange={(v) => updateOtherValue(field.id, v)}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ==================== TEMPLATE FIELD INPUT ====================
+function TemplateFieldInput({
+  field,
+  value,
+  otherValue,
+  onChange,
+  onOtherChange,
+}: {
+  field: any;
+  value: string;
+  otherValue: string;
+  onChange: (v: string) => void;
+  onOtherChange: (v: string) => void;
+}) {
+  const options: string[] = field.fieldOptions ? (() => { try { return JSON.parse(field.fieldOptions); } catch { return []; } })() : [];
+
+  switch (field.fieldType) {
+    case "text":
+      return (
+        <div className={field.fieldType === "textarea" ? "col-span-2" : ""}>
+          <Label className="text-xs font-medium">{field.fieldLabel}{field.required && <span className="text-destructive ml-0.5">*</span>}</Label>
+          <Input value={value} onChange={e => onChange(e.target.value)} placeholder={field.placeholder || ""} className="mt-1" />
+        </div>
+      );
+
+    case "number":
+      return (
+        <div>
+          <Label className="text-xs font-medium">{field.fieldLabel}{field.required && <span className="text-destructive ml-0.5">*</span>}</Label>
+          <Input type="number" value={value} onChange={e => onChange(e.target.value)} placeholder={field.placeholder || ""} className="mt-1" />
+        </div>
+      );
+
+    case "textarea":
+      return (
+        <div className="col-span-2">
+          <Label className="text-xs font-medium">{field.fieldLabel}{field.required && <span className="text-destructive ml-0.5">*</span>}</Label>
+          <Textarea value={value} onChange={e => onChange(e.target.value)} placeholder={field.placeholder || ""} rows={3} className="mt-1" />
+        </div>
+      );
+
+    case "select":
+      return (
+        <div>
+          <Label className="text-xs font-medium">{field.fieldLabel}{field.required && <span className="text-destructive ml-0.5">*</span>}</Label>
+          <Select value={value || undefined} onValueChange={onChange}>
+            <SelectTrigger className="mt-1"><SelectValue placeholder="เลือก..." /></SelectTrigger>
+            <SelectContent>
+              {options.map((opt: string) => (
+                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {field.hasOtherOption && value === "อื่นๆ" && (
+            <Input value={otherValue} onChange={e => onOtherChange(e.target.value)} placeholder="ระบุ..." className="mt-1.5" />
+          )}
+        </div>
+      );
+
+    case "checkbox":
+      return (
+        <div className="flex items-center gap-2">
+          <Checkbox checked={value === "true"} onCheckedChange={(checked) => onChange(checked ? "true" : "false")} />
+          <Label className="text-xs font-medium">{field.fieldLabel}</Label>
+        </div>
+      );
+
+    case "checkbox_group": {
+      let selected: string[] = [];
+      try { selected = value ? JSON.parse(value) : []; } catch { selected = []; }
+
+      const toggleOption = (opt: string) => {
+        const newSelected = selected.includes(opt)
+          ? selected.filter(s => s !== opt)
+          : [...selected, opt];
+        onChange(JSON.stringify(newSelected));
+      };
+
+      const hasOther = field.hasOtherOption;
+      const otherSelected = selected.includes("อื่นๆ");
+
+      return (
+        <div className="col-span-2">
+          <Label className="text-xs font-medium mb-2 block">{field.fieldLabel}{field.required && <span className="text-destructive ml-0.5">*</span>}</Label>
+          <div className="flex flex-wrap gap-2">
+            {options.map((opt: string) => {
+              const isChecked = selected.includes(opt);
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => toggleOption(opt)}
+                  className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                    isChecked
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                      : "bg-background hover:bg-muted border-border"
+                  }`}
+                >
+                  {isChecked && <CheckCircle2 className="h-3 w-3 inline mr-1" />}
+                  {opt === "อื่นๆ" && otherSelected && otherValue ? `Other: ${otherValue}` : opt}
+                </button>
+              );
+            })}
+            {hasOther && !options.includes("อื่นๆ") && (
+              <button
+                type="button"
+                onClick={() => toggleOption("อื่นๆ")}
+                className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                  otherSelected
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-background hover:bg-muted border-border"
+                }`}
+              >
+                {otherSelected && <CheckCircle2 className="h-3 w-3 inline mr-1" />}
+                {otherSelected && otherValue ? `Other: ${otherValue}` : "อื่นๆ"}
+              </button>
+            )}
+          </div>
+          {otherSelected && (
+            <Input value={otherValue} onChange={e => onOtherChange(e.target.value)} placeholder="ระบุรายละเอียด..." className="mt-2 max-w-xs" />
+          )}
+        </div>
+      );
+    }
+
+    case "radio":
+      return (
+        <div>
+          <Label className="text-xs font-medium mb-2 block">{field.fieldLabel}{field.required && <span className="text-destructive ml-0.5">*</span>}</Label>
+          <div className="flex flex-wrap gap-2">
+            {options.map((opt: string) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => onChange(opt)}
+                className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                  value === opt
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-background hover:bg-muted border-border"
+                }`}
+              >
+                {value === opt && <CheckCircle2 className="h-3 w-3 inline mr-1" />}
+                {opt}
+              </button>
+            ))}
+          </div>
+          {field.hasOtherOption && value === "อื่นๆ" && (
+            <Input value={otherValue} onChange={e => onOtherChange(e.target.value)} placeholder="ระบุ..." className="mt-1.5 max-w-xs" />
+          )}
+        </div>
+      );
+
+    case "yes_no":
+      return (
+        <div>
+          <Label className="text-xs font-medium mb-2 block">{field.fieldLabel}</Label>
+          <div className="flex gap-2">
+            {["มี", "ไม่มี"].map(opt => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => onChange(opt)}
+                className={`px-4 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                  value === opt
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-background hover:bg-muted border-border"
+                }`}
+              >
+                {value === opt && <CheckCircle2 className="h-3 w-3 inline mr-1" />}
+                {opt}
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+
+    case "date":
+      return (
+        <div>
+          <Label className="text-xs font-medium">{field.fieldLabel}{field.required && <span className="text-destructive ml-0.5">*</span>}</Label>
+          <Input type="date" value={value} onChange={e => onChange(e.target.value)} className="mt-1" />
+        </div>
+      );
+
+    case "distance": {
+      // Distance fields: parse JSON object { label1: val1, label2: val2, ... }
+      let distObj: Record<string, string> = {};
+      try { distObj = value ? JSON.parse(value) : {}; } catch { distObj = {}; }
+      const distLabels = options.length > 0 ? options : ["ระยะทาง"];
+
+      return (
+        <div className="col-span-2">
+          <Label className="text-xs font-medium mb-2 block">{field.fieldLabel}{field.required && <span className="text-destructive ml-0.5">*</span>}</Label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {distLabels.map((label: string) => (
+              <div key={label}>
+                <Label className="text-[10px] text-muted-foreground">{label}</Label>
+                <Input
+                  value={distObj[label] || ""}
+                  onChange={e => {
+                    const newObj = { ...distObj, [label]: e.target.value };
+                    onChange(JSON.stringify(newObj));
+                  }}
+                  placeholder="เมตร"
+                  className="mt-0.5"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    default:
+      return (
+        <div>
+          <Label className="text-xs font-medium">{field.fieldLabel}</Label>
+          <Input value={value} onChange={e => onChange(e.target.value)} className="mt-1" />
+        </div>
+      );
+  }
 }

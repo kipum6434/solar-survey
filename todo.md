@@ -1036,3 +1036,32 @@
 
 ### Feature: เพิ่มประเภทระบบ "Hybrid"
 - [x] เพิ่ม "hybrid" ใน systemType enum (schema + migration + server router + frontend dropdowns + PDF labels)
+
+### Feature: ระบบ Gulf Channel + Dynamic Template ฟอร์มสำรวจ
+
+## รอบ 1: ระบบ Template ฟอร์ม
+- [x] สร้าง DB table: survey_templates (id, name, sourceId, pdfHeaderTitle, pdfHeaderSubtitle, pdfLogoUrl, createdAt, updatedAt)
+- [x] สร้าง DB table: survey_template_fields (id, templateId, fieldName, fieldType, fieldOptions JSON, sortOrder, required, createdAt)
+- [x] สร้าง DB table: survey_template_data (surveyId, templateId, fieldId, value, otherValue)
+- [x] Migration SQL apply via webdev_execute_sql
+- [x] Server: db helpers สำหรับ CRUD template + fields
+- [x] Server: tRPC routers สำหรับ template management (create, update, delete, list, getById, reorderField- [x] Frontend: หน้าจัดการ Template ฟอร์ม (สร้าง/แก้ไข/ลบ template)
+- [x] Frontend: เพิ่ม/ลบ/แก้ไขฟิลด์ใน template (text, number, checkbox, select, distance)
+- [x] Frontend: ลากจัดลำดับฟิลด์ (drag & drop)
+- [x] Frontend: ผูก template กับแหล่งที่มา (source)
+- [x] Frontend: ตั้งค่า PDF header/subtitle/โลโก้ใน template)
+
+## รอบ 2: ฟอร์มสำรวจ Gulf + Dynamic Fields
+- [x] สร้าง DB table: survey_template_data (id, surveyId, templateId, fieldId, value JSON, createdAt, updatedAt)
+- [x] Migration SQL apply
+- [x] Server: db helpers + tRPC routers สำหรับ save/load template data
+- [x] Frontend: ฟอร์มสำรวจ Gulf แสดงฟิลด์ตาม template อัตโนมัติ
+- [x] Frontend: checkbox "อื่นๆ" มีช่องกรอกเพิ่มเติม
+- [x] Frontend: บันทึก/โหลดข้อมูลฟอร์ม Gulf
+
+## รอบ 3: Sidebar Gulf + หมายเหตุรูป + PDF Export
+- [x] เพิ่ม Sidebar เมนู Gulf (ลูกค้า/สำรวจ/ติดตาม/ติดตั้ง Gulf)
+- [x] หน้ารายการ Gulf filter เฉพาะ source = Gulf
+- [x] เพิ่มช่องหมายเหตุ (caption) ใต้รูปภาพ (DB + UI)
+- [x] หมายเหตุรูปแสดงใน PDF ด้วย
+- [x] สร้าง PDF Export แบบ Gulf (ใช้ header/โลโก้จาก template, ฟิลด์ตาม template, รูป+caption)

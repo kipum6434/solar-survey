@@ -27,6 +27,11 @@ import LineSettings from "./pages/LineSettings";
 import FollowUps from "./pages/FollowUps";
 import CompanySettings from "./pages/CompanySettings";
 import Approvals from "./pages/Approvals";
+import SurveyTemplates from "./pages/SurveyTemplates";
+import GulfCustomers from "./pages/gulf/GulfCustomers";
+import GulfSurveys from "./pages/gulf/GulfSurveys";
+import GulfFollowUps from "./pages/gulf/GulfFollowUps";
+import GulfInstallations from "./pages/gulf/GulfInstallations";
 
 function Router() {
   return (
@@ -52,6 +57,11 @@ function Router() {
       <Route path={"/follow-ups"} component={FollowUps} />
       <Route path={"/line-settings"} component={LineSettings} />
       <Route path={"/company-settings"} component={CompanySettings} />
+      <Route path={"/survey-templates"} component={SurveyTemplates} />
+      <Route path={"/gulf/customers"} component={GulfCustomers} />
+      <Route path={"/gulf/surveys"} component={GulfSurveys} />
+      <Route path={"/gulf/follow-ups"} component={GulfFollowUps} />
+      <Route path={"/gulf/installations"} component={GulfInstallations} />
       <Route path={"/share/:token"} component={SharedSurvey} />
       <Route path={"/survey-field/:token"} component={SharedSurveyField} />
       <Route path={"/404"} component={NotFound} />

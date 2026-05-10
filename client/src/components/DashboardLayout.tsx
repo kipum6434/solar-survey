@@ -11,12 +11,15 @@ import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
+  SidebarSeparator,
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -45,6 +48,9 @@ import {
   PhoneCall,
   Building2,
   FileCheck,
+  FileText,
+  Zap,
+  ChevronDown,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation, Redirect } from "wouter";
@@ -70,8 +76,16 @@ const baseMenuItems = [
   { icon: FolderOpen, label: "จัดการไฟล์", path: "/file-management" },
   { icon: CalendarDays, label: "ปฏิทิน", path: "/calendar" },
   { icon: MessageSquare, label: "ตั้งค่า LINE", path: "/line-settings", superadminOnly: true },
+  { icon: FileText, label: "Template ฟอร์ม", path: "/survey-templates" },
   { icon: Building2, label: "ตั้งค่าบริษัท", path: "/company-settings" },
   { icon: Bell, label: "แจ้งเตือน", path: "/notifications" },
+];
+
+const gulfMenuItems = [
+  { icon: Users, label: "ลูกค้า Gulf", path: "/gulf/customers" },
+  { icon: ClipboardList, label: "งานสำรวจ Gulf", path: "/gulf/surveys" },
+  { icon: PhoneCall, label: "งานติดตาม Gulf", path: "/gulf/follow-ups" },
+  { icon: Wrench, label: "งานติดตั้ง Gulf", path: "/gulf/installations" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -136,8 +150,9 @@ function DashboardLayoutContent({
     if ((item as any).superadminOnly && user?.role !== "superadmin") return false;
     return true;
   });
-  const activeMenuItem = menuItems.find((item) => item.path === location);
+  const activeMenuItem = menuItems.find((item) => item.path === location) || gulfMenuItems.find((item) => item.path === location);
   const isMobile = useIsMobile();
+  const [gulfExpanded, setGulfExpanded] = useState(() => location.startsWith("/gulf/"));
 
   const { data: unreadCount } = trpc.notification.unreadCount.useQuery(undefined, {
     refetchInterval: 30000,
@@ -248,6 +263,51 @@ function DashboardLayoutContent({
                 );
               })}
             </SidebarMenu>
+
+            {/* Gulf Channel Section */}
+            <SidebarSeparator className="my-2" />
+            <SidebarGroup className="p-0">
+              <SidebarMenuButton
+                onClick={() => setGulfExpanded(!gulfExpanded)}
+                tooltip="Gulf"
+                className={`h-10 transition-all font-normal rounded-lg mx-0 ${
+                  location.startsWith("/gulf/")
+                    ? "text-blue-600 font-medium"
+                    : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                }`}
+              >
+                <Zap className="h-4 w-4 text-blue-500" />
+                <span className="flex-1 font-semibold">Gulf</span>
+                <ChevronDown className={`h-3 w-3 transition-transform ${gulfExpanded ? "" : "-rotate-90"}`} />
+              </SidebarMenuButton>
+              {gulfExpanded && (
+                <SidebarMenu className="pl-2">
+                  {gulfMenuItems.map((item) => {
+                    const isActive = location.startsWith(item.path);
+                    return (
+                      <SidebarMenuItem key={item.path}>
+                        <SidebarMenuButton
+                          isActive={isActive}
+                          onClick={() => setLocation(item.path)}
+                          tooltip={item.label}
+                          className={`h-9 transition-all font-normal rounded-lg ${
+                            isActive
+                              ? "bg-blue-50 text-blue-700 font-medium"
+                              : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                          }`}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span className="flex-1">{item.label.replace(" Gulf", "")}</span>
+                          {isActive && !isCollapsed && (
+                            <ChevronRight className="h-3 w-3 opacity-50" />
+                          )}
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              )}
+            </SidebarGroup>
           </SidebarContent>
 
           <SidebarFooter className="p-3 bg-sidebar">

@@ -218,6 +218,13 @@
       "when": 1777972208884,
       "tag": "0030_illegal_spyke",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "5",
+      "when": 1778383497121,
+      "tag": "0031_glossy_ares",
+      "breakpoints": true
     }
   ]
 }

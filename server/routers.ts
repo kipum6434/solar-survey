@@ -869,6 +869,13 @@ const photoRouter = router({
       return { success: true };
     }),
 
+  updateCaption: protectedProcedure
+    .input(z.object({ id: z.number(), caption: z.string().nullable() }))
+    .mutation(async ({ input }) => {
+      await db.updateSurveyPhotoCaption(input.id, input.caption);
+      return { success: true };
+    }),
+
   reorder: publicProcedure
     .input(z.object({ items: z.array(z.object({ id: z.number(), sortOrder: z.number() })).min(1).max(500) }))
     .mutation(async ({ input }) => {
@@ -985,6 +992,7 @@ const followUpRouter = router({
       endDate: z.number().optional(),
       page: z.number().default(1),
       limit: z.number().default(50),
+      source: z.string().optional(),
     }))
     .query(({ input }) => db.getSurveysForFollowUp(input)),
 
@@ -1684,6 +1692,7 @@ const installationRouter = router({
       closerId: z.number().optional(),
       installerTeamId: z.number().optional(),
       installationStatus: z.enum(['all', 'upcoming', 'today', 'overdue', 'completed']).optional(),
+      source: z.string().optional(),
     }))
     .query(async ({ input, ctx }) => {
       const scope = await getUserScope(ctx.user);
@@ -1691,8 +1700,7 @@ const installationRouter = router({
       return db.getInstallations({ ...rest, installationStatus: installationStatus === 'all' ? undefined : installationStatus, scopedSurveyIds: scope?.surveyIds });
     }),
 });
-
-// ==================== DOCUMENT CATEGORY ROUTER ====================
+// ==================== DOCUMENT CATEGORY ROUTERR ====================
 const documentCategoryRouter = router({
   list: publicProcedure
     .query(() => db.getDocumentCategories()),
@@ -2520,6 +2528,174 @@ const companySettingsRouter = router({
   }),
 });
 
+// ==================== SURVEY TEMPLATE ROUTER ====================
+const surveyTemplateRouter = router({
+  list: protectedProcedure.query(async () => {
+    const templates = await db.getSurveyTemplates();
+    return templates;
+  }),
+
+  getById: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      const template = await db.getSurveyTemplateById(input.id);
+      if (!template) throw new TRPCError({ code: "NOT_FOUND", message: "Template not found" });
+      const fields = await db.getTemplateFields(input.id);
+      return { ...template, fields };
+    }),
+
+  getBySourceId: protectedProcedure
+    .input(z.object({ sourceId: z.number() }))
+    .query(async ({ input }) => {
+      const template = await db.getSurveyTemplateBySourceId(input.sourceId);
+      if (!template) return null;
+      const fields = await db.getTemplateFields(template.id);
+      return { ...template, fields };
+    }),
+
+  getBySourceName: protectedProcedure
+    .input(z.object({ sourceName: z.string() }))
+    .query(async ({ input }) => {
+      // Find source by name, then find template by sourceId
+      const allSources = await db.getSources();
+      const source = allSources.find((s: any) => s.name === input.sourceName);
+      if (!source) return null;
+      const template = await db.getSurveyTemplateBySourceId(source.id);
+      if (!template) return null;
+      const fields = await db.getTemplateFields(template.id);
+      return { ...template, fields };
+    }),
+
+  create: adminProcedure
+    .input(z.object({
+      name: z.string().min(1),
+      sourceId: z.number().nullable().optional(),
+      pdfHeaderTitle: z.string().optional(),
+      pdfHeaderSubtitle: z.string().optional(),
+      pdfLogoUrl: z.string().optional(),
+      pdfLogoFileKey: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      return db.createSurveyTemplate({ ...input, createdBy: ctx.user.id });
+    }),
+
+  update: adminProcedure
+    .input(z.object({
+      id: z.number(),
+      name: z.string().min(1).optional(),
+      sourceId: z.number().nullable().optional(),
+      pdfHeaderTitle: z.string().nullable().optional(),
+      pdfHeaderSubtitle: z.string().nullable().optional(),
+      pdfLogoUrl: z.string().nullable().optional(),
+      pdfLogoFileKey: z.string().nullable().optional(),
+      isActive: z.boolean().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await db.updateSurveyTemplate(id, data);
+      return { success: true };
+    }),
+
+  delete: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await db.deleteSurveyTemplate(input.id);
+      return { success: true };
+    }),
+
+  uploadLogo: adminProcedure
+    .input(z.object({
+      templateId: z.number(),
+      fileName: z.string(),
+      base64: z.string(),
+      mimeType: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      const buffer = Buffer.from(input.base64, "base64");
+      const fileKey = `template-logos/${input.templateId}-${Date.now()}-${input.fileName}`;
+      const { url } = await storagePut(fileKey, buffer, input.mimeType);
+      await db.updateSurveyTemplate(input.templateId, { pdfLogoUrl: url, pdfLogoFileKey: fileKey });
+      return { url, fileKey };
+    }),
+
+  // Field management
+  addField: adminProcedure
+    .input(z.object({
+      templateId: z.number(),
+      fieldName: z.string().min(1),
+      fieldLabel: z.string().min(1),
+      fieldType: z.enum(["text", "number", "textarea", "select", "checkbox", "checkbox_group", "radio", "date", "distance", "yes_no", "section_header"]),
+      fieldOptions: z.string().nullable().optional(),
+      hasOtherOption: z.boolean().optional(),
+      placeholder: z.string().optional(),
+      defaultValue: z.string().optional(),
+      required: z.boolean().optional(),
+      sectionGroup: z.string().optional(),
+      sortOrder: z.number().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      return db.createTemplateField(input);
+    }),
+
+  updateField: adminProcedure
+    .input(z.object({
+      id: z.number(),
+      fieldName: z.string().min(1).optional(),
+      fieldLabel: z.string().min(1).optional(),
+      fieldType: z.enum(["text", "number", "textarea", "select", "checkbox", "checkbox_group", "radio", "date", "distance", "yes_no", "section_header"]).optional(),
+      fieldOptions: z.string().nullable().optional(),
+      hasOtherOption: z.boolean().optional(),
+      placeholder: z.string().nullable().optional(),
+      defaultValue: z.string().nullable().optional(),
+      required: z.boolean().optional(),
+      sectionGroup: z.string().nullable().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await db.updateTemplateField(id, data);
+      return { success: true };
+    }),
+
+  deleteField: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await db.deleteTemplateField(input.id);
+      return { success: true };
+    }),
+
+  reorderFields: adminProcedure
+    .input(z.object({
+      templateId: z.number(),
+      fieldIds: z.array(z.number()),
+    }))
+    .mutation(async ({ input }) => {
+      await db.reorderTemplateFields(input.templateId, input.fieldIds);
+      return { success: true };
+    }),
+
+  // Template data (filled values for a survey)
+  getData: protectedProcedure
+    .input(z.object({ surveyId: z.number() }))
+    .query(async ({ input }) => {
+      return db.getTemplateDataBySurvey(input.surveyId);
+    }),
+
+  saveData: protectedProcedure
+    .input(z.object({
+      surveyId: z.number(),
+      templateId: z.number(),
+      entries: z.array(z.object({
+        fieldId: z.number(),
+        value: z.string().nullable(),
+        otherValue: z.string().nullable(),
+      })),
+    }))
+    .mutation(async ({ input }) => {
+      await db.saveTemplateData(input.surveyId, input.templateId, input.entries);
+      return { success: true };
+    }),
+});
+
 // ==================== APP ROUTER ====================
 export const appRouter = router({
   system: systemRouter,
@@ -2559,6 +2735,7 @@ export const appRouter = router({
   lineSettings: lineSettingsRouter,
   gallery: galleryRouter,
   companySettings: companySettingsRouter,
+  surveyTemplate: surveyTemplateRouter,
   util: router({
     proxyImage: publicProcedure
       .input(z.object({ url: z.string().url() }))

@@ -50,11 +50,12 @@ const BATTERY_MAP: Record<string, string> = {
   undecided: "ยังไม่ตัดสินใจ",
 };
 
-export default function Surveys() {
+export default function Surveys(props: any) {
+  const gulfMode = props?.gulfMode ?? false;
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [sourceFilter, setSourceFilter] = useState("");
+  const [sourceFilter, setSourceFilter] = useState(gulfMode ? "Gulf" : "");
   const [surveyorFilter, setSurveyorFilter] = useState("");
   const [adminSenderFilter, setAdminSenderFilter] = useState("");
   const [closerFilter, setCloserFilter] = useState("");
@@ -279,8 +280,8 @@ export default function Surveys() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">งานสำรวจ</h1>
-            <p className="text-sm text-muted-foreground mt-1">จัดการงานสำรวจทั้งหมด</p>
+            <h1 className="text-2xl font-bold tracking-tight">{gulfMode ? "งานสำรวจ Gulf" : "งานสำรวจ"}</h1>
+            <p className="text-sm text-muted-foreground mt-1">{gulfMode ? "จัดการงานสำรวจ Gulf" : "จัดการงานสำรวจทั้งหมด"}</p>
           </div>
           <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
             <Download className="h-4 w-4" />
@@ -351,17 +352,19 @@ export default function Surveys() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v === "_all" ? "" : v); setPage(1); }}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="แหล่งที่มา" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="_all">ทุกแหล่งที่มา</SelectItem>
-              {(sourcesData || []).map((s: any) => (
-                <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {!gulfMode && (
+            <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v === "_all" ? "" : v); setPage(1); }}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="แหล่งที่มา" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">ทุกแหล่งที่มา</SelectItem>
+                {(sourcesData || []).map((s: any) => (
+                  <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           {/* Role filters */}
           <Select value={surveyorFilter} onValueChange={(v) => { setSurveyorFilter(v === "_all" ? "" : v); setPage(1); }}>
             <SelectTrigger className="w-[140px]">
