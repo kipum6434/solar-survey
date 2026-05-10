@@ -146,9 +146,11 @@ export default function SurveyDetail() {
 
   const [showUploadOptions, setShowUploadOptions] = useState(false);
   const [uploadCategory, setUploadCategory] = useState<string>("other");
+  const [uploadCaption, setUploadCaption] = useState("");
 
   const startUpload = (categoryKey: string) => {
     setUploadCategory(categoryKey);
+    setUploadCaption("");
     setShowUploadOptions(true);
   };
 
@@ -288,6 +290,7 @@ export default function SurveyDetail() {
           customerId: data.customer.id,
           fileName: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${item.fileName}`,
           category: uploadCategory as any,
+          caption: uploadCaption.trim() || undefined,
           base64Data: item.base64,
           mimeType: item.originalFile?.type?.startsWith("image/") ? "image/jpeg" : (item.originalFile?.type || "image/jpeg"),
         });
@@ -998,6 +1001,15 @@ export default function SurveyDetail() {
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3 py-2">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">หมายเหตุ (ไม่บังคับ)</label>
+              <Input
+                placeholder="เช่น มุมหลังคาด้านทิศตะวันออก"
+                value={uploadCaption}
+                onChange={(e) => setUploadCaption(e.target.value)}
+                className="text-sm"
+              />
+            </div>
             <Button variant="outline" className="w-full gap-2 h-12" onClick={startCameraUpload}>
               <Camera className="h-5 w-5" /> ถ่ายรูปจากกล้อง
             </Button>

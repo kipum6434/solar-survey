@@ -440,7 +440,7 @@ function buildKeyValueGrid(items: { key: string; value: string }[]): any {
   };
 }
 
-function buildPhotoGrid(photos: { data: string; label: string; width?: number; height?: number }[], borderColor: string = "#d4d4d4"): any[] {
+function buildPhotoGrid(photos: { data: string; label: string; caption?: string | null; width?: number; height?: number }[], borderColor: string = "#d4d4d4"): any[] {
   // Build individual rows as separate tables so each row won't break across pages
   const COLS = 3;
   const result: any[] = [];
@@ -491,10 +491,14 @@ function buildPhotoGrid(photos: { data: string; label: string; width?: number; h
             vLineAlignment: () => "center",
           },
         });
+        const labelParts: any[] = [
+          { text: photos[idx].label, fontSize: 7, color: "#646464" },
+        ];
+        if (photos[idx].caption) {
+          labelParts.push({ text: "\n" + photos[idx].caption, fontSize: 7, color: "#333333", italics: true });
+        }
         labelRow.push({
-          text: photos[idx].label,
-          fontSize: 7,
-          color: "#646464",
+          text: labelParts,
           alignment: "center" as const,
           margin: [0, 2, 0, 6] as number[],
         });
@@ -624,7 +628,7 @@ export async function exportSurveyPDF(
         })
       : photos;
 
-    const loadedPhotos: { data: string; label: string; width?: number; height?: number }[] = [];
+    const loadedPhotos: { data: string; label: string; caption?: string | null; width?: number; height?: number }[] = [];
 
     for (let i = 0; i < sortedPhotos.length; i++) {
       onProgress?.(`กำลังโหลดรูปภาพ ${i + 1}/${sortedPhotos.length}...`);
@@ -632,7 +636,7 @@ export async function exportSurveyPDF(
       const catLabel = categoryMap[sortedPhotos[i].category || "other"] || sortedPhotos[i].category || "อื่นๆ";
 
       if (imgResult) {
-        loadedPhotos.push({ data: imgResult.data, label: catLabel, width: imgResult.width, height: imgResult.height });
+        loadedPhotos.push({ data: imgResult.data, label: catLabel, caption: sortedPhotos[i].caption, width: imgResult.width, height: imgResult.height });
       }
     }
 
@@ -778,7 +782,7 @@ export async function exportInstallationPDF(
         })
       : installPhotos;
 
-    const loadedPhotos: { data: string; label: string; width?: number; height?: number }[] = [];
+    const loadedPhotos: { data: string; label: string; caption?: string | null; width?: number; height?: number }[] = [];
 
     for (let i = 0; i < sortedPhotos.length; i++) {
       onProgress?.(`กำลังโหลดรูปภาพ ${i + 1}/${sortedPhotos.length}...`);
@@ -786,7 +790,7 @@ export async function exportInstallationPDF(
       const catLabel = categoryMap[sortedPhotos[i].category || "other"] || sortedPhotos[i].category || "อื่นๆ";
 
       if (imgResult) {
-        loadedPhotos.push({ data: imgResult.data, label: catLabel, width: imgResult.width, height: imgResult.height });
+        loadedPhotos.push({ data: imgResult.data, label: catLabel, caption: sortedPhotos[i].caption, width: imgResult.width, height: imgResult.height });
       }
     }
 

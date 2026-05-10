@@ -300,13 +300,18 @@ export default function SharedSurvey() {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 {photosData.map((photo: any) => (
-                  <div key={photo.id} className="relative rounded-lg overflow-hidden bg-muted aspect-square cursor-pointer group" onClick={() => setLightboxImg(photo.url)}>
-                    <img src={photo.url} alt={photo.caption || ""} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
-                      <Badge variant="secondary" className="text-[9px] bg-white/80 text-foreground">
-                        {categoryMap[photo.category] || photo.category}
-                      </Badge>
+                  <div key={photo.id} className="flex flex-col">
+                    <div className="relative rounded-lg overflow-hidden bg-muted aspect-square cursor-pointer group" onClick={() => setLightboxImg(photo.url)}>
+                      <img src={photo.url} alt={photo.caption || ""} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                        <Badge variant="secondary" className="text-[9px] bg-white/80 text-foreground">
+                          {categoryMap[photo.category] || photo.category}
+                        </Badge>
+                      </div>
                     </div>
+                    {photo.caption && (
+                      <p className="text-xs text-muted-foreground mt-1 px-1 line-clamp-2 italic">{photo.caption}</p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -738,20 +743,25 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
                   {catPhotos.length > 0 ? (
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                       {catPhotos.map((photo: any) => (
-                        <div key={photo.id} className="relative rounded-lg overflow-hidden bg-muted aspect-square group">
-                          <img
-                            src={photo.url}
-                            alt={photo.caption || cat.label}
-                            className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform"
-                            onClick={() => setLightboxImg(photo.url)}
-                          />
-                          {canUpload && (
-                            <button
-                              className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(photo.id); }}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
+                        <div key={photo.id} className="flex flex-col">
+                          <div className="relative rounded-lg overflow-hidden bg-muted aspect-square group">
+                            <img
+                              src={photo.url}
+                              alt={photo.caption || cat.label}
+                              className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform"
+                              onClick={() => setLightboxImg(photo.url)}
+                            />
+                            {canUpload && (
+                              <button
+                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(photo.id); }}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
+                          {photo.caption && (
+                            <p className="text-xs text-muted-foreground mt-1 px-0.5 line-clamp-2 italic">{photo.caption}</p>
                           )}
                         </div>
                       ))}
@@ -809,20 +819,25 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
               {installPhotos.length > 0 ? (
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                   {installPhotos.map((photo: any) => (
-                    <div key={photo.id} className="relative rounded-lg overflow-hidden bg-muted aspect-square group">
-                      <img
-                        src={photo.url}
-                        alt={photo.caption || "รูปติดตั้ง"}
-                        className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform"
-                        onClick={() => setLightboxImg(photo.url)}
-                      />
-                      {canUpload && (
-                        <button
-                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(photo.id); }}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
+                    <div key={photo.id} className="flex flex-col">
+                      <div className="relative rounded-lg overflow-hidden bg-muted aspect-square group">
+                        <img
+                          src={photo.url}
+                          alt={photo.caption || "รูปติดตั้ง"}
+                          className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform"
+                          onClick={() => setLightboxImg(photo.url)}
+                        />
+                        {canUpload && (
+                          <button
+                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(photo.id); }}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                      {photo.caption && (
+                        <p className="text-xs text-muted-foreground mt-1 px-0.5 line-clamp-2 italic">{photo.caption}</p>
                       )}
                     </div>
                   ))}

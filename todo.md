@@ -1167,3 +1167,9 @@
 - [x] Backend: เพิ่ม mutation photo.updateCaption (photoId + caption)
 - [x] Backend: เพิ่ม function updatePhotoCaption ใน db.ts
 - [x] Frontend: เพิ่ม UI ให้กรอก/แก้ไขหมายเหตุใต้รูปแต่ละรูป
+
+## Feature: หมายเหตุรูป - ปรับปรุงเพิ่มเติม
+
+- [x] PDF export: แสดงหมายเหตุใต้รูปในไฟล์ PDF (buildPhotoGrid รองรับ caption)
+- [x] Upload: เพิ่มช่องหมายเหตุตอนอัปโหลดรูป (uploadCaption state + input field)
+- [x] Share link: แสดงหมายเหตุรูปในหน้าแชร์ลิงก์สาธารณะ (ทั้ง survey photos + install photos)
