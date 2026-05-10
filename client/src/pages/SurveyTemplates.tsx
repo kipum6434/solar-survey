@@ -1,6 +1,6 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
@@ -18,7 +19,10 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, FileText, GripVertical, Upload, Image, ArrowLeft, Eye, EyeOff, Settings2, ChevronRight, Monitor } from "lucide-react";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
+} from "@/components/ui/sheet";
+import { Plus, Pencil, Trash2, FileText, GripVertical, Upload, Image, ArrowLeft, Settings2, ChevronRight, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
@@ -237,15 +241,14 @@ function CreateTemplateDialog({ open, onOpenChange, onCreated }: { open: boolean
   );
 }
 
-// ==================== TEMPLATE EDITOR ====================
+// ==================== WYSIWYG TEMPLATE EDITOR ====================
 function TemplateEditor({ templateId, onBack }: { templateId: number; onBack: () => void }) {
   const { data: template, isLoading, refetch } = trpc.surveyTemplate.getById.useQuery({ id: templateId });
   const { data: sources } = trpc.source.list.useQuery();
-  const [showFieldDialog, setShowFieldDialog] = useState(false);
   const [editingField, setEditingField] = useState<any>(null);
+  const [showAddField, setShowAddField] = useState(false);
   const [deleteFieldTarget, setDeleteFieldTarget] = useState<{ id: number; label: string } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
 
   const deleteFieldMutation = trpc.surveyTemplate.deleteField.useMutation({
     onSuccess: () => { toast.success("ลบฟิลด์สำเร็จ"); refetch(); setDeleteFieldTarget(null); },
@@ -269,11 +272,34 @@ function TemplateEditor({ templateId, onBack }: { templateId: number; onBack: ()
     const newIndex = template.fields.findIndex((f: any) => f.id === over.id);
     if (oldIndex === -1 || newIndex === -1) return;
     const newOrder = arrayMove(template.fields, oldIndex, newIndex);
-    // Optimistic: refetch will correct
     reorderMutation.mutate({ templateId, fieldIds: newOrder.map((f: any) => f.id) }, {
       onSuccess: () => refetch(),
     });
   }, [template?.fields, templateId, reorderMutation, refetch]);
+
+  // Group fields by section headers for WYSIWYG display
+  const groupedFields = useMemo(() => {
+    if (!template?.fields) return [];
+    const groups: { sectionField: any | null; fields: any[] }[] = [];
+    let currentSection: any | null = null;
+    let currentFields: any[] = [];
+
+    template.fields.forEach((field: any) => {
+      if (field.fieldType === "section_header") {
+        if (currentFields.length > 0 || currentSection !== null) {
+          groups.push({ sectionField: currentSection, fields: currentFields });
+        }
+        currentSection = field;
+        currentFields = [];
+      } else {
+        currentFields.push(field);
+      }
+    });
+    if (currentFields.length > 0 || currentSection !== null) {
+      groups.push({ sectionField: currentSection, fields: currentFields });
+    }
+    return groups;
+  }, [template?.fields]);
 
   if (isLoading) {
     return (
@@ -313,60 +339,106 @@ function TemplateEditor({ templateId, onBack }: { templateId: number; onBack: ()
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setShowPreview(true)} className="gap-1.5">
-            <Monitor className="h-4 w-4" /> ดูตัวอย่าง
-          </Button>
           <Button variant="outline" size="sm" onClick={() => setShowSettings(true)} className="gap-1.5">
             <Settings2 className="h-4 w-4" /> ตั้งค่า
           </Button>
-          <Button size="sm" onClick={() => { setEditingField(null); setShowFieldDialog(true); }} className="gap-1.5">
+          <Button size="sm" onClick={() => { setEditingField(null); setShowAddField(true); }} className="gap-1.5">
             <Plus className="h-4 w-4" /> เพิ่มฟิลด์
           </Button>
         </div>
       </div>
 
-      {/* Fields List */}
+      {/* Instruction banner */}
+      <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg px-4 py-2.5 text-sm text-blue-800 dark:text-blue-200">
+        กดที่ฟิลด์ใดก็ได้เพื่อแก้ไข | ลากจุด <GripVertical className="h-3.5 w-3.5 inline -mt-0.5" /> เพื่อเรียงลำดับ | กด <Plus className="h-3.5 w-3.5 inline -mt-0.5" /> เพื่อเพิ่มฟิลด์ใหม่
+      </div>
+
+      {/* WYSIWYG Form Preview */}
       {!template.fields?.length ? (
         <Card className="p-8 text-center">
           <FileText className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
           <p className="text-muted-foreground">ยังไม่มีฟิลด์ใน Template นี้</p>
           <p className="text-sm text-muted-foreground/70 mt-1">เพิ่มฟิลด์เพื่อกำหนดข้อมูลที่ต้องกรอกในฟอร์มสำรวจ</p>
-          <Button size="sm" onClick={() => { setEditingField(null); setShowFieldDialog(true); }} className="mt-4 gap-1.5">
+          <Button size="sm" onClick={() => { setEditingField(null); setShowAddField(true); }} className="mt-4 gap-1.5">
             <Plus className="h-4 w-4" /> เพิ่มฟิลด์แรก
           </Button>
         </Card>
       ) : (
-        <Card className="divide-y">
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={template.fields.map((f: any) => f.id)} strategy={verticalListSortingStrategy}>
-              {template.fields.map((field: any) => (
-                <SortableField
-                  key={field.id}
-                  field={field}
-                  onEdit={() => { setEditingField(field); setShowFieldDialog(true); }}
-                  onDelete={() => setDeleteFieldTarget({ id: field.id, label: field.fieldLabel })}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
+        <Card className="overflow-hidden">
+          {/* PDF Header Preview */}
+          {(template.pdfLogoUrl || template.pdfHeaderTitle) && (
+            <div className="border-b p-4 bg-muted/30">
+              <div className="flex items-center gap-3">
+                {template.pdfLogoUrl && (
+                  <img src={template.pdfLogoUrl} alt="Logo" className="h-10 w-auto" />
+                )}
+                <div>
+                  {template.pdfHeaderTitle && <p className="font-semibold text-sm">{template.pdfHeaderTitle}</p>}
+                  {template.pdfHeaderSubtitle && <p className="text-xs text-muted-foreground">{template.pdfHeaderSubtitle}</p>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Form body with DnD on all fields (flat) */}
+          <div className="p-4 sm:p-6">
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={template.fields.map((f: any) => f.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-1">
+                  {groupedFields.map((group, gi) => (
+                    <div key={gi} className="space-y-1">
+                      {/* Section Header */}
+                      {group.sectionField && (
+                        <SortableWysiwygField
+                          field={group.sectionField}
+                          isSelected={editingField?.id === group.sectionField.id}
+                          onSelect={() => setEditingField(group.sectionField)}
+                          onDelete={() => setDeleteFieldTarget({ id: group.sectionField.id, label: group.sectionField.fieldLabel })}
+                        />
+                      )}
+                      {/* Fields in this section - render in grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-1">
+                        {group.fields.map((field: any) => (
+                          <SortableWysiwygField
+                            key={field.id}
+                            field={field}
+                            isSelected={editingField?.id === field.id}
+                            onSelect={() => setEditingField(field)}
+                            onDelete={() => setDeleteFieldTarget({ id: field.id, label: field.fieldLabel })}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          </div>
         </Card>
       )}
 
-      {/* Field Dialog */}
+      {/* Edit Field Sheet (side panel) */}
+      <Sheet open={!!editingField} onOpenChange={(v) => { if (!v) setEditingField(null); }}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+          {editingField && (
+            <FieldEditPanel
+              field={editingField}
+              templateId={templateId}
+              onSaved={() => { refetch(); }}
+              onClose={() => setEditingField(null)}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Add Field Dialog */}
       <FieldFormDialog
-        open={showFieldDialog}
-        onOpenChange={(v) => { setShowFieldDialog(v); if (!v) setEditingField(null); }}
+        open={showAddField}
+        onOpenChange={(v) => { setShowAddField(v); }}
         templateId={templateId}
-        editingField={editingField}
+        editingField={null}
         currentFieldCount={template.fields?.length || 0}
         onSaved={refetch}
-      />
-
-      {/* Preview Dialog */}
-      <FormPreviewDialog
-        open={showPreview}
-        onOpenChange={setShowPreview}
-        template={template}
       />
 
       {/* Settings Dialog */}
@@ -400,62 +472,364 @@ function TemplateEditor({ templateId, onBack }: { templateId: number; onBack: ()
   );
 }
 
-// ==================== SORTABLE FIELD ITEM ====================
-function SortableField({ field, onEdit, onDelete }: { field: any; onEdit: () => void; onDelete: () => void }) {
+// ==================== SORTABLE WYSIWYG FIELD ====================
+function SortableWysiwygField({ field, isSelected, onSelect, onDelete }: {
+  field: any;
+  isSelected: boolean;
+  onSelect: () => void;
+  onDelete: () => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: field.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
 
   const isSectionHeader = field.fieldType === "section_header";
+  const options = field.fieldOptions ? field.fieldOptions.split(",").map((o: string) => o.trim()).filter(Boolean) : [];
 
-  // กดที่แถวฟิลด์ → เปิดฟอร์มแก้ไข (เหมือนกดปุ่มดินสอ)
-  const handleRowClick = (e: React.MouseEvent) => {
-    // ไม่เปิด edit ถ้ากดปุ่ม delete หรือ drag handle (ปุ่มเหล่านั้นมี stopPropagation เอง)
+  const handleClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
-    if (target.closest('button')) return; // ปุ่มต่างๆ จัดการเอง
-    onEdit();
+    if (target.closest('[data-drag-handle]') || target.closest('[data-delete-btn]')) return;
+    onSelect();
   };
+
+  if (isSectionHeader) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={`relative group cursor-pointer rounded-lg px-3 py-3 mt-4 first:mt-0 transition-all ${
+          isSelected
+            ? "ring-2 ring-primary bg-primary/5"
+            : "hover:bg-accent/40"
+        }`}
+        onClick={handleClick}
+      >
+        <div className="flex items-center gap-2">
+          <button {...attributes} {...listeners} data-drag-handle className="cursor-grab active:cursor-grabbing touch-none p-0.5 text-muted-foreground/40 hover:text-muted-foreground">
+            <GripVertical className="h-4 w-4" />
+          </button>
+          <h3 className="font-bold text-base text-foreground">{field.fieldLabel}</h3>
+          <button
+            data-delete-btn
+            className="ml-auto h-6 w-6 flex items-center justify-center rounded text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 sm:opacity-0 transition-opacity"
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 px-3 py-2.5 sm:px-4 sm:py-3 group cursor-pointer hover:bg-accent/50 transition-colors ${isSectionHeader ? "bg-muted/50 hover:bg-muted/70" : ""}`}
-      onClick={handleRowClick}
+      className={`relative group cursor-pointer rounded-lg p-3 transition-all ${
+        isSelected
+          ? "ring-2 ring-primary bg-primary/5"
+          : "hover:bg-accent/40"
+      }`}
+      onClick={handleClick}
     >
-      <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none p-1 -m-1 text-muted-foreground/40 hover:text-muted-foreground">
-        <GripVertical className="h-4 w-4" />
-      </button>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className={`text-sm ${isSectionHeader ? "font-bold text-foreground" : "font-medium"}`}>
-            {field.fieldLabel}
-          </span>
-          {field.required && <span className="text-xs text-red-500">*</span>}
-        </div>
-        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-          <Badge variant="outline" className="text-[10px] h-5">{getFieldTypeLabel(field.fieldType)}</Badge>
-          {field.sectionGroup && <span className="text-[10px] text-muted-foreground">กลุ่ม: {field.sectionGroup}</span>}
-          {field.hasOtherOption && <Badge variant="secondary" className="text-[10px] h-5">มีช่อง "อื่นๆ"</Badge>}
-          {field.fieldOptions && (
-            <span className="text-[10px] text-muted-foreground truncate max-w-[200px]">
-              ตัวเลือก: {field.fieldOptions}
-            </span>
-          )}
-        </div>
-      </div>
-      <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
-          <Pencil className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
+      {/* Drag handle + delete */}
+      <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button {...attributes} {...listeners} data-drag-handle className="cursor-grab active:cursor-grabbing touch-none p-1 text-muted-foreground/40 hover:text-muted-foreground">
+          <GripVertical className="h-3.5 w-3.5" />
+        </button>
+        <button
+          data-delete-btn
+          className="p-1 text-muted-foreground/40 hover:text-destructive"
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+        >
           <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+        </button>
+      </div>
+
+      {/* Field Label */}
+      <Label className="flex items-center gap-1 text-xs text-muted-foreground mb-1.5 pointer-events-none">
+        {field.fieldLabel}
+        {field.required && <span className="text-red-500">*</span>}
+      </Label>
+
+      {/* Field Preview - shows what the actual form looks like */}
+      <div className="pointer-events-none">
+        {field.fieldType === "text" && (
+          <Input
+            placeholder={field.placeholder || `กรอก${field.fieldLabel}`}
+            defaultValue={field.defaultValue || ""}
+            disabled
+            className="bg-background h-9 text-sm"
+          />
+        )}
+
+        {field.fieldType === "number" && (
+          <Input
+            type="number"
+            placeholder={field.placeholder || "0"}
+            defaultValue={field.defaultValue || ""}
+            disabled
+            className="bg-background h-9 text-sm"
+          />
+        )}
+
+        {field.fieldType === "textarea" && (
+          <Textarea
+            placeholder={field.placeholder || `กรอก${field.fieldLabel}`}
+            defaultValue={field.defaultValue || ""}
+            disabled
+            rows={2}
+            className="bg-background text-sm"
+          />
+        )}
+
+        {field.fieldType === "select" && (
+          <Select disabled defaultValue={field.defaultValue || undefined}>
+            <SelectTrigger className="bg-background h-9 text-sm">
+              <SelectValue placeholder={field.placeholder || "เลือก..."} />
+            </SelectTrigger>
+            <SelectContent>
+              {options.map((opt: string, i: number) => (
+                <SelectItem key={i} value={opt}>{opt}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {field.fieldType === "checkbox" && (
+          <div className="flex items-center gap-2">
+            <Checkbox disabled defaultChecked={field.defaultValue === "true"} />
+            <span className="text-sm text-muted-foreground">{field.placeholder || field.fieldLabel}</span>
+          </div>
+        )}
+
+        {field.fieldType === "checkbox_group" && (
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+            {options.map((opt: string, i: number) => (
+              <div key={i} className="flex items-center gap-1.5">
+                <Checkbox disabled />
+                <span className="text-xs">{opt}</span>
+              </div>
+            ))}
+            {field.hasOtherOption && (
+              <div className="flex items-center gap-1.5">
+                <Checkbox disabled />
+                <span className="text-xs">อื่นๆ:</span>
+                <Input disabled placeholder="ระบุ..." className="h-6 text-xs w-16 bg-background" />
+              </div>
+            )}
+          </div>
+        )}
+
+        {field.fieldType === "radio" && (
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+            {options.map((opt: string, i: number) => (
+              <div key={i} className="flex items-center gap-1.5">
+                <div className="h-3.5 w-3.5 rounded-full border-2 border-muted-foreground/40 shrink-0" />
+                <span className="text-xs">{opt}</span>
+              </div>
+            ))}
+            {field.hasOtherOption && (
+              <div className="flex items-center gap-1.5">
+                <div className="h-3.5 w-3.5 rounded-full border-2 border-muted-foreground/40 shrink-0" />
+                <span className="text-xs">อื่นๆ:</span>
+                <Input disabled placeholder="ระบุ..." className="h-6 text-xs w-16 bg-background" />
+              </div>
+            )}
+          </div>
+        )}
+
+        {field.fieldType === "date" && (
+          <Input
+            type="date"
+            disabled
+            defaultValue={field.defaultValue || ""}
+            className="bg-background h-9 text-sm"
+          />
+        )}
+
+        {field.fieldType === "distance" && (
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              placeholder={field.placeholder || "0"}
+              defaultValue={field.defaultValue || ""}
+              disabled
+              className="bg-background flex-1 h-9 text-sm"
+            />
+            <span className="text-xs text-muted-foreground whitespace-nowrap">เมตร</span>
+          </div>
+        )}
+
+        {field.fieldType === "yes_no" && (
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <div className="h-3.5 w-3.5 rounded-full border-2 border-muted-foreground/40" />
+              <span className="text-xs">"มี"</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="h-3.5 w-3.5 rounded-full border-2 border-muted-foreground/40" />
+              <span className="text-xs">"ไม่มี"</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-// ==================== FIELD FORM DIALOG ====================
+// ==================== FIELD EDIT PANEL (Sheet) ====================
+function FieldEditPanel({ field, templateId, onSaved, onClose }: {
+  field: any;
+  templateId: number;
+  onSaved: () => void;
+  onClose: () => void;
+}) {
+  const [fieldName, setFieldName] = useState(field.fieldName || "");
+  const [fieldLabel, setFieldLabel] = useState(field.fieldLabel || "");
+  const [fieldType, setFieldType] = useState<FieldType>(field.fieldType || "text");
+  const [fieldOptions, setFieldOptions] = useState(field.fieldOptions || "");
+  const [hasOtherOption, setHasOtherOption] = useState(field.hasOtherOption || false);
+  const [placeholder, setPlaceholder] = useState(field.placeholder || "");
+  const [defaultValue, setDefaultValue] = useState(field.defaultValue || "");
+  const [required, setRequired] = useState(field.required || false);
+  const [sectionGroup, setSectionGroup] = useState(field.sectionGroup || "");
+
+  // Reset when field changes
+  useEffect(() => {
+    setFieldName(field.fieldName || "");
+    setFieldLabel(field.fieldLabel || "");
+    setFieldType(field.fieldType || "text");
+    setFieldOptions(field.fieldOptions || "");
+    setHasOtherOption(field.hasOtherOption || false);
+    setPlaceholder(field.placeholder || "");
+    setDefaultValue(field.defaultValue || "");
+    setRequired(field.required || false);
+    setSectionGroup(field.sectionGroup || "");
+  }, [field.id]);
+
+  const updateMutation = trpc.surveyTemplate.updateField.useMutation({
+    onSuccess: () => { toast.success("อัพเดทฟิลด์สำเร็จ"); onSaved(); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const handleSubmit = () => {
+    if (!fieldLabel.trim()) { toast.error("กรุณาระบุชื่อฟิลด์"); return; }
+    const autoName = fieldName.trim() || fieldLabel.trim().replace(/\s+/g, "_").toLowerCase();
+    updateMutation.mutate({
+      id: field.id,
+      fieldName: autoName,
+      fieldLabel: fieldLabel.trim(),
+      fieldType,
+      fieldOptions: fieldOptions.trim() || null,
+      hasOtherOption,
+      placeholder: placeholder.trim() || null,
+      defaultValue: defaultValue.trim() || null,
+      required,
+      sectionGroup: sectionGroup.trim() || null,
+    });
+  };
+
+  const showOptions = ["select", "checkbox_group", "radio"].includes(fieldType);
+  const showOtherOption = ["checkbox_group", "radio", "select"].includes(fieldType);
+  const isSectionHeader = fieldType === "section_header";
+
+  return (
+    <>
+      <SheetHeader className="border-b pb-4">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs shrink-0">{getFieldTypeLabel(field.fieldType)}</Badge>
+          {field.sectionGroup && <Badge variant="secondary" className="text-xs truncate">{field.sectionGroup}</Badge>}
+        </div>
+        <SheetTitle className="text-lg">
+          แก้ไข: {field.fieldLabel}
+        </SheetTitle>
+        <SheetDescription>
+          แก้ไขรายละเอียดฟิลด์นี้ — การเปลี่ยนแปลงจะมีผลกับทุกงานสำรวจที่ใช้ Template นี้
+        </SheetDescription>
+      </SheetHeader>
+
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        <div>
+          <Label>ชื่อฟิลด์ (แสดงในฟอร์ม) *</Label>
+          <Input value={fieldLabel} onChange={e => setFieldLabel(e.target.value)} placeholder="เช่น Installation Capacity" className="mt-1" />
+        </div>
+
+        <div>
+          <Label>ประเภทฟิลด์ *</Label>
+          <Select value={fieldType} onValueChange={v => setFieldType(v as FieldType)}>
+            <SelectTrigger className="mt-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {FIELD_TYPES.map(ft => (
+                <SelectItem key={ft.value} value={ft.value}>{ft.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {showOptions && (
+          <div>
+            <Label>ตัวเลือก (คั่นด้วย , )</Label>
+            <Textarea
+              value={fieldOptions}
+              onChange={e => setFieldOptions(e.target.value)}
+              placeholder="เช่น 3kW 1P, 5kW 1P, 5kW 3P"
+              className="mt-1"
+              rows={3}
+            />
+            <p className="text-xs text-muted-foreground mt-1">แต่ละตัวเลือกคั่นด้วย comma (,)</p>
+          </div>
+        )}
+
+        {showOtherOption && (
+          <div className="flex items-center gap-2">
+            <Checkbox id="hasOther" checked={hasOtherOption} onCheckedChange={(v) => setHasOtherOption(!!v)} />
+            <Label htmlFor="hasOther" className="text-sm cursor-pointer">มีตัวเลือก "อื่นๆ" (ให้กรอกเพิ่ม)</Label>
+          </div>
+        )}
+
+        {!isSectionHeader && (
+          <>
+            <div>
+              <Label>Placeholder</Label>
+              <Input value={placeholder} onChange={e => setPlaceholder(e.target.value)} placeholder="ข้อความตัวอย่างในช่องกรอก" className="mt-1" />
+            </div>
+            <div>
+              <Label>ค่าเริ่มต้น</Label>
+              <Input value={defaultValue} onChange={e => setDefaultValue(e.target.value)} placeholder="ค่าที่กรอกไว้ล่วงหน้า" className="mt-1" />
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox id="required-edit" checked={required} onCheckedChange={(v) => setRequired(!!v)} />
+              <Label htmlFor="required-edit" className="text-sm cursor-pointer">จำเป็นต้องกรอก</Label>
+            </div>
+          </>
+        )}
+
+        <div>
+          <Label>กลุ่ม Section</Label>
+          <Input value={sectionGroup} onChange={e => setSectionGroup(e.target.value)} placeholder="เช่น ข้อมูลโปรเจค, Rooftop Survey" className="mt-1" />
+          <p className="text-xs text-muted-foreground mt-1">ใช้จัดกลุ่มฟิลด์ในฟอร์ม (ไม่บังคับ)</p>
+        </div>
+
+        <div>
+          <Label>Field Name (ระบบ)</Label>
+          <Input value={fieldName} onChange={e => setFieldName(e.target.value)} placeholder="สร้างอัตโนมัติจากชื่อฟิลด์" className="mt-1" />
+          <p className="text-xs text-muted-foreground mt-1">ใช้อ้างอิงในระบบ ถ้าไม่กรอกจะสร้างจากชื่อฟิลด์อัตโนมัติ</p>
+        </div>
+      </div>
+
+      <SheetFooter className="border-t pt-4">
+        <Button variant="outline" onClick={onClose}>ยกเลิก</Button>
+        <Button onClick={handleSubmit} disabled={updateMutation.isPending}>
+          {updateMutation.isPending ? "กำลังบันทึก..." : "บันทึก"}
+        </Button>
+      </SheetFooter>
+    </>
+  );
+}
+
+// ==================== ADD FIELD DIALOG (for new fields) ====================
 function FieldFormDialog({ open, onOpenChange, templateId, editingField, currentFieldCount, onSaved }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -479,24 +853,8 @@ function FieldFormDialog({ open, onOpenChange, templateId, editingField, current
     onError: (e) => toast.error(e.message),
   });
 
-  const updateMutation = trpc.surveyTemplate.updateField.useMutation({
-    onSuccess: () => { toast.success("อัพเดทฟิลด์สำเร็จ"); onOpenChange(false); onSaved(); },
-    onError: (e) => toast.error(e.message),
-  });
-
-  // Reset form when dialog opens
   const handleOpenChange = (v: boolean) => {
-    if (v && editingField) {
-      setFieldName(editingField.fieldName || "");
-      setFieldLabel(editingField.fieldLabel || "");
-      setFieldType(editingField.fieldType || "text");
-      setFieldOptions(editingField.fieldOptions || "");
-      setHasOtherOption(editingField.hasOtherOption || false);
-      setPlaceholder(editingField.placeholder || "");
-      setDefaultValue(editingField.defaultValue || "");
-      setRequired(editingField.required || false);
-      setSectionGroup(editingField.sectionGroup || "");
-    } else if (v && !editingField) {
+    if (v) {
       setFieldName("");
       setFieldLabel("");
       setFieldType("text");
@@ -513,35 +871,19 @@ function FieldFormDialog({ open, onOpenChange, templateId, editingField, current
   const handleSubmit = () => {
     if (!fieldLabel.trim()) { toast.error("กรุณาระบุชื่อฟิลด์"); return; }
     const autoName = fieldName.trim() || fieldLabel.trim().replace(/\s+/g, "_").toLowerCase();
-
-    if (editingField) {
-      updateMutation.mutate({
-        id: editingField.id,
-        fieldName: autoName,
-        fieldLabel: fieldLabel.trim(),
-        fieldType,
-        fieldOptions: fieldOptions.trim() || null,
-        hasOtherOption,
-        placeholder: placeholder.trim() || null,
-        defaultValue: defaultValue.trim() || null,
-        required,
-        sectionGroup: sectionGroup.trim() || null,
-      });
-    } else {
-      addMutation.mutate({
-        templateId,
-        fieldName: autoName,
-        fieldLabel: fieldLabel.trim(),
-        fieldType,
-        fieldOptions: fieldOptions.trim() || undefined,
-        hasOtherOption,
-        placeholder: placeholder.trim() || undefined,
-        defaultValue: defaultValue.trim() || undefined,
-        required,
-        sectionGroup: sectionGroup.trim() || undefined,
-        sortOrder: currentFieldCount,
-      });
-    }
+    addMutation.mutate({
+      templateId,
+      fieldName: autoName,
+      fieldLabel: fieldLabel.trim(),
+      fieldType,
+      fieldOptions: fieldOptions.trim() || undefined,
+      hasOtherOption,
+      placeholder: placeholder.trim() || undefined,
+      defaultValue: defaultValue.trim() || undefined,
+      required,
+      sectionGroup: sectionGroup.trim() || undefined,
+      sortOrder: currentFieldCount,
+    });
   };
 
   const showOptions = ["select", "checkbox_group", "radio"].includes(fieldType);
@@ -551,7 +893,7 @@ function FieldFormDialog({ open, onOpenChange, templateId, editingField, current
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{editingField ? "แก้ไขฟิลด์" : "เพิ่มฟิลด์ใหม่"}</DialogTitle>
+          <DialogTitle>เพิ่มฟิลด์ใหม่</DialogTitle>
           <DialogDescription>กำหนดรายละเอียดฟิลด์สำหรับฟอร์มสำรวจ</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
@@ -576,11 +918,11 @@ function FieldFormDialog({ open, onOpenChange, templateId, editingField, current
 
           {showOptions && (
             <div>
-              <Label>ตัวเลือก (คั่นด้วยเครื่องหมาย , )</Label>
+              <Label>ตัวเลือก (คั่นด้วย , )</Label>
               <Textarea
                 value={fieldOptions}
                 onChange={e => setFieldOptions(e.target.value)}
-                placeholder="เช่น 3 kW 1P, 5 kW 1P, 5 kW 3P, 10 kW 1P, 10 kW 3P"
+                placeholder="เช่น 3kW 1P, 5kW 1P, 5kW 3P"
                 className="mt-1"
                 rows={3}
               />
@@ -590,8 +932,8 @@ function FieldFormDialog({ open, onOpenChange, templateId, editingField, current
 
           {showOtherOption && (
             <div className="flex items-center gap-2">
-              <Checkbox id="hasOther" checked={hasOtherOption} onCheckedChange={(v) => setHasOtherOption(!!v)} />
-              <Label htmlFor="hasOther" className="text-sm cursor-pointer">มีตัวเลือก "อื่นๆ" (ให้กรอกเพิ่ม)</Label>
+              <Checkbox id="hasOtherAdd" checked={hasOtherOption} onCheckedChange={(v) => setHasOtherOption(!!v)} />
+              <Label htmlFor="hasOtherAdd" className="text-sm cursor-pointer">มีตัวเลือก "อื่นๆ" (ให้กรอกเพิ่ม)</Label>
             </div>
           )}
 
@@ -606,8 +948,8 @@ function FieldFormDialog({ open, onOpenChange, templateId, editingField, current
                 <Input value={defaultValue} onChange={e => setDefaultValue(e.target.value)} placeholder="ค่าที่กรอกไว้ล่วงหน้า" className="mt-1" />
               </div>
               <div className="flex items-center gap-2">
-                <Checkbox id="required" checked={required} onCheckedChange={(v) => setRequired(!!v)} />
-                <Label htmlFor="required" className="text-sm cursor-pointer">จำเป็นต้องกรอก</Label>
+                <Checkbox id="requiredAdd" checked={required} onCheckedChange={(v) => setRequired(!!v)} />
+                <Label htmlFor="requiredAdd" className="text-sm cursor-pointer">จำเป็นต้องกรอก</Label>
               </div>
             </>
           )}
@@ -626,8 +968,8 @@ function FieldFormDialog({ open, onOpenChange, templateId, editingField, current
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>ยกเลิก</Button>
-          <Button onClick={handleSubmit} disabled={addMutation.isPending || updateMutation.isPending}>
-            {(addMutation.isPending || updateMutation.isPending) ? "กำลังบันทึก..." : editingField ? "อัพเดท" : "เพิ่มฟิลด์"}
+          <Button onClick={handleSubmit} disabled={addMutation.isPending}>
+            {addMutation.isPending ? "กำลังบันทึก..." : "เพิ่มฟิลด์"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -774,231 +1116,5 @@ function TemplateSettingsDialog({ open, onOpenChange, template, sources, onSaved
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-// ==================== FORM PREVIEW DIALOG ====================
-function FormPreviewDialog({ open, onOpenChange, template }: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  template: any;
-}) {
-  if (!template) return null;
-
-  const fields = template.fields || [];
-
-  // Group fields by sectionGroup
-  const groupedFields: { section: string | null; fields: any[] }[] = [];
-  let currentSection: string | null = null;
-  let currentGroup: any[] = [];
-
-  fields.forEach((field: any) => {
-    if (field.fieldType === "section_header") {
-      if (currentGroup.length > 0 || currentSection !== null) {
-        groupedFields.push({ section: currentSection, fields: currentGroup });
-      }
-      currentSection = field.fieldLabel;
-      currentGroup = [];
-    } else {
-      currentGroup.push(field);
-    }
-  });
-  if (currentGroup.length > 0 || currentSection !== null) {
-    groupedFields.push({ section: currentSection, fields: currentGroup });
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Monitor className="h-5 w-5" /> ตัวอย่างฟอร์ม: {template.name}
-          </DialogTitle>
-          <DialogDescription>
-            แสดงตัวอย่างฟอร์มที่ผู้ใช้จะเห็นเมื่อกรอกข้อมูลสำรวจ (ข้อมูลที่กรอกในตัวอย่างจะไม่ถูกบันทึก)
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-6 py-4">
-          {/* PDF Header Preview */}
-          {(template.pdfLogoUrl || template.pdfHeaderTitle) && (
-            <div className="border rounded-lg p-4 bg-muted/30">
-              <div className="flex items-center gap-3">
-                {template.pdfLogoUrl && (
-                  <img src={template.pdfLogoUrl} alt="Logo" className="h-10 w-auto" />
-                )}
-                <div>
-                  {template.pdfHeaderTitle && <p className="font-semibold text-sm">{template.pdfHeaderTitle}</p>}
-                  {template.pdfHeaderSubtitle && <p className="text-xs text-muted-foreground">{template.pdfHeaderSubtitle}</p>}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Form Fields */}
-          {groupedFields.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <FileText className="h-12 w-12 mx-auto mb-3 opacity-40" />
-              <p>ยังไม่มีฟิลด์ใน Template นี้</p>
-            </div>
-          ) : (
-            groupedFields.map((group, gi) => (
-              <div key={gi} className="space-y-4">
-                {group.section && (
-                  <div className="border-b pb-2">
-                    <h3 className="font-semibold text-base text-foreground">{group.section}</h3>
-                  </div>
-                )}
-                {group.fields.map((field: any) => (
-                  <PreviewField key={field.id} field={field} />
-                ))}
-              </div>
-            ))
-          )}
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>ปิด</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ==================== PREVIEW FIELD RENDERER ====================
-function PreviewField({ field }: { field: any }) {
-  const options = field.fieldOptions ? field.fieldOptions.split(",").map((o: string) => o.trim()).filter(Boolean) : [];
-
-  return (
-    <div className="space-y-1.5">
-      <Label className="flex items-center gap-1">
-        {field.fieldLabel}
-        {field.required && <span className="text-red-500 text-xs">*</span>}
-      </Label>
-
-      {field.fieldType === "text" && (
-        <Input
-          placeholder={field.placeholder || `กรอก${field.fieldLabel}`}
-          defaultValue={field.defaultValue || ""}
-          disabled
-          className="bg-background"
-        />
-      )}
-
-      {field.fieldType === "number" && (
-        <Input
-          type="number"
-          placeholder={field.placeholder || "0"}
-          defaultValue={field.defaultValue || ""}
-          disabled
-          className="bg-background"
-        />
-      )}
-
-      {field.fieldType === "textarea" && (
-        <Textarea
-          placeholder={field.placeholder || `กรอก${field.fieldLabel}`}
-          defaultValue={field.defaultValue || ""}
-          disabled
-          rows={3}
-          className="bg-background"
-        />
-      )}
-
-      {field.fieldType === "select" && (
-        <Select disabled defaultValue={field.defaultValue || undefined}>
-          <SelectTrigger className="bg-background">
-            <SelectValue placeholder={field.placeholder || "เลือก..."} />
-          </SelectTrigger>
-          <SelectContent>
-            {options.map((opt: string, i: number) => (
-              <SelectItem key={i} value={opt}>{opt}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-
-      {field.fieldType === "checkbox" && (
-        <div className="flex items-center gap-2">
-          <Checkbox disabled defaultChecked={field.defaultValue === "true"} />
-          <span className="text-sm text-muted-foreground">{field.placeholder || field.fieldLabel}</span>
-        </div>
-      )}
-
-      {field.fieldType === "checkbox_group" && (
-        <div className="space-y-2">
-          {options.map((opt: string, i: number) => (
-            <div key={i} className="flex items-center gap-2">
-              <Checkbox disabled />
-              <span className="text-sm">{opt}</span>
-            </div>
-          ))}
-          {field.hasOtherOption && (
-            <div className="flex items-center gap-2">
-              <Checkbox disabled />
-              <span className="text-sm">อื่นๆ:</span>
-              <Input disabled placeholder="ระบุ..." className="h-7 text-sm flex-1 bg-background" />
-            </div>
-          )}
-        </div>
-      )}
-
-      {field.fieldType === "radio" && (
-        <div className="space-y-2">
-          {options.map((opt: string, i: number) => (
-            <div key={i} className="flex items-center gap-2">
-              <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/40" />
-              <span className="text-sm">{opt}</span>
-            </div>
-          ))}
-          {field.hasOtherOption && (
-            <div className="flex items-center gap-2">
-              <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/40" />
-              <span className="text-sm">อื่นๆ:</span>
-              <Input disabled placeholder="ระบุ..." className="h-7 text-sm flex-1 bg-background" />
-            </div>
-          )}
-        </div>
-      )}
-
-      {field.fieldType === "date" && (
-        <Input
-          type="date"
-          disabled
-          defaultValue={field.defaultValue || ""}
-          className="bg-background"
-        />
-      )}
-
-      {field.fieldType === "distance" && (
-        <div className="flex items-center gap-2">
-          <Input
-            type="number"
-            placeholder={field.placeholder || "0"}
-            defaultValue={field.defaultValue || ""}
-            disabled
-            className="bg-background flex-1"
-          />
-          <span className="text-sm text-muted-foreground whitespace-nowrap">เมตร</span>
-        </div>
-      )}
-
-      {field.fieldType === "yes_no" && (
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/40" />
-            <span className="text-sm">มี</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/40" />
-            <span className="text-sm">ไม่มี</span>
-          </div>
-        </div>
-      )}
-
-      {field.sectionGroup && (
-        <p className="text-[10px] text-muted-foreground">กลุ่ม: {field.sectionGroup}</p>
-      )}
-    </div>
   );
 }

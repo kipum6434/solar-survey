@@ -1148,3 +1148,11 @@
 - [x] ตรวจสอบ SurveyDetail ว่าโหลดและแสดง template data อย่างไร
 - [x] แก้ไขให้ฟิลด์จาก Template แสดงในหน้าสำรวจที่ผูกกับ source นั้น (เพิ่ม TemplateFieldsCard component)
 - [x] ทดสอบว่าสร้างงานสำรวจใหม่ภายใต้ source ที่ผูก template → ฟิลด์แสดงถูกต้อง
+
+## Feature: Template Editor WYSIWYG — แสดงเป็นฟอร์มจริง
+
+- [x] ปรับ TemplateEditor จากแบบ list เป็นแบบ WYSIWYG form preview
+- [x] แสดงฟิลด์เหมือนหน้า SurveyDetail (text input, radio, checkbox, select, date ฯลฯ)
+- [x] กดที่ฟิลด์ → เปิด Sheet (side panel) ด้านขวา บอกชัดว่ากำลังแก้ไขฟิลด์อะไร
+- [x] ยังสามารถเพิ่ม/ลบ/ลากเรียงฟิลด์ได้
+- [x] Side panel แสดงชื่อฟิลด์ + ประเภท + section ที่กำลังแก้ไขชัดเจน
