@@ -1,6 +1,6 @@
 import { eq, and, or, like, desc, gte, lte, sql, inArray, not, asc, isNotNull, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory, installerTeams, InsertInstallerTeam, deliveryComments, InsertDeliveryComment, lineGroups, InsertLineGroup, lineNotificationTargets, InsertLineNotificationTarget, companySettings, InsertCompanySettings, postponeCancelLogs, InsertPostponeCancelLog, deliveryForms, InsertDeliveryForm, deliveryChecklistTemplates, InsertDeliveryChecklistTemplate, payments, InsertPayment } from "../drizzle/schema";
+import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory, installerTeams, InsertInstallerTeam, deliveryComments, InsertDeliveryComment, lineGroups, InsertLineGroup, lineNotificationTargets, InsertLineNotificationTarget, companySettings, InsertCompanySettings, postponeCancelLogs, InsertPostponeCancelLog, deliveryForms, InsertDeliveryForm, deliveryChecklistTemplates, InsertDeliveryChecklistTemplate, payments, InsertPayment, sourceGroups, InsertSourceGroup } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1107,8 +1107,37 @@ export async function getSourcesWithStats() {
 export async function getSourceGroups() {
   const db = await getDb();
   if (!db) return [];
-  const result = await db.selectDistinct({ groupName: sources.groupName }).from(sources).where(isNotNull(sources.groupName));
-  return result.map(r => r.groupName).filter(Boolean) as string[];
+  const result = await db.select().from(sourceGroups).orderBy(asc(sourceGroups.sortOrder), asc(sourceGroups.id));
+  return result.map(r => r.name);
+}
+
+export async function createSourceGroup(name: string) {
+  const db = await getDb();
+  if (!db) throw new Error('DB not available');
+  // Get max sortOrder
+  const maxResult = await db.select({ maxSort: sql<number>`COALESCE(MAX(sortOrder), 0)` }).from(sourceGroups);
+  const nextSort = (maxResult[0]?.maxSort ?? 0) + 1;
+  await db.insert(sourceGroups).values({ name, sortOrder: nextSort });
+  return { name, sortOrder: nextSort };
+}
+
+export async function deleteSourceGroup(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('DB not available');
+  // Get the group name first
+  const group = await db.select().from(sourceGroups).where(eq(sourceGroups.id, id)).limit(1);
+  if (!group.length) throw new Error('Group not found');
+  // Set sources in this group to NULL
+  await db.update(sources).set({ groupName: null }).where(eq(sources.groupName, group[0].name));
+  // Delete the group
+  await db.delete(sourceGroups).where(eq(sourceGroups.id, id));
+  return { success: true };
+}
+
+export async function getSourceGroupsFull() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(sourceGroups).orderBy(asc(sourceGroups.sortOrder), asc(sourceGroups.id));
 }
 
 // Get all source names belonging to a specific group (case-insensitive match)

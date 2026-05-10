@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS source_groups (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  name VARCHAR(100) NOT NULL UNIQUE,\n  sortOrder INT NOT NULL DEFAULT 0,\n  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP\n);\n\n-- Seed with existing groups\nINSERT IGNORE INTO source_groups (name, sortOrder) VALUES ('TCS', 1), ('Gulf', 2), ('MEA', 3);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute CREATE TABLE IF NOT EXISTS source_groups (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  name VARCHAR(100) NOT NULL UNIQUE,\n  sortOrder INT NOT NULL DEFAULT 0,\n  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP\n);\n\n-- Seed with existing groups\nINSERT IGNORE INTO source_groups (name, sortOrder) VALUES ('TCS', 1), ('Gulf', 2), ('MEA', 3);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2016
+}

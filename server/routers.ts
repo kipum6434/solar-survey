@@ -1457,10 +1457,14 @@ const sourceRouter = router({
   createGroup: adminProcedure
     .input(z.object({ name: z.string().min(1) }))
     .mutation(async ({ input }) => {
-      // Groups are just distinct groupName values on sources, no separate table needed
-      // This just validates the name is non-empty
-      return { name: input.name };
+      return await db.createSourceGroup(input.name);
     }),
+  deleteGroup: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      return await db.deleteSourceGroup(input.id);
+    }),
+  listGroupsFull: protectedProcedure.query(() => db.getSourceGroupsFull()),
   delete: adminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {

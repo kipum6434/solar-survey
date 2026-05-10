@@ -141,6 +141,17 @@ export const sources = mysqlTable("sources", {
 export type Source = typeof sources.$inferSelect;
 export type InsertSource = typeof sources.$inferInsert;
 
+// ==================== SOURCE GROUPS ====================
+export const sourceGroups = mysqlTable("source_groups", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull().unique(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SourceGroup = typeof sourceGroups.$inferSelect;
+export type InsertSourceGroup = typeof sourceGroups.$inferInsert;
+
 // ==================== SURVEY ASSIGNMENTS (Multi-assign) ====================
 export const surveyAssignments = mysqlTable("survey_assignments", {
   id: int("id").autoincrement().primaryKey(),

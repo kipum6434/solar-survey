@@ -1116,3 +1116,12 @@
 - [x] Sidebar ลำดับผิด — แก้ sort TCS ก่อน, Gulf, MEA
 - [x] /survey-templates → 404 — ย้าย route ไปก่อน wildcard
 - [x] Source Management มี sidebar + จำนวนลูกค้าแสดงถูกต้อง (DB คืนค่าถูก ต้อง publish ใหม่)
+
+## Feature: ปรับปรุงหน้าจัดการแหล่งที่มา (Source Management Enhancement)
+
+- [x] ปุ่ม "สร้างกลุ่มใหม่" — สร้างกลุ่มได้โดยไม่ต้องเปลี่ยน source ก่อน
+- [x] Backend: API สร้างกลุ่มใหม่แบบ standalone (source.createGroup + source_groups table)
+- [x] Drag & Drop — ลาก source ย้ายระหว่างกลุ่มได้
+- [x] ติดตั้ง @dnd-kit/core + @dnd-kit/sortable
+- [x] UI: แสดง source แยกตามกลุ่ม (Kanban-style columns)
+- [x] เมื่อลาก source ไปวางในกลุ่มอื่น จะอัปเดต groupName อัตโนมัติ
