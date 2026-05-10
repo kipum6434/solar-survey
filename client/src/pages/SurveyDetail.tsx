@@ -16,7 +16,7 @@ import { SURVEY_STATUS_MAP, INSTALLATION_STATUS_MAP, DOC_TYPE_MAP, FOLLOW_UP_MET
 import { formatPhone } from "@/lib/formatPhone";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useParams, useLocation } from "wouter";
-import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import React, { useState, useRef, useCallback, useEffect, useMemo, useContext, createContext } from "react";
 import { compressImages } from "@/lib/imageCompression";
 import { useUploadWithRetry } from "@/hooks/useUploadWithRetry";
 import { UploadStatusBar } from "@/components/UploadStatusBar";
@@ -630,70 +630,15 @@ export default function SurveyDetail() {
                 </div>
               </CardHeader>
               <CardContent>
-                {allPhotoCategories.length > 0 ? (
-                  <div className="space-y-6">
-                    {allPhotoCategories.map((catKey) => {
-                      const catPhotos = photosByCategory[catKey] || [];
-                      return (
-                        <div key={catKey}>
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="text-sm font-medium flex items-center gap-2">
-                              <Camera className="h-4 w-4 text-muted-foreground" />
-                              {categoryMap[catKey] || catKey}
-                              <Badge variant="secondary" className="text-[10px]">{catPhotos.length}</Badge>
-                            </h4>
-                            <div className="flex items-center gap-1.5">
-                              <Button variant="outline" size="sm" className="text-xs gap-1 h-7" onClick={() => startUpload(catKey)} disabled={uploadState.isUploading}>
-                                <Camera className="h-3 w-3" /> ถ่ายรูป
-                              </Button>
-                              <Button size="sm" className="text-xs gap-1 h-7" onClick={() => startUpload(catKey)} disabled={uploadState.isUploading}>
-                                <Upload className="h-3 w-3" /> เลือกรูป
-                              </Button>
-                            </div>
-                          </div>
-                          {catPhotos.length > 0 ? (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                              {catPhotos.map((photo: any) => (
-                                <div key={photo.id} className="flex flex-col">
-                                  <div className="group relative rounded-lg overflow-hidden bg-muted aspect-square">
-                                    <img src={photo.url} alt={photo.caption || photo.fileName} className="w-full h-full object-cover cursor-pointer" onClick={() => setLightboxImg(photo.url)} loading="lazy" />
-                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-end">
-                                      <div className="w-full p-2 translate-y-full group-hover:translate-y-0 transition-transform">
-                                        <div className="flex items-center justify-end gap-1">
-                                          <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-white" onClick={() => setLightboxImg(photo.url)}>
-                                            <Eye className="h-3 w-3" />
-                                          </Button>
-                                          <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-red-100" onClick={(e) => { e.stopPropagation(); setConfirmDeletePhoto(photo.id); }}>
-                                            <Trash2 className="h-3 w-3 text-destructive" />
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <PhotoCaptionInput photoId={photo.id} initialCaption={photo.caption || ""} />
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="text-center py-6 rounded-lg bg-muted/30 border border-dashed">
-                              <Image className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                              <p className="text-xs text-muted-foreground">ยังไม่มีรูปในหมวดนี้</p>
-                              <Button variant="outline" size="sm" className="mt-2 text-xs gap-1" onClick={() => startUpload(catKey)} disabled={uploadState.isUploading}>
-                                <Upload className="h-3 w-3" /> อัปโหลดรูป
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Image className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                    <p className="text-sm">ยังไม่มีรูปภาพ</p>
-                    <p className="text-xs mt-1">กดปุ่มถ่ายรูปหรือเลือกรูปในแต่ละหมวดเพื่อเพิ่มรูปภาพหน้างาน</p>
-                  </div>
-                )}
+                <PhotoSectionWithSaveAll
+                  allPhotoCategories={allPhotoCategories}
+                  photosByCategory={photosByCategory}
+                  categoryMap={categoryMap}
+                  startUpload={startUpload}
+                  uploadState={uploadState}
+                  setLightboxImg={setLightboxImg}
+                  setConfirmDeletePhoto={setConfirmDeletePhoto}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -1990,12 +1935,62 @@ function ShareLinkList({ links, linkType, onRevoke }: { links: any[]; linkType: 
 
 
 // ==================== PHOTO CAPTION INPUT ====================
-function PhotoCaptionInput({ photoId, initialCaption }: { photoId: number; initialCaption: string }) {
+// Shared state for tracking dirty captions across all photos in a survey
+const CaptionContext = createContext<{
+  register: (id: number, getDirty: () => { id: number; caption: string | null } | null) => void;
+  unregister: (id: number) => void;
+} | null>(null);
+
+function CaptionProvider({ children, onDirtyChange }: { children: React.ReactNode; onDirtyChange: (hasDirty: boolean) => void }) {
+  const registryRef = useRef<Map<number, () => { id: number; caption: string | null } | null>>(new Map());
+
+  const register = useCallback((id: number, getDirty: () => { id: number; caption: string | null } | null) => {
+    registryRef.current.set(id, getDirty);
+  }, []);
+
+  const unregister = useCallback((id: number) => {
+    registryRef.current.delete(id);
+  }, []);
+
+  const value = useMemo(() => ({ register, unregister }), [register, unregister]);
+
+  return (
+    <CaptionContext.Provider value={value}>
+      {children}
+    </CaptionContext.Provider>
+  );
+}
+
+function useCaptionRegistry() {
+  return useContext(CaptionContext);
+}
+
+function PhotoCaptionInput({ photoId, initialCaption, onDirtyChange }: { photoId: number; initialCaption: string; onDirtyChange?: (dirty: boolean) => void }) {
   const [caption, setCaption] = useState(initialCaption);
   const [savedCaption, setSavedCaption] = useState(initialCaption);
   const updateCaption = trpc.photo.updateCaption.useMutation();
+  const registry = useCaptionRegistry();
 
   const isDirty = caption !== savedCaption;
+  const hasSavedCaption = savedCaption.trim().length > 0;
+
+  // Register with parent for batch save
+  useEffect(() => {
+    if (registry) {
+      registry.register(photoId, () => {
+        if (caption !== savedCaption) {
+          return { id: photoId, caption: caption.trim() || null };
+        }
+        return null;
+      });
+      return () => registry.unregister(photoId);
+    }
+  }, [registry, photoId, caption, savedCaption]);
+
+  // Notify parent about dirty state
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const handleSave = useCallback(() => {
     updateCaption.mutate(
@@ -2018,33 +2013,195 @@ function PhotoCaptionInput({ photoId, initialCaption }: { photoId: number; initi
   };
 
   return (
-    <div className="mt-1.5 flex items-center gap-1">
-      <input
-        type="text"
-        value={caption}
-        onChange={(e) => setCaption(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="หมายเหตุ..."
-        className="flex-1 text-[11px] px-2 py-1 rounded border border-transparent hover:border-border focus:border-primary focus:ring-1 focus:ring-primary/30 bg-muted/30 focus:bg-background outline-none transition-all placeholder:text-muted-foreground/50"
-      />
-      {isDirty && (
-        <button
-          onClick={handleSave}
-          disabled={updateCaption.isPending}
-          className="shrink-0 flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-        >
-          {updateCaption.isPending ? (
-            <RotateCcw className="h-3 w-3 animate-spin" />
-          ) : (
-            <CheckCircle2 className="h-3 w-3" />
-          )}
-          บันทึก
-        </button>
+    <div className="mt-1.5">
+      <div className="flex items-center gap-1">
+        <input
+          type="text"
+          value={caption}
+          onChange={(e) => setCaption(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="หมายเหตุ..."
+          className="flex-1 text-[11px] px-2 py-1 rounded border border-transparent hover:border-border focus:border-primary focus:ring-1 focus:ring-primary/30 bg-muted/30 focus:bg-background outline-none transition-all placeholder:text-muted-foreground/50"
+        />
+        {isDirty && (
+          <button
+            onClick={handleSave}
+            disabled={updateCaption.isPending}
+            className="shrink-0 flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+          >
+            {updateCaption.isPending ? (
+              <RotateCcw className="h-3 w-3 animate-spin" />
+            ) : (
+              <CheckCircle2 className="h-3 w-3" />
+            )}
+            บันทึก
+          </button>
+        )}
+      </div>
+      {!isDirty && hasSavedCaption && (
+        <div className="flex items-center gap-1 mt-0.5">
+          <CheckCircle2 className="h-3 w-3 text-green-500" />
+          <span className="text-[9px] text-green-600">บันทึกแล้ว</span>
+        </div>
       )}
     </div>
   );
 }
 
+
+// ==================== PHOTO SECTION WITH SAVE ALL ====================
+function PhotoSectionWithSaveAll({
+  allPhotoCategories,
+  photosByCategory,
+  categoryMap,
+  startUpload,
+  uploadState,
+  setLightboxImg,
+  setConfirmDeletePhoto,
+}: {
+  allPhotoCategories: string[];
+  photosByCategory: Record<string, any[]>;
+  categoryMap: Record<string, string>;
+  startUpload: (cat: string) => void;
+  uploadState: { isUploading: boolean };
+  setLightboxImg: (url: string) => void;
+  setConfirmDeletePhoto: (id: number) => void;
+}) {
+  const [hasDirtyItems, setHasDirtyItems] = useState(false);
+  const dirtyMapRef = useRef<Map<number, boolean>>(new Map());
+  const registryRef = useRef<Map<number, () => { id: number; caption: string | null } | null>>(new Map());
+  const batchUpdate = trpc.photo.batchUpdateCaptions.useMutation();
+
+  const register = useCallback((id: number, getDirty: () => { id: number; caption: string | null } | null) => {
+    registryRef.current.set(id, getDirty);
+  }, []);
+
+  const unregister = useCallback((id: number) => {
+    registryRef.current.delete(id);
+    dirtyMapRef.current.delete(id);
+  }, []);
+
+  const contextValue = useMemo(() => ({ register, unregister }), [register, unregister]);
+
+  const handleDirtyChange = useCallback((photoId: number, dirty: boolean) => {
+    dirtyMapRef.current.set(photoId, dirty);
+    const anyDirty = Array.from(dirtyMapRef.current.values()).some(v => v);
+    setHasDirtyItems(anyDirty);
+  }, []);
+
+  const handleSaveAll = useCallback(() => {
+    const updates: { id: number; caption: string | null }[] = [];
+    Array.from(registryRef.current.values()).forEach((getDirty) => {
+      const result = getDirty();
+      if (result) updates.push(result);
+    });
+    if (updates.length === 0) return;
+    batchUpdate.mutate(
+      { updates },
+      {
+        onSuccess: () => {
+          toast.success(`บันทึกหมายเหตุทั้งหมด ${updates.length} รายการสำเร็จ`);
+          // Force re-render by reloading — simplest approach
+          window.location.reload();
+        },
+        onError: () => toast.error("บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง"),
+      }
+    );
+  }, [batchUpdate]);
+
+  if (allPhotoCategories.length === 0) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        <Image className="h-12 w-12 mx-auto mb-3 opacity-30" />
+        <p className="text-sm">ยังไม่มีรูปภาพ</p>
+        <p className="text-xs mt-1">กดปุ่มถ่ายรูปหรือเลือกรูปในแต่ละหมวดเพื่อเพิ่มรูปภาพหน้างาน</p>
+      </div>
+    );
+  }
+
+  return (
+    <CaptionContext.Provider value={contextValue}>
+      <div className="space-y-6">
+        {allPhotoCategories.map((catKey) => {
+          const catPhotos = photosByCategory[catKey] || [];
+          return (
+            <div key={catKey}>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-medium flex items-center gap-2">
+                  <Camera className="h-4 w-4 text-muted-foreground" />
+                  {categoryMap[catKey] || catKey}
+                  <Badge variant="secondary" className="text-[10px]">{catPhotos.length}</Badge>
+                </h4>
+                <div className="flex items-center gap-1.5">
+                  <Button variant="outline" size="sm" className="text-xs gap-1 h-7" onClick={() => startUpload(catKey)} disabled={uploadState.isUploading}>
+                    <Camera className="h-3 w-3" /> ถ่ายรูป
+                  </Button>
+                  <Button size="sm" className="text-xs gap-1 h-7" onClick={() => startUpload(catKey)} disabled={uploadState.isUploading}>
+                    <Upload className="h-3 w-3" /> เลือกรูป
+                  </Button>
+                </div>
+              </div>
+              {catPhotos.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {catPhotos.map((photo: any) => (
+                    <div key={photo.id} className="flex flex-col">
+                      <div className="group relative rounded-lg overflow-hidden bg-muted aspect-square">
+                        <img src={photo.url} alt={photo.caption || photo.fileName} className="w-full h-full object-cover cursor-pointer" onClick={() => setLightboxImg(photo.url)} loading="lazy" />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-end">
+                          <div className="w-full p-2 translate-y-full group-hover:translate-y-0 transition-transform">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-white" onClick={() => setLightboxImg(photo.url)}>
+                                <Eye className="h-3 w-3" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/90 hover:bg-red-100" onClick={(e) => { e.stopPropagation(); setConfirmDeletePhoto(photo.id); }}>
+                                <Trash2 className="h-3 w-3 text-destructive" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <PhotoCaptionInput
+                        photoId={photo.id}
+                        initialCaption={photo.caption || ""}
+                        onDirtyChange={(dirty) => handleDirtyChange(photo.id, dirty)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 rounded-lg bg-muted/30 border border-dashed">
+                  <Image className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-xs text-muted-foreground">ยังไม่มีรูปในหมวดนี้</p>
+                  <Button variant="outline" size="sm" className="mt-2 text-xs gap-1" onClick={() => startUpload(catKey)} disabled={uploadState.isUploading}>
+                    <Upload className="h-3 w-3" /> อัปโหลดรูป
+                  </Button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Save All Button */}
+        {hasDirtyItems && (
+          <div className="sticky bottom-0 bg-background/95 backdrop-blur-sm border-t pt-3 pb-2 -mx-6 px-6">
+            <Button
+              onClick={handleSaveAll}
+              disabled={batchUpdate.isPending}
+              className="w-full gap-2"
+            >
+              {batchUpdate.isPending ? (
+                <RotateCcw className="h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4" />
+              )}
+              บันทึกหมายเหตุทั้งหมด
+            </Button>
+          </div>
+        )}
+      </div>
+    </CaptionContext.Provider>
+  );
+}
 
 // ==================== TEMPLATE FORM SECTION ====================
 function TemplateFormSection({

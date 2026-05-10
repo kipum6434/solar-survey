@@ -878,6 +878,15 @@ const photoRouter = router({
       return { success: true };
     }),
 
+  batchUpdateCaptions: protectedProcedure
+    .input(z.object({ updates: z.array(z.object({ id: z.number(), caption: z.string().nullable() })).min(1).max(500) }))
+    .mutation(async ({ input }) => {
+      for (const u of input.updates) {
+        await db.updateSurveyPhotoCaption(u.id, u.caption);
+      }
+      return { success: true, count: input.updates.length };
+    }),
+
   reorder: publicProcedure
     .input(z.object({ items: z.array(z.object({ id: z.number(), sortOrder: z.number() })).min(1).max(500) }))
     .mutation(async ({ input }) => {
