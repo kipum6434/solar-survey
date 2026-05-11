@@ -1012,7 +1012,17 @@ export async function deleteUser(id: number) {
 export async function getSources() {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(sources).orderBy(desc(sources.usageCount));
+  const allSources = await db.select().from(sources).orderBy(desc(sources.usageCount));
+  // Count customers per source using a separate query for accuracy
+  const countResult = await db.select({
+    source: customers.source,
+    count: sql<number>`COUNT(*)`,
+  }).from(customers).groupBy(customers.source);
+  const countMap = new Map(countResult.map(r => [r.source, Number(r.count)]));
+  return allSources.map(s => ({
+    ...s,
+    customerCount: countMap.get(s.name) || 0,
+  }));
 }
 
 export async function getOrCreateSource(name: string, category?: string) {
@@ -1096,18 +1106,8 @@ export async function updateSource(id: number, data: { name?: string; category?:
 }
 
 export async function getSourcesWithStats() {
-  const db = await getDb();
-  if (!db) return [];
-  const result = await db.select({
-    id: sources.id,
-    name: sources.name,
-    category: sources.category,
-    usageCount: sources.usageCount,
-    groupName: sources.groupName,
-    createdAt: sources.createdAt,
-    customerCount: sql<number>`(SELECT COUNT(*) FROM customers WHERE customers.source = ${sources.name})`,
-  }).from(sources).orderBy(desc(sources.usageCount));
-  return result;
+  // Now just delegates to getSources which includes customerCount
+  return getSources();
 }
 
 export async function getSourceGroups() {

@@ -1,0 +1,18 @@
+{
+  "query": "SELECT s.id as surveyId, s.status, s.installationStatus, c.name, c.source, src.groupName FROM surveys s JOIN customers c ON s.customerId = c.id LEFT JOIN sources src ON c.source = src.name WHERE src.groupName = 'MEA' AND (s.status = 'won' OR s.installationStatus IS NOT NULL) LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT s.id as surveyId, s.status, s.installationStatus, c.name, c.source, src.groupName FROM surveys s JOIN customers c ON s.customerId = c.id LEFT JOIN sources src ON c.source = src.name WHERE src.groupName = 'MEA' AND (s.status = 'won' OR s.installationStatus IS NOT NULL) LIMIT 10;",
+  "rows": [
+    {
+      "surveyId": "990071",
+      "status": "won",
+      "installationStatus": "waiting",
+      "name": "ชลิดา พันธ์กระวี",
+      "source": "KEN",
+      "groupName": "MEA"
+    }
+  ],
+  "messages": [],
+  "stdout": "surveyId\tstatus\tinstallationStatus\tname\tsource\tgroupName\n990071\twon\twaiting\tชลิดา พันธ์กระวี\tKEN\tMEA\n",
+  "stderr": "",
+  "execution_time_ms": 1790
+}

@@ -1,0 +1,27 @@
+{
+  "query": "SELECT p.* FROM payments p WHERE p.surveyId = 1410094;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT p.* FROM payments p WHERE p.surveyId = 1410094;",
+  "rows": [
+    {
+      "id": "60006",
+      "surveyId": "1410094",
+      "customerId": "1440115",
+      "amount": "NULL",
+      "paymentDate": "NULL",
+      "slipUrl": "NULL",
+      "slipFileKey": "NULL",
+      "status": "pending",
+      "paymentMethod": "NULL",
+      "notes": "สร้างอัตโนมัติ (backfill)",
+      "contractValue": "0.00",
+      "collectedAmount": "0.00",
+      "createdBy": "NULL",
+      "createdAt": "2026-05-11 07:06:00",
+      "updatedAt": "2026-05-11 07:06:00"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsurveyId\tcustomerId\tamount\tpaymentDate\tslipUrl\tslipFileKey\tstatus\tpaymentMethod\tnotes\tcontractValue\tcollectedAmount\tcreatedBy\tcreatedAt\tupdatedAt\n60006\t1410094\t1440115\tNULL\tNULL\tNULL\tNULL\tpending\tNULL\tสร้างอัตโนมัติ (backfill)\t0.00\t0.00\tNULL\t2026-05-11 07:06:00\t2026-05-11 07:06:00\n",
+  "stderr": "",
+  "execution_time_ms": 1768
+}

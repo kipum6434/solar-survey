@@ -1,0 +1,190 @@
+{
+  "query": "SELECT id, name, groupName, category FROM sources ORDER BY groupName, name LIMIT 30;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT id, name, groupName, category FROM sources ORDER BY groupName, name LIMIT 30;",
+  "rows": [
+    {
+      "id": "810004",
+      "name": "Gulf",
+      "groupName": "Gulf",
+      "category": "partner"
+    },
+    {
+      "id": "300019",
+      "name": "KEN",
+      "groupName": "MEA",
+      "category": "NULL"
+    },
+    {
+      "id": "810008",
+      "name": "MEA",
+      "groupName": "MEA",
+      "category": "partner"
+    },
+    {
+      "id": "600001",
+      "name": "facebook",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "510001",
+      "name": "fb",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "300022",
+      "name": "FB เพจ Duplicate Test",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "750001",
+      "name": "FB เพจ micro",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "210001",
+      "name": "FB เพจ SET",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "210005",
+      "name": "FB เพจ TCS Test",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "240001",
+      "name": "FB เพจ หมี",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "270002",
+      "name": "FB เพจ ไมโคร",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "630001",
+      "name": "FB-Set",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "780001",
+      "name": "li",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "540004",
+      "name": "LINE",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "420001",
+      "name": "LINE SET",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "810015",
+      "name": "LINE ส่วนตัว",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "540003",
+      "name": "LINE เพจ Set",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "690001",
+      "name": "Line-Roof",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "660001",
+      "name": "Line-Set",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "300021",
+      "name": "other",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "300011",
+      "name": "roof - Line",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "300015",
+      "name": "SET",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "300006",
+      "name": "SET - Facebook",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "300007",
+      "name": "SET - Line",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "300013",
+      "name": "SET - โทร",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "810016",
+      "name": "Tiktok",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "360001",
+      "name": "website",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "300018",
+      "name": "กรีน - Facebook",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "210002",
+      "name": "ทดสอบ",
+      "groupName": "TCS",
+      "category": "NULL"
+    },
+    {
+      "id": "720001",
+      "name": "ปริ้นท์",
+      "groupName": "TCS",
+      "category": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tgroupName\tcategory\n810004\tGulf\tGulf\tpartner\n300019\tKEN\tMEA\tNULL\n810008\tMEA\tMEA\tpartner\n600001\tfacebook\tTCS\tNULL\n510001\tfb\tTCS\tNULL\n300022\tFB เพจ Duplicate Test\tTCS\tNULL\n750001\tFB เพจ micro\tTCS\tNULL\n210001\tFB เพจ SET\tTCS\tNULL\n210005\tFB เพจ TCS Test\tTCS\tNULL\n240001\tFB เพจ หมี\tTCS\tNULL\n270002\tFB เพจ ไมโคร\tTCS\tNULL\n630001\tFB-Set\tTCS\tNULL\n780001\tli\tTCS\tNULL\n540004\tLINE\tTCS\tNULL\n420001\tLINE SET\tTCS\tNULL\n810015\tLINE ส่วนตัว\tTCS\tNULL\n540003\tLINE เพจ Set\tTCS\tNULL\n690001\tLine-Roof\tTCS\tNULL\n660001\tLine-Set\tTCS\tNULL\n300021\tother\tTCS\tNULL\n300011\troof - Line\tTCS\tNULL\n300015\tSET\tTCS\tNULL\n300006\tSET - Facebook\tTCS\tNULL\n300007\tSET - Line\tTCS\tNULL\n300013\tSET - โทร\tTCS\tNULL\n810016\tTiktok\tTCS\tNULL\n360001\twebsite\tTCS\tNULL\n300018\tกรีน - Facebook\tTCS\tNULL\n210002\tทดสอบ\tTCS\tNULL\n720001\tปริ้นท์\tTCS\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1704
+}

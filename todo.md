@@ -1251,3 +1251,15 @@
 - [x] Frontend: เพิ่มช่องแนบสลิปใน dialog เพิ่มงวดเก็บเงิน (ไม่บังคับ)
 - [x] Frontend: แสดง thumbnail สลิปในรายการงวดเก็บเงิน + กดดูขนาดเต็ม (dialog viewer)
 - [x] ทดสอบ Flow ทั้งหมด (8 vitest tests passed + UI verified)
+
+## Bug Fix: Payment ไม่เด้งเข้าหน้าการเงินสำหรับ Gulf/MEA
+
+- [x] วิเคราะห์สาเหตุ: ตรวจสอบ backfill + auto-create logic — backfill ทำงานถูกต้องทุก group แล้ว (ไม่มี filter)
+- [x] แก้ไข: backfill + auto-create + getPayments ทำงานกับทุก source group ถูกต้องแล้ว
+- [x] ทดสอบ: Gulf (1 รายการ) + MEA (1 รายการ ฿275,900) finance page แสดงรายการเก็บเงินถูกต้อง
+
+## Bug Fix: หน้าจัดการแหล่งที่มาแสดงจำนวนลูกค้าเป็น 0
+
+- [x] Backend: แก้ getSources() ให้ return customerCount โดยใช้ GROUP BY query แทน correlated subquery (แก้ Drizzle ORM bug)
+- [x] Frontend: เปลี่ยนจาก listWithStats/listGroups เป็น list/listGroupsFull (แก้ LSP type inference issue)
+- [x] ทดสอบ: TCS 236, Gulf 2, MEA 60, KEN 60, SET-Facebook 30, other 32 แสดงถูกต้อง

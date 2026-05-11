@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, name, source, phone FROM customers WHERE id = 1440115;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT id, name, source, phone FROM customers WHERE id = 1440115;",
+  "rows": [
+    {
+      "id": "1440115",
+      "name": "ทดสอบ Gulf - คุณสมชาย",
+      "source": "Gulf",
+      "phone": "081-234-5678"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tsource\tphone\n1440115\tทดสอบ Gulf - คุณสมชาย\tGulf\t081-234-5678\n",
+  "stderr": "",
+  "execution_time_ms": 1745
+}

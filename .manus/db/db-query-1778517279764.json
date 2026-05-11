@@ -1,0 +1,50 @@
+{
+  "query": "SELECT s.name as sourceName, (SELECT COUNT(*) FROM customers c WHERE c.source = s.name) as customerCount FROM sources s ORDER BY customerCount DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT s.name as sourceName, (SELECT COUNT(*) FROM customers c WHERE c.source = s.name) as customerCount FROM sources s ORDER BY customerCount DESC LIMIT 10;",
+  "rows": [
+    {
+      "sourceName": "KEN",
+      "customerCount": "60"
+    },
+    {
+      "sourceName": "other",
+      "customerCount": "32"
+    },
+    {
+      "sourceName": "SET - Facebook",
+      "customerCount": "30"
+    },
+    {
+      "sourceName": "ไมโคร - Facebook",
+      "customerCount": "29"
+    },
+    {
+      "sourceName": "SET - Line",
+      "customerCount": "28"
+    },
+    {
+      "sourceName": "ส่วนตัว",
+      "customerCount": "18"
+    },
+    {
+      "sourceName": "fb",
+      "customerCount": "16"
+    },
+    {
+      "sourceName": "หมีโซล่า - Facebook",
+      "customerCount": "11"
+    },
+    {
+      "sourceName": "หมีโซล่า - Line",
+      "customerCount": "9"
+    },
+    {
+      "sourceName": "facebook",
+      "customerCount": "8"
+    }
+  ],
+  "messages": [],
+  "stdout": "sourceName\tcustomerCount\nKEN\t60\nother\t32\nSET - Facebook\t30\nไมโคร - Facebook\t29\nSET - Line\t28\nส่วนตัว\t18\nfb\t16\nหมีโซล่า - Facebook\t11\nหมีโซล่า - Line\t9\nfacebook\t8\n",
+  "stderr": "",
+  "execution_time_ms": 2038
+}

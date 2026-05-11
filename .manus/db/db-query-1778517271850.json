@@ -1,0 +1,90 @@
+{
+  "query": "SELECT DISTINCT c.source, COUNT(*) as cnt FROM customers c GROUP BY c.source ORDER BY cnt DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT DISTINCT c.source, COUNT(*) as cnt FROM customers c GROUP BY c.source ORDER BY cnt DESC LIMIT 20;",
+  "rows": [
+    {
+      "source": "KEN",
+      "cnt": "60"
+    },
+    {
+      "source": "other",
+      "cnt": "32"
+    },
+    {
+      "source": "SET - Facebook",
+      "cnt": "30"
+    },
+    {
+      "source": "ไมโคร - Facebook",
+      "cnt": "29"
+    },
+    {
+      "source": "SET - Line",
+      "cnt": "28"
+    },
+    {
+      "source": "ส่วนตัว",
+      "cnt": "18"
+    },
+    {
+      "source": "fb",
+      "cnt": "16"
+    },
+    {
+      "source": "หมีโซล่า - Facebook",
+      "cnt": "11"
+    },
+    {
+      "source": "หมีโซล่า - Line",
+      "cnt": "9"
+    },
+    {
+      "source": "facebook",
+      "cnt": "8"
+    },
+    {
+      "source": "ไมโคร - Line",
+      "cnt": "7"
+    },
+    {
+      "source": "ไมโคร",
+      "cnt": "7"
+    },
+    {
+      "source": "SET",
+      "cnt": "5"
+    },
+    {
+      "source": "Line-Set",
+      "cnt": "4"
+    },
+    {
+      "source": "LINE",
+      "cnt": "4"
+    },
+    {
+      "source": "SET - โทร",
+      "cnt": "3"
+    },
+    {
+      "source": "หมีโซล่า",
+      "cnt": "3"
+    },
+    {
+      "source": "FB เพจ หมี",
+      "cnt": "2"
+    },
+    {
+      "source": "กรีน - Facebook",
+      "cnt": "2"
+    },
+    {
+      "source": "FB เพจ micro",
+      "cnt": "2"
+    }
+  ],
+  "messages": [],
+  "stdout": "source\tcnt\nKEN\t60\nother\t32\nSET - Facebook\t30\nไมโคร - Facebook\t29\nSET - Line\t28\nส่วนตัว\t18\nfb\t16\nหมีโซล่า - Facebook\t11\nหมีโซล่า - Line\t9\nfacebook\t8\nไมโคร - Line\t7\nไมโคร\t7\nSET\t5\nLine-Set\t4\nLINE\t4\nSET - โทร\t3\nหมีโซล่า\t3\nFB เพจ หมี\t2\nกรีน - Facebook\t2\nFB เพจ micro\t2\n",
+  "stderr": "",
+  "execution_time_ms": 1880
+}

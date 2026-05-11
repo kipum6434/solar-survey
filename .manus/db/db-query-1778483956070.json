@@ -1,0 +1,16 @@
+{
+  "query": "SELECT p.id, p.customerId, c.name, c.source FROM payments p LEFT JOIN customers c ON p.customerId = c.id WHERE c.source IN ('Gulf') ORDER BY p.createdAt DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT p.id, p.customerId, c.name, c.source FROM payments p LEFT JOIN customers c ON p.customerId = c.id WHERE c.source IN ('Gulf') ORDER BY p.createdAt DESC;",
+  "rows": [
+    {
+      "id": "60006",
+      "customerId": "1440115",
+      "name": "ทดสอบ Gulf - คุณสมชาย",
+      "source": "Gulf"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcustomerId\tname\tsource\n60006\t1440115\tทดสอบ Gulf - คุณสมชาย\tGulf\n",
+  "stderr": "",
+  "execution_time_ms": 1780
+}

@@ -109,8 +109,9 @@ export default function SourceManagement() {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const utils = trpc.useUtils();
-  const { data: sourcesWithStats = [], isLoading } = trpc.source.listWithStats.useQuery();
-  const { data: groups = [] } = trpc.source.listGroups.useQuery();
+  const { data: sourcesWithStats = [], isLoading } = trpc.source.list.useQuery();
+  const { data: groupsFull = [] } = trpc.source.listGroupsFull.useQuery();
+  const groups = useMemo(() => groupsFull.map((g: any) => g.name), [groupsFull]);
   const { data: drillDownCustomers = [], isLoading: loadingCustomers } = trpc.source.getCustomersBySource.useQuery(
     { sourceId: selectedSourceId! },
     { enabled: !!selectedSourceId }
@@ -119,8 +120,8 @@ export default function SourceManagement() {
   const createMutation = trpc.source.create.useMutation({
     onSuccess: () => {
       toast.success("เพิ่มแหล่งที่มาสำเร็จ");
-      utils.source.listWithStats.invalidate();
-      utils.source.listGroups.invalidate();
+      utils.source.list.invalidate();
+      utils.source.listGroupsFull.invalidate();
       setShowCreateDialog(false);
       setNewSourceName("");
       setNewSourceCategory("");
@@ -131,8 +132,8 @@ export default function SourceManagement() {
   const updateMutation = trpc.source.update.useMutation({
     onSuccess: () => {
       toast.success("อัปเดตสำเร็จ");
-      utils.source.listWithStats.invalidate();
-      utils.source.listGroups.invalidate();
+      utils.source.list.invalidate();
+      utils.source.listGroupsFull.invalidate();
       setShowEditDialog(false);
       setEditSource(null);
     },
@@ -142,7 +143,7 @@ export default function SourceManagement() {
   const deleteMutation = trpc.source.delete.useMutation({
     onSuccess: () => {
       toast.success("ลบสำเร็จ");
-      utils.source.listWithStats.invalidate();
+      utils.source.list.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -150,7 +151,6 @@ export default function SourceManagement() {
   const createGroupMutation = trpc.source.createGroup.useMutation({
     onSuccess: () => {
       toast.success("สร้างกลุ่มใหม่สำเร็จ");
-      utils.source.listGroups.invalidate();
       utils.source.listGroupsFull.invalidate();
       setShowNewGroupDialog(false);
       setNewGroupName("");

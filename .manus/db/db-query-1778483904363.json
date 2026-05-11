@@ -1,0 +1,28 @@
+{
+  "query": "SELECT s.id as surveyId, s.status, s.installationStatus, s.customerId, c.name as customerName, c.source as customerSource, src.groupName FROM surveys s JOIN customers c ON s.customerId = c.id LEFT JOIN sources src ON c.source = src.name WHERE src.groupName = 'Gulf' LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT s.id as surveyId, s.status, s.installationStatus, s.customerId, c.name as customerName, c.source as customerSource, src.groupName FROM surveys s JOIN customers c ON s.customerId = c.id LEFT JOIN sources src ON c.source = src.name WHERE src.groupName = 'Gulf' LIMIT 10;",
+  "rows": [
+    {
+      "surveyId": "1410094",
+      "status": "won",
+      "installationStatus": "waiting",
+      "customerId": "1440115",
+      "customerName": "ทดสอบ Gulf - คุณสมชาย",
+      "customerSource": "Gulf",
+      "groupName": "Gulf"
+    },
+    {
+      "surveyId": "1410464",
+      "status": "scheduled",
+      "installationStatus": "NULL",
+      "customerId": "1440561",
+      "customerName": "ทดสอบ Gulf 2 ",
+      "customerSource": "Gulf",
+      "groupName": "Gulf"
+    }
+  ],
+  "messages": [],
+  "stdout": "surveyId\tstatus\tinstallationStatus\tcustomerId\tcustomerName\tcustomerSource\tgroupName\n1410094\twon\twaiting\t1440115\tทดสอบ Gulf - คุณสมชาย\tGulf\tGulf\n1410464\tscheduled\tNULL\t1440561\tทดสอบ Gulf 2 \tGulf\tGulf\n",
+  "stderr": "",
+  "execution_time_ms": 1779
+}
