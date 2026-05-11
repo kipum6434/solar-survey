@@ -2788,6 +2788,35 @@ export async function getPaymentBySurveyId(surveyId: number) {
   return result.length > 0 ? result[0] : null;
 }
 
+export async function getWonSurveysWithoutPayment(opts: { source?: string; sourceInclude?: string[] }) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions: any[] = [eq(surveys.status, "won")];
+  if (opts.source) conditions.push(eq(customers.source, opts.source));
+  if (opts.sourceInclude && opts.sourceInclude.length > 0) {
+    conditions.push(inArray(customers.source, opts.sourceInclude));
+  }
+  const result = await db.select({
+    id: surveys.id,
+    customerId: surveys.customerId,
+    customerName: customers.name,
+    customerPhone: customers.phone,
+    source: customers.source,
+    systemSize: surveys.systemSize,
+    quotedPrice: surveys.quotedPrice,
+    completedAt: surveys.completedAt,
+  }).from(surveys)
+    .leftJoin(customers, eq(surveys.customerId, customers.id))
+    .leftJoin(payments, eq(surveys.id, payments.surveyId))
+    .where(and(...conditions, isNull(payments.id)))
+    .orderBy(desc(surveys.completedAt));
+  return result.map(r => ({
+    ...r,
+    systemSize: r.systemSize ? parseFloat(r.systemSize) : null,
+    quotedPrice: r.quotedPrice ? parseFloat(String(r.quotedPrice)) : null,
+  }));
+}
+
 export async function getPayments(opts: { status?: string; page?: number; limit?: number; source?: string; sourceExclude?: string[]; sourceInclude?: string[] }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };

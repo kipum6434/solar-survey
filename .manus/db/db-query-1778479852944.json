@@ -1,0 +1,30 @@
+{
+  "query": "SELECT status, COUNT(*) as total FROM surveys GROUP BY status ORDER BY total DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT status, COUNT(*) as total FROM surveys GROUP BY status ORDER BY total DESC;",
+  "rows": [
+    {
+      "status": "scheduled",
+      "total": "135"
+    },
+    {
+      "status": "follow_up",
+      "total": "100"
+    },
+    {
+      "status": "won",
+      "total": "5"
+    },
+    {
+      "status": "postponed",
+      "total": "4"
+    },
+    {
+      "status": "cancelled",
+      "total": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "status\ttotal\nscheduled\t135\nfollow_up\t100\nwon\t5\npostponed\t4\ncancelled\t1\n",
+  "stderr": "",
+  "execution_time_ms": 1904
+}

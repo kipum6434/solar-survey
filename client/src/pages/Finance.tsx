@@ -7,14 +7,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   Banknote, CheckCircle2, Clock, Upload, Search, Filter,
   FileText, Eye, Receipt, Loader2, ArrowUpDown, TrendingUp,
-  Phone, Zap, AlertCircle,
+  Phone, Zap, AlertCircle, Plus, Pencil, X,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -33,10 +38,13 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
   const sourceMode = props.sourceMode ?? null;
   const { user } = useAuth();
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
-
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "amount_high" | "amount_low">("newest");
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editingPaymentId, setEditingPaymentId] = useState<number | null>(null);
+  const [editContractValue, setEditContractValue] = useState("");
+  const [editCollectedAmount, setEditCollectedAmount] = useState("");
 
   // Get source names by group for dynamic filtering
   const { data: sourceNamesByGroup } = trpc.source.sourceNamesByGroup.useQuery();
@@ -44,7 +52,6 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
   // Determine source/sourceExclude based on sourceMode (dynamic)
   const sourceFilter = useMemo(() => {
     if (!sourceMode || !sourceNamesByGroup) return {};
-    // Find the matching group name (case-insensitive)
     const matchedGroup = Object.keys(sourceNamesByGroup).find(
       (g) => g.toLowerCase() === sourceMode.toLowerCase()
     );
@@ -54,6 +61,8 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
     }
     return { source: sourceMode };
   }, [sourceMode, sourceNamesByGroup]);
+
+  const utils = trpc.useUtils();
 
   // Get payments list
   const { data: paymentsResult, isLoading } = trpc.payment.list.useQuery({
@@ -67,13 +76,16 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
   const uploadSlip = trpc.payment.uploadSlip.useMutation({
     onSuccess: () => {
       toast.success("อัพโหลดสลิปสำเร็จ");
+      utils.payment.list.invalidate();
     },
     onError: (e) => toast.error(e.message),
   });
 
   const updatePayment = trpc.payment.update.useMutation({
     onSuccess: () => {
-      toast.success("อัพเดทสถานะสำเร็จ");
+      toast.success("อัพเดทข้อมูลสำเร็จ");
+      utils.payment.list.invalidate();
+      setEditingPaymentId(null);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -81,8 +93,6 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
   // Filter and sort
   const filteredPayments = useMemo(() => {
     let result = [...payments];
-
-    // Search
     if (search) {
       const s = search.toLowerCase();
       result = result.filter((p: any) =>
@@ -91,8 +101,6 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
         p.surveyId?.toString().includes(s)
       );
     }
-
-    // Sort
     switch (sortBy) {
       case "newest":
         result.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -107,7 +115,6 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
         result.sort((a: any, b: any) => (a.contractValue || 0) - (b.contractValue || 0));
         break;
     }
-
     return result;
   }, [payments, search, sortBy]);
 
@@ -116,11 +123,9 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
     const pending = payments.filter((p: any) => p.status === "pending" || p.status === "overdue");
     const partial = payments.filter((p: any) => p.status === "partial");
     const paid = payments.filter((p: any) => p.status === "paid");
-    
     const totalContract = payments.reduce((sum: number, p: any) => sum + (p.contractValue || 0), 0);
     const totalCollected = payments.reduce((sum: number, p: any) => sum + (p.collectedAmount || 0), 0);
     const totalOutstanding = totalContract - totalCollected;
-
     return {
       total: payments.length,
       pendingCount: pending.length,
@@ -150,20 +155,60 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
     return phone;
   };
 
+  const startEditPayment = (payment: any) => {
+    setEditingPaymentId(payment.id);
+    setEditContractValue(String(payment.contractValue || 0));
+    setEditCollectedAmount(String(payment.collectedAmount || 0));
+  };
+
+  const saveEditPayment = () => {
+    if (editingPaymentId === null) return;
+    const cv = parseFloat(editContractValue) || 0;
+    const ca = parseFloat(editCollectedAmount) || 0;
+    updatePayment.mutate({
+      id: editingPaymentId,
+      contractValue: cv,
+      collectedAmount: ca,
+      status: ca >= cv && cv > 0 ? "paid" : ca > 0 ? "partial" : "pending",
+    });
+  };
+
   const groupTitle = sourceMode ? sourceMode.toUpperCase() : "";
 
   return (
     <DashboardLayout>
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold flex items-center gap-2">
-          <Banknote className="h-5 w-5" />
-          การเงิน {groupTitle && `- ${groupTitle}`}
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          จัดการการเก็บเงินและหลักฐานการชำระเงิน
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold flex items-center gap-2">
+            <Banknote className="h-5 w-5" />
+            การเงิน {groupTitle && `- ${groupTitle}`}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            จัดการการเก็บเงินและหลักฐานการชำระเงิน
+          </p>
+        </div>
+        {isAdmin && (
+          <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                เพิ่มรายการเก็บเงิน
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <AddPaymentDialog
+                sourceFilter={sourceFilter}
+                onClose={() => setAddDialogOpen(false)}
+                onSuccess={() => {
+                  setAddDialogOpen(false);
+                  utils.payment.list.invalidate();
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       {/* Summary Cards */}
@@ -269,7 +314,7 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
             <Banknote className="h-12 w-12 mx-auto mb-3 text-muted-foreground/30" />
             <p className="text-sm text-muted-foreground">ไม่พบรายการเก็บเงิน</p>
             <p className="text-xs text-muted-foreground mt-1">
-              รายการจะปรากฏเมื่อมีงานที่พร้อมเก็บเงิน
+              รายการจะถูกสร้างอัตโนมัติเมื่อปิดการขาย หรือกดปุ่ม "เพิ่มรายการเก็บเงิน" ด้านบน
             </p>
           </CardContent>
         </Card>
@@ -279,23 +324,21 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
             const statusInfo = PAYMENT_STATUS_MAP[payment.status] || PAYMENT_STATUS_MAP.pending;
             const StatusIcon = statusInfo.icon;
             const outstanding = (payment.contractValue || 0) - (payment.collectedAmount || 0);
+            const isEditing = editingPaymentId === payment.id;
 
             return (
               <Card key={payment.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
-                  <div className="flex flex-col gap-3">
-                    {/* Top row: Customer info + Status */}
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <Link
-                            href={`/surveys/${payment.surveyId}`}
-                            className="text-sm font-semibold hover:text-primary transition-colors"
-                          >
-                            {payment.customerName || `งาน #${payment.surveyId}`}
-                          </Link>
-                          <Badge className={`${statusInfo.color} border text-[10px] gap-1`}>
-                            <StatusIcon className="h-2.5 w-2.5" />
+                  <div className="space-y-2">
+                    {/* Top row: Customer info + Status + Actions */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold text-sm truncate">
+                            {payment.customerName || "ไม่ระบุชื่อ"}
+                          </h3>
+                          <Badge variant="outline" className={`text-[10px] shrink-0 ${statusInfo.color}`}>
+                            <StatusIcon className="h-3 w-3 mr-1" />
                             {statusInfo.label}
                           </Badge>
                         </div>
@@ -317,7 +360,6 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
                           )}
                         </div>
                       </div>
-
                       {/* Actions */}
                       <div className="flex items-center gap-1.5 shrink-0">
                         {payment.slipUrl && (
@@ -370,26 +412,81 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
                       </div>
                     </div>
 
-                    {/* Bottom row: Financial info */}
-                    <div className="flex items-center gap-4 text-xs border-t pt-2">
-                      <div className="flex-1">
-                        <span className="text-muted-foreground">มูลค่าสัญญา:</span>{" "}
-                        <span className="font-semibold">{formatCurrency(payment.contractValue || 0)}</span>
+                    {/* Bottom row: Financial info - editable */}
+                    {isEditing ? (
+                      <div className="flex items-end gap-3 border-t pt-2">
+                        <div className="flex-1">
+                          <Label className="text-xs text-muted-foreground">มูลค่าสัญญา (บาท)</Label>
+                          <Input
+                            type="number"
+                            value={editContractValue}
+                            onChange={(e) => setEditContractValue(e.target.value)}
+                            className="h-8 text-sm mt-1"
+                            placeholder="0"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <Label className="text-xs text-muted-foreground">เก็บแล้ว (บาท)</Label>
+                          <Input
+                            type="number"
+                            value={editCollectedAmount}
+                            onChange={(e) => setEditCollectedAmount(e.target.value)}
+                            className="h-8 text-sm mt-1"
+                            placeholder="0"
+                          />
+                        </div>
+                        <div className="flex gap-1.5 shrink-0">
+                          <Button
+                            size="sm"
+                            className="h-8 gap-1 text-xs"
+                            onClick={saveEditPayment}
+                            disabled={updatePayment.isPending}
+                          >
+                            {updatePayment.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                            บันทึก
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 gap-1 text-xs"
+                            onClick={() => setEditingPaymentId(null)}
+                          >
+                            <X className="h-3 w-3" /> ยกเลิก
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <span className="text-muted-foreground">เก็บแล้ว:</span>{" "}
-                        <span className="font-semibold text-green-600">{formatCurrency(payment.collectedAmount || 0)}</span>
+                    ) : (
+                      <div className="flex items-center gap-4 text-xs border-t pt-2">
+                        <div className="flex-1">
+                          <span className="text-muted-foreground">มูลค่าสัญญา:</span>{" "}
+                          <span className="font-semibold">{formatCurrency(payment.contractValue || 0)}</span>
+                        </div>
+                        <div className="flex-1">
+                          <span className="text-muted-foreground">เก็บแล้ว:</span>{" "}
+                          <span className="font-semibold text-green-600">{formatCurrency(payment.collectedAmount || 0)}</span>
+                        </div>
+                        <div className="flex-1">
+                          <span className="text-muted-foreground">ค้าง:</span>{" "}
+                          <span className={`font-semibold ${outstanding > 0 ? "text-red-600" : "text-green-600"}`}>
+                            {formatCurrency(outstanding > 0 ? outstanding : 0)}
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground">
+                          {formatDate(payment.createdAt)}
+                        </div>
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => startEditPayment(payment)}
+                            title="แก้ไขจำนวนเงิน"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
-                      <div className="flex-1">
-                        <span className="text-muted-foreground">ค้าง:</span>{" "}
-                        <span className={`font-semibold ${outstanding > 0 ? "text-red-600" : "text-green-600"}`}>
-                          {formatCurrency(outstanding > 0 ? outstanding : 0)}
-                        </span>
-                      </div>
-                      <div className="text-muted-foreground">
-                        {formatDate(payment.createdAt)}
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -402,7 +499,186 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
   );
 }
 
-// Sub-component for uploading payment slip
+// ==================== Add Payment Dialog ====================
+function AddPaymentDialog({
+  sourceFilter,
+  onClose,
+  onSuccess,
+}: {
+  sourceFilter: Record<string, any>;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [selectedSurveyId, setSelectedSurveyId] = useState<number | null>(null);
+  const [contractValue, setContractValue] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const { data: wonSurveys, isLoading } = trpc.payment.wonSurveysWithoutPayment.useQuery(sourceFilter);
+
+  const createPayment = trpc.payment.createFromFinance.useMutation({
+    onSuccess: () => {
+      toast.success("สร้างรายการเก็บเงินสำเร็จ");
+      onSuccess();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const selectedSurvey = wonSurveys?.find((s: any) => s.id === selectedSurveyId);
+
+  const handleSelectSurvey = (surveyId: number) => {
+    setSelectedSurveyId(surveyId);
+    const survey = wonSurveys?.find((s: any) => s.id === surveyId);
+    if (survey?.quotedPrice) {
+      setContractValue(String(survey.quotedPrice));
+    } else {
+      setContractValue("");
+    }
+  };
+
+  const handleSubmit = () => {
+    if (!selectedSurveyId) {
+      toast.error("กรุณาเลือกงานสำรวจ");
+      return;
+    }
+    createPayment.mutate({
+      surveyId: selectedSurveyId,
+      contractValue: contractValue ? parseFloat(contractValue) : undefined,
+      notes: notes || undefined,
+    });
+  };
+
+  const formatCurrency = (amount: number) => {
+    if (!amount && amount !== 0) return "฿0";
+    return new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
+  };
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          <Plus className="h-5 w-5" />
+          เพิ่มรายการเก็บเงิน
+        </DialogTitle>
+        <DialogDescription>
+          เลือกงานที่ปิดการขายแล้วเพื่อสร้างรายการเก็บเงิน
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="space-y-4 py-2">
+        {/* Survey Selection */}
+        <div>
+          <Label className="text-sm font-medium">เลือกงานสำรวจ (ปิดการขายแล้ว)</Label>
+          {isLoading ? (
+            <div className="space-y-2 mt-2">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : !wonSurveys || wonSurveys.length === 0 ? (
+            <div className="mt-2 p-4 border rounded-lg text-center text-sm text-muted-foreground bg-muted/30">
+              <Banknote className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
+              ไม่มีงานที่ปิดการขายแล้วที่ยังไม่มีรายการเก็บเงิน
+            </div>
+          ) : (
+            <div className="mt-2 max-h-[200px] overflow-y-auto space-y-1.5 border rounded-lg p-2">
+              {wonSurveys.map((survey: any) => (
+                <div
+                  key={survey.id}
+                  className={`p-2.5 rounded-md cursor-pointer border transition-colors ${
+                    selectedSurveyId === survey.id
+                      ? "border-primary bg-primary/5"
+                      : "border-transparent hover:bg-muted/50"
+                  }`}
+                  onClick={() => handleSelectSurvey(survey.id)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">{survey.customerName || "ไม่ระบุชื่อ"}</p>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                        {survey.customerPhone && (
+                          <span className="flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            {survey.customerPhone}
+                          </span>
+                        )}
+                        {survey.systemSize && (
+                          <span className="flex items-center gap-1">
+                            <Zap className="h-3 w-3" />
+                            {survey.systemSize} kW
+                          </span>
+                        )}
+                        {survey.source && (
+                          <Badge variant="outline" className="text-[10px] py-0">{survey.source}</Badge>
+                        )}
+                      </div>
+                    </div>
+                    {survey.quotedPrice && (
+                      <span className="text-sm font-semibold text-primary">
+                        {formatCurrency(survey.quotedPrice)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Contract Value */}
+        {selectedSurvey && (
+          <>
+            <div>
+              <Label className="text-sm font-medium">มูลค่าสัญญา (บาท)</Label>
+              <Input
+                type="number"
+                value={contractValue}
+                onChange={(e) => setContractValue(e.target.value)}
+                placeholder="กรอกมูลค่าสัญญา"
+                className="mt-1"
+              />
+              {selectedSurvey.quotedPrice && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  ราคาเสนอจากงานสำรวจ: {formatCurrency(selectedSurvey.quotedPrice)}
+                </p>
+              )}
+            </div>
+
+            {/* Notes */}
+            <div>
+              <Label className="text-sm font-medium">หมายเหตุ (ไม่บังคับ)</Label>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="เช่น เงื่อนไขการชำระเงิน, จำนวนงวด..."
+                className="mt-1"
+                rows={2}
+              />
+            </div>
+          </>
+        )}
+      </div>
+
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>
+          ยกเลิก
+        </Button>
+        <Button
+          onClick={handleSubmit}
+          disabled={!selectedSurveyId || createPayment.isPending}
+          className="gap-2"
+        >
+          {createPayment.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Plus className="h-4 w-4" />
+          )}
+          สร้างรายการเก็บเงิน
+        </Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+// ==================== Upload Slip Sub-component ====================
 function PaymentUploadSlip({
   paymentId,
   onUpload,

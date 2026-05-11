@@ -1210,3 +1210,13 @@
 
 - [x] ตรวจสอบ route ของหน้า Finance ใน App.tsx
 - [x] แก้ไขให้หน้า Finance แสดงภายใน DashboardLayout พร้อม sidebar
+
+## Feature: ปรับปรุง Flow การเงิน
+
+- [x] Backend: สร้าง Payment อัตโนมัติเมื่อ Survey เปลี่ยนสถานะเป็น "ปิดการขาย" (won) ดึง quotedPrice มาเป็น contractValue
+- [x] Backend: ป้องกันสร้าง Payment ซ้ำถ้ามีอยู่แล้ว
+- [x] Backend: เพิ่ม API สำหรับสร้าง Payment จากหน้า Finance (เลือก Survey ที่ won)
+- [x] Frontend: เพิ่มปุ่ม "เพิ่มรายการเก็บเงิน" ในหน้า Finance พร้อม dialog เลือก Survey
+- [x] Frontend: เพิ่ม UI แก้ไขจำนวนเงิน (contractValue, collectedAmount) ในรายการ Payment
+- [x] Frontend: แสดงสถานะ Payment ที่ชัดเจน (รอเก็บเงิน, เก็บบางส่วน, เก็บครบ)
+- [x] ทดสอบ Flow ทั้งหมด

@@ -450,6 +450,24 @@ const surveyRouter = router({
           });
         }
       }
+      // Auto-create payment when status changes to 'won' (ปิดการขาย)
+      if (data.status === "won" && oldSurvey && oldSurvey.status !== "won") {
+        const existingPayment = await db.getPaymentBySurveyId(id);
+        if (!existingPayment) {
+          const fullSurvey = await db.getSurveyById(id);
+          if (fullSurvey) {
+            const contractVal = fullSurvey.quotedPrice ? parseFloat(String(fullSurvey.quotedPrice)) : 0;
+            await db.createPayment({
+              surveyId: id,
+              customerId: fullSurvey.customerId,
+              contractValue: contractVal,
+              collectedAmount: 0,
+              createdBy: ctx.user.id,
+              notes: "สร้างอัตโนมัติจากการปิดการขาย",
+            });
+          }
+        }
+      }
       await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "survey", entityId: id, details: `แก้ไขงานสำรวจ ID: ${id}${data.status ? ` สถานะ: ${data.status}` : ""}` });
       return { success: true };
     }),
@@ -2767,6 +2785,37 @@ const paymentRouter = router({
     .mutation(async ({ input }) => {
       await db.updatePayment(input.id, { status: "paid" });
       return { success: true };
+    }),
+
+  // Get surveys with status 'won' that don't have a payment record yet
+  wonSurveysWithoutPayment: protectedProcedure
+    .input(z.object({ source: z.string().optional(), sourceInclude: z.array(z.string()).optional() }))
+    .query(async ({ input }) => {
+      return db.getWonSurveysWithoutPayment(input);
+    }),
+
+  // Create payment from Finance page (select a won survey)
+  createFromFinance: protectedProcedure
+    .input(z.object({
+      surveyId: z.number(),
+      contractValue: z.number().optional(),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const survey = await db.getSurveyById(input.surveyId);
+      if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบงานสำรวจ" });
+      // Check if payment already exists
+      const existing = await db.getPaymentBySurveyId(input.surveyId);
+      if (existing) throw new TRPCError({ code: "CONFLICT", message: "มีรายการเก็บเงินสำหรับงานนี้แล้ว" });
+      const contractVal = input.contractValue ?? (survey.quotedPrice ? parseFloat(String(survey.quotedPrice)) : 0);
+      return db.createPayment({
+        surveyId: input.surveyId,
+        customerId: survey.customerId,
+        contractValue: contractVal,
+        collectedAmount: 0,
+        createdBy: ctx.user.id,
+        notes: input.notes || "สร้างจากหน้าการเงิน",
+      });
     }),
 });
 

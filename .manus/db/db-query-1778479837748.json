@@ -1,0 +1,60 @@
+{
+  "query": "SELECT p.id, p.surveyId, p.customerId, c.name as customerName, c.source, p.status, p.contractValue, p.collectedAmount FROM payments p LEFT JOIN customers c ON p.customerId = c.id LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT p.id, p.surveyId, p.customerId, c.name as customerName, c.source, p.status, p.contractValue, p.collectedAmount FROM payments p LEFT JOIN customers c ON p.customerId = c.id LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "surveyId": "1410346",
+      "customerId": "1440423",
+      "customerName": "NULL",
+      "source": "NULL",
+      "status": "paid",
+      "contractValue": "NULL",
+      "collectedAmount": "0.00"
+    },
+    {
+      "id": "2",
+      "surveyId": "1410347",
+      "customerId": "1440424",
+      "customerName": "NULL",
+      "source": "NULL",
+      "status": "paid",
+      "contractValue": "NULL",
+      "collectedAmount": "0.00"
+    },
+    {
+      "id": "3",
+      "surveyId": "1410350",
+      "customerId": "1440427",
+      "customerName": "NULL",
+      "source": "NULL",
+      "status": "paid",
+      "contractValue": "NULL",
+      "collectedAmount": "0.00"
+    },
+    {
+      "id": "4",
+      "surveyId": "1410351",
+      "customerId": "1440428",
+      "customerName": "NULL",
+      "source": "NULL",
+      "status": "paid",
+      "contractValue": "NULL",
+      "collectedAmount": "0.00"
+    },
+    {
+      "id": "5",
+      "surveyId": "1410355",
+      "customerId": "1440432",
+      "customerName": "NULL",
+      "source": "NULL",
+      "status": "paid",
+      "contractValue": "NULL",
+      "collectedAmount": "0.00"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsurveyId\tcustomerId\tcustomerName\tsource\tstatus\tcontractValue\tcollectedAmount\n1\t1410346\t1440423\tNULL\tNULL\tpaid\tNULL\t0.00\n2\t1410347\t1440424\tNULL\tNULL\tpaid\tNULL\t0.00\n3\t1410350\t1440427\tNULL\tNULL\tpaid\tNULL\t0.00\n4\t1410351\t1440428\tNULL\tNULL\tpaid\tNULL\t0.00\n5\t1410355\t1440432\tNULL\tNULL\tpaid\tNULL\t0.00\n",
+  "stderr": "",
+  "execution_time_ms": 1867
+}

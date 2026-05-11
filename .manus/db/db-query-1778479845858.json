@@ -1,0 +1,13 @@
+{
+  "query": "SELECT COUNT(*) as total FROM customers WHERE id IN (1440423, 1440424, 1440427, 1440428, 1440432); SELECT s.id as surveyId, s.customerId, s.status, c.name, c.source FROM surveys s LEFT JOIN customers c ON s.customerId = c.id WHERE s.id IN (1410346, 1410347, 1410350) LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT COUNT(*) as total FROM customers WHERE id IN (1440423, 1440424, 1440427, 1440428, 1440432); SELECT s.id as surveyId, s.customerId, s.status, c.name, c.source FROM surveys s LEFT JOIN customers c ON s.customerId = c.id WHERE s.id IN (1410346, 1410347, 1410350) LIMIT 5;",
+  "rows": [
+    {
+      "total": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "total\n0\n",
+  "stderr": "",
+  "execution_time_ms": 2118
+}

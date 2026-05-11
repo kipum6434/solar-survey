@@ -1,0 +1,17 @@
+{
+  "query": "SELECT COUNT(*) as total, status FROM payments GROUP BY status; SELECT COUNT(*) as total FROM payments;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT COUNT(*) as total, status FROM payments GROUP BY status; SELECT COUNT(*) as total FROM payments;",
+  "rows": [
+    {
+      "total": "22",
+      "status": "paid"
+    }
+  ],
+  "messages": [
+    "total",
+    "22"
+  ],
+  "stdout": "total\tstatus\n22\tpaid\ntotal\n22\n",
+  "stderr": "",
+  "execution_time_ms": 2024
+}
