@@ -1,0 +1,35 @@
+{
+  "query": "SELECT id, name, source FROM customers LIMIT 5",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT id, name, source FROM customers LIMIT 5",
+  "rows": [
+    {
+      "id": "420001",
+      "name": "คุณกัลยาณี",
+      "source": "FB เพจ SET"
+    },
+    {
+      "id": "450001",
+      "name": "คุณ เกด",
+      "source": "FB เพจ หมี"
+    },
+    {
+      "id": "480039",
+      "name": "คุณแดน",
+      "source": "FB เพจ ไมโคร"
+    },
+    {
+      "id": "510165",
+      "name": "คุณญาณกร แก้วจีน",
+      "source": "SET - Facebook"
+    },
+    {
+      "id": "510166",
+      "name": "คุณวิฑูรย์ เจริญศักดิ์วรกุล",
+      "source": "SET - Line"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tsource\n420001\tคุณกัลยาณี\tFB เพจ SET\n450001\tคุณ เกด\tFB เพจ หมี\n480039\tคุณแดน\tFB เพจ ไมโคร\n510165\tคุณญาณกร แก้วจีน\tSET - Facebook\n510166\tคุณวิฑูรย์ เจริญศักดิ์วรกุล\tSET - Line\n",
+  "stderr": "",
+  "execution_time_ms": 1900
+}

@@ -1,0 +1,100 @@
+{
+  "query": "SELECT p.id, p.surveyId, p.status, p.contractValue, p.collectedAmount, c.name as customerName, c.source FROM payments p LEFT JOIN customers c ON p.customerId = c.id LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT p.id, p.surveyId, p.status, p.contractValue, p.collectedAmount, c.name as customerName, c.source FROM payments p LEFT JOIN customers c ON p.customerId = c.id LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "surveyId": "1410346",
+      "status": "paid",
+      "contractValue": "NULL",
+      "collectedAmount": "0.00",
+      "customerName": "NULL",
+      "source": "NULL"
+    },
+    {
+      "id": "2",
+      "surveyId": "1410347",
+      "status": "paid",
+      "contractValue": "NULL",
+      "collectedAmount": "0.00",
+      "customerName": "NULL",
+      "source": "NULL"
+    },
+    {
+      "id": "3",
+      "surveyId": "1410350",
+      "status": "paid",
+      "contractValue": "NULL",
+      "collectedAmount": "0.00",
+      "customerName": "NULL",
+      "source": "NULL"
+    },
+    {
+      "id": "4",
+      "surveyId": "1410351",
+      "status": "paid",
+      "contractValue": "NULL",
+      "collectedAmount": "0.00",
+      "customerName": "NULL",
+      "source": "NULL"
+    },
+    {
+      "id": "5",
+      "surveyId": "1410355",
+      "status": "paid",
+      "contractValue": "NULL",
+      "collectedAmount": "0.00",
+      "customerName": "NULL",
+      "source": "NULL"
+    },
+    {
+      "id": "6",
+      "surveyId": "1410363",
+      "status": "paid",
+      "contractValue": "NULL",
+      "collectedAmount": "0.00",
+      "customerName": "NULL",
+      "source": "NULL"
+    },
+    {
+      "id": "7",
+      "surveyId": "1410395",
+      "status": "paid",
+      "contractValue": "NULL",
+      "collectedAmount": "0.00",
+      "customerName": "NULL",
+      "source": "NULL"
+    },
+    {
+      "id": "8",
+      "surveyId": "1410427",
+      "status": "paid",
+      "contractValue": "NULL",
+      "collectedAmount": "0.00",
+      "customerName": "NULL",
+      "source": "NULL"
+    },
+    {
+      "id": "9",
+      "surveyId": "1410458",
+      "status": "paid",
+      "contractValue": "NULL",
+      "collectedAmount": "0.00",
+      "customerName": "NULL",
+      "source": "NULL"
+    },
+    {
+      "id": "10",
+      "surveyId": "1410459",
+      "status": "paid",
+      "contractValue": "NULL",
+      "collectedAmount": "0.00",
+      "customerName": "NULL",
+      "source": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsurveyId\tstatus\tcontractValue\tcollectedAmount\tcustomerName\tsource\n1\t1410346\tpaid\tNULL\t0.00\tNULL\tNULL\n2\t1410347\tpaid\tNULL\t0.00\tNULL\tNULL\n3\t1410350\tpaid\tNULL\t0.00\tNULL\tNULL\n4\t1410351\tpaid\tNULL\t0.00\tNULL\tNULL\n5\t1410355\tpaid\tNULL\t0.00\tNULL\tNULL\n6\t1410363\tpaid\tNULL\t0.00\tNULL\tNULL\n7\t1410395\tpaid\tNULL\t0.00\tNULL\tNULL\n8\t1410427\tpaid\tNULL\t0.00\tNULL\tNULL\n9\t1410458\tpaid\tNULL\t0.00\tNULL\tNULL\n10\t1410459\tpaid\tNULL\t0.00\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1914
+}

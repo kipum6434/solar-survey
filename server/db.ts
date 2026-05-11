@@ -1,6 +1,6 @@
 import { eq, and, or, like, desc, gte, lte, sql, inArray, not, asc, isNotNull, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory, installerTeams, InsertInstallerTeam, deliveryComments, InsertDeliveryComment, lineGroups, InsertLineGroup, lineNotificationTargets, InsertLineNotificationTarget, companySettings, InsertCompanySettings, postponeCancelLogs, InsertPostponeCancelLog, deliveryForms, InsertDeliveryForm, deliveryChecklistTemplates, InsertDeliveryChecklistTemplate, payments, InsertPayment, sourceGroups, InsertSourceGroup, surveyTemplates, InsertSurveyTemplate, surveyTemplateFields, InsertSurveyTemplateField, surveyTemplateData, InsertSurveyTemplateData } from "../drizzle/schema";
+import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory, installerTeams, InsertInstallerTeam, deliveryComments, InsertDeliveryComment, lineGroups, InsertLineGroup, lineNotificationTargets, InsertLineNotificationTarget, companySettings, InsertCompanySettings, postponeCancelLogs, InsertPostponeCancelLog, deliveryForms, InsertDeliveryForm, deliveryChecklistTemplates, InsertDeliveryChecklistTemplate, payments, InsertPayment, sourceGroups, InsertSourceGroup, surveyTemplates, InsertSurveyTemplate, surveyTemplateFields, InsertSurveyTemplateField, surveyTemplateData, InsertSurveyTemplateData, paymentCollections, InsertPaymentCollection } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -2791,7 +2791,13 @@ export async function getPaymentBySurveyId(surveyId: number) {
 export async function getWonSurveysWithoutPayment(opts: { source?: string; sourceInclude?: string[] }) {
   const db = await getDb();
   if (!db) return [];
-  const conditions: any[] = [eq(surveys.status, "won")];
+  // Include surveys with status 'won' OR those with installationStatus set (waiting/in_progress/completed/delivered)
+  const conditions: any[] = [
+    or(
+      eq(surveys.status, "won"),
+      isNotNull(surveys.installationStatus)
+    )!
+  ];
   if (opts.source) conditions.push(eq(customers.source, opts.source));
   if (opts.sourceInclude && opts.sourceInclude.length > 0) {
     conditions.push(inArray(customers.source, opts.sourceInclude));
@@ -2979,4 +2985,50 @@ export async function saveTemplateData(surveyId: number, templateId: number, ent
       entries.map(e => ({ surveyId, templateId, fieldId: e.fieldId, value: e.value, otherValue: e.otherValue }))
     );
   }
+}
+
+// ==================== PAYMENT COLLECTIONS (งวดเก็บเงิน) ====================
+export async function getPaymentCollections(paymentId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(paymentCollections)
+    .where(eq(paymentCollections.paymentId, paymentId))
+    .orderBy(desc(paymentCollections.collectedAt));
+}
+
+export async function createPaymentCollection(data: InsertPaymentCollection) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(paymentCollections).values(data);
+  // Update collectedAmount on parent payment
+  await recalcPaymentCollected(data.paymentId);
+  return result;
+}
+
+export async function deletePaymentCollection(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const [coll] = await db.select().from(paymentCollections).where(eq(paymentCollections.id, id)).limit(1);
+  if (!coll) throw new Error("Collection not found");
+  await db.delete(paymentCollections).where(eq(paymentCollections.id, id));
+  await recalcPaymentCollected(coll.paymentId);
+}
+
+async function recalcPaymentCollected(paymentId: number) {
+  const db = await getDb();
+  if (!db) return;
+  const [sumResult] = await db.select({
+    total: sql<string>`COALESCE(SUM(${paymentCollections.amount}), 0)`,
+  }).from(paymentCollections).where(eq(paymentCollections.paymentId, paymentId));
+  const totalCollected = parseFloat(sumResult?.total || "0");
+  // Get contract value to determine status
+  const [payment] = await db.select({ contractValue: payments.contractValue }).from(payments).where(eq(payments.id, paymentId)).limit(1);
+  const contractVal = payment?.contractValue ? parseFloat(String(payment.contractValue)) : 0;
+  let newStatus: "pending" | "partial" | "paid" = "pending";
+  if (totalCollected > 0 && contractVal > 0 && totalCollected >= contractVal) {
+    newStatus = "paid";
+  } else if (totalCollected > 0) {
+    newStatus = "partial";
+  }
+  await db.update(payments).set({ collectedAmount: String(totalCollected), status: newStatus }).where(eq(payments.id, paymentId));
 }

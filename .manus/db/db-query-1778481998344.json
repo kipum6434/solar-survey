@@ -1,0 +1,35 @@
+{
+  "query": "SELECT p.id, p.customerId, p.surveyId FROM payments p LIMIT 5; SELECT id, name, source FROM customers WHERE id IN (SELECT customerId FROM payments LIMIT 5);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT p.id, p.customerId, p.surveyId FROM payments p LIMIT 5; SELECT id, name, source FROM customers WHERE id IN (SELECT customerId FROM payments LIMIT 5);",
+  "rows": [
+    {
+      "id": "1",
+      "customerId": "1440423",
+      "surveyId": "1410346"
+    },
+    {
+      "id": "2",
+      "customerId": "1440424",
+      "surveyId": "1410347"
+    },
+    {
+      "id": "3",
+      "customerId": "1440427",
+      "surveyId": "1410350"
+    },
+    {
+      "id": "4",
+      "customerId": "1440428",
+      "surveyId": "1410351"
+    },
+    {
+      "id": "5",
+      "customerId": "1440432",
+      "surveyId": "1410355"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcustomerId\tsurveyId\n1\t1440423\t1410346\n2\t1440424\t1410347\n3\t1440427\t1410350\n4\t1440428\t1410351\n5\t1440432\t1410355\n",
+  "stderr": "",
+  "execution_time_ms": 2179
+}

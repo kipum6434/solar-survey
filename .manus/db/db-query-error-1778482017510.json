@@ -1,0 +1,14 @@
+{
+  "query": "SELECT id, name, source FROM customers LIMIT 5; SELECT p.id, p.customerId FROM payments LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT id, name, source FROM customers LIMIT 5; SELECT p.id, p.customerId FROM payments LIMIT 5;",
+  "returncode": 1,
+  "logs": [
+    "id\tname\tsource",
+    "420001\tคุณกัลยาณี\tFB เพจ SET",
+    "450001\tคุณ เกด\tFB เพจ หมี",
+    "480039\tคุณแดน\tFB เพจ ไมโคร",
+    "510165\tคุณญาณกร แก้วจีน\tSET - Facebook",
+    "510166\tคุณวิฑูรย์ เจริญศักดิ์วรกุล\tSET - Line",
+    "ERROR 1054 (42S22) at line 1: Unknown column 'p.id' in 'field list'"
+  ]
+}

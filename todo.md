@@ -1220,3 +1220,19 @@
 - [x] Frontend: เพิ่ม UI แก้ไขจำนวนเงิน (contractValue, collectedAmount) ในรายการ Payment
 - [x] Frontend: แสดงสถานะ Payment ที่ชัดเจน (รอเก็บเงิน, เก็บบางส่วน, เก็บครบ)
 - [x] ทดสอบ Flow ทั้งหมด
+
+## Feature: ปรับปรุง Flow การเงิน v2 — เก็บเงินหลายงวด + ดึงจากงานติดตั้ง
+
+- [x] Schema: สร้างตาราง payment_collections (id, paymentId, amount, note, collectedAt, createdAt)
+- [x] Schema: migrate + apply SQL
+- [x] Backend: ปรับ auto-create Payment จาก "ปิดการขาย" เป็น "รอติดตั้ง" (pending_install)
+- [x] Backend: ปรับ wonSurveysWithoutPayment เป็นดึงงานที่สถานะ "รอติดตั้ง" ขึ้นไป
+- [x] Backend: เพิ่ม API payment.addCollection (เพิ่มงวดเก็บเงิน + หมายเหตุ)
+- [x] Backend: เพิ่ม API payment.listCollections (ดึงรายการงวดเก็บเงินของ Payment)
+- [x] Backend: เพิ่ม API payment.deleteCollection (ลบงวดเก็บเงิน)
+- [x] Backend: คำนวณ collectedAmount จากผลรวม collections แทน manual edit
+- [x] Frontend: ปรับหน้า Finance แสดงงวดเก็บเงินในแต่ละ Payment card
+- [x] Frontend: เพิ่มปุ่ม "เพิ่มงวดเก็บเงิน" ในแต่ละ Payment card
+- [x] Frontend: แก้ไขมูลค่าสัญญา (contractValue) ได้
+- [x] Frontend: แสดงยอดค้าง = contractValue - ผลรวม collections
+- [x] ทดสอบ Flow ทั้งหมด (13 vitest tests passed)

@@ -19,7 +19,8 @@ import { toast } from "sonner";
 import {
   Banknote, CheckCircle2, Clock, Upload, Search, Filter,
   FileText, Eye, Receipt, Loader2, ArrowUpDown, TrendingUp,
-  Phone, Zap, AlertCircle, Plus, Pencil, X,
+  Phone, Zap, AlertCircle, Plus, Pencil, X, ChevronDown, ChevronUp,
+  Trash2, CalendarDays, StickyNote, Wallet,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -44,7 +45,7 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editingPaymentId, setEditingPaymentId] = useState<number | null>(null);
   const [editContractValue, setEditContractValue] = useState("");
-  const [editCollectedAmount, setEditCollectedAmount] = useState("");
+  const [expandedPaymentId, setExpandedPaymentId] = useState<number | null>(null);
 
   // Get source names by group for dynamic filtering
   const { data: sourceNamesByGroup } = trpc.source.sourceNamesByGroup.useQuery();
@@ -158,19 +159,19 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
   const startEditPayment = (payment: any) => {
     setEditingPaymentId(payment.id);
     setEditContractValue(String(payment.contractValue || 0));
-    setEditCollectedAmount(String(payment.collectedAmount || 0));
   };
 
   const saveEditPayment = () => {
     if (editingPaymentId === null) return;
     const cv = parseFloat(editContractValue) || 0;
-    const ca = parseFloat(editCollectedAmount) || 0;
     updatePayment.mutate({
       id: editingPaymentId,
       contractValue: cv,
-      collectedAmount: ca,
-      status: ca >= cv && cv > 0 ? "paid" : ca > 0 ? "partial" : "pending",
     });
+  };
+
+  const toggleExpand = (paymentId: number) => {
+    setExpandedPaymentId((prev) => (prev === paymentId ? null : paymentId));
   };
 
   const groupTitle = sourceMode ? sourceMode.toUpperCase() : "";
@@ -325,6 +326,7 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
             const StatusIcon = statusInfo.icon;
             const outstanding = (payment.contractValue || 0) - (payment.collectedAmount || 0);
             const isEditing = editingPaymentId === payment.id;
+            const isExpanded = expandedPaymentId === payment.id;
 
             return (
               <Card key={payment.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
@@ -372,38 +374,6 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
                             <Eye className="h-3 w-3" /> ดูสลิป
                           </Button>
                         )}
-                        {payment.status === "pending" && isAdmin && (
-                          <PaymentUploadSlip
-                            paymentId={payment.id}
-                            onUpload={(file) => {
-                              const reader = new FileReader();
-                              reader.onload = () => {
-                                const base64 = (reader.result as string).split(",")[1];
-                                uploadSlip.mutate({
-                                  id: payment.id,
-                                  base64Data: base64,
-                                  fileName: file.name,
-                                  mimeType: file.type,
-                                });
-                              };
-                              reader.readAsDataURL(file);
-                            }}
-                            isPending={uploadSlip.isPending}
-                          />
-                        )}
-                        {(payment.status === "pending" || payment.status === "partial") && isAdmin && (
-                          <Button
-                            variant="default"
-                            size="sm"
-                            className="gap-1 text-xs bg-green-600 hover:bg-green-700"
-                            onClick={() => {
-                              updatePayment.mutate({ id: payment.id, status: "paid" });
-                            }}
-                            disabled={updatePayment.isPending}
-                          >
-                            <CheckCircle2 className="h-3 w-3" /> เก็บครบแล้ว
-                          </Button>
-                        )}
                         <Link href={`/surveys/${payment.surveyId}`}>
                           <Button variant="ghost" size="sm" className="gap-1 text-xs">
                             <FileText className="h-3 w-3" /> ดูงาน
@@ -412,7 +382,7 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
                       </div>
                     </div>
 
-                    {/* Bottom row: Financial info - editable */}
+                    {/* Financial info row - editable contract value */}
                     {isEditing ? (
                       <div className="flex items-end gap-3 border-t pt-2">
                         <div className="flex-1">
@@ -421,16 +391,6 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
                             type="number"
                             value={editContractValue}
                             onChange={(e) => setEditContractValue(e.target.value)}
-                            className="h-8 text-sm mt-1"
-                            placeholder="0"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <Label className="text-xs text-muted-foreground">เก็บแล้ว (บาท)</Label>
-                          <Input
-                            type="number"
-                            value={editCollectedAmount}
-                            onChange={(e) => setEditCollectedAmount(e.target.value)}
                             className="h-8 text-sm mt-1"
                             placeholder="0"
                           />
@@ -480,13 +440,36 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
                             size="sm"
                             className="h-6 w-6 p-0"
                             onClick={() => startEditPayment(payment)}
-                            title="แก้ไขจำนวนเงิน"
+                            title="แก้ไขมูลค่าสัญญา"
                           >
                             <Pencil className="h-3 w-3" />
                           </Button>
                         )}
                       </div>
                     )}
+
+                    {/* Expand/Collapse button for collections */}
+                    <div className="border-t pt-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full gap-2 text-xs h-7 text-muted-foreground hover:text-foreground"
+                        onClick={() => toggleExpand(payment.id)}
+                      >
+                        <Wallet className="h-3.5 w-3.5" />
+                        งวดเก็บเงิน
+                        {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                      </Button>
+
+                      {isExpanded && (
+                        <PaymentCollectionsSection
+                          paymentId={payment.id}
+                          isAdmin={isAdmin}
+                          formatCurrency={formatCurrency}
+                          formatDate={formatDate}
+                        />
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -496,6 +479,226 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
       )}
     </div>
     </DashboardLayout>
+  );
+}
+
+// ==================== Payment Collections Section (per payment card) ====================
+function PaymentCollectionsSection({
+  paymentId,
+  isAdmin,
+  formatCurrency,
+  formatDate,
+}: {
+  paymentId: number;
+  isAdmin: boolean;
+  formatCurrency: (amount: number) => string;
+  formatDate: (ts: number | null | undefined) => string;
+}) {
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [addAmount, setAddAmount] = useState("");
+  const [addNote, setAddNote] = useState("");
+  const [addDate, setAddDate] = useState(() => {
+    const now = new Date();
+    return now.toISOString().split("T")[0]; // YYYY-MM-DD
+  });
+
+  const utils = trpc.useUtils();
+
+  const { data: collections, isLoading } = trpc.payment.listCollections.useQuery({ paymentId });
+
+  const addCollection = trpc.payment.addCollection.useMutation({
+    onSuccess: () => {
+      toast.success("บันทึกการเก็บเงินสำเร็จ");
+      setShowAddForm(false);
+      setAddAmount("");
+      setAddNote("");
+      setAddDate(new Date().toISOString().split("T")[0]);
+      utils.payment.listCollections.invalidate({ paymentId });
+      utils.payment.list.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const deleteCollection = trpc.payment.deleteCollection.useMutation({
+    onSuccess: () => {
+      toast.success("ลบรายการสำเร็จ");
+      utils.payment.listCollections.invalidate({ paymentId });
+      utils.payment.list.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const handleAddSubmit = () => {
+    const amount = parseFloat(addAmount);
+    if (!amount || amount <= 0) {
+      toast.error("กรุณากรอกจำนวนเงินที่ถูกต้อง");
+      return;
+    }
+    const collectedAt = addDate ? new Date(addDate).getTime() : Date.now();
+    addCollection.mutate({
+      paymentId,
+      amount,
+      note: addNote || undefined,
+      collectedAt,
+    });
+  };
+
+  const handleDelete = (id: number) => {
+    if (!confirm("ต้องการลบรายการนี้?")) return;
+    deleteCollection.mutate({ id });
+  };
+
+  return (
+    <div className="mt-2 space-y-2">
+      {/* Collections list */}
+      {isLoading ? (
+        <div className="space-y-1.5">
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+        </div>
+      ) : collections && collections.length > 0 ? (
+        <div className="rounded-lg border overflow-hidden">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-muted/50">
+                <th className="text-left px-3 py-1.5 font-medium text-muted-foreground">วันที่</th>
+                <th className="text-left px-3 py-1.5 font-medium text-muted-foreground">หมายเหตุ</th>
+                <th className="text-right px-3 py-1.5 font-medium text-muted-foreground">จำนวนเงิน</th>
+                {isAdmin && <th className="w-8 px-2 py-1.5"></th>}
+              </tr>
+            </thead>
+            <tbody>
+              {collections.map((coll: any, idx: number) => (
+                <tr key={coll.id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                  <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
+                    <span className="flex items-center gap-1">
+                      <CalendarDays className="h-3 w-3" />
+                      {formatDate(coll.collectedAt)}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2">
+                    <span className="flex items-center gap-1">
+                      {coll.note ? (
+                        <>
+                          <StickyNote className="h-3 w-3 text-muted-foreground shrink-0" />
+                          <span className="truncate max-w-[200px]">{coll.note}</span>
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground italic">-</span>
+                      )}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-right font-semibold text-green-600 whitespace-nowrap">
+                    {formatCurrency(parseFloat(coll.amount) || 0)}
+                  </td>
+                  {isAdmin && (
+                    <td className="px-2 py-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-muted-foreground hover:text-red-600"
+                        onClick={() => handleDelete(coll.id)}
+                        disabled={deleteCollection.isPending}
+                        title="ลบรายการ"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="text-center py-3 text-xs text-muted-foreground bg-muted/20 rounded-lg">
+          ยังไม่มีรายการเก็บเงิน
+        </div>
+      )}
+
+      {/* Add collection form */}
+      {isAdmin && (
+        <>
+          {showAddForm ? (
+            <div className="border rounded-lg p-3 bg-muted/10 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Wallet className="h-4 w-4 text-primary" />
+                บันทึกการเก็บเงิน
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">จำนวนเงิน (บาท) *</Label>
+                  <Input
+                    type="number"
+                    value={addAmount}
+                    onChange={(e) => setAddAmount(e.target.value)}
+                    placeholder="0"
+                    className="h-8 text-sm mt-1"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">หมายเหตุ / งวดที่</Label>
+                  <Input
+                    value={addNote}
+                    onChange={(e) => setAddNote(e.target.value)}
+                    placeholder="เช่น มัดจำ, งวด 1, หลังติดตั้ง"
+                    className="h-8 text-sm mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">วันที่เก็บเงิน</Label>
+                  <Input
+                    type="date"
+                    value={addDate}
+                    onChange={(e) => setAddDate(e.target.value)}
+                    className="h-8 text-sm mt-1"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-7"
+                  onClick={() => {
+                    setShowAddForm(false);
+                    setAddAmount("");
+                    setAddNote("");
+                  }}
+                >
+                  ยกเลิก
+                </Button>
+                <Button
+                  size="sm"
+                  className="gap-1 text-xs h-7"
+                  onClick={handleAddSubmit}
+                  disabled={addCollection.isPending || !addAmount}
+                >
+                  {addCollection.isPending ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="h-3 w-3" />
+                  )}
+                  บันทึก
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-1.5 text-xs h-8 border-dashed"
+              onClick={() => setShowAddForm(true)}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              บันทึกการเก็บเงิน
+            </Button>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 

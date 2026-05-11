@@ -1,0 +1,14 @@
+{
+  "query": "SELECT id, name, source FROM customers WHERE id = 1440423; SELECT MIN(id), MAX(id) FROM customers;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT id, name, source FROM customers WHERE id = 1440423; SELECT MIN(id), MAX(id) FROM customers;",
+  "rows": [
+    {
+      "MIN(id)": "420001",
+      "MAX(id)": "1500001"
+    }
+  ],
+  "messages": [],
+  "stdout": "MIN(id)\tMAX(id)\n420001\t1500001\n",
+  "stderr": "",
+  "execution_time_ms": 2051
+}

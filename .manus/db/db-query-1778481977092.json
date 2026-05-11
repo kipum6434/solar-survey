@@ -1,0 +1,19 @@
+{
+  "query": "SELECT COUNT(*) as cnt FROM payments; SELECT COUNT(*) as cnt FROM surveys WHERE status = 'won' OR installationStatus IS NOT NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT COUNT(*) as cnt FROM payments; SELECT COUNT(*) as cnt FROM surveys WHERE status = 'won' OR installationStatus IS NOT NULL;",
+  "rows": [
+    {
+      "cnt": "22"
+    },
+    {
+      "cnt": "cnt"
+    },
+    {
+      "cnt": "5"
+    }
+  ],
+  "messages": [],
+  "stdout": "cnt\n22\ncnt\n5\n",
+  "stderr": "",
+  "execution_time_ms": 2133
+}

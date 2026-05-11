@@ -1,0 +1,9 @@
+{
+  "query": "SELECT p.id, p.surveyId, p.status, p.contractValue, p.collectedAmount, c.name as customerName, c.source FROM payments p LEFT JOIN customers c ON p.customerId = c.id WHERE c.name IS NOT NULL AND c.source IS NOT NULL LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT p.id, p.surveyId, p.status, p.contractValue, p.collectedAmount, c.name as customerName, c.source FROM payments p LEFT JOIN customers c ON p.customerId = c.id WHERE c.name IS NOT NULL AND c.source IS NOT NULL LIMIT 10;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1934
+}

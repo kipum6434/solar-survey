@@ -450,20 +450,24 @@ const surveyRouter = router({
           });
         }
       }
-      // Auto-create payment when status changes to 'won' (ปิดการขาย)
-      if (data.status === "won" && oldSurvey && oldSurvey.status !== "won") {
+      // Auto-create payment when status changes to 'won' (ปิดการขาย) or installationStatus is set (รอติดตั้ง)
+      const shouldAutoCreatePayment = 
+        (data.status === "won" && oldSurvey && oldSurvey.status !== "won") ||
+        ((data as any).installationStatus && oldSurvey && !(oldSurvey as any).installationStatus);
+      if (shouldAutoCreatePayment) {
         const existingPayment = await db.getPaymentBySurveyId(id);
         if (!existingPayment) {
           const fullSurvey = await db.getSurveyById(id);
           if (fullSurvey) {
             const contractVal = fullSurvey.quotedPrice ? parseFloat(String(fullSurvey.quotedPrice)) : 0;
+            const reason = (data as any).installationStatus ? "สร้างอัตโนมัติจากสถานะรอติดตั้ง" : "สร้างอัตโนมัติจากการปิดการขาย";
             await db.createPayment({
               surveyId: id,
               customerId: fullSurvey.customerId,
               contractValue: contractVal,
               collectedAmount: 0,
               createdBy: ctx.user.id,
-              notes: "สร้างอัตโนมัติจากการปิดการขาย",
+              notes: reason,
             });
           }
         }
@@ -2816,6 +2820,37 @@ const paymentRouter = router({
         createdBy: ctx.user.id,
         notes: input.notes || "สร้างจากหน้าการเงิน",
       });
+    }),
+
+  // ==================== PAYMENT COLLECTIONS (งวดเก็บเงิน) ====================
+  listCollections: protectedProcedure
+    .input(z.object({ paymentId: z.number() }))
+    .query(async ({ input }) => {
+      return db.getPaymentCollections(input.paymentId);
+    }),
+
+  addCollection: protectedProcedure
+    .input(z.object({
+      paymentId: z.number(),
+      amount: z.number(),
+      note: z.string().optional(),
+      collectedAt: z.number(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      return db.createPaymentCollection({
+        paymentId: input.paymentId,
+        amount: String(input.amount),
+        note: input.note || null,
+        collectedAt: input.collectedAt,
+        createdBy: ctx.user.id,
+      });
+    }),
+
+  deleteCollection: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await db.deletePaymentCollection(input.id);
+      return { success: true };
     }),
 });
 

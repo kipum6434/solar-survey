@@ -539,3 +539,18 @@ export const surveyTemplateData = mysqlTable("survey_template_data", {
 });
 export type SurveyTemplateData = typeof surveyTemplateData.$inferSelect;
 export type InsertSurveyTemplateData = typeof surveyTemplateData.$inferInsert;
+
+// ==================== PAYMENT COLLECTIONS (งวดเก็บเงิน) ====================
+export const paymentCollections = mysqlTable("payment_collections", {
+  id: int("id").autoincrement().primaryKey(),
+  paymentId: int("paymentId").notNull(),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  note: text("note"),
+  collectedAt: bigint("collectedAt", { mode: "number" }).notNull(),
+  slipUrl: text("slipUrl"),
+  slipFileKey: varchar("slipFileKey", { length: 512 }),
+  createdBy: int("createdBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type PaymentCollection = typeof paymentCollections.$inferSelect;
+export type InsertPaymentCollection = typeof paymentCollections.$inferInsert;
