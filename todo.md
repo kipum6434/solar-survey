@@ -1182,3 +1182,9 @@
 - [x] แสดง Template fields (กรอกได้) ในหน้า SharedSurvey
 - [x] เพิ่มปุ่มแก้ไขหมายเหตุรูปในหน้า SharedSurvey
 - [x] Vitest: 15 tests passed สำหรับ public template + caption endpoints
+
+## Bug Fix: SharedSurvey ไม่แสดง Template fields เหมือน SurveyDetail
+
+- [x] ตรวจสอบว่า PublicTemplateFieldsCard ไม่แสดงเพราะอะไร → แก้ผิดไฟล์ (SharedSurvey.tsx แทน SharedSurveyField.tsx)
+- [x] แก้ไข SharedSurveyField.tsx ให้แสดง Template fields แทนฟอร์มเดิมเมื่อ source มี Template
+- [x] ทดสอบกับงาน Gulf ที่มี Template SSR → dev server แสดง Gulf SSR fields ถูกต้อง

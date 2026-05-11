@@ -1,0 +1,8 @@
+{
+  "query": "\nSELECT c.id, c.name, c.source, s.id as survey_id\nFROM customers c \nJOIN surveys s ON s.customer_id = c.id\nJOIN share_links sl ON sl.survey_id = s.id\nWHERE sl.token = 'vn3b_k7IF6mM8DU4jFMbNhH1Z6zgv9yT';\n\nSELECT st.id, st.name, st.source_id, src.name as source_name\nFROM survey_templates st\nJOIN sources src ON src.id = st.source_id;\n\nSELECT id, name FROM sources WHERE name LIKE '%Gulf%' OR name LIKE '%gulf%';\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute \nSELECT c.id, c.name, c.source, s.id as survey_id\nFROM customers c \nJOIN surveys s ON s.customer_id = c.id\nJOIN share_links sl ON sl.survey_id = s.id\nWHERE sl.token = 'vn3b_k7IF6mM8DU4jFMbNhH1Z6zgv9yT';\n\nSELECT st.id, st.name, st.source_id, src.name as source_name\nFROM survey_templates st\nJOIN sources src ON src.id = st.source_id;\n\nSELECT id, name FROM sources WHERE name LIKE '%Gulf%' OR name LIKE '%gulf%';\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 2: Unknown column 's.customer_id' in 'on clause'"
+  ]
+}

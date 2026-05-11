@@ -1,0 +1,19 @@
+{
+  "query": "SELECT sl.id, sl.token, sl.surveyId, sl.linkType, sl.isActive, c.source, c.name as customerName\nFROM share_links sl\nJOIN surveys s ON sl.surveyId = s.id\nJOIN customers c ON s.customerId = c.id\nWHERE sl.isActive = 1 AND c.source LIKE '%Gulf%'\nLIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT sl.id, sl.token, sl.surveyId, sl.linkType, sl.isActive, c.source, c.name as customerName\nFROM share_links sl\nJOIN surveys s ON sl.surveyId = s.id\nJOIN customers c ON s.customerId = c.id\nWHERE sl.isActive = 1 AND c.source LIKE '%Gulf%'\nLIMIT 5;",
+  "rows": [
+    {
+      "id": "1230464",
+      "token": "vn3b_k7IF6mM8DU4jFMbNhH1Z6zgv9yT",
+      "surveyId": "1410464",
+      "linkType": "survey",
+      "isActive": "1",
+      "source": "Gulf",
+      "customerName": "ทดสอบ Gulf 2 "
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttoken\tsurveyId\tlinkType\tisActive\tsource\tcustomerName\n1230464\tvn3b_k7IF6mM8DU4jFMbNhH1Z6zgv9yT\t1410464\tsurvey\t1\tGulf\tทดสอบ Gulf 2 \n",
+  "stderr": "",
+  "execution_time_ms": 1731
+}

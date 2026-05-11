@@ -1,0 +1,28 @@
+{
+  "query": "\nSELECT sl.surveyId, s.id, c.name, c.source \nFROM share_links sl \nJOIN surveys s ON s.id = sl.surveyId\nJOIN customers c ON c.id = s.customerId\nWHERE sl.token = 'vn3b_k7IF6mM8DU4jFMbNhH1Z6zgv9yT';\n\nSELECT st.id, st.name, st.sourceId, src.name as source_name\nFROM survey_templates st\nJOIN sources src ON src.id = st.sourceId;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute \nSELECT sl.surveyId, s.id, c.name, c.source \nFROM share_links sl \nJOIN surveys s ON s.id = sl.surveyId\nJOIN customers c ON c.id = s.customerId\nWHERE sl.token = 'vn3b_k7IF6mM8DU4jFMbNhH1Z6zgv9yT';\n\nSELECT st.id, st.name, st.sourceId, src.name as source_name\nFROM survey_templates st\nJOIN sources src ON src.id = st.sourceId;\n",
+  "rows": [
+    {
+      "surveyId": "1410464",
+      "id": "1410464",
+      "name": "ทดสอบ Gulf 2 ",
+      "source": "Gulf"
+    },
+    {
+      "surveyId": "id",
+      "id": "name",
+      "name": "sourceId",
+      "source": "source_name"
+    },
+    {
+      "surveyId": "3",
+      "id": "Gulf SSR",
+      "name": "810004",
+      "source": "Gulf"
+    }
+  ],
+  "messages": [],
+  "stdout": "surveyId\tid\tname\tsource\n1410464\t1410464\tทดสอบ Gulf 2 \tGulf\nid\tname\tsourceId\tsource_name\n3\tGulf SSR\t810004\tGulf\n",
+  "stderr": "",
+  "execution_time_ms": 2105
+}
