@@ -1194,3 +1194,9 @@
 - [x] เปลี่ยน Template fields จาก auto-save เป็นปุ่ม "บันทึก" ที่ชัดเจน
 - [x] แสดงสถานะบันทึกสำเร็จ/ล้มเหลวให้ผู้ใช้เห็น
 - [x] ทดสอบการทำงานบน dev server
+
+## Feature: ปุ่มบันทึกลอยติดด้านล่างจอ (sticky bottom)
+
+- [x] ย้ายปุ่มบันทึกข้อมูลออกจาก Card ไปเป็น fixed/sticky ด้านล่างจอ
+- [x] แสดงเฉพาะเมื่อมี Template fields (hasTemplate = true)
+- [x] ทดสอบบน dev server

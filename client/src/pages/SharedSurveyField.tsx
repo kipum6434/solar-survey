@@ -491,7 +491,7 @@ export default function SharedSurveyField() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+      <div className={`max-w-4xl mx-auto px-4 py-6 space-y-6 ${hasTemplate ? 'pb-24' : ''}`}>
         {/* Customer Info (read-only summary) */}
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-2">
@@ -988,6 +988,38 @@ export default function SharedSurveyField() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Sticky Save Bar for Template */}
+      {hasTemplate && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-t shadow-lg">
+          <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
+            {templateDirty && (
+              <Button variant="outline" className="gap-2" onClick={() => { setTemplateInitialized(false); setTemplateDirty(false); }}>
+                <X className="h-4 w-4" /> ยกเลิก
+              </Button>
+            )}
+            <Button
+              className={`flex-1 gap-2 h-11 text-base ${saveTemplateMut.isSuccess && !templateDirty ? 'bg-green-600 hover:bg-green-700' : ''}`}
+              onClick={() => {
+                const entries = (templateData!.fields || []).filter((f: any) => f.fieldType !== "section_header").map((f: any) => ({
+                  fieldId: f.id, value: templateFormValues[f.id] || null, otherValue: templateOtherValues[f.id] || null,
+                }));
+                saveTemplateMut.mutate({ token, surveyId, templateId: templateData!.id, entries });
+                setTemplateDirty(false);
+              }}
+              disabled={saveTemplateMut.isPending || !templateDirty}
+            >
+              {saveTemplateMut.isPending ? (
+                <><span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" /> กำลังบันทึก...</>
+              ) : saveTemplateMut.isSuccess && !templateDirty ? (
+                <><CheckCircle2 className="h-4 w-4" /> บันทึกสำเร็จ!</>
+              ) : (
+                <><Save className="h-4 w-4" /> บันทึกข้อมูล</>
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Upload Status Bar */}
       <UploadStatusBar
         state={uploadState}
@@ -1038,16 +1070,6 @@ function TemplateFieldsSection({ templateData, formValues, otherValues, dirty, s
     groupedFields.push({ section: currentSection, fields: currentGroup });
   }
 
-  const [saved, setSaved] = useState(false);
-
-  // Show "saved" indicator for 3 seconds after successful save
-  useEffect(() => {
-    if (saved) {
-      const timer = setTimeout(() => setSaved(false), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [saved]);
-
   return (
     <Card className="border-0 shadow-sm">
       <CardHeader className="pb-3">
@@ -1081,29 +1103,7 @@ function TemplateFieldsSection({ templateData, formValues, otherValues, dirty, s
             </div>
           ))}
         </div>
-        <div className="mt-6 flex gap-3">
-          {dirty && (
-            <Button variant="outline" className="flex-1 gap-2" onClick={onCancel}>
-              <X className="h-4 w-4" /> ยกเลิกการแก้ไข
-            </Button>
-          )}
-          <Button
-            className={`flex-1 gap-2 ${saved ? 'bg-green-600 hover:bg-green-700' : ''}`}
-            onClick={() => { onSave(); setSaved(true); }}
-            disabled={saving || !dirty}
-          >
-            {saving ? (
-              <><span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" /> กำลังบันทึก...</>
-            ) : saved ? (
-              <><CheckCircle2 className="h-4 w-4" /> บันทึกสำเร็จ!</>
-            ) : (
-              <><Save className="h-4 w-4" /> บันทึกข้อมูล</>
-            )}
-          </Button>
-        </div>
-        {saved && (
-          <p className="text-center text-xs text-green-600 mt-2 font-medium">ข้อมูลถูกบันทึกเรียบร้อยแล้ว</p>
-        )}
+
       </CardContent>
     </Card>
   );
