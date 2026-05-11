@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -152,6 +153,7 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
   const groupTitle = sourceMode ? sourceMode.toUpperCase() : "";
 
   return (
+    <DashboardLayout>
     <div className="space-y-6">
       {/* Header */}
       <div>
@@ -396,6 +398,7 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
         </div>
       )}
     </div>
+    </DashboardLayout>
   );
 }
 

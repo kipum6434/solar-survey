@@ -1205,3 +1205,8 @@
 
 - [x] เพิ่ม beforeunload event เมื่อ templateDirty = true ในหน้า SharedSurveyField
 - [x] ทดสอบว่า browser แสดง dialog เตือนเมื่อปิดหน้าหรือ navigate ออก
+
+## Bug Fix: หน้าการเงิน (Finance) ไม่มี sidebar
+
+- [x] ตรวจสอบ route ของหน้า Finance ใน App.tsx
+- [x] แก้ไขให้หน้า Finance แสดงภายใน DashboardLayout พร้อม sidebar
