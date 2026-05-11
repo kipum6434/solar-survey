@@ -879,6 +879,16 @@ const photoRouter = router({
       return { success: true };
     }),
 
+  publicUpdateCaption: publicProcedure
+    .input(z.object({ token: z.string(), photoId: z.number(), caption: z.string() }))
+    .mutation(async ({ input }) => {
+      const link = await db.getShareLinkByToken(input.token);
+      if (!link || !link.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
+      if (link.expiresAt && link.expiresAt < Date.now()) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์หมดอายุ" });
+      await db.updatePhotoCaption(input.photoId, input.caption);
+      return { success: true };
+    }),
+
   reorder: publicProcedure
     .input(z.object({ items: z.array(z.object({ id: z.number(), sortOrder: z.number() })).min(1).max(500) }))
     .mutation(async ({ input }) => {
@@ -2906,6 +2916,48 @@ const surveyTemplateRouter = router({
       })),
     }))
     .mutation(async ({ input }) => {
+      await db.saveTemplateData(input.surveyId, input.templateId, input.entries);
+      return { success: true };
+    }),
+
+  // ==================== PUBLIC (Share Link) ====================
+  publicGetBySourceName: publicProcedure
+    .input(z.object({ token: z.string(), sourceName: z.string() }))
+    .query(async ({ input }) => {
+      const link = await db.getShareLinkByToken(input.token);
+      if (!link || !link.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
+      if (link.expiresAt && link.expiresAt < Date.now()) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์หมดอายุ" });
+      const allSources = await db.getSources();
+      const source = allSources.find((s: any) => s.name === input.sourceName);
+      if (!source) return null;
+      const template = await db.getSurveyTemplateBySourceId(source.id);
+      if (!template) return null;
+      const fields = await db.getTemplateFields(template.id);
+      return { ...template, fields };
+    }),
+  publicGetData: publicProcedure
+    .input(z.object({ token: z.string(), surveyId: z.number() }))
+    .query(async ({ input }) => {
+      const link = await db.getShareLinkByToken(input.token);
+      if (!link || !link.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
+      if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
+      return db.getTemplateDataBySurvey(input.surveyId);
+    }),
+  publicSaveData: publicProcedure
+    .input(z.object({
+      token: z.string(),
+      surveyId: z.number(),
+      templateId: z.number(),
+      entries: z.array(z.object({
+        fieldId: z.number(),
+        value: z.string().nullable(),
+        otherValue: z.string().nullable(),
+      })),
+    }))
+    .mutation(async ({ input }) => {
+      const link = await db.getShareLinkByToken(input.token);
+      if (!link || !link.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
+      if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
       await db.saveTemplateData(input.surveyId, input.templateId, input.entries);
       return { success: true };
     }),

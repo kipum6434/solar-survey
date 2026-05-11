@@ -4,7 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { SURVEY_STATUS_MAP } from "@/lib/constants";
 import { formatPhone } from "@/lib/formatPhone";
 import { useParams } from "wouter";
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { compressImages } from "@/lib/imageCompression";
 import { useUploadWithRetry } from "@/hooks/useUploadWithRetry";
 import { UploadStatusBar } from "@/components/UploadStatusBar";
@@ -12,13 +12,15 @@ import {
   Camera, MapPin, Calendar, Phone, Mail, Zap, Home, Gauge,
   X, Image, Sun, Wrench, FolderDown, Download, Upload, Trash2,
   Package, CheckCircle2, Clock, AlertTriangle, HardHat, Send, Plus,
-  CircleAlert, CircleCheck, Info, XCircle, PauseCircle,
+  CircleAlert, CircleCheck, Info, XCircle, PauseCircle, FileText, MessageSquare,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
@@ -34,6 +36,8 @@ export default function SharedSurvey() {
   const [showCompleteSurveyConfirm, setShowCompleteSurveyConfirm] = useState(false);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [pdfProgress, setPdfProgress] = useState<string>("");
+  const [editingCaptionId, setEditingCaptionId] = useState<number | null>(null);
+  const [captionText, setCaptionText] = useState("");
 
   const proxyImageMut = trpc.util.proxyImage.useMutation();
   const imageProxyFn: ImageProxyFn = async (url: string) => {
@@ -250,6 +254,9 @@ export default function SharedSurvey() {
           </Card>
         </div>
 
+        {/* Template Fields Card */}
+        {c.source && <PublicTemplateFieldsCard sourceName={c.source} surveyId={surveyId} token={token} />}
+
         {/* Photos */}
         {photosData && photosData.length > 0 && (
           <Card className="border-0 shadow-sm">
@@ -308,10 +315,28 @@ export default function SharedSurvey() {
                           {categoryMap[photo.category] || photo.category}
                         </Badge>
                       </div>
+                      {/* Caption edit button overlay */}
+                      <button
+                        className="absolute top-1 right-1 bg-white/90 hover:bg-blue-100 rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => { e.stopPropagation(); setEditingCaptionId(photo.id); setCaptionText(photo.caption || ""); }}
+                      >
+                        <MessageSquare className="h-3 w-3 text-blue-600" />
+                      </button>
                     </div>
-                    {photo.caption && (
-                      <p className="text-xs text-muted-foreground mt-1 px-1 line-clamp-2 italic">{photo.caption}</p>
-                    )}
+                    {/* Caption display/edit */}
+                    {editingCaptionId === photo.id ? (
+                      <PhotoCaptionEditor
+                        photoId={photo.id}
+                        token={token}
+                        captionText={captionText}
+                        setCaptionText={setCaptionText}
+                        onDone={() => setEditingCaptionId(null)}
+                      />
+                    ) : photo.caption ? (
+                      <p className="mt-1 text-xs text-muted-foreground truncate cursor-pointer hover:text-foreground px-1" onClick={() => { setEditingCaptionId(photo.id); setCaptionText(photo.caption || ""); }} title={photo.caption}>
+                        <MessageSquare className="h-3 w-3 inline mr-1" />{photo.caption}
+                      </p>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -1051,4 +1076,310 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
       />
     </Card>
   );
+}
+
+/* ==================== PHOTO CAPTION EDITOR (Public) ==================== */
+function PhotoCaptionEditor({ photoId, token, captionText, setCaptionText, onDone }: {
+  photoId: number; token: string; captionText: string; setCaptionText: (v: string) => void; onDone: () => void;
+}) {
+  const utils = trpc.useUtils();
+  const updateCaption = trpc.photo.publicUpdateCaption.useMutation({
+    onSuccess: () => { toast.success("บันทึกหมายเหตุสำเร็จ"); utils.shareLink.getByToken.invalidate(); onDone(); },
+    onError: (e: any) => toast.error(e.message || "บันทึกล้มเหลว"),
+  });
+
+  return (
+    <div className="mt-1 flex gap-1">
+      <Input
+        value={captionText}
+        onChange={(e) => setCaptionText(e.target.value)}
+        placeholder="หมายเหตุ..."
+        className="h-7 text-xs"
+        autoFocus
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { updateCaption.mutate({ token, photoId, caption: captionText }); }
+          if (e.key === "Escape") { onDone(); }
+        }}
+      />
+      <Button size="icon" className="h-7 w-7 shrink-0" onClick={() => updateCaption.mutate({ token, photoId, caption: captionText })} disabled={updateCaption.isPending}>
+        <CheckCircle2 className="h-3 w-3" />
+      </Button>
+      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onDone}>
+        <X className="h-3 w-3" />
+      </Button>
+    </div>
+  );
+}
+
+/* ==================== PUBLIC TEMPLATE FIELDS CARD ==================== */
+function PublicTemplateFieldsCard({ sourceName, surveyId, token }: { sourceName: string; surveyId: number; token: string }) {
+  const { data: template, isLoading: loadingTemplate } = trpc.surveyTemplate.publicGetBySourceName.useQuery(
+    { token, sourceName },
+    { enabled: !!sourceName && !!token }
+  );
+  const { data: savedData, refetch: refetchData } = trpc.surveyTemplate.publicGetData.useQuery(
+    { token, surveyId },
+    { enabled: !!surveyId && !!token }
+  );
+  const saveData = trpc.surveyTemplate.publicSaveData.useMutation({
+    onSuccess: () => { toast.success("บันทึกข้อมูลเทมเพลทสำเร็จ"); refetchData(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const [formValues, setFormValues] = useState<Record<number, string>>({});
+  const [otherValues, setOtherValues] = useState<Record<number, string>>({});
+  const [dirty, setDirty] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+
+  // Initialize form from saved data
+  useEffect(() => {
+    if (savedData && template && !initialized) {
+      const vals: Record<number, string> = {};
+      const others: Record<number, string> = {};
+      for (const d of savedData as any[]) {
+        vals[d.fieldId] = d.value || "";
+        if (d.otherValue) others[d.fieldId] = d.otherValue;
+      }
+      // Set defaults for fields without saved data
+      for (const field of (template.fields || [])) {
+        if (vals[field.id] === undefined && field.defaultValue) {
+          vals[field.id] = field.defaultValue;
+        }
+      }
+      setFormValues(vals);
+      setOtherValues(others);
+      setInitialized(true);
+    }
+  }, [savedData, template, initialized]);
+
+  // Reset initialized when surveyId changes
+  useEffect(() => { setInitialized(false); }, [surveyId]);
+
+  if (loadingTemplate) return null;
+  if (!template || !template.fields || template.fields.length === 0) return null;
+
+  const fields = template.fields;
+
+  const updateVal = (fieldId: number, value: string) => {
+    setFormValues(prev => ({ ...prev, [fieldId]: value }));
+    setDirty(true);
+  };
+
+  const updateOther = (fieldId: number, value: string) => {
+    setOtherValues(prev => ({ ...prev, [fieldId]: value }));
+    setDirty(true);
+  };
+
+  const handleSave = () => {
+    const entries = fields
+      .filter((f: any) => f.fieldType !== "section_header")
+      .map((f: any) => ({
+        fieldId: f.id,
+        value: formValues[f.id] || null,
+        otherValue: otherValues[f.id] || null,
+      }));
+    saveData.mutate({ token, surveyId, templateId: template.id, entries });
+    setDirty(false);
+  };
+
+  const handleCancel = () => {
+    setInitialized(false);
+    setDirty(false);
+  };
+
+  // Group fields by section_header
+  const groupedFields: { section: string | null; fields: any[] }[] = [];
+  let currentSection: string | null = null;
+  let currentGroup: any[] = [];
+  fields.forEach((field: any) => {
+    if (field.fieldType === "section_header") {
+      if (currentGroup.length > 0 || currentSection !== null) {
+        groupedFields.push({ section: currentSection, fields: currentGroup });
+      }
+      currentSection = field.fieldLabel;
+      currentGroup = [];
+    } else {
+      currentGroup.push(field);
+    }
+  });
+  if (currentGroup.length > 0 || currentSection !== null) {
+    groupedFields.push({ section: currentSection, fields: currentGroup });
+  }
+
+  return (
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <FileText className="h-4 w-4 text-primary" /> {template.name}
+          </CardTitle>
+          {dirty && (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleCancel}>ยกเลิก</Button>
+              <Button size="sm" className="h-7 text-xs" onClick={handleSave} disabled={saveData.isPending}>
+                {saveData.isPending ? "กำลังบันทึก..." : "บันทึก"}
+              </Button>
+            </div>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-5">
+          {groupedFields.map((group, gi) => (
+            <div key={gi} className="space-y-3">
+              {group.section && (
+                <div className="border-b pb-1.5">
+                  <h4 className="font-semibold text-sm text-foreground">{group.section}</h4>
+                </div>
+              )}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-3">
+                {group.fields.map((field: any) => (
+                  <PublicTemplateFieldInput
+                    key={field.id}
+                    field={field}
+                    value={formValues[field.id] || ""}
+                    otherValue={otherValues[field.id] || ""}
+                    onChange={(v) => updateVal(field.id, v)}
+                    onOtherChange={(v) => updateOther(field.id, v)}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ==================== PUBLIC TEMPLATE FIELD INPUT ==================== */
+function PublicTemplateFieldInput({ field, value, otherValue, onChange, onOtherChange }: {
+  field: any; value: string; otherValue: string; onChange: (v: string) => void; onOtherChange: (v: string) => void;
+}) {
+  const options = field.fieldOptions ? field.fieldOptions.split(",").map((o: string) => o.trim()).filter(Boolean) : [];
+
+  if (field.fieldType === "text") {
+    return (
+      <div className="space-y-1">
+        <label className="text-xs text-muted-foreground">{field.fieldLabel}{field.required && <span className="text-red-500">*</span>}</label>
+        <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder || `กรอก${field.fieldLabel}`} className="h-8 text-sm" />
+      </div>
+    );
+  }
+
+  if (field.fieldType === "number" || field.fieldType === "distance") {
+    return (
+      <div className="space-y-1">
+        <label className="text-xs text-muted-foreground">{field.fieldLabel}{field.required && <span className="text-red-500">*</span>}</label>
+        <div className="flex items-center gap-1">
+          <Input type="number" value={value} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder || "0"} className="h-8 text-sm flex-1" />
+          {field.fieldType === "distance" && <span className="text-xs text-muted-foreground">ม.</span>}
+        </div>
+      </div>
+    );
+  }
+
+  if (field.fieldType === "textarea") {
+    return (
+      <div className="space-y-1 col-span-2">
+        <label className="text-xs text-muted-foreground">{field.fieldLabel}{field.required && <span className="text-red-500">*</span>}</label>
+        <Textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder || `กรอก${field.fieldLabel}`} rows={2} className="text-sm" />
+      </div>
+    );
+  }
+
+  if (field.fieldType === "select") {
+    return (
+      <div className="space-y-1">
+        <label className="text-xs text-muted-foreground">{field.fieldLabel}{field.required && <span className="text-red-500">*</span>}</label>
+        <Select value={value || "__placeholder__"} onValueChange={(v) => onChange(v === "__placeholder__" ? "" : v)}>
+          <SelectTrigger className="h-8 text-sm"><SelectValue placeholder={field.placeholder || "เลือก..."} /></SelectTrigger>
+          <SelectContent>
+            {options.map((opt: string, i: number) => (
+              <SelectItem key={i} value={opt}>{opt}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {field.hasOtherOption && value === "อื่นๆ" && (
+          <Input value={otherValue} onChange={(e) => onOtherChange(e.target.value)} placeholder="ระบุ..." className="h-7 text-sm mt-1" />
+        )}
+      </div>
+    );
+  }
+
+  if (field.fieldType === "checkbox") {
+    return (
+      <div className="space-y-1 flex items-center gap-2 col-span-2">
+        <Checkbox checked={value === "true"} onCheckedChange={(checked) => onChange(checked ? "true" : "false")} />
+        <label className="text-sm">{field.fieldLabel}{field.required && <span className="text-red-500 text-xs">*</span>}</label>
+      </div>
+    );
+  }
+
+  if (field.fieldType === "checkbox_group") {
+    const selected: string[] = value ? value.split(",").filter(Boolean) : [];
+    const toggle = (opt: string) => {
+      const newSel = selected.includes(opt) ? selected.filter(s => s !== opt) : [...selected, opt];
+      onChange(newSel.join(","));
+    };
+    return (
+      <div className="space-y-1 col-span-2">
+        <label className="text-xs text-muted-foreground">{field.fieldLabel}{field.required && <span className="text-red-500">*</span>}</label>
+        <div className="flex flex-wrap gap-3">
+          {options.map((opt: string, i: number) => (
+            <div key={i} className="flex items-center gap-1.5">
+              <Checkbox checked={selected.includes(opt)} onCheckedChange={() => toggle(opt)} />
+              <span className="text-sm">{opt}</span>
+            </div>
+          ))}
+          {field.hasOtherOption && (
+            <div className="flex items-center gap-1.5">
+              <Checkbox checked={selected.includes("__other__")} onCheckedChange={() => toggle("__other__")} />
+              <span className="text-sm">อื่นๆ:</span>
+              <Input value={otherValue} onChange={(e) => onOtherChange(e.target.value)} placeholder="ระบุ..." className="h-7 text-sm w-32" />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (field.fieldType === "radio" || field.fieldType === "yes_no") {
+    const radioOptions = field.fieldType === "yes_no" ? ["มี", "ไม่มี"] : options;
+    return (
+      <div className="space-y-1 col-span-2">
+        <label className="text-xs text-muted-foreground">{field.fieldLabel}{field.required && <span className="text-red-500">*</span>}</label>
+        <div className="flex flex-wrap gap-4">
+          {radioOptions.map((opt: string, i: number) => (
+            <div key={i} className="flex items-center gap-1.5 cursor-pointer" onClick={() => onChange(opt)}>
+              <div className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${value === opt ? "border-primary" : "border-muted-foreground/40"}`}>
+                {value === opt && <div className="h-2 w-2 rounded-full bg-primary" />}
+              </div>
+              <span className="text-sm">{opt}</span>
+            </div>
+          ))}
+          {field.hasOtherOption && (
+            <div className="flex items-center gap-1.5">
+              <div className={`h-4 w-4 rounded-full border-2 flex items-center justify-center cursor-pointer ${value === "__other__" ? "border-primary" : "border-muted-foreground/40"}`} onClick={() => onChange("__other__")}>
+                {value === "__other__" && <div className="h-2 w-2 rounded-full bg-primary" />}
+              </div>
+              <span className="text-sm">อื่นๆ:</span>
+              <Input value={otherValue} onChange={(e) => onOtherChange(e.target.value)} placeholder="ระบุ..." className="h-7 text-sm w-32" />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (field.fieldType === "date") {
+    return (
+      <div className="space-y-1">
+        <label className="text-xs text-muted-foreground">{field.fieldLabel}{field.required && <span className="text-red-500">*</span>}</label>
+        <Input type="date" value={value} onChange={(e) => onChange(e.target.value)} className="h-8 text-sm" />
+      </div>
+    );
+  }
+
+  return null;
 }

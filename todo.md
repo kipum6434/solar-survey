@@ -1173,3 +1173,12 @@
 - [x] PDF export: แสดงหมายเหตุใต้รูปในไฟล์ PDF (buildPhotoGrid รองรับ caption)
 - [x] Upload: เพิ่มช่องหมายเหตุตอนอัปโหลดรูป (uploadCaption state + input field)
 - [x] Share link: แสดงหมายเหตุรูปในหน้าแชร์ลิงก์สาธารณะ (ทั้ง survey photos + install photos)
+
+## Feature: SharedSurvey - Template fields + หมายเหตุรูป
+
+- [x] เพิ่ม public API สำหรับดึง template + template data ของ survey
+- [x] เพิ่ม public API สำหรับบันทึก template data จากหน้าแชร์
+- [x] เพิ่ม public API สำหรับแก้ไขหมายเหตุรูปจากหน้าแชร์
+- [x] แสดง Template fields (กรอกได้) ในหน้า SharedSurvey
+- [x] เพิ่มปุ่มแก้ไขหมายเหตุรูปในหน้า SharedSurvey
+- [x] Vitest: 15 tests passed สำหรับ public template + caption endpoints
