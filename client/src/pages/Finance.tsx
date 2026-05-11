@@ -20,8 +20,9 @@ import {
   Banknote, CheckCircle2, Clock, Upload, Search, Filter,
   FileText, Eye, Receipt, Loader2, ArrowUpDown, TrendingUp,
   Phone, Zap, AlertCircle, Plus, Pencil, X, ChevronDown, ChevronUp,
-  Trash2, CalendarDays, StickyNote, Wallet,
+  Trash2, CalendarDays, StickyNote, Wallet, ImageIcon,
 } from "lucide-react";
+import { compressImage } from "@/lib/imageCompression";
 import { Link } from "wouter";
 
 const PAYMENT_STATUS_MAP: Record<string, { label: string; color: string; icon: any }> = {
@@ -501,20 +502,51 @@ function PaymentCollectionsSection({
     const now = new Date();
     return now.toISOString().split("T")[0]; // YYYY-MM-DD
   });
+  const [slipFile, setSlipFile] = useState<File | null>(null);
+  const [slipPreview, setSlipPreview] = useState<string | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [viewSlipUrl, setViewSlipUrl] = useState<string | null>(null);
+  const [uploadingSlipId, setUploadingSlipId] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
 
   const { data: collections, isLoading } = trpc.payment.listCollections.useQuery({ paymentId });
 
   const addCollection = trpc.payment.addCollection.useMutation({
-    onSuccess: () => {
+    onSuccess: async (result: any) => {
+      // If there's a slip file, upload it after creating the collection
+      if (slipFile && result?.insertId) {
+        await handleUploadSlipForNew(Number(result.insertId));
+      }
       toast.success("บันทึกการเก็บเงินสำเร็จ");
       setShowAddForm(false);
       setAddAmount("");
       setAddNote("");
       setAddDate(new Date().toISOString().split("T")[0]);
+      setSlipFile(null);
+      setSlipPreview(null);
       utils.payment.listCollections.invalidate({ paymentId });
       utils.payment.list.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const uploadSlip = trpc.payment.uploadCollectionSlip.useMutation({
+    onSuccess: () => {
+      toast.success("อัปโหลดสลิปสำเร็จ");
+      setUploadingSlipId(null);
+      utils.payment.listCollections.invalidate({ paymentId });
+    },
+    onError: (e) => {
+      toast.error(e.message);
+      setUploadingSlipId(null);
+    },
+  });
+
+  const deleteSlip = trpc.payment.deleteCollectionSlip.useMutation({
+    onSuccess: () => {
+      toast.success("ลบสลิปสำเร็จ");
+      utils.payment.listCollections.invalidate({ paymentId });
     },
     onError: (e) => toast.error(e.message),
   });
@@ -527,6 +559,58 @@ function PaymentCollectionsSection({
     },
     onError: (e) => toast.error(e.message),
   });
+
+  const handleSlipSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("กรุณาเลือกไฟล์รูปภาพเท่านั้น");
+      return;
+    }
+    setSlipFile(file);
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = (ev) => setSlipPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleUploadSlipForNew = async (collectionId: number) => {
+    if (!slipFile) return;
+    try {
+      setIsCompressing(true);
+      const { base64, fileName } = await compressImage(slipFile);
+      setIsCompressing(false);
+      await uploadSlip.mutateAsync({
+        collectionId,
+        base64Data: base64,
+        fileName,
+        mimeType: "image/jpeg",
+      });
+    } catch {
+      setIsCompressing(false);
+      toast.error("อัปโหลดสลิปไม่สำเร็จ");
+    }
+  };
+
+  const handleUploadSlipForExisting = async (collectionId: number, file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("กรุณาเลือกไฟล์รูปภาพเท่านั้น");
+      return;
+    }
+    try {
+      setUploadingSlipId(collectionId);
+      const { base64, fileName } = await compressImage(file);
+      await uploadSlip.mutateAsync({
+        collectionId,
+        base64Data: base64,
+        fileName,
+        mimeType: "image/jpeg",
+      });
+    } catch {
+      setUploadingSlipId(null);
+      toast.error("อัปโหลดสลิปไม่สำเร็จ");
+    }
+  };
 
   const handleAddSubmit = () => {
     const amount = parseFloat(addAmount);
@@ -564,6 +648,7 @@ function PaymentCollectionsSection({
                 <th className="text-left px-3 py-1.5 font-medium text-muted-foreground">วันที่</th>
                 <th className="text-left px-3 py-1.5 font-medium text-muted-foreground">หมายเหตุ</th>
                 <th className="text-right px-3 py-1.5 font-medium text-muted-foreground">จำนวนเงิน</th>
+                <th className="text-center px-2 py-1.5 font-medium text-muted-foreground">สลิป</th>
                 {isAdmin && <th className="w-8 px-2 py-1.5"></th>}
               </tr>
             </thead>
@@ -591,18 +676,63 @@ function PaymentCollectionsSection({
                   <td className="px-3 py-2 text-right font-semibold text-green-600 whitespace-nowrap">
                     {formatCurrency(parseFloat(coll.amount) || 0)}
                   </td>
+                  <td className="px-2 py-2 text-center">
+                    {coll.slipUrl ? (
+                      <button
+                        className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline"
+                        onClick={() => setViewSlipUrl(coll.slipUrl)}
+                        title="ดูสลิป"
+                      >
+                        <ImageIcon className="h-3.5 w-3.5" />
+                        <span className="text-[10px]">ดู</span>
+                      </button>
+                    ) : isAdmin ? (
+                      <label className="inline-flex items-center gap-1 text-muted-foreground hover:text-primary cursor-pointer" title="แนบสลิป">
+                        <Upload className="h-3.5 w-3.5" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) handleUploadSlipForExisting(coll.id, f);
+                            e.target.value = "";
+                          }}
+                          disabled={uploadingSlipId === coll.id}
+                        />
+                        {uploadingSlipId === coll.id && <Loader2 className="h-3 w-3 animate-spin" />}
+                      </label>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </td>
                   {isAdmin && (
                     <td className="px-2 py-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0 text-muted-foreground hover:text-red-600"
-                        onClick={() => handleDelete(coll.id)}
-                        disabled={deleteCollection.isPending}
-                        title="ลบรายการ"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        {coll.slipUrl && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-muted-foreground hover:text-orange-600"
+                            onClick={() => {
+                              if (confirm("ต้องการลบสลิปนี้?")) deleteSlip.mutate({ collectionId: coll.id });
+                            }}
+                            title="ลบสลิป"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 text-muted-foreground hover:text-red-600"
+                          onClick={() => handleDelete(coll.id)}
+                          disabled={deleteCollection.isPending}
+                          title="ลบรายการ"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </td>
                   )}
                 </tr>
@@ -657,6 +787,34 @@ function PaymentCollectionsSection({
                   />
                 </div>
               </div>
+              {/* Slip upload */}
+              <div>
+                <Label className="text-xs text-muted-foreground">แนบสลิป (ไม่บังคับ)</Label>
+                <div className="mt-1 flex items-center gap-3">
+                  <label className="flex items-center gap-2 px-3 py-1.5 border border-dashed rounded-md cursor-pointer hover:bg-muted/50 transition-colors">
+                    <Upload className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">{slipFile ? slipFile.name : "เลือกรูปสลิป"}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleSlipSelect}
+                    />
+                  </label>
+                  {slipPreview && (
+                    <div className="relative">
+                      <img src={slipPreview} alt="slip preview" className="h-12 w-12 object-cover rounded border" />
+                      <button
+                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full h-4 w-4 flex items-center justify-center text-[10px]"
+                        onClick={() => { setSlipFile(null); setSlipPreview(null); }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                  {isCompressing && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                </div>
+              </div>
               <div className="flex justify-end gap-2">
                 <Button
                   variant="ghost"
@@ -697,6 +855,24 @@ function PaymentCollectionsSection({
             </Button>
           )}
         </>
+      )}
+
+      {/* Slip Viewer Dialog */}
+      {viewSlipUrl && (
+        <Dialog open={!!viewSlipUrl} onOpenChange={() => setViewSlipUrl(null)}>
+          <DialogContent className="max-w-lg p-2">
+            <DialogHeader className="pb-1">
+              <DialogTitle className="text-sm">สลิปโอนเงิน</DialogTitle>
+            </DialogHeader>
+            <div className="flex justify-center">
+              <img
+                src={viewSlipUrl}
+                alt="สลิปโอนเงิน"
+                className="max-h-[70vh] max-w-full object-contain rounded"
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

@@ -1,0 +1,18 @@
+{
+  "query": "SHOW COLUMNS FROM payment_collections LIKE 'slipFileKey';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SHOW COLUMNS FROM payment_collections LIKE 'slipFileKey';",
+  "rows": [
+    {
+      "Field": "slipFileKey",
+      "Type": "varchar(512)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nslipFileKey\tvarchar(512)\tYES\t\tNULL\t\n",
+  "stderr": "",
+  "execution_time_ms": 1934
+}

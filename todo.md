@@ -1241,3 +1241,13 @@
 
 - [x] Backend: เพิ่ม backfill logic ตอน server start — สแกนงานที่สถานะ "รอติดตั้ง" ขึ้นไปที่ยังไม่มี Payment แล้วสร้างให้อัตโนมัติ
 - [x] ทดสอบว่า Payment ถูกสร้างให้งานเก่าทั้งหมด (5 records created, 0 failed)
+
+## Feature: อัปโหลดสลิปในแต่ละงวดเก็บเงิน
+
+- [x] Schema: เพิ่ม slipUrl, slipKey columns ใน payment_collections table (มีอยู่แล้วจาก schema เดิม)
+- [x] Backend: เพิ่ม API payment.uploadCollectionSlip (รับ base64 + collectionId → compress → upload S3 → save URL)
+- [x] Backend: เพิ่ม API payment.deleteCollectionSlip (ลบสลิปจาก S3 + clear URL)
+- [x] Frontend: สร้าง image compression utility (canvas resize, max 1200px, quality 80%) — client/src/lib/imageCompression.ts
+- [x] Frontend: เพิ่มช่องแนบสลิปใน dialog เพิ่มงวดเก็บเงิน (ไม่บังคับ)
+- [x] Frontend: แสดง thumbnail สลิปในรายการงวดเก็บเงิน + กดดูขนาดเต็ม (dialog viewer)
+- [x] ทดสอบ Flow ทั้งหมด (8 vitest tests passed + UI verified)

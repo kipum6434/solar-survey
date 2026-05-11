@@ -3002,7 +3002,7 @@ export async function createPaymentCollection(data: InsertPaymentCollection) {
   const result = await db.insert(paymentCollections).values(data);
   // Update collectedAmount on parent payment
   await recalcPaymentCollected(data.paymentId);
-  return result;
+  return { insertId: result[0].insertId };
 }
 
 export async function deletePaymentCollection(id: number) {
@@ -3031,4 +3031,15 @@ async function recalcPaymentCollected(paymentId: number) {
     newStatus = "partial";
   }
   await db.update(payments).set({ collectedAmount: String(totalCollected), status: newStatus }).where(eq(payments.id, paymentId));
+}
+
+
+export async function updatePaymentCollection(id: number, data: { slipUrl?: string | null; slipFileKey?: string | null }) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const updateData: any = {};
+  if (data.slipUrl !== undefined) updateData.slipUrl = data.slipUrl;
+  if (data.slipFileKey !== undefined) updateData.slipFileKey = data.slipFileKey;
+  if (Object.keys(updateData).length === 0) return;
+  await db.update(paymentCollections).set(updateData).where(eq(paymentCollections.id, id));
 }

@@ -2852,6 +2852,32 @@ const paymentRouter = router({
       await db.deletePaymentCollection(input.id);
       return { success: true };
     }),
+
+  uploadCollectionSlip: protectedProcedure
+    .input(z.object({
+      collectionId: z.number(),
+      base64Data: z.string(),
+      fileName: z.string(),
+      mimeType: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      const buffer = Buffer.from(input.base64Data, "base64");
+      if (buffer.length > 5 * 1024 * 1024) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "ไฟล์ต้องมีขนาดไม่เกิน 5MB" });
+      }
+      const ext = input.fileName.split(".").pop() || "jpg";
+      const key = `collection-slips/${input.collectionId}_${Date.now()}_${nanoid(6)}.${ext}`;
+      const { url } = await storagePut(key, buffer, input.mimeType);
+      await db.updatePaymentCollection(input.collectionId, { slipUrl: url, slipFileKey: key });
+      return { success: true, url };
+    }),
+
+  deleteCollectionSlip: protectedProcedure
+    .input(z.object({ collectionId: z.number() }))
+    .mutation(async ({ input }) => {
+      await db.updatePaymentCollection(input.collectionId, { slipUrl: null, slipFileKey: null });
+      return { success: true };
+    }),
 });
 
 // ==================== SURVEY TEMPLATE ROUTER ====================
