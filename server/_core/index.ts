@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { registerLineWebhook } from "../lineWebhook";
+import { backfillPayments } from "../backfill";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -62,6 +63,8 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    // Backfill payments for existing surveys that have installationStatus but no payment
+    backfillPayments().catch(err => console.error("[Backfill] Error:", err));
   });
 }
 

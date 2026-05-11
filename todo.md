@@ -1236,3 +1236,8 @@
 - [x] Frontend: แก้ไขมูลค่าสัญญา (contractValue) ได้
 - [x] Frontend: แสดงยอดค้าง = contractValue - ผลรวม collections
 - [x] ทดสอบ Flow ทั้งหมด (13 vitest tests passed)
+
+## Feature: Backfill Payment สำหรับงานเก่า
+
+- [x] Backend: เพิ่ม backfill logic ตอน server start — สแกนงานที่สถานะ "รอติดตั้ง" ขึ้นไปที่ยังไม่มี Payment แล้วสร้างให้อัตโนมัติ
+- [x] ทดสอบว่า Payment ถูกสร้างให้งานเก่าทั้งหมด (5 records created, 0 failed)
