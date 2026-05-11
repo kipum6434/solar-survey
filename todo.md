@@ -1263,3 +1263,9 @@
 - [x] Backend: แก้ getSources() ให้ return customerCount โดยใช้ GROUP BY query แทน correlated subquery (แก้ Drizzle ORM bug)
 - [x] Frontend: เปลี่ยนจาก listWithStats/listGroups เป็น list/listGroupsFull (แก้ LSP type inference issue)
 - [x] ทดสอบ: TCS 236, Gulf 2, MEA 60, KEN 60, SET-Facebook 30, other 32 แสดงถูกต้อง
+
+## Bug Fix: หน้างานติดตาม stats นับเฉพาะหน้าแรก (50 records) แทนที่จะนับทั้งหมด
+
+- [x] Backend: เพิ่ม stats (follow_up, quoted, negotiating count) ใน getSurveysForFollowUp response
+- [x] Frontend: ใช้ stats จาก backend แทนการ filter จาก data.data
+- [x] ทดสอบ: ตัวเลข stats ตรงกับจำนวนจริงทั้ง database (SQL ยืนยัน: TCS มี 97 follow_up, 0 quoted, 0 negotiating — ตรงกับ UI)

@@ -1,0 +1,14 @@
+{
+  "query": "SELECT s.status, COUNT(*) as cnt FROM surveys s JOIN customers c ON s.customerId = c.id JOIN sources src ON c.source = src.name WHERE s.status IN ('follow_up', 'quoted', 'negotiating') AND src.groupName = 'TCS' GROUP BY s.status",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT s.status, COUNT(*) as cnt FROM surveys s JOIN customers c ON s.customerId = c.id JOIN sources src ON c.source = src.name WHERE s.status IN ('follow_up', 'quoted', 'negotiating') AND src.groupName = 'TCS' GROUP BY s.status",
+  "rows": [
+    {
+      "status": "follow_up",
+      "cnt": "97"
+    }
+  ],
+  "messages": [],
+  "stdout": "status\tcnt\nfollow_up\t97\n",
+  "stderr": "",
+  "execution_time_ms": 1748
+}

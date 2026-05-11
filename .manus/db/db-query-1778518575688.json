@@ -1,0 +1,322 @@
+{
+  "query": "DESCRIBE surveys",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute DESCRIBE surveys",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "customerId",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "status",
+      "Type": "enum('pending','scheduled','in_progress','surveyed','follow_up','quoted','negotiating','won','lost','cancelled','postponed')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "pending",
+      "Extra": ""
+    },
+    {
+      "Field": "scheduledDate",
+      "Type": "bigint",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "scheduledTime",
+      "Type": "varchar(10)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "assignedTo",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "surveyNotes",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "systemSize",
+      "Type": "decimal(10,2)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "panelCount",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "inverterModel",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "estimatedCost",
+      "Type": "decimal(12,2)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "quotedPrice",
+      "Type": "decimal(12,2)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "completedAt",
+      "Type": "bigint",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "createdBy",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "createdAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "updatedAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "Field": "panelModel",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "batteryModel",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "roofDirection",
+      "Type": "varchar(100)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "installNotes",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "adminSenderId",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "closerId",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "panelBrand",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "needBattery",
+      "Type": "varchar(500)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "needOptimizer",
+      "Type": "varchar(500)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "systemType",
+      "Type": "enum('string','micro','both','hybrid')",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "statusId",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "installationDate",
+      "Type": "bigint",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "installationStatus",
+      "Type": "enum('waiting','scheduled','in_progress','completed','delivered','payment_collected','postponed','cancelled')",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "deliveryStatus",
+      "Type": "enum('pending','submitted','approved','rejected')",
+      "Null": "YES",
+      "Key": "",
+      "Default": "pending",
+      "Extra": ""
+    },
+    {
+      "Field": "deliverySubmittedAt",
+      "Type": "bigint",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "deliverySubmittedBy",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "deliveryApprovedAt",
+      "Type": "bigint",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "deliveryApprovedBy",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "deliveryRejectionReason",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "installerTeamId",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "installationCompletedAt",
+      "Type": "bigint",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "installationScheduledDate",
+      "Type": "bigint",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "installationTeamNotes",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint\tNO\tPRI\tNULL\tauto_increment\ncustomerId\tint\tNO\t\tNULL\t\nstatus\tenum('pending','scheduled','in_progress','surveyed','follow_up','quoted','negotiating','won','lost','cancelled','postponed')\tNO\t\tpending\t\nscheduledDate\tbigint\tYES\t\tNULL\t\nscheduledTime\tvarchar(10)\tYES\t\tNULL\t\nassignedTo\tint\tYES\t\tNULL\t\nsurveyNotes\ttext\tYES\t\tNULL\t\nsystemSize\tdecimal(10,2)\tYES\t\tNULL\t\npanelCount\tint\tYES\t\tNULL\t\ninverterModel\tvarchar(255)\tYES\t\tNULL\t\nestimatedCost\tdecimal(12,2)\tYES\t\tNULL\t\nquotedPrice\tdecimal(12,2)\tYES\t\tNULL\t\ncompletedAt\tbigint\tYES\t\tNULL\t\ncreatedBy\tint\tYES\t\tNULL\t\ncreatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nupdatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\npanelModel\tvarchar(255)\tYES\t\tNULL\t\nbatteryModel\tvarchar(255)\tYES\t\tNULL\t\nroofDirection\tvarchar(100)\tYES\t\tNULL\t\ninstallNotes\ttext\tYES\t\tNULL\t\nadminSenderId\tint\tYES\t\tNULL\t\ncloserId\tint\tYES\t\tNULL\t\npanelBrand\tvarchar(255)\tYES\t\tNULL\t\nneedBattery\tvarchar(500)\tYES\t\tNULL\t\nneedOptimizer\tvarchar(500)\tYES\t\tNULL\t\nsystemType\tenum('string','micro','both','hybrid')\tYES\t\tNULL\t\nstatusId\tint\tYES\t\tNULL\t\ninstallationDate\tbigint\tYES\t\tNULL\t\ninstallationStatus\tenum('waiting','scheduled','in_progress','completed','delivered','payment_collected','postponed','cancelled')\tYES\t\tNULL\t\ndeliveryStatus\tenum('pending','submitted','approved','rejected')\tYES\t\tpending\t\ndeliverySubmittedAt\tbigint\tYES\t\tNULL\t\ndeliverySubmittedBy\tint\tYES\t\tNULL\t\ndeliveryApprovedAt\tbigint\tYES\t\tNULL\t\ndeliveryApprovedBy\tint\tYES\t\tNULL\t\ndeliveryRejectionReason\ttext\tYES\t\tNULL\t\ninstallerTeamId\tint\tYES\t\tNULL\t\ninstallationCompletedAt\tbigint\tYES\t\tNULL\t\ninstallationScheduledDate\tbigint\tYES\t\tNULL\t\ninstallationTeamNotes\ttext\tYES\t\tNULL\t\n",
+  "stderr": "",
+  "execution_time_ms": 1748
+}

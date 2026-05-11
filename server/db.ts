@@ -636,6 +636,20 @@ export async function getSurveysForFollowUp(opts: { search?: string; startDate?:
     .where(whereClause);
   const total = Number(countResult[0]?.count ?? 0);
 
+  // Count per-status stats (across all pages)
+  const statsResult = await db.select({
+    status: surveys.status,
+    count: sql<number>`count(*)`
+  }).from(surveys)
+    .innerJoin(customers, eq(surveys.customerId, customers.id))
+    .where(whereClause)
+    .groupBy(surveys.status);
+  const stats = { follow_up: 0, quoted: 0, negotiating: 0 };
+  for (const row of statsResult) {
+    const s = row.status as keyof typeof stats;
+    if (s in stats) stats[s] = Number(row.count);
+  }
+
   const rows = await db.select({
     survey: surveys,
     customer: {
@@ -700,6 +714,7 @@ export async function getSurveysForFollowUp(opts: { search?: string; startDate?:
       assignments: assignmentsMap[r.survey.id] || [],
     })),
     total,
+    stats,
   };
 }
 

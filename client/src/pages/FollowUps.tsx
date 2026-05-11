@@ -91,12 +91,12 @@ export default function FollowUps() {
   const totalPages = Math.ceil((data?.total ?? 0) / 50);
   // Stats
   const stats = useMemo(() => {
-    if (!data?.data) return { total: 0, follow_up: 0, quoted: 0, negotiating: 0 };
+    if (!data) return { total: 0, follow_up: 0, quoted: 0, negotiating: 0 };
     return {
       total: data.total,
-      follow_up: data.data.filter((d: any) => d.survey.status === "follow_up").length,
-      quoted: data.data.filter((d: any) => d.survey.status === "quoted").length,
-      negotiating: data.data.filter((d: any) => d.survey.status === "negotiating").length,
+      follow_up: (data as any).stats?.follow_up ?? 0,
+      quoted: (data as any).stats?.quoted ?? 0,
+      negotiating: (data as any).stats?.negotiating ?? 0,
     };
   }, [data]);
 

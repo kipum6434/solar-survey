@@ -1,0 +1,9 @@
+{
+  "query": "SHOW COLUMNS FROM surveys WHERE Field LIKE '%source%' OR Field LIKE '%group%'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SHOW COLUMNS FROM surveys WHERE Field LIKE '%source%' OR Field LIKE '%group%'",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1710
+}
