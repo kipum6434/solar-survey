@@ -1200,3 +1200,8 @@
 - [x] ย้ายปุ่มบันทึกข้อมูลออกจาก Card ไปเป็น fixed/sticky ด้านล่างจอ
 - [x] แสดงเฉพาะเมื่อมี Template fields (hasTemplate = true)
 - [x] ทดสอบบน dev server
+
+## Feature: แจ้งเตือนก่อนออกจากหน้าเว็บ (beforeunload)
+
+- [x] เพิ่ม beforeunload event เมื่อ templateDirty = true ในหน้า SharedSurveyField
+- [x] ทดสอบว่า browser แสดง dialog เตือนเมื่อปิดหน้าหรือ navigate ออก

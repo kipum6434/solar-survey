@@ -243,6 +243,18 @@ export default function SharedSurveyField() {
 
   useEffect(() => { setTemplateInitialized(false); }, [surveyId]);
 
+  // Warn before leaving page with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (templateDirty) {
+        e.preventDefault();
+        e.returnValue = "คุณมีข้อมูลที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [templateDirty]);
+
   // Initialize tech form once - format numeric values with commas for display
   if (s && !techForm) {
     const fmtNum = (v: string | number | null | undefined) => {
