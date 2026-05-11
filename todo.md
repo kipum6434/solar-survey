@@ -1188,3 +1188,9 @@
 - [x] ตรวจสอบว่า PublicTemplateFieldsCard ไม่แสดงเพราะอะไร → แก้ผิดไฟล์ (SharedSurvey.tsx แทน SharedSurveyField.tsx)
 - [x] แก้ไข SharedSurveyField.tsx ให้แสดง Template fields แทนฟอร์มเดิมเมื่อ source มี Template
 - [x] ทดสอบกับงาน Gulf ที่มี Template SSR → dev server แสดง Gulf SSR fields ถูกต้อง
+
+## Feature: ปุ่มบันทึกชัดเจนในหน้าแชร์ลิงก์สำรวจ
+
+- [x] เปลี่ยน Template fields จาก auto-save เป็นปุ่ม "บันทึก" ที่ชัดเจน
+- [x] แสดงสถานะบันทึกสำเร็จ/ล้มเหลวให้ผู้ใช้เห็น
+- [x] ทดสอบการทำงานบน dev server

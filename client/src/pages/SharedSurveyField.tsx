@@ -1038,6 +1038,16 @@ function TemplateFieldsSection({ templateData, formValues, otherValues, dirty, s
     groupedFields.push({ section: currentSection, fields: currentGroup });
   }
 
+  const [saved, setSaved] = useState(false);
+
+  // Show "saved" indicator for 3 seconds after successful save
+  useEffect(() => {
+    if (saved) {
+      const timer = setTimeout(() => setSaved(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [saved]);
+
   return (
     <Card className="border-0 shadow-sm">
       <CardHeader className="pb-3">
@@ -1045,14 +1055,6 @@ function TemplateFieldsSection({ templateData, formValues, otherValues, dirty, s
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
             <FileText className="h-4 w-4 text-primary" /> {templateData.name}
           </CardTitle>
-          {dirty && (
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={onCancel}>ยกเลิก</Button>
-              <Button size="sm" className="h-7 text-xs" onClick={onSave} disabled={saving}>
-                {saving ? "กำลังบันทึก..." : "บันทึก"}
-              </Button>
-            </div>
-          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -1079,12 +1081,28 @@ function TemplateFieldsSection({ templateData, formValues, otherValues, dirty, s
             </div>
           ))}
         </div>
-        {!dirty && (
-          <div className="mt-4">
-            <Button variant="outline" className="w-full gap-2" disabled>
-              <Save className="h-4 w-4" /> บันทึกแล้ว
+        <div className="mt-6 flex gap-3">
+          {dirty && (
+            <Button variant="outline" className="flex-1 gap-2" onClick={onCancel}>
+              <X className="h-4 w-4" /> ยกเลิกการแก้ไข
             </Button>
-          </div>
+          )}
+          <Button
+            className={`flex-1 gap-2 ${saved ? 'bg-green-600 hover:bg-green-700' : ''}`}
+            onClick={() => { onSave(); setSaved(true); }}
+            disabled={saving || !dirty}
+          >
+            {saving ? (
+              <><span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" /> กำลังบันทึก...</>
+            ) : saved ? (
+              <><CheckCircle2 className="h-4 w-4" /> บันทึกสำเร็จ!</>
+            ) : (
+              <><Save className="h-4 w-4" /> บันทึกข้อมูล</>
+            )}
+          </Button>
+        </div>
+        {saved && (
+          <p className="text-center text-xs text-green-600 mt-2 font-medium">ข้อมูลถูกบันทึกเรียบร้อยแล้ว</p>
         )}
       </CardContent>
     </Card>
