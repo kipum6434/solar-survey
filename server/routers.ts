@@ -1319,6 +1319,9 @@ const dashboardRouter = router({
   recentActivities: protectedProcedure
     .input(z.object({ limit: z.number().default(20) }).optional())
     .query(({ input }) => db.getRecentActivities(input?.limit)),
+  groupStats: protectedProcedure
+    .input(z.object({ sourceGroup: z.string() }))
+    .query(({ input }) => db.getDashboardStatsForGroup(input.sourceGroup)),
 });
 
 // ==================== CALENDAR ROUTER ====================

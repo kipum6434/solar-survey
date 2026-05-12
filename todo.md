@@ -1269,3 +1269,13 @@
 - [x] Backend: เพิ่ม stats (follow_up, quoted, negotiating count) ใน getSurveysForFollowUp response
 - [x] Frontend: ใช้ stats จาก backend แทนการ filter จาก data.data
 - [x] ทดสอบ: ตัวเลข stats ตรงกับจำนวนจริงทั้ง database (SQL ยืนยัน: TCS มี 97 follow_up, 0 quoted, 0 negotiating — ตรงกับ UI)
+
+## Bug Fix: Dashboard ของแต่ละกลุ่ม (TCS, Gulf, MEA) แสดงหน้าลูกค้าแทน Dashboard stats
+
+- [x] ตรวจสอบ routing ของ group Dashboard ใน App.tsx (ชี้ไปที่ Customers แทน Dashboard)
+- [x] สร้าง GroupDashboard.tsx component แสดง 11 stat cards + สรุปภาพรวม
+- [x] เพิ่ม backend API dashboard.groupStats (getDashboardStatsForGroup)
+- [x] แก้ routing ใน App.tsx ให้ /:group/dashboard ชี้ไปที่ GroupDashboard
+- [x] เพิ่ม 'dashboard' ใน useSourceGroup known sub-routes
+- [x] ทดสอบ: TCS (236 ลูกค้า, 239 สำรวจ), Gulf (2 ลูกค้า, 2 สำรวจ), MEA (60 ลูกค้า, 11 สำรวจ) — ถูกต้อง
+- [x] Vitest: groupDashboard.test.ts (3 tests passed)

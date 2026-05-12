@@ -31,6 +31,7 @@ import Finance from "./pages/Finance";
 import ChecklistTemplates from "./pages/ChecklistTemplates";
 import SurveyTemplates from "./pages/SurveyTemplates";
 import SourceManagement from "./pages/SourceManagement";
+import GroupDashboard from "./pages/GroupDashboard";
 
 function Router() {
   return (
@@ -65,7 +66,7 @@ function Router() {
       <Route path="/survey-field/:token" component={SharedSurveyField} />
       <Route path="/404" component={NotFound} />
       {/* Dynamic group routes - MUST be after all specific routes to avoid catching them */}
-      <Route path="/:group/dashboard" component={Customers} />
+      <Route path="/:group/dashboard" component={GroupDashboard} />
       <Route path="/:group/customers" component={Customers} />
       <Route path="/:group/customers/:id" component={CustomerDetail} />
       <Route path="/:group/surveys" component={Surveys} />

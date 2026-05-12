@@ -894,6 +894,53 @@ export async function getDashboardStats(scopedSurveyIds?: number[], scopedCustom
   };
 }
 
+export async function getDashboardStatsForGroup(sourceGroup: string) {
+  const db = await getDb();
+  const empty = { totalCustomers: 0, totalSurveys: 0, pendingSurveys: 0, scheduledSurveys: 0, surveyedSurveys: 0, wonDeals: 0, pendingFollowUps: 0, pendingInstall: 0, installedCount: 0, followUpCount: 0, quotedCount: 0, negotiatingCount: 0 };
+  if (!db) return empty;
+  const groupSources = await getSourceNamesByGroupName(sourceGroup);
+  if (groupSources.length === 0) return empty;
+  const custRows = await db.select({ id: customers.id }).from(customers).where(inArray(customers.source, groupSources));
+  const custIds = custRows.map(r => r.id);
+  if (custIds.length === 0) return empty;
+  const survRows = await db.select({ id: surveys.id, status: surveys.status }).from(surveys).where(inArray(surveys.customerId, custIds));
+  const totalSurveys = survRows.length;
+  const pendingSurveys = survRows.filter(s => s.status === 'pending').length;
+  const scheduledSurveys = survRows.filter(s => s.status === 'scheduled').length;
+  const surveyedSurveys = survRows.filter(s => s.status === 'surveyed').length;
+  const wonDeals = survRows.filter(s => s.status === 'won').length;
+  const followUpCount = survRows.filter(s => s.status === 'follow_up').length;
+  const quotedCount = survRows.filter(s => s.status === 'quoted').length;
+  const negotiatingCount = survRows.filter(s => s.status === 'negotiating').length;
+  const survIds = survRows.map(s => s.id);
+  let pendingFollowUps = 0;
+  let pendingInstall = 0;
+  let installedCount = 0;
+  if (survIds.length > 0) {
+    const [fuCount] = await db.select({ count: sql<number>`count(*)` }).from(followUps).where(and(eq(followUps.status, 'pending'), inArray(followUps.surveyId, survIds)));
+    pendingFollowUps = fuCount?.count ?? 0;
+    // Count installation statuses
+    const [piCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).where(and(inArray(surveys.id, survIds), eq(surveys.installationStatus, 'waiting')));
+    pendingInstall = piCount?.count ?? 0;
+    const [icCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).where(and(inArray(surveys.id, survIds), eq(surveys.installationStatus, 'completed')));
+    installedCount = icCount?.count ?? 0;
+  }
+  return {
+    totalCustomers: custIds.length,
+    totalSurveys,
+    pendingSurveys,
+    scheduledSurveys,
+    surveyedSurveys,
+    wonDeals,
+    pendingFollowUps,
+    pendingInstall,
+    installedCount,
+    followUpCount,
+    quotedCount,
+    negotiatingCount,
+  };
+}
+
 // ==================== CALENDAR QUERIES ====================
 export async function getCalendarEvents(startDate: number, endDate: number) {
   const db = await getDb();
