@@ -2885,10 +2885,10 @@ export async function getWonSurveysWithoutPayment(opts: { source?: string; sourc
   }));
 }
 
-export async function getPayments(opts: { status?: string; page?: number; limit?: number; source?: string; sourceExclude?: string[]; sourceInclude?: string[] }) {
+export async function getPayments(opts: { status?: string; page?: number; limit?: number; source?: string; sourceExclude?: string[]; sourceInclude?: string[]; dateFrom?: number; dateTo?: number }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { status, page = 1, limit = 20, source, sourceExclude, sourceInclude } = opts;
+  const { status, page = 1, limit = 20, source, sourceExclude, sourceInclude, dateFrom, dateTo } = opts;
   const offset = (page - 1) * limit;
   const conditions: any[] = [];
   if (status) conditions.push(eq(payments.status, status as any));
@@ -2898,6 +2898,12 @@ export async function getPayments(opts: { status?: string; page?: number; limit?
   }
   if (sourceExclude && sourceExclude.length > 0) {
     conditions.push(or(isNull(customers.source), not(inArray(customers.source, sourceExclude))));
+  }
+  if (dateFrom) {
+    conditions.push(gte(payments.createdAt, new Date(dateFrom)));
+  }
+  if (dateTo) {
+    conditions.push(lte(payments.createdAt, new Date(dateTo)));
   }
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
   

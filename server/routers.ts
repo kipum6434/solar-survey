@@ -2746,7 +2746,7 @@ const paymentRouter = router({
     }),
 
   list: protectedProcedure
-    .input(z.object({ status: z.string().optional(), page: z.number().optional(), limit: z.number().optional(), source: z.string().optional(), sourceExclude: z.array(z.string()).optional(), sourceInclude: z.array(z.string()).optional() }))
+    .input(z.object({ status: z.string().optional(), page: z.number().optional(), limit: z.number().optional(), source: z.string().optional(), sourceExclude: z.array(z.string()).optional(), sourceInclude: z.array(z.string()).optional(), dateFrom: z.number().optional(), dateTo: z.number().optional() }))
     .query(async ({ input }) => {
       return db.getPayments(input);
     }),

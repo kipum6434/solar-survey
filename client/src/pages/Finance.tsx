@@ -21,9 +21,17 @@ import {
   FileText, Eye, Receipt, Loader2, ArrowUpDown, TrendingUp,
   Phone, Zap, AlertCircle, Plus, Pencil, X, ChevronDown, ChevronUp,
   Trash2, CalendarDays, StickyNote, Wallet, ImageIcon,
+  ChevronLeft, ChevronRight, Calendar,
 } from "lucide-react";
 import { compressImage } from "@/lib/imageCompression";
 import { Link } from "wouter";
+
+const THAI_MONTHS_SHORT = [
+  "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
+  "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค.",
+];
+
+type DateFilterMode = "all" | "day" | "month" | "year";
 
 const PAYMENT_STATUS_MAP: Record<string, { label: string; color: string; icon: any }> = {
   pending: { label: "รอเก็บเงิน", color: "bg-amber-50 text-amber-700 border-amber-200", icon: Clock },
@@ -48,6 +56,53 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
   const [editContractValue, setEditContractValue] = useState("");
   const [expandedPaymentId, setExpandedPaymentId] = useState<number | null>(null);
 
+  // Date filter state
+  const now = new Date();
+  const [dateFilterMode, setDateFilterMode] = useState<DateFilterMode>("all");
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [selectedDate, setSelectedDate] = useState(() => now.toISOString().split("T")[0]);
+
+  const yearOptions = useMemo(() => {
+    const years = [];
+    for (let y = now.getFullYear() + 1; y >= now.getFullYear() - 5; y--) {
+      years.push(y);
+    }
+    return years;
+  }, []);
+
+  const handleMonthNav = (dir: -1 | 1) => {
+    let m = selectedMonth + dir;
+    let y = selectedYear;
+    if (m < 1) { m = 12; y--; }
+    if (m > 12) { m = 1; y++; }
+    setSelectedMonth(m);
+    setSelectedYear(y);
+    setDateFilterMode("month");
+  };
+
+  // Compute dateFrom/dateTo based on filter mode
+  const dateRange = useMemo(() => {
+    if (dateFilterMode === "all") return {};
+    if (dateFilterMode === "day") {
+      const d = new Date(selectedDate);
+      const from = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0).getTime();
+      const to = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999).getTime();
+      return { dateFrom: from, dateTo: to };
+    }
+    if (dateFilterMode === "month") {
+      const from = new Date(selectedYear, selectedMonth - 1, 1, 0, 0, 0).getTime();
+      const to = new Date(selectedYear, selectedMonth, 0, 23, 59, 59, 999).getTime();
+      return { dateFrom: from, dateTo: to };
+    }
+    if (dateFilterMode === "year") {
+      const from = new Date(selectedYear, 0, 1, 0, 0, 0).getTime();
+      const to = new Date(selectedYear, 11, 31, 23, 59, 59, 999).getTime();
+      return { dateFrom: from, dateTo: to };
+    }
+    return {};
+  }, [dateFilterMode, selectedMonth, selectedYear, selectedDate]);
+
   // Get source names by group for dynamic filtering
   const { data: sourceNamesByGroup } = trpc.source.sourceNamesByGroup.useQuery();
 
@@ -66,11 +121,12 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
 
   const utils = trpc.useUtils();
 
-  // Get payments list
+  // Get payments list with date filter
   const { data: paymentsResult, isLoading } = trpc.payment.list.useQuery({
     status: statusFilter !== "all" ? statusFilter : undefined,
-    limit: 200,
+    limit: 500,
     ...sourceFilter,
+    ...dateRange,
   });
   const payments = paymentsResult?.data ?? [];
 
@@ -210,6 +266,109 @@ export default function Finance(props: FinanceProps & Record<string, any>) {
               />
             </DialogContent>
           </Dialog>
+        )}
+      </div>
+
+      {/* Date Filter Bar */}
+      <div className="space-y-2">
+        {/* Mode selector */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant={dateFilterMode === "all" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setDateFilterMode("all")}
+            className="shrink-0"
+          >
+            ทั้งหมด
+          </Button>
+          <Button
+            variant={dateFilterMode === "day" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setDateFilterMode("day")}
+            className="shrink-0 gap-1.5"
+          >
+            <Calendar className="h-3.5 w-3.5" />
+            รายวัน
+          </Button>
+          <Button
+            variant={dateFilterMode === "month" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setDateFilterMode("month")}
+            className="shrink-0 gap-1.5"
+          >
+            <CalendarDays className="h-3.5 w-3.5" />
+            รายเดือน
+          </Button>
+          <Button
+            variant={dateFilterMode === "year" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setDateFilterMode("year")}
+            className="shrink-0 gap-1.5"
+          >
+            <CalendarDays className="h-3.5 w-3.5" />
+            รายปี
+          </Button>
+        </div>
+
+        {/* Day picker */}
+        {dateFilterMode === "day" && (
+          <div className="flex items-center gap-2">
+            <Input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-[180px] h-8 text-sm"
+            />
+          </div>
+        )}
+
+        {/* Month navigation bar */}
+        {dateFilterMode === "month" && (
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => handleMonthNav(-1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            {THAI_MONTHS_SHORT.map((m, i) => (
+              <Button
+                key={i}
+                variant={selectedMonth === i + 1 ? "default" : "outline"}
+                size="sm"
+                onClick={() => { setSelectedMonth(i + 1); setDateFilterMode("month"); }}
+                className="shrink-0 text-xs px-2.5"
+              >
+                {m}
+              </Button>
+            ))}
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => handleMonthNav(1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
+              <SelectTrigger className="w-[100px] h-8 text-xs shrink-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {yearOptions.map((y) => (
+                  <SelectItem key={y} value={String(y)}>{y + 543}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* Year picker */}
+        {dateFilterMode === "year" && (
+          <div className="flex items-center gap-2">
+            <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
+              <SelectTrigger className="w-[120px] h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {yearOptions.map((y) => (
+                  <SelectItem key={y} value={String(y)}>{y + 543}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         )}
       </div>
 
