@@ -14,7 +14,7 @@ import {
   Camera, MapPin, Calendar, Phone, Zap, Home, Gauge,
   X, Sun, Upload, Trash2, CheckCircle2, Clock,
   Save, FileText, ChevronDown, ChevronUp, Info, User, ImagePlus, GripVertical,
-  PauseCircle, XCircle, History,
+  PauseCircle, XCircle, History, MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,10 +43,17 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 // Sortable photo item component
-function SortablePhotoItem({ photo, onDelete, onPreview }: {
+function SortablePhotoItem({ photo, onDelete, onPreview, onEditCaption, isEditingCaption, captionText, setCaptionText, onSaveCaption, onCancelCaption, isSavingCaption }: {
   photo: any;
   onDelete: (id: number) => void;
   onPreview: (url: string) => void;
+  onEditCaption: (id: number, currentCaption: string) => void;
+  isEditingCaption: boolean;
+  captionText: string;
+  setCaptionText: (v: string) => void;
+  onSaveCaption: () => void;
+  onCancelCaption: () => void;
+  isSavingCaption: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, setActivatorNodeRef } = useSortable({ id: photo.id });
   const style = {
@@ -57,34 +64,69 @@ function SortablePhotoItem({ photo, onDelete, onPreview }: {
   };
 
   return (
-    <div ref={setNodeRef} style={style} className={`relative group aspect-square ${isDragging ? "ring-2 ring-blue-400 rounded-md shadow-lg" : ""}`}>
-      <img
-        src={photo.url}
-        alt={photo.fileName}
-        className="w-full h-full object-cover rounded-md cursor-pointer"
-        onClick={() => onPreview(photo.url)}
-      />
-      {/* Drag handle - only this button activates drag */}
-      <button
-        ref={setActivatorNodeRef}
-        {...attributes}
-        {...listeners}
-        className="absolute top-1 left-1 bg-black/50 text-white rounded-full p-1.5 opacity-80 hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing touch-none"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <GripVertical className="h-4 w-4" />
-      </button>
-      {/* Delete button */}
-      <button
-        onClick={(e) => { e.stopPropagation(); onDelete(photo.id); }}
-        className="absolute top-1 right-1 bg-red-500/80 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 sm:transition-opacity md:opacity-0 max-sm:opacity-80"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
-      {/* Sort order badge */}
-      <div className="absolute bottom-1 left-1 bg-black/50 text-white text-[10px] rounded px-1">
-        {photo.sortOrder + 1}
+    <div ref={setNodeRef} style={style} className={`flex flex-col ${isDragging ? "ring-2 ring-blue-400 rounded-md shadow-lg" : ""}`}>
+      <div className="relative group aspect-square">
+        <img
+          src={photo.url}
+          alt={photo.fileName}
+          className="w-full h-full object-cover rounded-md cursor-pointer"
+          onClick={() => onPreview(photo.url)}
+        />
+        {/* Drag handle - only this button activates drag */}
+        <button
+          ref={setActivatorNodeRef}
+          {...attributes}
+          {...listeners}
+          className="absolute top-1 left-1 bg-black/50 text-white rounded-full p-1.5 opacity-80 hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing touch-none"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+        {/* Caption edit button */}
+        <button
+          className="absolute top-1 right-8 bg-white/90 hover:bg-blue-100 rounded-full p-1.5 opacity-0 group-hover:opacity-100 sm:transition-opacity md:opacity-0 max-sm:opacity-80"
+          onClick={(e) => { e.stopPropagation(); onEditCaption(photo.id, photo.caption || ""); }}
+        >
+          <MessageSquare className="h-3.5 w-3.5 text-blue-600" />
+        </button>
+        {/* Delete button */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(photo.id); }}
+          className="absolute top-1 right-1 bg-red-500/80 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 sm:transition-opacity md:opacity-0 max-sm:opacity-80"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+        {/* Sort order badge */}
+        <div className="absolute bottom-1 left-1 bg-black/50 text-white text-[10px] rounded px-1">
+          {photo.sortOrder + 1}
+        </div>
       </div>
+      {/* Caption display/edit */}
+      {isEditingCaption ? (
+        <div className="mt-1 flex gap-1">
+          <Input
+            value={captionText}
+            onChange={(e) => setCaptionText(e.target.value)}
+            placeholder="หมายเหตุ..."
+            className="h-7 text-xs"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onSaveCaption();
+              if (e.key === "Escape") onCancelCaption();
+            }}
+          />
+          <Button size="icon" className="h-7 w-7 shrink-0" onClick={onSaveCaption} disabled={isSavingCaption}>
+            <CheckCircle2 className="h-3 w-3" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onCancelCaption}>
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+      ) : photo.caption ? (
+        <p className="mt-1 text-xs text-muted-foreground truncate cursor-pointer hover:text-foreground px-1" onClick={() => onEditCaption(photo.id, photo.caption || "")} title={photo.caption}>
+          <MessageSquare className="h-3 w-3 inline mr-1" />{photo.caption}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -102,6 +144,8 @@ export default function SharedSurveyField() {
   const [uploadingCategory, setUploadingCategory] = useState<string | null>(null);
   const { state: uploadState, uploadFiles: uploadWithRetry, retryFailed, clearState: clearUploadState } = useUploadWithRetry();
   const [deletingPhotoId, setDeletingPhotoId] = useState<number | null>(null);
+  const [editingCaptionId, setEditingCaptionId] = useState<number | null>(null);
+  const [captionText, setCaptionText] = useState("");
 
   // Technical form state
   const [techForm, setTechForm] = useState<{
@@ -174,6 +218,10 @@ export default function SharedSurveyField() {
   const reorderPhotosMut = trpc.shareLink.publicReorderSurveyPhotos.useMutation({
     onSuccess: () => { utils.shareLink.getByToken.invalidate({ token: params.token || "" }); },
     onError: (e: any) => { toast.error("จัดเรียงล้มเหลว: " + (e.message || "")); },
+  });
+  const updateCaptionMut = trpc.photo.publicUpdateCaption.useMutation({
+    onSuccess: () => { toast.success("บันทึกหมายเหตุสำเร็จ"); utils.shareLink.getByToken.invalidate({ token: params.token || "" }); setEditingCaptionId(null); },
+    onError: (e: any) => toast.error(e.message || "บันทึกล้มเหลว"),
   });
 
   // Build category map from API only (photo_categories table)
@@ -788,6 +836,13 @@ export default function SharedSurveyField() {
                               photo={photo}
                               onDelete={(id) => setDeletingPhotoId(id)}
                               onPreview={(url) => setLightboxImg(url)}
+                              onEditCaption={(id, currentCaption) => { setEditingCaptionId(id); setCaptionText(currentCaption); }}
+                              isEditingCaption={editingCaptionId === photo.id}
+                              captionText={captionText}
+                              setCaptionText={setCaptionText}
+                              onSaveCaption={() => updateCaptionMut.mutate({ token, photoId: photo.id, caption: captionText })}
+                              onCancelCaption={() => setEditingCaptionId(null)}
+                              isSavingCaption={updateCaptionMut.isPending}
                             />
                           ))}
                         </div>
