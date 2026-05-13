@@ -275,22 +275,38 @@ export default function SharedSurvey() {
                     try {
                       const JSZip = (await import('jszip')).default;
                       const zip = new JSZip();
-                      const folder = zip.folder(`photos-${c.name}`) || zip;
-                      for (let i = 0; i < photosData.length; i++) {
-                        const photo = photosData[i] as any;
-                        try {
-                          const resp = await fetch(photo.url);
-                          const blob = await resp.blob();
-                          const ext = photo.fileName?.split('.').pop() || 'jpg';
-                          const catLabel = categoryMap[photo.category] || photo.category || 'other';
-                          folder.file(`${catLabel}_${i + 1}.${ext}`, blob);
-                        } catch { /* skip failed */ }
+                      const sanitize = (s: string) => s.replace(/[\/:\*\?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
+                      const rootFolder = zip.folder(sanitize(`photos-${c.name}`)) || zip;
+                      const catCounters: Record<string, number> = {};
+                      let successCount = 0;
+                      const batchSize = 4;
+                      for (let batch = 0; batch < photosData.length; batch += batchSize) {
+                        const batchPhotos = photosData.slice(batch, batch + batchSize);
+                        const results = await Promise.allSettled(
+                          batchPhotos.map(async (photo: any) => {
+                            const resp = await fetch(photo.url);
+                            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                            return { photo, blob: await resp.blob() };
+                          })
+                        );
+                        for (const result of results) {
+                          if (result.status === 'fulfilled') {
+                            const { photo, blob } = result.value;
+                            const ext = photo.fileName?.split('.').pop() || 'jpg';
+                            const catLabel = sanitize(categoryMap[photo.category] || photo.category || 'other');
+                            if (!catCounters[catLabel]) catCounters[catLabel] = 0;
+                            catCounters[catLabel]++;
+                            const catFolder = rootFolder.folder(catLabel) || rootFolder;
+                            catFolder.file(`${catLabel}_${catCounters[catLabel]}.${ext}`, blob);
+                            successCount++;
+                          }
+                        }
                       }
                       const content = await zip.generateAsync({ type: 'blob' });
                       const url = URL.createObjectURL(content);
                       const a = document.createElement('a');
                       a.href = url;
-                      a.download = `photos-${c.name}-${new Date().toISOString().slice(0, 10)}.zip`;
+                      a.download = `photos-${sanitize(c.name)}-${new Date().toISOString().slice(0, 10)}.zip`;
                       document.body.appendChild(a);
                       a.click();
                       document.body.removeChild(a);

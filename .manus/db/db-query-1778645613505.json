@@ -1,0 +1,13 @@
+{
+  "query": "SELECT url FROM survey_photos WHERE id = 1080001;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT url FROM survey_photos WHERE id = 1080001;",
+  "rows": [
+    {
+      "url": "https://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777876700613-image_6fc0e0bc.jpg"
+    }
+  ],
+  "messages": [],
+  "stdout": "url\nhttps://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777876700613-image_6fc0e0bc.jpg\n",
+  "stderr": "",
+  "execution_time_ms": 1730
+}

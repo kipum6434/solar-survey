@@ -1,0 +1,30 @@
+{
+  "query": "SELECT surveyId, COUNT(*) as photo_count FROM survey_photos GROUP BY surveyId ORDER BY photo_count DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT surveyId, COUNT(*) as photo_count FROM survey_photos GROUP BY surveyId ORDER BY photo_count DESC LIMIT 5;",
+  "rows": [
+    {
+      "surveyId": "450214",
+      "photo_count": "70"
+    },
+    {
+      "surveyId": "510016",
+      "photo_count": "68"
+    },
+    {
+      "surveyId": "870001",
+      "photo_count": "66"
+    },
+    {
+      "surveyId": "780087",
+      "photo_count": "55"
+    },
+    {
+      "surveyId": "1320002",
+      "photo_count": "51"
+    }
+  ],
+  "messages": [],
+  "stdout": "surveyId\tphoto_count\n450214\t70\n510016\t68\n870001\t66\n780087\t55\n1320002\t51\n",
+  "stderr": "",
+  "execution_time_ms": 1836
+}

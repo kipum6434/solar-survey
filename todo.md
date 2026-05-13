@@ -1279,3 +1279,11 @@
 - [x] เพิ่ม 'dashboard' ใน useSourceGroup known sub-routes
 - [x] ทดสอบ: TCS (236 ลูกค้า, 239 สำรวจ), Gulf (2 ลูกค้า, 2 สำรวจ), MEA (60 ลูกค้า, 11 สำรวจ) — ถูกต้อง
 - [x] Vitest: groupDashboard.test.ts (3 tests passed)
+
+## Bug Fix: ดาวน์โหลดรูปทั้งหมด (ZIP) ได้ไม่ครบ
+
+- [x] ตรวจสอบ backend logic ของ download all photos (ZIP generation) — พบว่า logic อยู่ฝั่ง frontend (JSZip)
+- [x] แก้ไขให้ ZIP รวมรูปทั้งหมดครบถ้วน — Root cause: category label มี `/` (JSZip ตีความเป็น path separator ทำให้สร้าง subfolder แทนไฟล์)
+- [x] Fix: sanitize ชื่อไฟล์/folder แทน `/` ด้วย `-`, จัดโครงสร้าง ZIP เป็น folder ตาม category, batch fetch 4 รูปพร้อมกัน
+- [x] แก้ทั้ง SurveyDetail.tsx และ SharedSurvey.tsx
+- [x] tsc --noEmit ผ่าน (0 new errors)
