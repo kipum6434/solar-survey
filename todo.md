@@ -1304,3 +1304,9 @@
 - [x] Frontend ใช้ XHR ดาวน์โหลด ZIP พร้อม progress bar แสดงเปอร์เซ็นต์
 - [x] แก้ทั้ง SurveyDetail.tsx และ SharedSurvey.tsx
 - [x] tsc --noEmit ผ่าน (0 new errors)
+
+## Bug Fix: ZIP แตกไฟล์ไม่ได้บน Windows เพราะชื่อภาษาไทย
+
+- [x] แก้ server-side ZIP ให้ใช้ ASCII folder names (01-house-front, 02-entrance, etc.) แทนภาษาไทย
+- [x] ชื่อไฟล์ ZIP เป็น ASCII: photos-survey-{id}-{date}.zip
+- [x] ทดสอบ: แตกได้สำเร็จ 17/17 รูป ใน 9 folders
