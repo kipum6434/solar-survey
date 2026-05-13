@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { registerLineWebhook } from "../lineWebhook";
+import { registerPhotoDownloadRoutes } from "../photoDownload";
 import { backfillPayments } from "../backfill";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -39,6 +40,8 @@ async function startServer() {
   registerOAuthRoutes(app);
   // LINE Webhook for capturing Group IDs
   registerLineWebhook(app);
+  // Photo ZIP download endpoint
+  registerPhotoDownloadRoutes(app);
   // tRPC API
   app.use(
     "/api/trpc",

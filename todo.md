@@ -1294,3 +1294,13 @@
 - [x] แสดง progress bar + เปอร์เซ็นต์ + จำนวนรูปที่โหลดแล้ว ขณะดาวน์โหลด (แสดง เช่น "กำลังโหลด 7/17 (41%)")
 - [x] เพิ่มเช่นเดียวกันใน SharedSurvey.tsx
 - [x] tsc --noEmit ผ่าน (0 new errors)
+
+## Bug Fix: ดาวน์โหลดรูปได้ไม่ครบ (4/17) — fetch fail
+
+- [x] ตรวจสอบ URL — S3 URLs ใช้ได้ทั้งหมด (HTTP 200) ปัญหาอยู่ที่ browser fetch
+- [x] สาเหตุ: browser fetch ได้แค่ 4 รูปจาก 17 (อาจเป็น connection limit / opaque response)
+- [x] Fix: ย้าย ZIP generation ไปทำฝั่ง server (สร้าง /api/photos/download-zip/:surveyId endpoint + retry logic)
+- [x] ทดสอบ: server fetch ได้ครบ 17/17 รูป (8.3MB ZIP)
+- [x] Frontend ใช้ XHR ดาวน์โหลด ZIP พร้อม progress bar แสดงเปอร์เซ็นต์
+- [x] แก้ทั้ง SurveyDetail.tsx และ SharedSurvey.tsx
+- [x] tsc --noEmit ผ่าน (0 new errors)

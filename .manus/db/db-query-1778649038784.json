@@ -1,0 +1,112 @@
+{
+  "query": "SELECT id, category, fileName, url FROM survey_photos WHERE surveyId = 960001 ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT id, category, fileName, url FROM survey_photos WHERE surveyId = 960001 ORDER BY id;",
+  "rows": [
+    {
+      "id": "1080001",
+      "category": "มิเตอร์ไฟฟ้า",
+      "fileName": "image.jpg",
+      "url": "https://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777876700613-image_6fc0e0bc.jpg"
+    },
+    {
+      "id": "1080002",
+      "category": "มิเตอร์ไฟฟ้า",
+      "fileName": "image.jpg",
+      "url": "https://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777876725791-image_9cc92d7d.jpg"
+    },
+    {
+      "id": "1080003",
+      "category": "รูปหน้าบ้าน_อาคาร_ถ่ายไกลให้เห็นทั้งหลัง",
+      "fileName": "image.jpg",
+      "url": "https://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777876752524-image_3d755ef0.jpg"
+    },
+    {
+      "id": "1080004",
+      "category": "รูปบริเวณโดยรอบ_ซ้าย_ขวา_หน้า_หลัง",
+      "fileName": "image.jpg",
+      "url": "https://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777876774587-image_ff1616e3.jpg"
+    },
+    {
+      "id": "1080005",
+      "category": "รูปบริเวณโดยรอบ_ซ้าย_ขวา_หน้า_หลัง",
+      "fileName": "image.jpg",
+      "url": "https://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777876791513-image_ea2efc1d.jpg"
+    },
+    {
+      "id": "1080006",
+      "category": "รูปบริเวณโดยรอบ_ซ้าย_ขวา_หน้า_หลัง",
+      "fileName": "image.jpg",
+      "url": "https://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777876819065-image_6be82569.jpg"
+    },
+    {
+      "id": "1080007",
+      "category": "ตู้ไฟ_เปิดฝา",
+      "fileName": "image.jpg",
+      "url": "https://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777876898825-image_25e5b7ba.jpg"
+    },
+    {
+      "id": "1080008",
+      "category": "ตู้ไฟ_เปิดฝา",
+      "fileName": "image.jpg",
+      "url": "https://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777876912794-image_725e76ac.jpg"
+    },
+    {
+      "id": "1080009",
+      "category": "หลังคามุมกว้าง_ภาพโดรน",
+      "fileName": "1777877008997-9hvb-dji_fly_20260504_134134_0130_1777876915717_photo.jpg",
+      "url": "https://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777877008997-9hvb-dji_fly_20260504_134134_0130_1777876915717_photo_2d742552.jpg"
+    },
+    {
+      "id": "1080010",
+      "category": "หลังคามุมกว้าง_ภาพโดรน",
+      "fileName": "1777877008996-fozs-dji_fly_20260504_134122_0129_1777876916028_photo.jpg",
+      "url": "https://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777877008996-fozs-dji_fly_20260504_134122_0129_1777876916028_photo_af72aca1.jpg"
+    },
+    {
+      "id": "1080011",
+      "category": "หลังคามุมกว้าง_ภาพโดรน",
+      "fileName": "1777877008997-y59k-dji_fly_20260504_134146_0131_1777876915370_photo.jpg",
+      "url": "https://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777877008997-y59k-dji_fly_20260504_134146_0131_1777876915370_photo_4f4a2fb6.jpg"
+    },
+    {
+      "id": "1080012",
+      "category": "หลังคามุมกว้าง_ภาพโดรน",
+      "fileName": "1777877016503-g0mm-dji_fly_20260504_134204_0132_1777876914981_photo.jpg",
+      "url": "https://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777877016503-g0mm-dji_fly_20260504_134204_0132_1777876914981_photo_9e39e570.jpg"
+    },
+    {
+      "id": "1080013",
+      "category": "หลังคาซูมใกล้_วัสดุ_โครงสร้าง",
+      "fileName": "1777877027118-azam-dji_fly_20260504_134218_0133_1777876914728_photo.jpg",
+      "url": "https://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777877027118-azam-dji_fly_20260504_134218_0133_1777876914728_photo_4194526a.jpg"
+    },
+    {
+      "id": "1080014",
+      "category": "ทางเข้า_ดูว่ารถเครน_ขนของเข้าได้ไหม",
+      "fileName": "1777877057105-4i8y-image.jpg",
+      "url": "https://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777877057105-4i8y-image_1c942911.jpg"
+    },
+    {
+      "id": "1110001",
+      "category": "บิลค่าไฟ",
+      "fileName": "image.jpg",
+      "url": "https://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777877477224-image_3a63911b.jpg"
+    },
+    {
+      "id": "1110002",
+      "category": "บิลค่าไฟ",
+      "fileName": "image.jpg",
+      "url": "https://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777877579095-image_1d5ddf54.jpg"
+    },
+    {
+      "id": "1140001",
+      "category": "จุดติดตั้ง_inverter",
+      "fileName": "image.jpg",
+      "url": "https://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777878655809-image_74601afd.jpg"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcategory\tfileName\turl\n1080001\tมิเตอร์ไฟฟ้า\timage.jpg\thttps://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777876700613-image_6fc0e0bc.jpg\n1080002\tมิเตอร์ไฟฟ้า\timage.jpg\thttps://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777876725791-image_9cc92d7d.jpg\n1080003\tรูปหน้าบ้าน_อาคาร_ถ่ายไกลให้เห็นทั้งหลัง\timage.jpg\thttps://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777876752524-image_3d755ef0.jpg\n1080004\tรูปบริเวณโดยรอบ_ซ้าย_ขวา_หน้า_หลัง\timage.jpg\thttps://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777876774587-image_ff1616e3.jpg\n1080005\tรูปบริเวณโดยรอบ_ซ้าย_ขวา_หน้า_หลัง\timage.jpg\thttps://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777876791513-image_ea2efc1d.jpg\n1080006\tรูปบริเวณโดยรอบ_ซ้าย_ขวา_หน้า_หลัง\timage.jpg\thttps://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777876819065-image_6be82569.jpg\n1080007\tตู้ไฟ_เปิดฝา\timage.jpg\thttps://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777876898825-image_25e5b7ba.jpg\n1080008\tตู้ไฟ_เปิดฝา\timage.jpg\thttps://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777876912794-image_725e76ac.jpg\n1080009\tหลังคามุมกว้าง_ภาพโดรน\t1777877008997-9hvb-dji_fly_20260504_134134_0130_1777876915717_photo.jpg\thttps://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777877008997-9hvb-dji_fly_20260504_134134_0130_1777876915717_photo_2d742552.jpg\n1080010\tหลังคามุมกว้าง_ภาพโดรน\t1777877008996-fozs-dji_fly_20260504_134122_0129_1777876916028_photo.jpg\thttps://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777877008996-fozs-dji_fly_20260504_134122_0129_1777876916028_photo_af72aca1.jpg\n1080011\tหลังคามุมกว้าง_ภาพโดรน\t1777877008997-y59k-dji_fly_20260504_134146_0131_1777876915370_photo.jpg\thttps://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777877008997-y59k-dji_fly_20260504_134146_0131_1777876915370_photo_4f4a2fb6.jpg\n1080012\tหลังคามุมกว้าง_ภาพโดรน\t1777877016503-g0mm-dji_fly_20260504_134204_0132_1777876914981_photo.jpg\thttps://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777877016503-g0mm-dji_fly_20260504_134204_0132_1777876914981_photo_9e39e570.jpg\n1080013\tหลังคาซูมใกล้_วัสดุ_โครงสร้าง\t1777877027118-azam-dji_fly_20260504_134218_0133_1777876914728_photo.jpg\thttps://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777877027118-azam-dji_fly_20260504_134218_0133_1777876914728_photo_4194526a.jpg\n1080014\tทางเข้า_ดูว่ารถเครน_ขนของเข้าได้ไหม\t1777877057105-4i8y-image.jpg\thttps://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777877057105-4i8y-image_1c942911.jpg\n1110001\tบิลค่าไฟ\timage.jpg\thttps://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777877477224-image_3a63911b.jpg\n1110002\tบิลค่าไฟ\timage.jpg\thttps://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777877579095-image_1d5ddf54.jpg\n1140001\tจุดติดตั้ง_inverter\timage.jpg\thttps://solar-survey-files-2026.s3.ap-southeast-1.amazonaws.com/surveys/960001/photos/1777878655809-image_74601afd.jpg\n",
+  "stderr": "",
+  "execution_time_ms": 1842
+}

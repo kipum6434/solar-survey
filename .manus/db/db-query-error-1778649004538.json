@@ -1,0 +1,8 @@
+{
+  "query": "SELECT id, category, file_name, url FROM survey_photos WHERE survey_id = 960001 ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT id, category, file_name, url FROM survey_photos WHERE survey_id = 960001 ORDER BY id;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'survey_id' in 'where clause'"
+  ]
+}

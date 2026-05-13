@@ -1,0 +1,22 @@
+{
+  "query": "SELECT surveyId, COUNT(*) as cnt FROM survey_photos GROUP BY surveyId HAVING cnt = 17 LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT surveyId, COUNT(*) as cnt FROM survey_photos GROUP BY surveyId HAVING cnt = 17 LIMIT 5;",
+  "rows": [
+    {
+      "surveyId": "1320005",
+      "cnt": "17"
+    },
+    {
+      "surveyId": "1320011",
+      "cnt": "17"
+    },
+    {
+      "surveyId": "960001",
+      "cnt": "17"
+    }
+  ],
+  "messages": [],
+  "stdout": "surveyId\tcnt\n1320005\t17\n1320011\t17\n960001\t17\n",
+  "stderr": "",
+  "execution_time_ms": 1883
+}

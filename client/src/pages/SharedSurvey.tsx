@@ -273,45 +273,38 @@ export default function SharedSurvey() {
                   disabled={isDownloadingAll}
                   onClick={async () => {
                     setIsDownloadingAll(true);
-                    setDownloadProgress({ current: 0, total: photosData.length });
+                    setDownloadProgress({ current: 0, total: 100 });
                     try {
-                      const JSZip = (await import('jszip')).default;
-                      const zip = new JSZip();
-                      const sanitize = (s: string) => s.replace(/[\/:\*\?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
-                      const rootFolder = zip.folder(sanitize(`photos-${c.name}`)) || zip;
-                      const catCounters: Record<string, number> = {};
-                      let successCount = 0;
-                      let processed = 0;
-                      const batchSize = 4;
-                      for (let batch = 0; batch < photosData.length; batch += batchSize) {
-                        const batchPhotos = photosData.slice(batch, batch + batchSize);
-                        const results = await Promise.allSettled(
-                          batchPhotos.map(async (photo: any) => {
-                            const resp = await fetch(photo.url);
-                            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-                            return { photo, blob: await resp.blob() };
-                          })
-                        );
-                        for (const result of results) {
-                          processed++;
-                          setDownloadProgress({ current: processed, total: photosData.length });
-                          if (result.status === 'fulfilled') {
-                            const { photo, blob } = result.value;
-                            const ext = photo.fileName?.split('.').pop() || 'jpg';
-                            const catLabel = sanitize(categoryMap[photo.category] || photo.category || 'other');
-                            if (!catCounters[catLabel]) catCounters[catLabel] = 0;
-                            catCounters[catLabel]++;
-                            const catFolder = rootFolder.folder(catLabel) || rootFolder;
-                            catFolder.file(`${catLabel}_${catCounters[catLabel]}.${ext}`, blob);
-                            successCount++;
+                      // Use server-side ZIP generation
+                      const customerName = encodeURIComponent(c.name);
+                      const downloadUrl = `/api/photos/download-zip/${surveyId}?customerName=${customerName}`;
+                      
+                      const blob = await new Promise<Blob>((resolve, reject) => {
+                        const xhr = new XMLHttpRequest();
+                        xhr.open('GET', downloadUrl, true);
+                        xhr.responseType = 'blob';
+                        xhr.onprogress = (event) => {
+                          if (event.lengthComputable) {
+                            const percent = Math.round((event.loaded / event.total) * 100);
+                            setDownloadProgress({ current: percent, total: 100 });
                           }
-                        }
-                      }
-                      setDownloadProgress({ current: photosData.length, total: photosData.length });
-                      const content = await zip.generateAsync({ type: 'blob' });
-                      const url = URL.createObjectURL(content);
+                        };
+                        xhr.onload = () => {
+                          if (xhr.status === 200) {
+                            resolve(xhr.response);
+                          } else {
+                            reject(new Error(`HTTP ${xhr.status}`));
+                          }
+                        };
+                        xhr.onerror = () => reject(new Error('Network error'));
+                        xhr.send();
+                      });
+                      
+                      setDownloadProgress({ current: 100, total: 100 });
+                      const url = URL.createObjectURL(blob);
                       const a = document.createElement('a');
                       a.href = url;
+                      const sanitize = (s: string) => s.replace(/[\/:\*\?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
                       a.download = `photos-${sanitize(c.name)}-${new Date().toISOString().slice(0, 10)}.zip`;
                       document.body.appendChild(a);
                       a.click();
@@ -324,22 +317,21 @@ export default function SharedSurvey() {
                 >
                   <FolderDown className="h-3.5 w-3.5" />
                   {isDownloadingAll
-                    ? `กำลังโหลด ${downloadProgress.current}/${downloadProgress.total} (${downloadProgress.total > 0 ? Math.round((downloadProgress.current / downloadProgress.total) * 100) : 0}%)`
+                    ? `กำลังโหลด ${downloadProgress.current}%`
                     : `ดาวน์โหลดทั้งหมด`}
                 </Button>
                 {isDownloadingAll && (
                   <div className="w-full mt-2">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                      <span>กำลังดาวน์โหลดรูปภาพ...</span>
-                      <span className="ml-auto font-medium">{downloadProgress.total > 0 ? Math.round((downloadProgress.current / downloadProgress.total) * 100) : 0}%</span>
+                      <span>กำลังดาวน์โหลดรูปภาพ ({photosData.length} รูป)...</span>
+                      <span className="ml-auto font-medium">{downloadProgress.current}%</span>
                     </div>
                     <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                       <div
                         className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
-                        style={{ width: `${downloadProgress.total > 0 ? (downloadProgress.current / downloadProgress.total) * 100 : 0}%` }}
+                        style={{ width: `${downloadProgress.current}%` }}
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">{downloadProgress.current} / {downloadProgress.total} รูป</p>
                   </div>
                 )}
               </div>
