@@ -85,6 +85,7 @@ export default function SurveyDetail() {
   const deleteDocCategory = trpc.documentCategory.delete.useMutation({ onSuccess: () => { refetchDocCategories(); toast.success("ลบประเภทเอกสารสำเร็จ"); } });
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState({ current: 0, total: 0 });
   const [showNewDocCategory, setShowNewDocCategory] = useState(false);
   const [newDocCategoryLabel, setNewDocCategoryLabel] = useState("");
   const [confirmDeleteDocCategory, setConfirmDeleteDocCategory] = useState<{ id: number; label: string } | null>(null);
@@ -561,15 +562,15 @@ export default function SurveyDetail() {
                         onClick={async () => {
                           if (!photos || photos.length === 0) return;
                           setIsDownloadingAll(true);
+                          setDownloadProgress({ current: 0, total: photos.length });
                           try {
                             const JSZip = (await import('jszip')).default;
                             const zip = new JSZip();
                             const sanitize = (s: string) => s.replace(/[\/:\*\?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
                             const rootFolder = zip.folder(sanitize(`photos-${c.name}`)) || zip;
-                            // Group photos by category for organized folder structure
                             const catCounters: Record<string, number> = {};
                             let successCount = 0;
-                            // Fetch all photos with concurrency limit to avoid browser throttling
+                            let processed = 0;
                             const batchSize = 4;
                             for (let batch = 0; batch < photos.length; batch += batchSize) {
                               const batchPhotos = photos.slice(batch, batch + batchSize);
@@ -581,6 +582,8 @@ export default function SurveyDetail() {
                                 })
                               );
                               for (const result of results) {
+                                processed++;
+                                setDownloadProgress({ current: processed, total: photos.length });
                                 if (result.status === 'fulfilled') {
                                   const { photo, blob } = result.value;
                                   const ext = photo.fileName?.split('.').pop() || 'jpg';
@@ -593,6 +596,7 @@ export default function SurveyDetail() {
                                 }
                               }
                             }
+                            setDownloadProgress({ current: photos.length, total: photos.length });
                             const content = await zip.generateAsync({ type: 'blob' });
                             const url = URL.createObjectURL(content);
                             const a = document.createElement('a');
@@ -607,12 +611,30 @@ export default function SurveyDetail() {
                             toast.error('เกิดข้อผิดพลาดในการดาวน์โหลด');
                           } finally {
                             setIsDownloadingAll(false);
+                            setDownloadProgress({ current: 0, total: 0 });
                           }
                         }}
                       >
                         <FolderDown className="h-3.5 w-3.5" />
-                        {isDownloadingAll ? 'กำลังดาวน์โหลด...' : `ดาวน์โหลดทั้งหมด (${photos.length})`}
+                        {isDownloadingAll
+                          ? `กำลังโหลด ${downloadProgress.current}/${downloadProgress.total} (${downloadProgress.total > 0 ? Math.round((downloadProgress.current / downloadProgress.total) * 100) : 0}%)`
+                          : `ดาวน์โหลดทั้งหมด (${photos.length})`}
                       </Button>
+                    )}
+                    {isDownloadingAll && (
+                      <div className="w-full mt-2">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                          <span>กำลังดาวน์โหลดรูปภาพ...</span>
+                          <span className="ml-auto font-medium">{downloadProgress.total > 0 ? Math.round((downloadProgress.current / downloadProgress.total) * 100) : 0}%</span>
+                        </div>
+                        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
+                            style={{ width: `${downloadProgress.total > 0 ? (downloadProgress.current / downloadProgress.total) * 100 : 0}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">{downloadProgress.current} / {downloadProgress.total} รูป</p>
+                      </div>
                     )}
                     <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" hidden onChange={handlePhotoUpload} />
                     <input ref={photoInputRef} type="file" accept="image/*" multiple hidden onChange={handlePhotoUpload} />

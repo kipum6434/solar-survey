@@ -33,6 +33,7 @@ export default function SharedSurvey() {
   const { data: photoCategories } = trpc.photoCategory.list.useQuery();
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState({ current: 0, total: 0 });
   const [showCompleteSurveyConfirm, setShowCompleteSurveyConfirm] = useState(false);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [pdfProgress, setPdfProgress] = useState<string>("");
@@ -272,6 +273,7 @@ export default function SharedSurvey() {
                   disabled={isDownloadingAll}
                   onClick={async () => {
                     setIsDownloadingAll(true);
+                    setDownloadProgress({ current: 0, total: photosData.length });
                     try {
                       const JSZip = (await import('jszip')).default;
                       const zip = new JSZip();
@@ -279,6 +281,7 @@ export default function SharedSurvey() {
                       const rootFolder = zip.folder(sanitize(`photos-${c.name}`)) || zip;
                       const catCounters: Record<string, number> = {};
                       let successCount = 0;
+                      let processed = 0;
                       const batchSize = 4;
                       for (let batch = 0; batch < photosData.length; batch += batchSize) {
                         const batchPhotos = photosData.slice(batch, batch + batchSize);
@@ -290,6 +293,8 @@ export default function SharedSurvey() {
                           })
                         );
                         for (const result of results) {
+                          processed++;
+                          setDownloadProgress({ current: processed, total: photosData.length });
                           if (result.status === 'fulfilled') {
                             const { photo, blob } = result.value;
                             const ext = photo.fileName?.split('.').pop() || 'jpg';
@@ -302,6 +307,7 @@ export default function SharedSurvey() {
                           }
                         }
                       }
+                      setDownloadProgress({ current: photosData.length, total: photosData.length });
                       const content = await zip.generateAsync({ type: 'blob' });
                       const url = URL.createObjectURL(content);
                       const a = document.createElement('a');
@@ -313,11 +319,29 @@ export default function SharedSurvey() {
                       URL.revokeObjectURL(url);
                     } catch { /* ignore */ }
                     setIsDownloadingAll(false);
+                    setDownloadProgress({ current: 0, total: 0 });
                   }}
                 >
                   <FolderDown className="h-3.5 w-3.5" />
-                  {isDownloadingAll ? 'กำลังดาวน์โหลด...' : `ดาวน์โหลดทั้งหมด`}
+                  {isDownloadingAll
+                    ? `กำลังโหลด ${downloadProgress.current}/${downloadProgress.total} (${downloadProgress.total > 0 ? Math.round((downloadProgress.current / downloadProgress.total) * 100) : 0}%)`
+                    : `ดาวน์โหลดทั้งหมด`}
                 </Button>
+                {isDownloadingAll && (
+                  <div className="w-full mt-2">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                      <span>กำลังดาวน์โหลดรูปภาพ...</span>
+                      <span className="ml-auto font-medium">{downloadProgress.total > 0 ? Math.round((downloadProgress.current / downloadProgress.total) * 100) : 0}%</span>
+                    </div>
+                    <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
+                        style={{ width: `${downloadProgress.total > 0 ? (downloadProgress.current / downloadProgress.total) * 100 : 0}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">{downloadProgress.current} / {downloadProgress.total} รูป</p>
+                  </div>
+                )}
               </div>
             </CardHeader>
             <CardContent>

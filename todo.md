@@ -1287,3 +1287,10 @@
 - [x] Fix: sanitize ชื่อไฟล์/folder แทน `/` ด้วย `-`, จัดโครงสร้าง ZIP เป็น folder ตาม category, batch fetch 4 รูปพร้อมกัน
 - [x] แก้ทั้ง SurveyDetail.tsx และ SharedSurvey.tsx
 - [x] tsc --noEmit ผ่าน (0 new errors)
+
+## Feature: Progress Bar ขณะดาวน์โหลดรูปภาพ
+
+- [x] เพิ่ม progress state (downloadProgress) ใน SurveyDetail.tsx
+- [x] แสดง progress bar + เปอร์เซ็นต์ + จำนวนรูปที่โหลดแล้ว ขณะดาวน์โหลด (แสดง เช่น "กำลังโหลด 7/17 (41%)")
+- [x] เพิ่มเช่นเดียวกันใน SharedSurvey.tsx
+- [x] tsc --noEmit ผ่าน (0 new errors)
