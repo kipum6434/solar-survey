@@ -247,6 +247,11 @@ function DashboardLayoutContent({
     refetchInterval: 30000,
   });
 
+  // Overdue follow-up count for sidebar badge
+  const { data: overdueFollowUpCount } = trpc.followUp.overdueCount.useQuery(undefined, {
+    refetchInterval: 60000,
+  });
+
   useEffect(() => {
     if (isCollapsed) {
       setIsResizing(false);
@@ -355,6 +360,11 @@ function DashboardLayoutContent({
                     </SidebarMenuItem>
                     {isExpanded && group.menuItems.map((item) => {
                       const isActive = location.startsWith(item.path);
+                      const isFollowUpItem = item.path.endsWith("/follow-ups");
+                      const groupOverdue = isFollowUpItem && Array.isArray(overdueFollowUpCount)
+                        ? overdueFollowUpCount.find((g: any) => item.path.includes(`/${g.groupSlug}/`))
+                        : null;
+                      const overdueNum = groupOverdue?.count ?? 0;
                       return (
                         <SidebarMenuItem key={item.path}>
                           <SidebarMenuButton
@@ -365,6 +375,11 @@ function DashboardLayoutContent({
                           >
                             <item.icon className="h-4 w-4" />
                             <span className="flex-1">{item.label}</span>
+                            {isFollowUpItem && overdueNum > 0 && (
+                              <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 text-[10px] font-bold rounded-full bg-orange-500 text-white">
+                                {overdueNum > 99 ? "99+" : overdueNum}
+                              </span>
+                            )}
                             {isActive && !isCollapsed && <ChevronRight className="h-3 w-3 opacity-50" />}
                           </SidebarMenuButton>
                         </SidebarMenuItem>

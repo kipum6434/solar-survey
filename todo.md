@@ -1327,3 +1327,13 @@
 - [x] หน้า share link แสดงหมายเหตุใต้ภาพ (ถ้ามี)
 - [x] หน้า share link สามารถเพิ่ม/แก้ไขหมายเหตุใต้ภาพได้
 - [x] Backend API รองรับการแก้ไข caption จาก share link (public endpoint)
+
+## Feature: แสดงหมายเหตุใต้ภาพใน PDF ที่ส่งออก
+
+- [x] PDF export แสดง caption ใต้ภาพแต่ละรูป (ถ้ามี) - มีอยู่แล้วในโค้ดเดิม
+
+## Feature: ปรับปรุงหน้างานติดตาม (TCS/Gulf/MEA)
+
+- [x] ฟิลเตอร์ผู้รับผิดชอบ (คนส่งสำรวจ/เซลล์) ในหน้างานติดตาม
+- [x] ระบบติดตามครั้งที่ 1/2/3 (follow-up round) — DB schema + backend + UI badge
+- [x] แจ้งเตือนเคสค้าง 2 วัน (in-app badge บน sidebar + highlight แถวในตาราง + ปุ่มฟิลเตอร์ "เคสค้าง")

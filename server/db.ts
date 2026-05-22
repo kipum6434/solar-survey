@@ -597,7 +597,7 @@ export async function getFollowUps(opts: { surveyId?: number; customerId?: numbe
   return db.select().from(followUps).where(whereClause).orderBy(followUps.dueDate);
 }
 
-export async function getSurveysForFollowUp(opts: { search?: string; startDate?: number; endDate?: number; page?: number; limit?: number; sourceGroup?: string }) {
+export async function getSurveysForFollowUp(opts: { search?: string; startDate?: number; endDate?: number; page?: number; limit?: number; sourceGroup?: string; assigneeId?: number; statusFilter?: string }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
   const page = opts.page ?? 1;
@@ -627,6 +627,23 @@ export async function getSurveysForFollowUp(opts: { search?: string; startDate?:
     } else {
       conditions.push(sql`1=0`);
     }
+  }
+  // Filter by assignee (team member)
+  if (opts.assigneeId) {
+    const assignedSurveyIds = await db.select({ surveyId: surveyAssignments.surveyId })
+      .from(surveyAssignments)
+      .where(eq(surveyAssignments.userId, opts.assigneeId));
+    const ids = assignedSurveyIds.map(r => r.surveyId);
+    if (ids.length > 0) {
+      conditions.push(inArray(surveys.id, ids));
+    } else {
+      conditions.push(sql`1=0`);
+    }
+  }
+  // Filter by status (single status)
+  if (opts.statusFilter && ['follow_up', 'quoted', 'negotiating'].includes(opts.statusFilter)) {
+    // Replace the default OR condition with specific status
+    conditions[0] = eq(surveys.status, opts.statusFilter as any);
   }
   const whereClause = and(...conditions);
 
@@ -677,13 +694,15 @@ export async function getSurveysForFollowUp(opts: { search?: string; startDate?:
     }
   }
 
-  // Fetch latest follow-up for each survey
+  // Fetch latest follow-up for each survey + count total rounds
   const surveyIds = rows.map(r => r.survey.id);
   const followUpMap: Record<number, typeof followUps.$inferSelect> = {};
+  const followUpCountMap: Record<number, number> = {};
   if (surveyIds.length > 0) {
     const fuRows = await db.select().from(followUps).where(inArray(followUps.surveyId, surveyIds)).orderBy(desc(followUps.dueDate));
     for (const fu of fuRows) {
       if (!followUpMap[fu.surveyId]) followUpMap[fu.surveyId] = fu;
+      followUpCountMap[fu.surveyId] = (followUpCountMap[fu.surveyId] || 0) + 1;
     }
   }
 
@@ -711,11 +730,62 @@ export async function getSurveysForFollowUp(opts: { search?: string; startDate?:
       customer: r.customer,
       customStatus: r.survey.statusId ? customStatusMap[r.survey.statusId] || null : null,
       latestFollowUp: followUpMap[r.survey.id] || null,
+      followUpCount: followUpCountMap[r.survey.id] || 0,
       assignments: assignmentsMap[r.survey.id] || [],
     })),
     total,
     stats,
   };
+}
+
+export async function getOverdueFollowUpCount(sourceGroup?: string): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  // Surveys in follow_up status where updatedAt is older than 2 days
+  const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+  const conditions: any[] = [
+    eq(surveys.status, "follow_up"),
+    lte(surveys.updatedAt, twoDaysAgo),
+  ];
+  if (sourceGroup) {
+    const groupSources = await getSourceNamesByGroupName(sourceGroup);
+    if (groupSources.length > 0) {
+      conditions.push(inArray(customers.source, groupSources));
+    } else {
+      return 0;
+    }
+  }
+  const result = await db.select({ count: sql<number>`count(*)` })
+    .from(surveys)
+    .innerJoin(customers, eq(surveys.customerId, customers.id))
+    .where(and(...conditions));
+  return Number(result[0]?.count ?? 0);
+}
+
+export async function getOverdueFollowUpCountPerGroup(): Promise<{ groupSlug: string; count: number }[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const allGroups = await db.select().from(sourceGroups);
+  const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+  const results: { groupSlug: string; count: number }[] = [];
+  for (const group of allGroups) {
+    const slug = group.name.toLowerCase().replace(/\s+/g, "-");
+    const groupSources = await getSourceNamesByGroupName(group.name);
+    if (groupSources.length === 0) {
+      results.push({ groupSlug: slug, count: 0 });
+      continue;
+    }
+    const result = await db.select({ count: sql<number>`count(*)` })
+      .from(surveys)
+      .innerJoin(customers, eq(surveys.customerId, customers.id))
+      .where(and(
+        eq(surveys.status, "follow_up"),
+        lte(surveys.updatedAt, twoDaysAgo),
+        inArray(customers.source, groupSources),
+      ));
+    results.push({ groupSlug: slug, count: Number(result[0]?.count ?? 0) });
+  }
+  return results;
 }
 
 export async function getFollowUpsWithDetails(opts: { status?: string; method?: string; startDate?: number; endDate?: number; search?: string }) {
@@ -760,7 +830,12 @@ export async function getFollowUpsWithDetails(opts: { status?: string; method?: 
 export async function createFollowUp(data: InsertFollowUp) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  const result = await db.insert(followUps).values(data);
+  // Auto-calculate round based on existing follow-ups for this survey
+  const existing = await db.select({ maxRound: sql<number>`COALESCE(MAX(${followUps.round}), 0)` })
+    .from(followUps)
+    .where(eq(followUps.surveyId, data.surveyId));
+  const nextRound = (existing[0]?.maxRound || 0) + 1;
+  const result = await db.insert(followUps).values({ ...data, round: nextRound });
   return result[0].insertId;
 }
 

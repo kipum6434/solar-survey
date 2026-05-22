@@ -1,0 +1,26 @@
+{
+  "query": "SELECT surveyId, COUNT(*) as cnt FROM follow_ups GROUP BY surveyId ORDER BY cnt DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT surveyId, COUNT(*) as cnt FROM follow_ups GROUP BY surveyId ORDER BY cnt DESC LIMIT 10;",
+  "rows": [
+    {
+      "surveyId": "1680009",
+      "cnt": "2"
+    },
+    {
+      "surveyId": "1680011",
+      "cnt": "2"
+    },
+    {
+      "surveyId": "1680012",
+      "cnt": "1"
+    },
+    {
+      "surveyId": "1680010",
+      "cnt": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "surveyId\tcnt\n1680009\t2\n1680011\t2\n1680012\t1\n1680010\t1\n",
+  "stderr": "",
+  "execution_time_ms": 1750
+}

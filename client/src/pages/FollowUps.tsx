@@ -33,6 +33,11 @@ export default function FollowUps() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"list" | "table">("table");
+  const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
+  const [overdueOnly, setOverdueOnly] = useState(false);
+
+  // Fetch team members for assignee filter
+  const { data: teamMembers } = trpc.teamMember.listAll.useQuery();
 
   // Date filter state
   const now = new Date();
@@ -77,16 +82,22 @@ export default function FollowUps() {
       page,
       limit: 50,
       sourceGroup,
+      assigneeId: assigneeFilter !== "all" ? Number(assigneeFilter) : undefined,
+      statusFilter: statusFilter !== "all" ? statusFilter : undefined,
     };
-  }, [filterByMonth, selectedMonth, selectedYear, search, page, sourceGroup]);
+  }, [filterByMonth, selectedMonth, selectedYear, search, page, sourceGroup, assigneeFilter, statusFilter]);
 
   const { data, isLoading } = trpc.followUp.surveysForFollowUp.useQuery(queryInput);
-  // Filter by status on client side
+  // Filter overdue on client side (surveys in follow_up status for > 2 days)
   const filteredData = useMemo(() => {
     if (!data?.data) return [];
-    if (statusFilter === "all") return data.data;
-    return data.data.filter((d: any) => d.survey.status === statusFilter);
-  }, [data, statusFilter]);
+    let result = data.data;
+    if (overdueOnly) {
+      const twoDaysAgo = Date.now() - 2 * 24 * 60 * 60 * 1000;
+      result = result.filter((d: any) => d.survey.status === "follow_up" && new Date(d.survey.updatedAt).getTime() < twoDaysAgo);
+    }
+    return result;
+  }, [data, overdueOnly]);
   // Pagination
   const totalPages = Math.ceil((data?.total ?? 0) / 50);
   // Stats
@@ -237,6 +248,26 @@ export default function FollowUps() {
               <SelectItem value="negotiating">เจรจาต่อรอง</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={assigneeFilter} onValueChange={(v) => { setAssigneeFilter(v); setPage(1); }}>
+            <SelectTrigger className="w-[170px] h-9">
+              <SelectValue placeholder="ผู้รับผิดชอบ" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">ผู้รับผิดชอบทั้งหมด</SelectItem>
+              {teamMembers?.map((m: any) => (
+                <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant={overdueOnly ? "destructive" : "outline"}
+            size="sm"
+            className="h-9 gap-1.5"
+            onClick={() => { setOverdueOnly(!overdueOnly); setPage(1); }}
+          >
+            <AlertCircle className="h-3.5 w-3.5" />
+            เคสค้าง
+          </Button>
           <div className="flex items-center border rounded-md overflow-hidden ml-auto">
             <Button
               variant={viewMode === "list" ? "default" : "ghost"}
@@ -350,7 +381,12 @@ export default function FollowUps() {
                         {item.latestFollowUp && (
                           <p className="text-xs text-cyan-700 mt-1 line-clamp-1">
                             <Clock className="h-3 w-3 inline mr-1" />
-                            Follow-up กำหนด: {formatDate(item.latestFollowUp.dueDate)}
+                            {item.followUpCount > 0 && (
+                              <span className={`inline-flex items-center mr-1.5 px-1.5 py-0 rounded text-[9px] font-medium ${item.followUpCount >= 3 ? 'bg-red-50 text-red-700' : item.followUpCount >= 2 ? 'bg-orange-50 text-orange-700' : 'bg-cyan-50 text-cyan-700'}`}>
+                                ติดตามครั้งที่ {item.followUpCount}
+                              </span>
+                            )}
+                            กำหนด: {formatDate(item.latestFollowUp.dueDate)}
                             {item.latestFollowUp.notes ? ` — ${item.latestFollowUp.notes}` : ""}
                           </p>
                         )}
@@ -397,11 +433,12 @@ export default function FollowUps() {
                   {filteredData.map((item: any) => {
                     const survey = item.survey;
                     const cust = item.customer;
+                    const isOverdue = survey.status === "follow_up" && (Date.now() - new Date(survey.updatedAt).getTime()) > 2 * 24 * 60 * 60 * 1000;
 
                     return (
                       <tr
                         key={survey.id}
-                        className="border-b hover:bg-muted/30 cursor-pointer transition-colors"
+                        className={`border-b hover:bg-muted/30 cursor-pointer transition-colors ${isOverdue ? 'bg-orange-50/70 dark:bg-orange-950/20' : ''}`}
                         onClick={() => setLocation(`/surveys/${survey.id}`)}
                       >
                         <td className="px-3 py-2.5 whitespace-nowrap">
@@ -426,14 +463,21 @@ export default function FollowUps() {
                           <span className="text-xs">{getAssigneeNames(item)}</span>
                         </td>
                         <td className="px-3 py-2.5 whitespace-nowrap">
-                          {item.latestFollowUp ? (
-                            <span className="text-xs text-cyan-700">
-                              <Clock className="h-3 w-3 inline mr-0.5" />
-                              {formatDate(item.latestFollowUp.dueDate)}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">-</span>
-                          )}
+                          <div className="flex items-center gap-1.5">
+                            {item.followUpCount > 0 && (
+                              <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${item.followUpCount >= 3 ? 'border-red-300 text-red-700 bg-red-50' : item.followUpCount >= 2 ? 'border-orange-300 text-orange-700 bg-orange-50' : 'border-cyan-300 text-cyan-700 bg-cyan-50'}`}>
+                                ครั้งที่ {item.followUpCount}
+                              </Badge>
+                            )}
+                            {item.latestFollowUp ? (
+                              <span className="text-xs text-cyan-700">
+                                <Clock className="h-3 w-3 inline mr-0.5" />
+                                {formatDate(item.latestFollowUp.dueDate)}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">-</span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-3 py-2.5 whitespace-nowrap">
                           <span className="text-xs">{cust.province || "-"}</span>

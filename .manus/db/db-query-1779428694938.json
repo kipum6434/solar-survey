@@ -1,0 +1,16 @@
+{
+  "query": "SHOW TABLES LIKE '%line%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SHOW TABLES LIKE '%line%';",
+  "rows": [
+    {
+      "Tables_in_6acGApiU8Bjnxuzxb5vkwU (%line%)": "line_groups"
+    },
+    {
+      "Tables_in_6acGApiU8Bjnxuzxb5vkwU (%line%)": "line_notification_targets"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_6acGApiU8Bjnxuzxb5vkwU (%line%)\nline_groups\nline_notification_targets\n",
+  "stderr": "",
+  "execution_time_ms": 1804
+}

@@ -206,6 +206,7 @@ export const followUps = mysqlTable("follow_ups", {
   id: int("id").autoincrement().primaryKey(),
   surveyId: int("surveyId").notNull(),
   customerId: int("customerId").notNull(),
+  round: int("round").default(1).notNull(),
   dueDate: bigint("dueDate", { mode: "number" }).notNull(),
   status: mysqlEnum("status", ["pending", "completed", "overdue", "cancelled"]).default("pending").notNull(),
   method: mysqlEnum("method", ["phone", "line", "visit", "email", "other"]).default("phone"),

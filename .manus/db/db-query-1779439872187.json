@@ -1,0 +1,110 @@
+{
+  "query": "SELECT sa.role, tm.name, COUNT(DISTINCT s.id) as cnt FROM surveys s INNER JOIN survey_assignments sa ON sa.surveyId = s.id LEFT JOIN team_members tm ON tm.id = sa.userId WHERE s.status IN ('follow_up','quoted','negotiating') GROUP BY sa.role, tm.name ORDER BY sa.role, cnt DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT sa.role, tm.name, COUNT(DISTINCT s.id) as cnt FROM surveys s INNER JOIN survey_assignments sa ON sa.surveyId = s.id LEFT JOIN team_members tm ON tm.id = sa.userId WHERE s.status IN ('follow_up','quoted','negotiating') GROUP BY sa.role, tm.name ORDER BY sa.role, cnt DESC LIMIT 20;",
+  "rows": [
+    {
+      "role": "admin_sender",
+      "name": "นีโน่",
+      "cnt": "57"
+    },
+    {
+      "role": "admin_sender",
+      "name": "NULL",
+      "cnt": "33"
+    },
+    {
+      "role": "admin_sender",
+      "name": "แพมแพม",
+      "cnt": "25"
+    },
+    {
+      "role": "admin_sender",
+      "name": "อุ้ย",
+      "cnt": "24"
+    },
+    {
+      "role": "admin_sender",
+      "name": "เกรซ",
+      "cnt": "15"
+    },
+    {
+      "role": "admin_sender",
+      "name": "น้องโม",
+      "cnt": "12"
+    },
+    {
+      "role": "admin_sender",
+      "name": "เบียร์",
+      "cnt": "11"
+    },
+    {
+      "role": "admin_sender",
+      "name": "กุลธิดา บุนนาค",
+      "cnt": "9"
+    },
+    {
+      "role": "admin_sender",
+      "name": "ไอซ์",
+      "cnt": "3"
+    },
+    {
+      "role": "admin_sender",
+      "name": "พี่บี",
+      "cnt": "3"
+    },
+    {
+      "role": "admin_sender",
+      "name": "สุริยา ผาสุข",
+      "cnt": "2"
+    },
+    {
+      "role": "admin_sender",
+      "name": "ตั้ม",
+      "cnt": "1"
+    },
+    {
+      "role": "admin_sender",
+      "name": "โอโน่",
+      "cnt": "1"
+    },
+    {
+      "role": "surveyor",
+      "name": "กล้วย",
+      "cnt": "52"
+    },
+    {
+      "role": "surveyor",
+      "name": "โอโน่",
+      "cnt": "51"
+    },
+    {
+      "role": "surveyor",
+      "name": "สุริยา ผาสุข",
+      "cnt": "44"
+    },
+    {
+      "role": "surveyor",
+      "name": "ตั้ม",
+      "cnt": "22"
+    },
+    {
+      "role": "surveyor",
+      "name": "มอสดี้",
+      "cnt": "19"
+    },
+    {
+      "role": "surveyor",
+      "name": "นัด ณัฐวัฒน์ วงษา",
+      "cnt": "5"
+    },
+    {
+      "role": "surveyor",
+      "name": "เกรซ",
+      "cnt": "4"
+    }
+  ],
+  "messages": [],
+  "stdout": "role\tname\tcnt\nadmin_sender\tนีโน่\t57\nadmin_sender\tNULL\t33\nadmin_sender\tแพมแพม\t25\nadmin_sender\tอุ้ย\t24\nadmin_sender\tเกรซ\t15\nadmin_sender\tน้องโม\t12\nadmin_sender\tเบียร์\t11\nadmin_sender\tกุลธิดา บุนนาค\t9\nadmin_sender\tไอซ์\t3\nadmin_sender\tพี่บี\t3\nadmin_sender\tสุริยา ผาสุข\t2\nadmin_sender\tตั้ม\t1\nadmin_sender\tโอโน่\t1\nsurveyor\tกล้วย\t52\nsurveyor\tโอโน่\t51\nsurveyor\tสุริยา ผาสุข\t44\nsurveyor\tตั้ม\t22\nsurveyor\tมอสดี้\t19\nsurveyor\tนัด ณัฐวัฒน์ วงษา\t5\nsurveyor\tเกรซ\t4\n",
+  "stderr": "",
+  "execution_time_ms": 1743
+}

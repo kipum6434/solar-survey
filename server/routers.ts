@@ -1028,6 +1028,8 @@ const followUpRouter = router({
       page: z.number().default(1),
       limit: z.number().default(50),
       sourceGroup: z.string().optional(),
+      assigneeId: z.number().optional(),
+      statusFilter: z.string().optional(),
     }))
     .query(({ input }) => db.getSurveysForFollowUp(input)),
 
@@ -1048,9 +1050,13 @@ const followUpRouter = router({
       await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "follow_up", entityId: id, details: `อัพเดท Follow-up ID: ${id}${data.status ? ` สถานะ: ${data.status}` : ""}` });
       return { success: true };
     }),
-});
 
-// ==================== SHARE LINK ROUTER ====================
+  overdueCount: protectedProcedure
+    .query(async () => {
+      return db.getOverdueFollowUpCountPerGroup();
+    }),
+});
+// ==================== SHARE LINK ROUTER =====================
 const shareLinkRouter = router({
   list: protectedProcedure
     .input(z.object({ surveyId: z.number() }))

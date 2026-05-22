@@ -1,0 +1,26 @@
+{
+  "query": "SELECT * FROM line_notification_targets ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute SELECT * FROM line_notification_targets ORDER BY id;",
+  "rows": [
+    {
+      "id": "1",
+      "targetType": "user",
+      "targetId": "Ub87a975d25a87c90f061b2d287910bc9",
+      "label": "เจ้าของระบบ (Owner)",
+      "isEnabled": "0",
+      "createdAt": "2026-04-25 18:57:24"
+    },
+    {
+      "id": "30001",
+      "targetType": "group",
+      "targetId": "Cc48e60f667c0f42e64e3ad563278220b",
+      "label": "Notice สำรวจและติดตั้ง",
+      "isEnabled": "1",
+      "createdAt": "2026-05-02 08:09:41"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttargetType\ttargetId\tlabel\tisEnabled\tcreatedAt\n1\tuser\tUb87a975d25a87c90f061b2d287910bc9\tเจ้าของระบบ (Owner)\t0\t2026-04-25 18:57:24\n30001\tgroup\tCc48e60f667c0f42e64e3ad563278220b\tNotice สำรวจและติดตั้ง\t1\t2026-05-02 08:09:41\n",
+  "stderr": "",
+  "execution_time_ms": 1761
+}

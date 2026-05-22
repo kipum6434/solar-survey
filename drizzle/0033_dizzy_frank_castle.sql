@@ -1,0 +1,1 @@
+ALTER TABLE `follow_ups` ADD `round` int DEFAULT 1 NOT NULL;

@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE follow_ups f\nINNER JOIN (\n  SELECT id, ROW_NUMBER() OVER (PARTITION BY surveyId ORDER BY createdAt ASC) as rn\n  FROM follow_ups\n) ranked ON f.id = ranked.id\nSET f.round = ranked.rn;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute UPDATE follow_ups f\nINNER JOIN (\n  SELECT id, ROW_NUMBER() OVER (PARTITION BY surveyId ORDER BY createdAt ASC) as rn\n  FROM follow_ups\n) ranked ON f.id = ranked.id\nSET f.round = ranked.rn;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1774
+}
