@@ -1360,3 +1360,7 @@
 - [x] วิเคราะห์ root cause: isWon() นับแค่ installationStatus=completed/delivered แต่ไม่นับ status='won'
 - [x] แก้ไข isWon() ใน buildPerformanceResult ให้รวม status='won' ด้วย
 - [x] แก้ไข totalWon ให้ใช้ isWon() function แทน hardcode condition
+
+## Feature: ฟิลเตอร์ตามรอบติดตาม (ครั้งที่ 1/2/3)
+- [x] เพิ่ม dropdown ฟิลเตอร์ "รอบติดตาม" ในหน้า FollowUps (ทั้งหมด / ครั้งที่ 1 / ครั้งที่ 2 / ครั้งที่ 3)
+- [x] กรองข้อมูลตาม followUpCount ที่ได้จาก API

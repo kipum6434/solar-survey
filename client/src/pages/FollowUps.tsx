@@ -46,6 +46,7 @@ export default function FollowUps() {
   const [viewMode, setViewMode] = useState<"list" | "table">("table");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
   const [overdueOnly, setOverdueOnly] = useState(false);
+  const [roundFilter, setRoundFilter] = useState<string>("all");
 
   // Fetch team members for assignee filter
   const { data: teamMembers } = trpc.teamMember.listAll.useQuery();
@@ -99,7 +100,7 @@ export default function FollowUps() {
   }, [filterByMonth, selectedMonth, selectedYear, search, page, sourceGroup, assigneeFilter, statusFilter]);
 
   const { data, isLoading } = trpc.followUp.surveysForFollowUp.useQuery(queryInput);
-  // Filter overdue on client side (surveys in follow_up status for > 2 days)
+  // Filter overdue + round on client side
   const filteredData = useMemo(() => {
     if (!data?.data) return [];
     let result = data.data;
@@ -107,8 +108,12 @@ export default function FollowUps() {
       const twoDaysAgo = Date.now() - 2 * 24 * 60 * 60 * 1000;
       result = result.filter((d: any) => d.survey.status === "follow_up" && new Date(d.survey.updatedAt).getTime() < twoDaysAgo);
     }
+    if (roundFilter !== "all") {
+      const targetRound = Number(roundFilter);
+      result = result.filter((d: any) => d.followUpCount === targetRound);
+    }
     return result;
-  }, [data, overdueOnly]);
+  }, [data, overdueOnly, roundFilter]);
   // Pagination
   const totalPages = Math.ceil((data?.total ?? 0) / 50);
   // Stats
@@ -268,6 +273,17 @@ export default function FollowUps() {
               {teamMembers?.map((m: any) => (
                 <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+          <Select value={roundFilter} onValueChange={(v) => { setRoundFilter(v); setPage(1); }}>
+            <SelectTrigger className="w-[150px] h-9">
+              <SelectValue placeholder="รอบติดตาม" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">ทุกรอบติดตาม</SelectItem>
+              <SelectItem value="1">ครั้งที่ 1</SelectItem>
+              <SelectItem value="2">ครั้งที่ 2</SelectItem>
+              <SelectItem value="3">ครั้งที่ 3</SelectItem>
             </SelectContent>
           </Select>
           <Button
