@@ -15,8 +15,9 @@ import { useSourceGroup } from "@/hooks/useSourceGroup";
 import {
   Search, PhoneCall, ChevronLeft, ChevronRight, Calendar, Clock, User,
   CheckCircle2, AlertCircle, Timer, MapPin, FileText, Zap,
-  LayoutList, Table2, Phone, MessageSquare,
+  LayoutList, Table2, Phone, MessageSquare, ArrowRight,
 } from "lucide-react";
+import { toast } from "sonner";
 
 const THAI_MONTHS_SHORT = [
   "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
@@ -29,6 +30,16 @@ const FOLLOW_UP_STATUSES = ["follow_up", "quoted", "negotiating"] as const;
 export default function FollowUps() {
   const [, setLocation] = useLocation();
   const sourceGroup = useSourceGroup();
+  const utils = trpc.useUtils();
+  const advanceRoundMutation = trpc.followUp.advanceRound.useMutation({
+    onSuccess: (data) => {
+      toast.success(`เลื่อนเป็นติดตามครั้งที่ ${data.newRound} สำเร็จ`);
+      utils.followUp.surveysForFollowUp.invalidate();
+    },
+    onError: (err) => {
+      toast.error(err.message || "เกิดข้อผิดพลาด");
+    },
+  });
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -476,6 +487,25 @@ export default function FollowUps() {
                               </span>
                             ) : (
                               <span className="text-xs text-muted-foreground">-</span>
+                            )}
+                            {item.followUpCount > 0 && item.followUpCount < 3 && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-1.5 text-[10px] text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  advanceRoundMutation.mutate({
+                                    surveyId: survey.id,
+                                    customerId: cust.id,
+                                    currentRound: item.followUpCount,
+                                  });
+                                }}
+                                disabled={advanceRoundMutation.isPending}
+                              >
+                                <ArrowRight className="h-3 w-3 mr-0.5" />
+                                ครั้งที่ {item.followUpCount + 1}
+                              </Button>
                             )}
                           </div>
                         </td>

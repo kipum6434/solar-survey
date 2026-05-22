@@ -52,6 +52,7 @@ import {
   Banknote,
   CheckSquare,
   Globe,
+  Target,
 } from "lucide-react";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Redirect } from "wouter";
@@ -90,6 +91,7 @@ function getGroupMenuItems(slug: string) {
 const commonMenuItems = [
   { icon: FileCheck, label: "รออนุมัติ", path: "/approvals" },
   { icon: TrendingUp, label: "ผลงานทีม", path: "/team-performance" },
+  { icon: Target, label: "ประสิทธิภาพเซลล์", path: "/sales-performance" },
   { icon: Users2, label: "จัดการทีมงาน", path: "/team" },
   { icon: Shield, label: "จัดการผู้ใช้งาน", path: "/users", superadminOnly: true },
   { icon: HardHat, label: "ทีมช่างติดตั้ง", path: "/installer-teams" },

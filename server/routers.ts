@@ -1051,6 +1051,32 @@ const followUpRouter = router({
       return { success: true };
     }),
 
+  advanceRound: protectedProcedure
+    .input(z.object({
+      surveyId: z.number(),
+      customerId: z.number(),
+      currentRound: z.number(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const nextRound = input.currentRound + 1;
+      if (nextRound > 3) throw new TRPCError({ code: 'BAD_REQUEST', message: 'ไม่สามารถเลื่อนเกินครั้งที่ 3 ได้' });
+      // Mark current latest follow-up as completed
+      const latestFu = await db.getLatestFollowUpBySurvey(input.surveyId);
+      if (latestFu) {
+        await db.updateFollowUp(latestFu.id, { status: 'completed', completedAt: Date.now() });
+      }
+      // Create new follow-up with next round, due in 2 days
+      const dueDate = Date.now() + 2 * 24 * 60 * 60 * 1000;
+      const id = await db.createFollowUp({
+        surveyId: input.surveyId,
+        customerId: input.customerId,
+        dueDate,
+        createdBy: ctx.user.id,
+      });
+      await db.logActivity({ userId: ctx.user.id, action: 'advance_round', entityType: 'follow_up', entityId: id, details: `เลื่อนเป็นติดตามครั้งที่ ${nextRound} สำหรับงาน #${input.surveyId}` });
+      return { success: true, newRound: nextRound };
+    }),
+
   overdueCount: protectedProcedure
     .query(async () => {
       return db.getOverdueFollowUpCountPerGroup();

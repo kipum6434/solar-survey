@@ -1,0 +1,250 @@
+{
+  "query": "\nSELECT \n  sa.role,\n  sa.userId,\n  tm.name as teamMemberName,\n  COUNT(DISTINCT sa.surveyId) as totalAssigned,\n  COUNT(DISTINCT CASE WHEN s.status IN ('surveyed','follow_up','quoted','negotiating','won') THEN sa.surveyId END) as surveyedCount,\n  COUNT(DISTINCT CASE WHEN s.installationStatus IN ('completed','delivered') THEN sa.surveyId END) as wonCount\nFROM survey_assignments sa\nLEFT JOIN team_members tm ON sa.userId = tm.id\nLEFT JOIN surveys s ON sa.surveyId = s.id\nGROUP BY sa.role, sa.userId, tm.name\nORDER BY sa.role, totalAssigned DESC\nLIMIT 30;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute \nSELECT \n  sa.role,\n  sa.userId,\n  tm.name as teamMemberName,\n  COUNT(DISTINCT sa.surveyId) as totalAssigned,\n  COUNT(DISTINCT CASE WHEN s.status IN ('surveyed','follow_up','quoted','negotiating','won') THEN sa.surveyId END) as surveyedCount,\n  COUNT(DISTINCT CASE WHEN s.installationStatus IN ('completed','delivered') THEN sa.surveyId END) as wonCount\nFROM survey_assignments sa\nLEFT JOIN team_members tm ON sa.userId = tm.id\nLEFT JOIN surveys s ON sa.surveyId = s.id\nGROUP BY sa.role, sa.userId, tm.name\nORDER BY sa.role, totalAssigned DESC\nLIMIT 30;\n",
+  "rows": [
+    {
+      "role": "admin_sender",
+      "userId": "210050",
+      "teamMemberName": "นีโน่",
+      "totalAssigned": "115",
+      "surveyedCount": "67",
+      "wonCount": "0"
+    },
+    {
+      "role": "admin_sender",
+      "userId": "210051",
+      "teamMemberName": "อุ้ย",
+      "totalAssigned": "53",
+      "surveyedCount": "27",
+      "wonCount": "0"
+    },
+    {
+      "role": "admin_sender",
+      "userId": "210049",
+      "teamMemberName": "แพมแพม",
+      "totalAssigned": "50",
+      "surveyedCount": "27",
+      "wonCount": "0"
+    },
+    {
+      "role": "admin_sender",
+      "userId": "2491152",
+      "teamMemberName": "NULL",
+      "totalAssigned": "41",
+      "surveyedCount": "35",
+      "wonCount": "0"
+    },
+    {
+      "role": "admin_sender",
+      "userId": "1",
+      "teamMemberName": "NULL",
+      "totalAssigned": "29",
+      "surveyedCount": "0",
+      "wonCount": "2"
+    },
+    {
+      "role": "admin_sender",
+      "userId": "150003",
+      "teamMemberName": "เกรซ",
+      "totalAssigned": "28",
+      "surveyedCount": "17",
+      "wonCount": "0"
+    },
+    {
+      "role": "admin_sender",
+      "userId": "210053",
+      "teamMemberName": "เบียร์",
+      "totalAssigned": "25",
+      "surveyedCount": "14",
+      "wonCount": "0"
+    },
+    {
+      "role": "admin_sender",
+      "userId": "210069",
+      "teamMemberName": "น้องโม",
+      "totalAssigned": "25",
+      "surveyedCount": "13",
+      "wonCount": "0"
+    },
+    {
+      "role": "admin_sender",
+      "userId": "150001",
+      "teamMemberName": "กุลธิดา บุนนาค",
+      "totalAssigned": "23",
+      "surveyedCount": "11",
+      "wonCount": "0"
+    },
+    {
+      "role": "admin_sender",
+      "userId": "210065",
+      "teamMemberName": "ตั้ม",
+      "totalAssigned": "5",
+      "surveyedCount": "4",
+      "wonCount": "0"
+    },
+    {
+      "role": "admin_sender",
+      "userId": "270001",
+      "teamMemberName": "พี่บี",
+      "totalAssigned": "4",
+      "surveyedCount": "3",
+      "wonCount": "0"
+    },
+    {
+      "role": "admin_sender",
+      "userId": "90361",
+      "teamMemberName": "NULL",
+      "totalAssigned": "3",
+      "surveyedCount": "1",
+      "wonCount": "1"
+    },
+    {
+      "role": "admin_sender",
+      "userId": "210052",
+      "teamMemberName": "ไอซ์",
+      "totalAssigned": "3",
+      "surveyedCount": "3",
+      "wonCount": "0"
+    },
+    {
+      "role": "admin_sender",
+      "userId": "150002",
+      "teamMemberName": "สุริยา ผาสุข",
+      "totalAssigned": "2",
+      "surveyedCount": "2",
+      "wonCount": "0"
+    },
+    {
+      "role": "admin_sender",
+      "userId": "210067",
+      "teamMemberName": "โอโน่",
+      "totalAssigned": "1",
+      "surveyedCount": "1",
+      "wonCount": "0"
+    },
+    {
+      "role": "admin_sender",
+      "userId": "630001",
+      "teamMemberName": "NULL",
+      "totalAssigned": "1",
+      "surveyedCount": "0",
+      "wonCount": "0"
+    },
+    {
+      "role": "admin_sender",
+      "userId": "630004",
+      "teamMemberName": "NULL",
+      "totalAssigned": "1",
+      "surveyedCount": "0",
+      "wonCount": "0"
+    },
+    {
+      "role": "surveyor",
+      "userId": "210065",
+      "teamMemberName": "ตั้ม",
+      "totalAssigned": "78",
+      "surveyedCount": "37",
+      "wonCount": "0"
+    },
+    {
+      "role": "surveyor",
+      "userId": "210066",
+      "teamMemberName": "กล้วย",
+      "totalAssigned": "57",
+      "surveyedCount": "53",
+      "wonCount": "0"
+    },
+    {
+      "role": "surveyor",
+      "userId": "210067",
+      "teamMemberName": "โอโน่",
+      "totalAssigned": "56",
+      "surveyedCount": "53",
+      "wonCount": "0"
+    },
+    {
+      "role": "surveyor",
+      "userId": "150002",
+      "teamMemberName": "สุริยา ผาสุข",
+      "totalAssigned": "55",
+      "surveyedCount": "48",
+      "wonCount": "0"
+    },
+    {
+      "role": "surveyor",
+      "userId": "210068",
+      "teamMemberName": "มอสดี้",
+      "totalAssigned": "31",
+      "surveyedCount": "19",
+      "wonCount": "0"
+    },
+    {
+      "role": "surveyor",
+      "userId": "150003",
+      "teamMemberName": "เกรซ",
+      "totalAssigned": "10",
+      "surveyedCount": "5",
+      "wonCount": "0"
+    },
+    {
+      "role": "surveyor",
+      "userId": "600001",
+      "teamMemberName": "นัด ณัฐวัฒน์ วงษา",
+      "totalAssigned": "6",
+      "surveyedCount": "6",
+      "wonCount": "0"
+    },
+    {
+      "role": "surveyor",
+      "userId": "270001",
+      "teamMemberName": "พี่บี",
+      "totalAssigned": "6",
+      "surveyedCount": "3",
+      "wonCount": "0"
+    },
+    {
+      "role": "surveyor",
+      "userId": "600002",
+      "teamMemberName": "ตรี เจษฎา เพ็ดขุนทด",
+      "totalAssigned": "3",
+      "surveyedCount": "2",
+      "wonCount": "0"
+    },
+    {
+      "role": "surveyor",
+      "userId": "1",
+      "teamMemberName": "NULL",
+      "totalAssigned": "1",
+      "surveyedCount": "0",
+      "wonCount": "0"
+    },
+    {
+      "role": "surveyor",
+      "userId": "630006",
+      "teamMemberName": "NULL",
+      "totalAssigned": "1",
+      "surveyedCount": "0",
+      "wonCount": "0"
+    },
+    {
+      "role": "surveyor",
+      "userId": "390034",
+      "teamMemberName": "NULL",
+      "totalAssigned": "1",
+      "surveyedCount": "1",
+      "wonCount": "0"
+    },
+    {
+      "role": "surveyor",
+      "userId": "630002",
+      "teamMemberName": "NULL",
+      "totalAssigned": "1",
+      "surveyedCount": "0",
+      "wonCount": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "role\tuserId\tteamMemberName\ttotalAssigned\tsurveyedCount\twonCount\nadmin_sender\t210050\tนีโน่\t115\t67\t0\nadmin_sender\t210051\tอุ้ย\t53\t27\t0\nadmin_sender\t210049\tแพมแพม\t50\t27\t0\nadmin_sender\t2491152\tNULL\t41\t35\t0\nadmin_sender\t1\tNULL\t29\t0\t2\nadmin_sender\t150003\tเกรซ\t28\t17\t0\nadmin_sender\t210053\tเบียร์\t25\t14\t0\nadmin_sender\t210069\tน้องโม\t25\t13\t0\nadmin_sender\t150001\tกุลธิดา บุนนาค\t23\t11\t0\nadmin_sender\t210065\tตั้ม\t5\t4\t0\nadmin_sender\t270001\tพี่บี\t4\t3\t0\nadmin_sender\t90361\tNULL\t3\t1\t1\nadmin_sender\t210052\tไอซ์\t3\t3\t0\nadmin_sender\t150002\tสุริยา ผาสุข\t2\t2\t0\nadmin_sender\t210067\tโอโน่\t1\t1\t0\nadmin_sender\t630001\tNULL\t1\t0\t0\nadmin_sender\t630004\tNULL\t1\t0\t0\nsurveyor\t210065\tตั้ม\t78\t37\t0\nsurveyor\t210066\tกล้วย\t57\t53\t0\nsurveyor\t210067\tโอโน่\t56\t53\t0\nsurveyor\t150002\tสุริยา ผาสุข\t55\t48\t0\nsurveyor\t210068\tมอสดี้\t31\t19\t0\nsurveyor\t150003\tเกรซ\t10\t5\t0\nsurveyor\t600001\tนัด ณัฐวัฒน์ วงษา\t6\t6\t0\nsurveyor\t270001\tพี่บี\t6\t3\t0\nsurveyor\t600002\tตรี เจษฎา เพ็ดขุนทด\t3\t2\t0\nsurveyor\t1\tNULL\t1\t0\t0\nsurveyor\t630006\tNULL\t1\t0\t0\nsurveyor\t390034\tNULL\t1\t1\t0\nsurveyor\t630002\tNULL\t1\t0\t0\n",
+  "stderr": "",
+  "execution_time_ms": 1806
+}

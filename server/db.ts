@@ -246,7 +246,7 @@ async function buildPerformanceResult(db: any, surveyData: any[], surveyIds: num
 
   const isWon = (surveyId: number) => {
     const info = surveyStatusMap[surveyId];
-    return info?.installationStatus === "completed" || info?.installationStatus === "delivered";
+    return info?.status === "won" || info?.installationStatus === "completed" || info?.installationStatus === "delivered";
   };
   const isSurveyed = (surveyId: number) => {
     const info = surveyStatusMap[surveyId];
@@ -304,7 +304,7 @@ async function buildPerformanceResult(db: any, surveyData: any[], surveyIds: num
 
   const totalCases = surveyData.length;
   const totalSurveyed = surveyData.filter((s: any) => isSurveyed(s.surveyId)).length;
-  const totalWon = surveyData.filter((s: any) => s.installationStatus === "completed" || s.installationStatus === "delivered").length;
+  const totalWon = surveyData.filter((s: any) => isWon(s.surveyId)).length;
   const closeRate = tab === "lead"
     ? (totalSurveyed > 0 ? Math.round((totalWon / totalSurveyed) * 100) : 0)
     : 100;
@@ -843,6 +843,16 @@ export async function updateFollowUp(id: number, data: Partial<InsertFollowUp>) 
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.update(followUps).set(data).where(eq(followUps.id, id));
+}
+
+export async function getLatestFollowUpBySurvey(surveyId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(followUps)
+    .where(eq(followUps.surveyId, surveyId))
+    .orderBy(desc(followUps.round))
+    .limit(1);
+  return result[0] || null;
 }
 
 // ==================== SHARE LINKS QUERIES ====================

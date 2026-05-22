@@ -1,0 +1,55 @@
+{
+  "query": "\nSELECT s.status, s.installationStatus, COUNT(*) as cnt\nFROM surveys s\nGROUP BY s.status, s.installationStatus\nORDER BY cnt DESC\nLIMIT 20;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AnaPRc1Kpw1Jvjc.659756d42373 --database 6acGApiU8Bjnxuzxb5vkwU --execute \nSELECT s.status, s.installationStatus, COUNT(*) as cnt\nFROM surveys s\nGROUP BY s.status, s.installationStatus\nORDER BY cnt DESC\nLIMIT 20;\n",
+  "rows": [
+    {
+      "status": "follow_up",
+      "installationStatus": "NULL",
+      "cnt": "197"
+    },
+    {
+      "status": "scheduled",
+      "installationStatus": "NULL",
+      "cnt": "165"
+    },
+    {
+      "status": "won",
+      "installationStatus": "waiting",
+      "cnt": "28"
+    },
+    {
+      "status": "pending",
+      "installationStatus": "NULL",
+      "cnt": "12"
+    },
+    {
+      "status": "postponed",
+      "installationStatus": "NULL",
+      "cnt": "4"
+    },
+    {
+      "status": "pending",
+      "installationStatus": "delivered",
+      "cnt": "2"
+    },
+    {
+      "status": "cancelled",
+      "installationStatus": "NULL",
+      "cnt": "1"
+    },
+    {
+      "status": "won",
+      "installationStatus": "cancelled",
+      "cnt": "1"
+    },
+    {
+      "status": "won",
+      "installationStatus": "delivered",
+      "cnt": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "status\tinstallationStatus\tcnt\nfollow_up\tNULL\t197\nscheduled\tNULL\t165\nwon\twaiting\t28\npending\tNULL\t12\npostponed\tNULL\t4\npending\tdelivered\t2\ncancelled\tNULL\t1\nwon\tcancelled\t1\nwon\tdelivered\t1\n",
+  "stderr": "",
+  "execution_time_ms": 1735
+}

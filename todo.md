@@ -1337,3 +1337,26 @@
 - [x] ฟิลเตอร์ผู้รับผิดชอบ (คนส่งสำรวจ/เซลล์) ในหน้างานติดตาม
 - [x] ระบบติดตามครั้งที่ 1/2/3 (follow-up round) — DB schema + backend + UI badge
 - [x] แจ้งเตือนเคสค้าง 2 วัน (in-app badge บน sidebar + highlight แถวในตาราง + ปุ่มฟิลเตอร์ "เคสค้าง")
+
+## Feature: ปุ่มเลื่อนสถานะติดตามครั้งที่ 2/3 ในตาราง
+
+- [x] เพิ่มปุ่ม "เลื่อนเป็นติดตามครั้งที่ 2" ในตาราง FollowUps (เมื่อ round=1)
+- [x] เพิ่มปุ่ม "เลื่อนเป็นติดตามครั้งที่ 3" ในตาราง FollowUps (เมื่อ round=2)
+- [x] Backend: สร้าง mutation advanceRound (mark current follow-up completed + สร้าง follow-up record ใหม่ round ถัดไป)
+- [x] ปุ่มทำงานได้โดยไม่ต้องเข้าหน้า detail
+
+## Feature: หน้ารายงานสรุปประสิทธิภาพเซลล์ (Sales Performance Report)
+
+- [x] สร้างหน้า SalesPerformance.tsx แสดงข้อมูลเปรียบเทียบ
+- [x] แสดงจำนวนเคสที่ติดตาม vs เคสที่ปิดการขายได้ของแต่ละคน
+- [x] แสดงอัตราการปิดการขาย (Conversion Rate) ต่อคน
+- [x] แยกข้อมูลตาม "คนส่งสำรวจ" และ "เซลล์สำรวจ"
+- [x] Backend: ใช้ API teamPerformance.summary ที่มีอยู่แล้ว (reuse)
+- [x] เพิ่มเมนูในหน้า sidebar + route ใน App.tsx
+
+## Bug Fix: หน้าผลงานทีม (Team Performance) ข้อมูลไม่ตรง
+
+- [x] ตรวจสอบหน้าผลงานทีม (TeamPerformance) ว่าข้อมูลไม่ตรงตรงไหน
+- [x] วิเคราะห์ root cause: isWon() นับแค่ installationStatus=completed/delivered แต่ไม่นับ status='won'
+- [x] แก้ไข isWon() ใน buildPerformanceResult ให้รวม status='won' ด้วย
+- [x] แก้ไข totalWon ให้ใช้ isWon() function แทน hardcode condition

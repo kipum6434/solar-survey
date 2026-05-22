@@ -32,6 +32,7 @@ import ChecklistTemplates from "./pages/ChecklistTemplates";
 import SurveyTemplates from "./pages/SurveyTemplates";
 import SourceManagement from "./pages/SourceManagement";
 import GroupDashboard from "./pages/GroupDashboard";
+import SalesPerformance from "./pages/SalesPerformance";
 
 function Router() {
   return (
@@ -44,6 +45,7 @@ function Router() {
       <Route path={"/surveys/:id"} component={SurveyDetail} />
       <Route path={"/team"} component={TeamManagement} />
       <Route path={"/team-performance"} component={TeamPerformance} />
+      <Route path={"/sales-performance"} component={SalesPerformance} />
       <Route path={"/users"} component={UserManagement} />
       <Route path={"/calendar"} component={CalendarPage} />
       <Route path={"/notifications"} component={Notifications} />
