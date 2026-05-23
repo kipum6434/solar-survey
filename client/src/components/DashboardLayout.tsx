@@ -54,6 +54,7 @@ import {
   Globe,
   Target,
   SlidersHorizontal,
+  Package,
 } from "lucide-react";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Redirect } from "wouter";
@@ -103,6 +104,7 @@ const commonMenuItems = [
   { icon: FolderOpen, label: "จัดการไฟล์", path: "/file-management" },
   { icon: CalendarDays, label: "ปฏิทิน", path: "/calendar" },
   { icon: Wrench, label: "ปฏิทินติดตั้ง", path: "/installation-calendar" },
+  { icon: Package, label: "เตรียมสินค้า", path: "/installation-prep" },
 ];
 
 const settingsMenuItems = [

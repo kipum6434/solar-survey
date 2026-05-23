@@ -1389,3 +1389,11 @@
 - [x] สร้างหน้า "ตั้งค่าฟิลด์เทคนิค" ใน sidebar (เพิ่ม/ลบ/แก้ไข/ลำดับ)
 - [x] ปรับ SurveyDetail ให้แสดง custom fields แบบ dynamic (แทน hardcode)
 - [x] เพิ่มเมนูใน sidebar ตั้งค่า + route
+
+## Feature: Installation Preparation Page
+- [x] Backend API for installation data with equipment details
+- [x] InstallationPrep.tsx page showing all installations with equipment in one view
+- [x] Show: installation date / customer name / address / all equipment
+- [x] Monthly equipment summary (e.g. Huawei SUN2000 x 5)
+- [x] Month filter + include custom technical fields
+- [x] Add sidebar menu + route in App.tsx

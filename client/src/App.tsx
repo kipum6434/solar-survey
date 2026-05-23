@@ -35,6 +35,7 @@ import GroupDashboard from "./pages/GroupDashboard";
 import SalesPerformance from "./pages/SalesPerformance";
 import InstallationCalendar from "./pages/InstallationCalendar";
 import TechnicalFieldSettings from "./pages/TechnicalFieldSettings";
+import InstallationPrep from "./pages/InstallationPrep";
 
 function Router() {
   return (
@@ -66,6 +67,7 @@ function Router() {
       <Route path="/finance/:group">{(params) => <Finance sourceMode={params.group} />}</Route>
       <Route path="/source-management" component={SourceManagement} />
       <Route path="/technical-field-settings" component={TechnicalFieldSettings} />
+      <Route path="/installation-prep" component={InstallationPrep} />
       <Route path="/survey-templates" component={SurveyTemplates} />
       <Route path="/checklist-templates" component={ChecklistTemplates} />
       <Route path="/share/:token" component={SharedSurvey} />
