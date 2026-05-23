@@ -239,6 +239,13 @@
       "when": 1779439952177,
       "tag": "0033_dizzy_frank_castle",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "5",
+      "when": 1779516893304,
+      "tag": "0034_first_slipstream",
+      "breakpoints": true
     }
   ]
 }

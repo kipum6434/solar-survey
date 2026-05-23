@@ -3117,6 +3117,69 @@ const surveyTemplateRouter = router({
     }),
 });
 
+// ==================== TECHNICAL FIELD ROUTER ====================
+const technicalFieldRouter = router({
+  list: protectedProcedure
+    .input(z.object({ activeOnly: z.boolean().optional() }).optional())
+    .query(async ({ input }) => {
+      return db.getTechnicalFieldDefinitions(input?.activeOnly ?? false);
+    }),
+  create: adminProcedure
+    .input(z.object({
+      label: z.string().min(1),
+      fieldType: z.enum(["text", "number", "select", "textarea"]),
+      placeholder: z.string().optional(),
+      options: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      return db.createTechnicalFieldDefinition(input);
+    }),
+  update: adminProcedure
+    .input(z.object({
+      id: z.number(),
+      label: z.string().optional(),
+      fieldType: z.enum(["text", "number", "select", "textarea"]).optional(),
+      placeholder: z.string().optional(),
+      options: z.string().optional(),
+      sortOrder: z.number().optional(),
+      isActive: z.boolean().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await db.updateTechnicalFieldDefinition(id, data);
+      return { success: true };
+    }),
+  delete: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await db.deleteTechnicalFieldDefinition(input.id);
+      return { success: true };
+    }),
+  reorder: adminProcedure
+    .input(z.object({ orderedIds: z.array(z.number()) }))
+    .mutation(async ({ input }) => {
+      await db.reorderTechnicalFields(input.orderedIds);
+      return { success: true };
+    }),
+  getValues: protectedProcedure
+    .input(z.object({ surveyId: z.number() }))
+    .query(async ({ input }) => {
+      return db.getSurveyTechnicalValues(input.surveyId);
+    }),
+  setValues: protectedProcedure
+    .input(z.object({
+      surveyId: z.number(),
+      values: z.array(z.object({
+        fieldDefinitionId: z.number(),
+        value: z.string().nullable(),
+      })),
+    }))
+    .mutation(async ({ input }) => {
+      await db.setSurveyTechnicalValues(input.surveyId, input.values);
+      return { success: true };
+    }),
+});
+
 // ==================== APP ROUTER ====================
 export const appRouter = router({
   system: systemRouter,
@@ -3160,6 +3223,7 @@ export const appRouter = router({
   checklistTemplate: checklistTemplateRouter,
   payment: paymentRouter,
   surveyTemplate: surveyTemplateRouter,
+  technicalField: technicalFieldRouter,
   util: router({
     proxyImage: publicProcedure
       .input(z.object({ url: z.string().url() }))

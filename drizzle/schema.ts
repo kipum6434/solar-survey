@@ -555,3 +555,31 @@ export const paymentCollections = mysqlTable("payment_collections", {
 });
 export type PaymentCollection = typeof paymentCollections.$inferSelect;
 export type InsertPaymentCollection = typeof paymentCollections.$inferInsert;
+
+// ==================== CUSTOM TECHNICAL FIELDS ====================
+export const technicalFieldDefinitions = mysqlTable("technical_field_definitions", {
+  id: int("id").autoincrement().primaryKey(),
+  label: varchar("label", { length: 255 }).notNull(),
+  fieldType: mysqlEnum("fieldType", ["text", "number", "select", "textarea"]).default("text").notNull(),
+  placeholder: varchar("placeholder", { length: 255 }),
+  options: text("options"), // JSON array for select type e.g. ["string","micro","hybrid"]
+  sortOrder: int("sortOrder").default(0).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  isBuiltIn: boolean("isBuiltIn").default(false).notNull(), // true for original hardcoded fields
+  fieldKey: varchar("fieldKey", { length: 100 }), // maps to surveys column for built-in fields
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type TechnicalFieldDefinition = typeof technicalFieldDefinitions.$inferSelect;
+export type InsertTechnicalFieldDefinition = typeof technicalFieldDefinitions.$inferInsert;
+
+export const surveyTechnicalValues = mysqlTable("survey_technical_values", {
+  id: int("id").autoincrement().primaryKey(),
+  surveyId: int("surveyId").notNull(),
+  fieldDefinitionId: int("fieldDefinitionId").notNull(),
+  value: text("value"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type SurveyTechnicalValue = typeof surveyTechnicalValues.$inferSelect;
+export type InsertSurveyTechnicalValue = typeof surveyTechnicalValues.$inferInsert;

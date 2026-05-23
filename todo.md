@@ -1380,3 +1380,12 @@
 - [x] แสดงงานติดตั้งในปฏิทินตามวันที่นัดติดตั้ง
 - [x] กดที่งานในปฏิทินเพื่อดูรายละเอียด
 - [x] เพิ่มเมนู "ปฏิทินติดตั้ง" ใน sidebar + route
+
+## Feature: จัดการฟิลด์ข้อมูลทางเทคนิค (Custom Technical Fields)
+- [x] สร้าง DB table `technical_field_definitions` (id, label, fieldType, placeholder, sortOrder, isActive)
+- [x] สร้าง DB table `survey_technical_values` (id, surveyId, fieldDefinitionId, value)
+- [x] Backend API: CRUD สำหรับ field definitions (list, create, update, delete, reorder)
+- [x] Backend API: get/set technical values สำหรับ survey
+- [x] สร้างหน้า "ตั้งค่าฟิลด์เทคนิค" ใน sidebar (เพิ่ม/ลบ/แก้ไข/ลำดับ)
+- [x] ปรับ SurveyDetail ให้แสดง custom fields แบบ dynamic (แทน hardcode)
+- [x] เพิ่มเมนูใน sidebar ตั้งค่า + route

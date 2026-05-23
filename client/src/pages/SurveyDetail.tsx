@@ -1558,10 +1558,18 @@ function AddFollowUpDialog({ open, onOpenChange, surveyId, customerId, surveyors
   );
 }
 
-/* ==================== TECH INFO CARD - Always Editable ==================== */
+/* ==================== TECH INFO CARD - Dynamic Custom Fields ==================== */
 function TechInfoCard({ survey: s, surveyId, updateSurvey, onRefetch }: { survey: any; surveyId: number; updateSurvey: any; onRefetch?: () => void }) {
+  const { data: fieldDefs } = trpc.technicalField.list.useQuery({ activeOnly: true });
+  const { data: customValues } = trpc.technicalField.getValues.useQuery({ surveyId });
+  const setValuesMutation = trpc.technicalField.setValues.useMutation();
+
   const [form, setForm] = useState<any>(null);
+  const [customForm, setCustomForm] = useState<Record<number, string>>({});
   const [dirty, setDirty] = useState(false);
+
+  // Built-in field keys that map to survey columns
+  const BUILT_IN_KEYS = ["systemSize", "panelCount", "inverterModel", "panelBrand", "quotedPrice", "needBattery", "needOptimizer", "systemType"];
 
   // Initialize form from survey data
   const initForm = () => ({
@@ -1581,7 +1589,17 @@ function TechInfoCard({ survey: s, surveyId, updateSurvey, onRefetch }: { survey
     setForm(initForm());
   }
 
-  // Sync form when survey data changes (after save)
+  // Init custom values when they load
+  useEffect(() => {
+    if (customValues && fieldDefs) {
+      const cv: Record<number, string> = {};
+      for (const v of customValues) {
+        cv[v.fieldDefinitionId] = v.value || "";
+      }
+      setCustomForm(cv);
+    }
+  }, [customValues, fieldDefs]);
+
   const surveyKey = `${s.systemSize}|${s.panelCount}|${s.inverterModel}|${s.panelBrand}|${s.quotedPrice}|${s.needBattery}|${s.needOptimizer}|${s.systemType}|${s.surveyNotes}`;
 
   const updateField = (key: string, val: string) => {
@@ -1589,8 +1607,14 @@ function TechInfoCard({ survey: s, surveyId, updateSurvey, onRefetch }: { survey
     setDirty(true);
   };
 
+  const updateCustomField = (fieldId: number, val: string) => {
+    setCustomForm(prev => ({ ...prev, [fieldId]: val }));
+    setDirty(true);
+  };
+
   const handleSave = () => {
     if (!form) return;
+    // Save built-in fields
     const payload: any = { id: surveyId };
     payload.systemSize = form.systemSize || undefined;
     payload.panelCount = form.panelCount ? parseInt(form.panelCount) : undefined;
@@ -1604,21 +1628,49 @@ function TechInfoCard({ survey: s, surveyId, updateSurvey, onRefetch }: { survey
     updateSurvey.mutate(payload, {
       onSuccess: () => { setDirty(false); }
     });
+
+    // Save custom field values
+    const customFieldDefs = (fieldDefs || []).filter(f => !f.isBuiltIn);
+    if (customFieldDefs.length > 0) {
+      const values = customFieldDefs.map(f => ({
+        fieldDefinitionId: f.id,
+        value: customForm[f.id] || null,
+      }));
+      setValuesMutation.mutate({ surveyId, values });
+    }
   };
 
   const handleCancel = () => {
     setForm(initForm());
+    // Reset custom values
+    if (customValues) {
+      const cv: Record<number, string> = {};
+      for (const v of customValues) {
+        cv[v.fieldDefinitionId] = v.value || "";
+      }
+      setCustomForm(cv);
+    }
     setDirty(false);
   };
 
   if (!form) return null;
 
-  const SYSTEM_TYPE_OPTIONS = [
-    { value: "string", label: "String Inverter" },
-    { value: "micro", label: "Micro Inverter" },
-    { value: "both", label: "ทั้ง 2 แบบ" },
-    { value: "hybrid", label: "Hybrid" },
-  ];
+  // Separate built-in and custom fields
+  const builtInFields = (fieldDefs || []).filter(f => f.isBuiltIn);
+  const customFields = (fieldDefs || []).filter(f => !f.isBuiltIn);
+
+  const getBuiltInIcon = (key: string) => {
+    if (key === "systemSize") return <Zap className="h-3.5 w-3.5 text-amber-500" />;
+    if (key === "panelCount") return <Sun className="h-3.5 w-3.5 text-amber-500" />;
+    return undefined;
+  };
+
+  const getBuiltInSuffix = (key: string) => {
+    if (key === "systemSize") return "kW";
+    if (key === "panelCount") return "แผง";
+    if (key === "quotedPrice") return "บาท";
+    return undefined;
+  };
 
   return (
     <Card className="border-0 shadow-sm">
@@ -1628,8 +1680,8 @@ function TechInfoCard({ survey: s, surveyId, updateSurvey, onRefetch }: { survey
           {dirty && (
             <div className="flex gap-2">
               <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleCancel}>ยกเลิก</Button>
-              <Button size="sm" className="h-7 text-xs" onClick={handleSave} disabled={updateSurvey.isPending}>
-                {updateSurvey.isPending ? "กำลังบันทึก..." : "บันทึก"}
+              <Button size="sm" className="h-7 text-xs" onClick={handleSave} disabled={updateSurvey.isPending || setValuesMutation.isPending}>
+                {(updateSurvey.isPending || setValuesMutation.isPending) ? "กำลังบันทึก..." : "บันทึก"}
               </Button>
             </div>
           )}
@@ -1637,22 +1689,78 @@ function TechInfoCard({ survey: s, surveyId, updateSurvey, onRefetch }: { survey
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-3">
-          <EditableField label="ขนาดระบบ (kW)" value={form.systemSize} onChange={(v) => updateField("systemSize", v)} placeholder="เช่น 5.5" icon={<Zap className="h-3.5 w-3.5 text-amber-500" />} suffix="kW" />
-          <EditableField label="จำนวนแผง" value={form.panelCount} onChange={(v) => updateField("panelCount", v)} placeholder="เช่น 12" type="number" icon={<Sun className="h-3.5 w-3.5 text-amber-500" />} suffix="แผง" />
-          <EditableField label="ยี่ห้อแผง" value={form.panelBrand} onChange={(v) => updateField("panelBrand", v)} placeholder="เช่น JA Solar, Longi" />
-          <EditableField label="รุ่นอินเวอร์เตอร์" value={form.inverterModel} onChange={(v) => updateField("inverterModel", v)} placeholder="เช่น Huawei SUN2000" />
-          <EditableField label="ราคาเสนอ (บาท)" value={form.quotedPrice} onChange={(v) => updateField("quotedPrice", v)} placeholder="เช่น 280000" suffix="บาท" />
-          <EditableField label="แบตเตอรี่" value={form.needBattery} onChange={(v) => updateField("needBattery", v)} placeholder="เช่น 2 ก้อน Tesla Powerwall" />
-          <EditableField label="Optimizer" value={form.needOptimizer} onChange={(v) => updateField("needOptimizer", v)} placeholder="เช่น 12 ตัว Huawei SUN2000" />
-          <div className="space-y-1 col-span-2 md:col-span-1">
-            <label className="text-xs text-muted-foreground">ประเภทระบบ</label>
-            <Select value={form.systemType || "placeholder"} onValueChange={(v) => updateField("systemType", v === "placeholder" ? "" : v)}>
-              <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="เลือก" /></SelectTrigger>
-              <SelectContent>
-                {SYSTEM_TYPE_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Built-in fields rendered dynamically */}
+          {builtInFields.map(field => {
+            if (field.fieldKey === "systemType") {
+              const options = field.options ? JSON.parse(field.options) : ["string", "micro", "both", "hybrid"];
+              const SYSTEM_TYPE_LABELS: Record<string, string> = { string: "String Inverter", micro: "Micro Inverter", both: "ทั้ง 2 แบบ", hybrid: "Hybrid" };
+              return (
+                <div key={field.id} className="space-y-1 col-span-2 md:col-span-1">
+                  <label className="text-xs text-muted-foreground">{field.label}</label>
+                  <Select value={form.systemType || "placeholder"} onValueChange={(v) => updateField("systemType", v === "placeholder" ? "" : v)}>
+                    <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="เลือก" /></SelectTrigger>
+                    <SelectContent>
+                      {options.map((o: string) => <SelectItem key={o} value={o}>{SYSTEM_TYPE_LABELS[o] || o}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            }
+            const key = field.fieldKey || "";
+            return (
+              <EditableField
+                key={field.id}
+                label={field.label}
+                value={form[key] || ""}
+                onChange={(v) => updateField(key, v)}
+                placeholder={field.placeholder || ""}
+                type={field.fieldType === "number" ? "number" : undefined}
+                icon={getBuiltInIcon(key)}
+                suffix={getBuiltInSuffix(key)}
+              />
+            );
+          })}
+
+          {/* Custom fields */}
+          {customFields.map(field => {
+            if (field.fieldType === "select") {
+              const options = field.options ? JSON.parse(field.options) : [];
+              return (
+                <div key={field.id} className="space-y-1">
+                  <label className="text-xs text-muted-foreground">{field.label}</label>
+                  <Select value={customForm[field.id] || "placeholder"} onValueChange={(v) => updateCustomField(field.id, v === "placeholder" ? "" : v)}>
+                    <SelectTrigger className="h-8 text-sm"><SelectValue placeholder={field.placeholder || "เลือก"} /></SelectTrigger>
+                    <SelectContent>
+                      {options.map((o: string) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            }
+            if (field.fieldType === "textarea") {
+              return (
+                <div key={field.id} className="col-span-2">
+                  <EditableField
+                    label={field.label}
+                    value={customForm[field.id] || ""}
+                    onChange={(v) => updateCustomField(field.id, v)}
+                    placeholder={field.placeholder || ""}
+                    multiline
+                  />
+                </div>
+              );
+            }
+            return (
+              <EditableField
+                key={field.id}
+                label={field.label}
+                value={customForm[field.id] || ""}
+                onChange={(v) => updateCustomField(field.id, v)}
+                placeholder={field.placeholder || ""}
+                type={field.fieldType === "number" ? "number" : undefined}
+              />
+            );
+          })}
         </div>
         <div className="mt-3">
           <EditableField label="หมายเหตุ" value={form.surveyNotes} onChange={(v) => updateField("surveyNotes", v)} placeholder="หมายเหตุเพิ่มเติม..." multiline />

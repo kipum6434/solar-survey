@@ -53,6 +53,7 @@ import {
   CheckSquare,
   Globe,
   Target,
+  SlidersHorizontal,
 } from "lucide-react";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Redirect } from "wouter";
@@ -109,6 +110,7 @@ const settingsMenuItems = [
   { icon: MessageSquare, label: "ตั้งค่า LINE", path: "/line-settings", superadminOnly: true },
   { icon: Building2, label: "ตั้งค่าบริษัท", path: "/company-settings" },
   { icon: Globe, label: "จัดการแหล่งที่มา", path: "/source-management" },
+  { icon: SlidersHorizontal, label: "ฟิลด์ข้อมูลเทคนิค", path: "/technical-field-settings" },
   { icon: Bell, label: "แจ้งเตือน", path: "/notifications" },
 ];
 

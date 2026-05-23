@@ -1,6 +1,6 @@
 import { eq, and, or, like, desc, gte, lte, sql, inArray, not, asc, isNotNull, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory, installerTeams, InsertInstallerTeam, deliveryComments, InsertDeliveryComment, lineGroups, InsertLineGroup, lineNotificationTargets, InsertLineNotificationTarget, companySettings, InsertCompanySettings, postponeCancelLogs, InsertPostponeCancelLog, deliveryForms, InsertDeliveryForm, deliveryChecklistTemplates, InsertDeliveryChecklistTemplate, payments, InsertPayment, sourceGroups, InsertSourceGroup, surveyTemplates, InsertSurveyTemplate, surveyTemplateFields, InsertSurveyTemplateField, surveyTemplateData, InsertSurveyTemplateData, paymentCollections, InsertPaymentCollection } from "../drizzle/schema";
+import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory, installerTeams, InsertInstallerTeam, deliveryComments, InsertDeliveryComment, lineGroups, InsertLineGroup, lineNotificationTargets, InsertLineNotificationTarget, companySettings, InsertCompanySettings, postponeCancelLogs, InsertPostponeCancelLog, deliveryForms, InsertDeliveryForm, deliveryChecklistTemplates, InsertDeliveryChecklistTemplate, payments, InsertPayment, sourceGroups, InsertSourceGroup, surveyTemplates, InsertSurveyTemplate, surveyTemplateFields, InsertSurveyTemplateField, surveyTemplateData, InsertSurveyTemplateData, paymentCollections, InsertPaymentCollection, technicalFieldDefinitions, InsertTechnicalFieldDefinition, surveyTechnicalValues, InsertSurveyTechnicalValue } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -3214,4 +3214,93 @@ export async function updatePaymentCollection(id: number, data: { slipUrl?: stri
   if (data.slipFileKey !== undefined) updateData.slipFileKey = data.slipFileKey;
   if (Object.keys(updateData).length === 0) return;
   await db.update(paymentCollections).set(updateData).where(eq(paymentCollections.id, id));
+}
+
+// ==================== CUSTOM TECHNICAL FIELDS ====================
+
+export async function getTechnicalFieldDefinitions(activeOnly = false) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = activeOnly ? eq(technicalFieldDefinitions.isActive, true) : undefined;
+  return db.select().from(technicalFieldDefinitions).where(conditions).orderBy(asc(technicalFieldDefinitions.sortOrder));
+}
+
+export async function createTechnicalFieldDefinition(data: { label: string; fieldType: string; placeholder?: string; options?: string; sortOrder?: number }) {
+  const db = await getDb();
+  if (!db) return null;
+  // Get max sortOrder
+  const existing = await db.select({ maxOrder: sql<number>`COALESCE(MAX(sortOrder), 0)` }).from(technicalFieldDefinitions);
+  const nextOrder = data.sortOrder ?? ((existing[0]?.maxOrder || 0) + 1);
+  const result = await db.insert(technicalFieldDefinitions).values({
+    label: data.label,
+    fieldType: data.fieldType as any,
+    placeholder: data.placeholder || null,
+    options: data.options || null,
+    sortOrder: nextOrder,
+    isActive: true,
+    isBuiltIn: false,
+    fieldKey: null,
+  });
+  return { id: result[0].insertId };
+}
+
+export async function updateTechnicalFieldDefinition(id: number, data: { label?: string; fieldType?: string; placeholder?: string; options?: string; sortOrder?: number; isActive?: boolean }) {
+  const db = await getDb();
+  if (!db) return;
+  const updates: any = {};
+  if (data.label !== undefined) updates.label = data.label;
+  if (data.fieldType !== undefined) updates.fieldType = data.fieldType;
+  if (data.placeholder !== undefined) updates.placeholder = data.placeholder;
+  if (data.options !== undefined) updates.options = data.options;
+  if (data.sortOrder !== undefined) updates.sortOrder = data.sortOrder;
+  if (data.isActive !== undefined) updates.isActive = data.isActive;
+  await db.update(technicalFieldDefinitions).set(updates).where(eq(technicalFieldDefinitions.id, id));
+}
+
+export async function deleteTechnicalFieldDefinition(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  // Only allow deleting non-built-in fields
+  const field = await db.select().from(technicalFieldDefinitions).where(eq(technicalFieldDefinitions.id, id));
+  if (field.length > 0 && field[0].isBuiltIn) {
+    throw new Error("Cannot delete built-in field");
+  }
+  // Delete associated values
+  await db.delete(surveyTechnicalValues).where(eq(surveyTechnicalValues.fieldDefinitionId, id));
+  await db.delete(technicalFieldDefinitions).where(eq(technicalFieldDefinitions.id, id));
+}
+
+export async function reorderTechnicalFields(orderedIds: number[]) {
+  const db = await getDb();
+  if (!db) return;
+  for (let i = 0; i < orderedIds.length; i++) {
+    await db.update(technicalFieldDefinitions).set({ sortOrder: i + 1 }).where(eq(technicalFieldDefinitions.id, orderedIds[i]));
+  }
+}
+
+export async function getSurveyTechnicalValues(surveyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(surveyTechnicalValues).where(eq(surveyTechnicalValues.surveyId, surveyId));
+}
+
+export async function setSurveyTechnicalValue(surveyId: number, fieldDefinitionId: number, value: string | null) {
+  const db = await getDb();
+  if (!db) return;
+  const existing = await db.select().from(surveyTechnicalValues).where(
+    and(eq(surveyTechnicalValues.surveyId, surveyId), eq(surveyTechnicalValues.fieldDefinitionId, fieldDefinitionId))
+  );
+  if (existing.length > 0) {
+    await db.update(surveyTechnicalValues).set({ value }).where(eq(surveyTechnicalValues.id, existing[0].id));
+  } else {
+    await db.insert(surveyTechnicalValues).values({ surveyId, fieldDefinitionId, value });
+  }
+}
+
+export async function setSurveyTechnicalValues(surveyId: number, values: { fieldDefinitionId: number; value: string | null }[]) {
+  const db = await getDb();
+  if (!db) return;
+  for (const v of values) {
+    await setSurveyTechnicalValue(surveyId, v.fieldDefinitionId, v.value);
+  }
 }
