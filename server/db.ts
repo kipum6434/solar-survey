@@ -3304,3 +3304,104 @@ export async function setSurveyTechnicalValues(surveyId: number, values: { field
     await setSurveyTechnicalValue(surveyId, v.fieldDefinitionId, v.value);
   }
 }
+
+// ==================== CANCELLED CASES QUERIES ====================
+export async function getCancelledSurveys() {
+  const db = await getDb();
+  if (!db) return [];
+  // Get surveys with status 'lost' or 'cancelled'
+  const results = await db.select({
+    survey: {
+      id: surveys.id,
+      status: surveys.status,
+      systemSize: surveys.systemSize,
+      scheduledDate: surveys.scheduledDate,
+      createdAt: surveys.createdAt,
+      updatedAt: surveys.updatedAt,
+    },
+    customer: {
+      id: customers.id,
+      name: customers.name,
+      phone: customers.phone,
+      province: customers.province,
+      district: customers.district,
+      source: customers.source,
+    },
+  }).from(surveys)
+    .innerJoin(customers, eq(surveys.customerId, customers.id))
+    .where(or(eq(surveys.status, "lost"), eq(surveys.status, "cancelled")))
+    .orderBy(desc(surveys.updatedAt));
+
+  if (results.length === 0) return [];
+
+  const surveyIds = results.map(r => r.survey.id);
+
+  // Get cancellation reasons from postpone_cancel_logs
+  const logs = await db.select().from(postponeCancelLogs)
+    .where(and(
+      inArray(postponeCancelLogs.surveyId, surveyIds),
+      eq(postponeCancelLogs.action, "cancel_survey")
+    ))
+    .orderBy(desc(postponeCancelLogs.createdAt));
+
+  // Get closer (salesperson) assignments
+  const assignments = await db.select({
+    surveyId: surveyAssignments.surveyId,
+    userId: surveyAssignments.userId,
+    role: surveyAssignments.role,
+  }).from(surveyAssignments)
+    .where(and(
+      inArray(surveyAssignments.surveyId, surveyIds),
+      eq(surveyAssignments.role, "closer")
+    ));
+
+  // Get team member names for closers
+  const closerUserIds = Array.from(new Set(assignments.map(a => a.userId)));
+  let closerNames: Record<number, string> = {};
+  if (closerUserIds.length > 0) {
+    const members = await db.select({ id: teamMembers.id, name: teamMembers.name })
+      .from(teamMembers)
+      .where(inArray(teamMembers.id, closerUserIds));
+    closerNames = Object.fromEntries(members.map(m => [m.id, m.name]));
+  }
+
+  // Map logs by surveyId (latest log per survey)
+  const logBySurvey: Record<number, typeof logs[0]> = {};
+  for (const log of logs) {
+    if (!logBySurvey[log.surveyId]) {
+      logBySurvey[log.surveyId] = log;
+    }
+  }
+
+  // Map closer by surveyId
+  const closerBySurvey: Record<number, string> = {};
+  for (const a of assignments) {
+    closerBySurvey[a.surveyId] = closerNames[a.userId] || `User #${a.userId}`;
+  }
+
+  return results.map(r => ({
+    ...r,
+    cancelLog: logBySurvey[r.survey.id] || null,
+    closerName: closerBySurvey[r.survey.id] || null,
+  }));
+}
+
+export async function getCancelReasonStats() {
+  const db = await getDb();
+  if (!db) return [];
+  const results = await db.select({
+    reason: postponeCancelLogs.reason,
+    count: sql<number>`COUNT(*)`.as("count"),
+  }).from(postponeCancelLogs)
+    .where(eq(postponeCancelLogs.action, "cancel_survey"))
+    .groupBy(postponeCancelLogs.reason)
+    .orderBy(desc(sql`count`));
+  return results;
+}
+
+export async function reopenSurvey(surveyId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  await db.update(surveys).set({ status: "follow_up" } as any).where(eq(surveys.id, surveyId));
+  return { success: true };
+}

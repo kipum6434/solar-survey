@@ -55,6 +55,7 @@ import {
   Target,
   SlidersHorizontal,
   Package,
+  XCircle,
 } from "lucide-react";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Redirect } from "wouter";
@@ -105,6 +106,7 @@ const commonMenuItems = [
   { icon: CalendarDays, label: "ปฏิทิน", path: "/calendar" },
   { icon: Wrench, label: "ปฏิทินติดตั้ง", path: "/installation-calendar" },
   { icon: Package, label: "เตรียมสินค้า", path: "/installation-prep" },
+  { icon: XCircle, label: "เคสที่ยกเลิก", path: "/cancelled-cases" },
 ];
 
 const settingsMenuItems = [

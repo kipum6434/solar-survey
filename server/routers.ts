@@ -3211,6 +3211,38 @@ const technicalFieldRouter = router({
     }),
 });
 
+// ==================== CANCELLED CASES ROUTER ====================
+const cancelledCasesRouter = router({
+  list: protectedProcedure
+    .query(async () => {
+      return db.getCancelledSurveys();
+    }),
+  stats: protectedProcedure
+    .query(async () => {
+      return db.getCancelReasonStats();
+    }),
+  reopen: protectedProcedure
+    .input(z.object({ surveyId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const survey = await db.getSurveyById(input.surveyId);
+      if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบงานสำรวจ" });
+      if (survey.status !== "lost" && survey.status !== "cancelled") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "งานนี้ไม่ได้อยู่ในสถานะยกเลิก" });
+      }
+      await db.reopenSurvey(input.surveyId);
+      await db.logActivity({ userId: ctx.user.id, action: "reopen_survey", entityType: "survey", entityId: input.surveyId, details: `เปิดเคสใหม่จากสถานะยกเลิก` });
+      // Notify
+      try {
+        const surveyData = await db.getSurveyWithCustomer(input.surveyId);
+        const customerName = surveyData?.customer?.name || `งาน #${input.surveyId}`;
+        const notifContent = `🔄 เปิดเคสใหม่\nลูกค้า: ${customerName} (ID: ${input.surveyId})\nโดย: ${ctx.user.name || "Admin"}`;
+        await notifyOwner({ title: "เปิดเคสใหม่", content: notifContent });
+        await sendLineNotification("เปิดเคสใหม่", notifContent);
+      } catch (e) { console.warn("[ReopenSurvey] notify failed:", e); }
+      return { success: true };
+    }),
+});
+
 // ==================== APP ROUTER ====================
 export const appRouter = router({
   system: systemRouter,
@@ -3255,6 +3287,7 @@ export const appRouter = router({
   payment: paymentRouter,
   surveyTemplate: surveyTemplateRouter,
   technicalField: technicalFieldRouter,
+  cancelledCases: cancelledCasesRouter,
   util: router({
     proxyImage: publicProcedure
       .input(z.object({ url: z.string().url() }))

@@ -110,7 +110,8 @@ export default function FollowUps() {
 
   const confirmCancelFollowUp = () => {
     if (!cancelTarget) return;
-    const reason = cancelReason === "อื่นๆ" ? cancelCustomReason.trim() : cancelReason;
+    const detail = cancelCustomReason.trim();
+    const reason = cancelReason === "อื่นๆ" ? detail : (detail ? `${cancelReason}: ${detail}` : cancelReason);
     if (!reason) {
       toast.error("กรุณาระบุเหตุผล");
       return;
@@ -729,9 +730,9 @@ export default function FollowUps() {
                   </Button>
                 ))}
               </div>
-              {cancelReason === "อื่นๆ" && (
+              {cancelReason && (
                 <Textarea
-                  placeholder="ระบุเหตุผล..."
+                  placeholder={cancelReason === "อื่นๆ" ? "ระบุเหตุผล... (จำเป็น)" : "รายละเอียดเพิ่มเติม (ไม่จำเป็น)"}
                   value={cancelCustomReason}
                   onChange={(e) => setCancelCustomReason(e.target.value)}
                   rows={2}

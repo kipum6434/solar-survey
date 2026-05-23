@@ -36,6 +36,7 @@ import SalesPerformance from "./pages/SalesPerformance";
 import InstallationCalendar from "./pages/InstallationCalendar";
 import TechnicalFieldSettings from "./pages/TechnicalFieldSettings";
 import InstallationPrep from "./pages/InstallationPrep";
+import CancelledCases from "./pages/CancelledCases";
 
 function Router() {
   return (
@@ -68,6 +69,7 @@ function Router() {
       <Route path="/source-management" component={SourceManagement} />
       <Route path="/technical-field-settings" component={TechnicalFieldSettings} />
       <Route path="/installation-prep" component={InstallationPrep} />
+      <Route path="/cancelled-cases" component={CancelledCases} />
       <Route path="/survey-templates" component={SurveyTemplates} />
       <Route path="/checklist-templates" component={ChecklistTemplates} />
       <Route path="/share/:token" component={SharedSurvey} />

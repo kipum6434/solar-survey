@@ -1404,3 +1404,15 @@
 - [x] Dialog เลือกเหตุผล (ได้เจ้าถูกกว่า / เปลี่ยนใจ / งบไม่พอ / ติดต่อไม่ได้ / อื่นๆ)
 - [x] เหตุผล "อื่นๆ" แสดงช่องกรอกข้อความเพิ่ม
 - [x] Test: cancelFollowUp.test.ts passed
+
+## เคสที่ยกเลิก (Cancelled Cases)
+- [x] Backend API: getCancelledSurveys (ดึงรายการเคสที่ยกเลิกพร้อม cancel log + closer name)
+- [x] Backend API: getCancelReasonStats (สถิติเหตุผลยกเลิกแบบ grouped)
+- [x] Backend API: reopenSurvey (เปิดเคสใหม่ เปลี่ยนสถานะกลับเป็น follow_up)
+- [x] Frontend: หน้า CancelledCases.tsx พร้อม stats cards + bar chart + ตาราง + ปุ่มเปิดใหม่
+- [x] Frontend: ตัวกรองตามเหตุผล + ค้นหาชื่อ/เบอร์/เหตุผล
+- [x] Frontend: Dialog ยืนยันเปิดเคสใหม่
+- [x] Sidebar menu: เพิ่มเมนู "เคสที่ยกเลิก" ใน DashboardLayout
+- [x] Route: /cancelled-cases ใน App.tsx
+- [x] Vitest: cancelledCases.test.ts (8 tests passed)
+- [x] ตัวเลือก "อื่นๆ" มีช่องใส่รายละเอียดเองอยู่แล้ว (ใน FollowUps cancel dialog)
