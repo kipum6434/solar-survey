@@ -22,7 +22,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { XCircle, RotateCcw, Search, BarChart3, Users, TrendingDown } from "lucide-react";
+import { XCircle, RotateCcw, Search, BarChart3, Users, TrendingDown, Download } from "lucide-react";
+import { useSourceGroup } from "@/hooks/useSourceGroup";
 
 export default function CancelledCases() {
   const [search, setSearch] = useState("");
@@ -30,9 +31,10 @@ export default function CancelledCases() {
   const [reopenTarget, setReopenTarget] = useState<{ surveyId: number; customerName: string } | null>(null);
   const [filterReason, setFilterReason] = useState<string | null>(null);
 
+  const sourceGroup = useSourceGroup();
   const utils = trpc.useUtils();
-  const { data: cancelledList, isLoading } = trpc.cancelledCases.list.useQuery();
-  const { data: reasonStats } = trpc.cancelledCases.stats.useQuery();
+  const { data: cancelledList, isLoading } = trpc.cancelledCases.list.useQuery({ sourceGroup });
+  const { data: reasonStats } = trpc.cancelledCases.stats.useQuery({ sourceGroup });
 
   const reopenMutation = trpc.cancelledCases.reopen.useMutation({
     onSuccess: () => {
@@ -85,6 +87,46 @@ export default function CancelledCases() {
   const totalCancelled = filteredList.length;
   const totalAll = cancelledList?.length || 0;
 
+  const handleExportExcel = async () => {
+    if (!cancelledList || cancelledList.length === 0) return;
+    try {
+      // Build CSV data (Excel-compatible with BOM)
+      const headers = ["ชื่อลูกค้า", "เบอร์โทร", "จังหวัด", "แหล่งที่มา", "เหตุผลยกเลิก", "รายละเอียด", "เซลล์", "วันที่ยกเลิก"];
+      const rows = cancelledList.map(item => {
+        const baseReason = item.cancelLog?.reason ? extractBaseReason(item.cancelLog.reason) : "ไม่ระบุ";
+        const fullReason = item.cancelLog?.reason || "";
+        const detail = fullReason !== baseReason ? fullReason.replace(baseReason + ": ", "") : "-";
+        const cancelDate = item.cancelLog?.createdAt ? formatDate(item.cancelLog.createdAt) : formatDate(item.survey.updatedAt);
+        return [
+          item.customer.name,
+          item.customer.phone || "-",
+          item.customer.province || "-",
+          item.customer.source || "-",
+          baseReason,
+          detail,
+          item.closerName || "-",
+          cancelDate,
+        ];
+      });
+      const csvContent = [headers, ...rows]
+        .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+        .join("\n");
+      const bom = "\uFEFF";
+      const blob = new Blob([bom + csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `เคสยกเลิก${sourceGroup ? `_${sourceGroup.toUpperCase()}` : ""}_${new Date().toLocaleDateString("th-TH")}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("ส่งออกไฟล์สำเร็จ");
+    } catch (err) {
+      toast.error("เกิดข้อผิดพลาดในการส่งออก");
+    }
+  };
+
   const handleReopen = (surveyId: number, customerName: string) => {
     setReopenTarget({ surveyId, customerName });
     setReopenDialogOpen(true);
@@ -116,11 +158,21 @@ export default function CancelledCases() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">เคสที่ยกเลิก</h1>
+            <h1 className="text-2xl font-bold text-foreground">เคสที่ยกเลิก{sourceGroup ? ` (${sourceGroup.toUpperCase()})` : ""}</h1>
             <p className="text-sm text-muted-foreground mt-1">
               รายการเคสที่ถูกยกเลิกจากการติดตาม พร้อมสถิติเหตุผล
             </p>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={handleExportExcel}
+            disabled={!cancelledList || cancelledList.length === 0}
+          >
+            <Download className="h-4 w-4" />
+            Export Excel
+          </Button>
         </div>
 
         {/* Stats Cards */}

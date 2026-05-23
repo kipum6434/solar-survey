@@ -87,6 +87,7 @@ function getGroupMenuItems(slug: string) {
     { icon: PhoneCall, label: "งานติดตาม", path: `/${slug}/follow-ups` },
     { icon: Wrench, label: "งานติดตั้ง", path: `/${slug}/installations` },
     { icon: Banknote, label: "การเงิน", path: `/finance/${slug}` },
+    { icon: XCircle, label: "เคสที่ยกเลิก", path: `/${slug}/cancelled-cases` },
   ];
 }
 
@@ -106,7 +107,6 @@ const commonMenuItems = [
   { icon: CalendarDays, label: "ปฏิทิน", path: "/calendar" },
   { icon: Wrench, label: "ปฏิทินติดตั้ง", path: "/installation-calendar" },
   { icon: Package, label: "เตรียมสินค้า", path: "/installation-prep" },
-  { icon: XCircle, label: "เคสที่ยกเลิก", path: "/cancelled-cases" },
 ];
 
 const settingsMenuItems = [

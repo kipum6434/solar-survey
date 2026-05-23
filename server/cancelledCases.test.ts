@@ -49,11 +49,22 @@ describe("CancelledCases - DB functions", () => {
     expect(results[1].cancelLog?.reason).toContain("อื่นๆ");
   });
 
+  it("getCancelledSurveys accepts optional sourceGroup parameter", async () => {
+    const results = await db.getCancelledSurveys("tcs");
+    expect(results).toHaveLength(2); // mock returns same data regardless of param
+    expect(db.getCancelledSurveys).toHaveBeenCalledWith("tcs");
+  });
+
   it("getCancelReasonStats returns grouped reason counts", async () => {
     const stats = await db.getCancelReasonStats();
     expect(stats.length).toBeGreaterThan(0);
     expect(stats[0].reason).toBe("ได้เจ้าที่ถูกกว่า");
     expect(Number(stats[0].count)).toBe(5);
+  });
+
+  it("getCancelReasonStats accepts optional sourceGroup parameter", async () => {
+    const stats = await db.getCancelReasonStats("gulf");
+    expect(db.getCancelReasonStats).toHaveBeenCalledWith("gulf");
   });
 
   it("reopenSurvey changes status back to follow_up", async () => {

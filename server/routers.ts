@@ -3214,12 +3214,29 @@ const technicalFieldRouter = router({
 // ==================== CANCELLED CASES ROUTER ====================
 const cancelledCasesRouter = router({
   list: protectedProcedure
-    .query(async () => {
-      return db.getCancelledSurveys();
+    .input(z.object({ sourceGroup: z.string().optional() }).optional())
+    .query(async ({ input }) => {
+      return db.getCancelledSurveys(input?.sourceGroup);
     }),
   stats: protectedProcedure
-    .query(async () => {
-      return db.getCancelReasonStats();
+    .input(z.object({ sourceGroup: z.string().optional() }).optional())
+    .query(async ({ input }) => {
+      return db.getCancelReasonStats(input?.sourceGroup);
+    }),
+  exportExcel: protectedProcedure
+    .input(z.object({ sourceGroup: z.string().optional() }).optional())
+    .query(async ({ input }) => {
+      const data = await db.getCancelledSurveys(input?.sourceGroup);
+      return data.map(item => ({
+        customerName: item.customer.name,
+        phone: item.customer.phone || "-",
+        province: item.customer.province || "-",
+        source: item.customer.source || "-",
+        reason: item.cancelLog?.reason || "ไม่ระบุ",
+        detail: item.cancelLog?.reason || "-",
+        closerName: item.closerName || "-",
+        cancelDate: item.cancelLog?.createdAt ? new Date(item.cancelLog.createdAt).toLocaleDateString("th-TH") : (item.survey.updatedAt ? new Date(item.survey.updatedAt).toLocaleDateString("th-TH") : "-"),
+      }));
     }),
   reopen: protectedProcedure
     .input(z.object({ surveyId: z.number() }))

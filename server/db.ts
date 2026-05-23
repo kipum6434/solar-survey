@@ -3306,9 +3306,19 @@ export async function setSurveyTechnicalValues(surveyId: number, values: { field
 }
 
 // ==================== CANCELLED CASES QUERIES ====================
-export async function getCancelledSurveys() {
+export async function getCancelledSurveys(sourceGroup?: string) {
   const db = await getDb();
   if (!db) return [];
+  // Build conditions
+  const conditions: any[] = [or(eq(surveys.status, "lost"), eq(surveys.status, "cancelled"))];
+  if (sourceGroup) {
+    const groupSources = await getSourceNamesByGroupName(sourceGroup);
+    if (groupSources.length > 0) {
+      conditions.push(inArray(customers.source, groupSources));
+    } else {
+      return [];
+    }
+  }
   // Get surveys with status 'lost' or 'cancelled'
   const results = await db.select({
     survey: {
@@ -3329,7 +3339,7 @@ export async function getCancelledSurveys() {
     },
   }).from(surveys)
     .innerJoin(customers, eq(surveys.customerId, customers.id))
-    .where(or(eq(surveys.status, "lost"), eq(surveys.status, "cancelled")))
+    .where(and(...conditions))
     .orderBy(desc(surveys.updatedAt));
 
   if (results.length === 0) return [];
@@ -3386,9 +3396,27 @@ export async function getCancelledSurveys() {
   }));
 }
 
-export async function getCancelReasonStats() {
+export async function getCancelReasonStats(sourceGroup?: string) {
   const db = await getDb();
   if (!db) return [];
+  if (sourceGroup) {
+    // Filter by sourceGroup: join through surveys → customers → sources
+    const groupSources = await getSourceNamesByGroupName(sourceGroup);
+    if (groupSources.length === 0) return [];
+    const results = await db.select({
+      reason: postponeCancelLogs.reason,
+      count: sql<number>`COUNT(*)`.as("count"),
+    }).from(postponeCancelLogs)
+      .innerJoin(surveys, eq(postponeCancelLogs.surveyId, surveys.id))
+      .innerJoin(customers, eq(surveys.customerId, customers.id))
+      .where(and(
+        eq(postponeCancelLogs.action, "cancel_survey"),
+        inArray(customers.source, groupSources)
+      ))
+      .groupBy(postponeCancelLogs.reason)
+      .orderBy(desc(sql`count`));
+    return results;
+  }
   const results = await db.select({
     reason: postponeCancelLogs.reason,
     count: sql<number>`COUNT(*)`.as("count"),

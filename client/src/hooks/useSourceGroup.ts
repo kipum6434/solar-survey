@@ -10,7 +10,7 @@ import { useLocation } from "wouter";
  */
 export function useSourceGroup(): string | undefined {
   const [location] = useLocation();
-  const knownSubRoutes = ["dashboard", "customers", "surveys", "follow-ups", "installations", "finance"];
+  const knownSubRoutes = ["dashboard", "customers", "surveys", "follow-ups", "installations", "finance", "cancelled-cases"];
   const parts = location.split("/").filter(Boolean);
   if (parts.length >= 2 && knownSubRoutes.includes(parts[1])) {
     return parts[0]; // e.g. "tcs", "gulf", "mea", or any new group

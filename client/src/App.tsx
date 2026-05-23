@@ -83,6 +83,7 @@ function Router() {
       <Route path="/:group/surveys/:id" component={SurveyDetail} />
       <Route path="/:group/follow-ups" component={FollowUps} />
       <Route path="/:group/installations" component={Installations} />
+      <Route path="/:group/cancelled-cases" component={CancelledCases} />
       <Route path="/:group/finance">{(params) => <Finance sourceMode={params.group} />}</Route>
       <Route component={NotFound} />
     </Switch>

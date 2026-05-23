@@ -1416,3 +1416,10 @@
 - [x] Route: /cancelled-cases ใน App.tsx
 - [x] Vitest: cancelledCases.test.ts (8 tests passed)
 - [x] ตัวเลือก "อื่นๆ" มีช่องใส่รายละเอียดเองอยู่แล้ว (ใน FollowUps cancel dialog)
+
+## เคสที่ยกเลิก - ปรับปรุง (Phase 2)
+- [x] ย้ายเมนู "เคสที่ยกเลิก" ไปอยู่ใน sub-menu ของแต่ละ group (TCS, Gulf, MEA)
+- [x] ปรับ Backend API getCancelledSurveys ให้รับ filter sourceGroup
+- [x] ปรับ CancelledCases.tsx ให้รับ group param จาก URL และแสดงเฉพาะเคสของ group นั้น
+- [x] ปรับ DashboardLayout sidebar ให้มีเมนู "เคสที่ยกเลิก" ในแต่ละ group
+- [x] เพิ่ม Export Excel สำหรับรายการเคสที่ยกเลิก (Backend endpoint + ปุ่มใน UI)
