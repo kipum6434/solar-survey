@@ -33,6 +33,7 @@ import SurveyTemplates from "./pages/SurveyTemplates";
 import SourceManagement from "./pages/SourceManagement";
 import GroupDashboard from "./pages/GroupDashboard";
 import SalesPerformance from "./pages/SalesPerformance";
+import InstallationCalendar from "./pages/InstallationCalendar";
 
 function Router() {
   return (
@@ -48,6 +49,7 @@ function Router() {
       <Route path={"/sales-performance"} component={SalesPerformance} />
       <Route path={"/users"} component={UserManagement} />
       <Route path={"/calendar"} component={CalendarPage} />
+      <Route path={"/installation-calendar"} component={InstallationCalendar} />
       <Route path={"/notifications"} component={Notifications} />
       <Route path={"/status-management"} component={StatusManagement} />
       <Route path={"/installations"} component={Installations} />

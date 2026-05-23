@@ -101,6 +101,7 @@ const commonMenuItems = [
   { icon: Tags, label: "จัดการสถานะ", path: "/status-management" },
   { icon: FolderOpen, label: "จัดการไฟล์", path: "/file-management" },
   { icon: CalendarDays, label: "ปฏิทิน", path: "/calendar" },
+  { icon: Wrench, label: "ปฏิทินติดตั้ง", path: "/installation-calendar" },
 ];
 
 const settingsMenuItems = [

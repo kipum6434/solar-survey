@@ -1366,6 +1366,13 @@ const calendarRouter = router({
       endDate: z.number(),
     }))
     .query(({ input }) => db.getCalendarEvents(input.startDate, input.endDate)),
+
+  installationEvents: protectedProcedure
+    .input(z.object({
+      startDate: z.number(),
+      endDate: z.number(),
+    }))
+    .query(({ input }) => db.getInstallationCalendarEvents(input.startDate, input.endDate)),
 });
 
 // ==================== CUSTOM STATUS ROUTER ====================

@@ -1053,6 +1053,25 @@ export async function getCalendarEvents(startDate: number, endDate: number) {
   return { surveys: surveyEvents, followUps: followUpEvents };
 }
 
+// ==================== INSTALLATION CALENDAR ====================
+export async function getInstallationCalendarEvents(startDate: number, endDate: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const results = await db.select({
+    survey: surveys,
+    customer: customers,
+  }).from(surveys)
+    .innerJoin(customers, eq(surveys.customerId, customers.id))
+    .where(and(
+      isNotNull(surveys.installationDate),
+      gte(surveys.installationDate, startDate),
+      lte(surveys.installationDate, endDate),
+      inArray(surveys.installationStatus, ["waiting", "in_progress", "completed", "delivered"])
+    ))
+    .orderBy(surveys.installationDate);
+  return results;
+}
+
 // ==================== STORAGE STATS ====================
 export async function getStorageStats() {
   const db = await getDb();
