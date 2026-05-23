@@ -1079,6 +1079,37 @@ const followUpRouter = router({
       return { success: true, newRound: nextRound };
     }),
 
+  cancelFollowUp: protectedProcedure
+    .input(z.object({
+      surveyId: z.number(),
+      reason: z.string().min(1, "กรุณาระบุเหตุผล"),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const survey = await db.getSurveyById(input.surveyId);
+      if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบงานสำรวจ" });
+      // Log cancellation reason
+      await db.createPostponeCancelLog({
+        surveyId: input.surveyId,
+        action: "cancel_survey",
+        reason: input.reason,
+        previousDate: survey.scheduledDate || undefined,
+        actionBy: ctx.user.name || "Admin",
+        actionByRole: "admin",
+      });
+      // Update survey status to lost (ยกเลิกจากการติดตาม)
+      await db.updateSurvey(input.surveyId, { status: "lost" } as any);
+      await db.logActivity({ userId: ctx.user.id, action: "cancel_followup", entityType: "survey", entityId: input.surveyId, details: `ยกเลิกติดตาม: ${input.reason}` });
+      // Notify
+      try {
+        const surveyData = await db.getSurveyWithCustomer(input.surveyId);
+        const customerName = surveyData?.customer?.name || `งาน #${input.surveyId}`;
+        const notifContent = `❌ ยกเลิกติดตาม\nลูกค้า: ${customerName} (ID: ${input.surveyId})\nสาเหตุ: ${input.reason}\nโดย: ${ctx.user.name || "Admin"}`;
+        await notifyOwner({ title: "ยกเลิกติดตาม", content: notifContent });
+        await sendLineNotification("ยกเลิกติดตาม", notifContent);
+      } catch (e) { console.warn("[CancelFollowUp] notify failed:", e); }
+      return { success: true };
+    }),
+
   overdueCount: protectedProcedure
     .query(async () => {
       return db.getOverdueFollowUpCountPerGroup();

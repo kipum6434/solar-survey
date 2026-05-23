@@ -17,7 +17,7 @@ import { useSourceGroup } from "@/hooks/useSourceGroup";
 import {
   Search, PhoneCall, ChevronLeft, ChevronRight, Calendar, Clock, User,
   CheckCircle2, AlertCircle, Timer, MapPin, FileText, Zap,
-  LayoutList, Table2, Phone, MessageSquare, ArrowRight,
+  LayoutList, Table2, Phone, MessageSquare, ArrowRight, XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -40,6 +40,21 @@ export default function FollowUps() {
       setAdvanceDialogOpen(false);
       setAdvanceNote("");
       setAdvanceTarget(null);
+    },
+    onError: (err) => {
+      toast.error(err.message || "เกิดข้อผิดพลาด");
+    },
+  });
+
+  // Cancel follow-up mutation
+  const cancelFollowUpMutation = trpc.followUp.cancelFollowUp.useMutation({
+    onSuccess: () => {
+      toast.success("ยกเลิกติดตามสำเร็จ");
+      utils.followUp.surveysForFollowUp.invalidate();
+      setCancelDialogOpen(false);
+      setCancelReason("");
+      setCancelCustomReason("");
+      setCancelTarget(null);
     },
     onError: (err) => {
       toast.error(err.message || "เกิดข้อผิดพลาด");
@@ -72,6 +87,39 @@ export default function FollowUps() {
   const [advanceDialogOpen, setAdvanceDialogOpen] = useState(false);
   const [advanceNote, setAdvanceNote] = useState("");
   const [advanceTarget, setAdvanceTarget] = useState<{ surveyId: number; customerId: number; currentRound: number } | null>(null);
+  // Cancel follow-up dialog state
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelCustomReason, setCancelCustomReason] = useState("");
+  const [cancelTarget, setCancelTarget] = useState<{ surveyId: number; customerName: string } | null>(null);
+
+  const CANCEL_REASONS = [
+    "ได้เจ้าที่ถูกกว่า",
+    "เปลี่ยนใจไม่ติด",
+    "งบไม่พอ",
+    "ติดต่อไม่ได้",
+    "อื่นๆ",
+  ];
+
+  const handleCancelFollowUp = (surveyId: number, customerName: string) => {
+    setCancelTarget({ surveyId, customerName });
+    setCancelReason("");
+    setCancelCustomReason("");
+    setCancelDialogOpen(true);
+  };
+
+  const confirmCancelFollowUp = () => {
+    if (!cancelTarget) return;
+    const reason = cancelReason === "อื่นๆ" ? cancelCustomReason.trim() : cancelReason;
+    if (!reason) {
+      toast.error("กรุณาระบุเหตุผล");
+      return;
+    }
+    cancelFollowUpMutation.mutate({
+      surveyId: cancelTarget.surveyId,
+      reason,
+    });
+  };
 
   // Fetch team members for assignee filter
   const { data: teamMembers } = trpc.teamMember.listAll.useQuery();
@@ -586,6 +634,19 @@ export default function FollowUps() {
                                 ครั้งที่ {item.followUpCount + 1}
                               </Button>
                             )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-1.5 text-[10px] text-red-500 hover:text-red-700 hover:bg-red-50"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCancelFollowUp(survey.id, cust.name);
+                              }}
+                              disabled={cancelFollowUpMutation.isPending}
+                            >
+                              <XCircle className="h-3 w-3 mr-0.5" />
+                              ยกเลิก
+                            </Button>
                           </div>
                         </td>
                         <td className="px-3 py-2.5 whitespace-nowrap">
@@ -636,6 +697,58 @@ export default function FollowUps() {
               disabled={advanceRoundMutation.isPending}
             >
               {advanceRoundMutation.isPending ? "กำลังดำเนินการ..." : "ยืนยันเลื่อนสถานะ"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Follow-Up Dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-600">
+              ยกเลิกติดตาม
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">
+              ยกเลิกการติดตามลูกค้า: <span className="font-medium text-foreground">{cancelTarget?.customerName}</span>
+            </p>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">เหตุผลที่ยกเลิก</label>
+              <div className="grid grid-cols-1 gap-2">
+                {CANCEL_REASONS.map((reason) => (
+                  <Button
+                    key={reason}
+                    variant={cancelReason === reason ? "default" : "outline"}
+                    size="sm"
+                    className="justify-start h-9"
+                    onClick={() => setCancelReason(reason)}
+                  >
+                    {reason}
+                  </Button>
+                ))}
+              </div>
+              {cancelReason === "อื่นๆ" && (
+                <Textarea
+                  placeholder="ระบุเหตุผล..."
+                  value={cancelCustomReason}
+                  onChange={(e) => setCancelCustomReason(e.target.value)}
+                  rows={2}
+                />
+              )}
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+              ปิด
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmCancelFollowUp}
+              disabled={cancelFollowUpMutation.isPending || !cancelReason || (cancelReason === "อื่นๆ" && !cancelCustomReason.trim())}
+            >
+              {cancelFollowUpMutation.isPending ? "กำลังดำเนินการ..." : "ยืนยันยกเลิก"}
             </Button>
           </DialogFooter>
         </DialogContent>

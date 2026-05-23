@@ -1397,3 +1397,10 @@
 - [x] Monthly equipment summary (e.g. Huawei SUN2000 x 5)
 - [x] Month filter + include custom technical fields
 - [x] Add sidebar menu + route in App.tsx
+
+## Feature: ปุ่มยกเลิกติดตาม พร้อมเหตุผล
+- [x] Backend: cancelFollowUp mutation (เปลี่ยน status เป็น lost + บันทึกเหตุผลใน postpone_cancel_logs)
+- [x] Frontend: ปุ่ม "ยกเลิก" สีแดงในตาราง FollowUps
+- [x] Dialog เลือกเหตุผล (ได้เจ้าถูกกว่า / เปลี่ยนใจ / งบไม่พอ / ติดต่อไม่ได้ / อื่นๆ)
+- [x] เหตุผล "อื่นๆ" แสดงช่องกรอกข้อความเพิ่ม
+- [x] Test: cancelFollowUp.test.ts passed
