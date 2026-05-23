@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { SURVEY_STATUS_MAP } from "@/lib/constants";
 import { formatPhone } from "@/lib/formatPhone";
@@ -35,11 +37,30 @@ export default function FollowUps() {
     onSuccess: (data) => {
       toast.success(`เลื่อนเป็นติดตามครั้งที่ ${data.newRound} สำเร็จ`);
       utils.followUp.surveysForFollowUp.invalidate();
+      setAdvanceDialogOpen(false);
+      setAdvanceNote("");
+      setAdvanceTarget(null);
     },
     onError: (err) => {
       toast.error(err.message || "เกิดข้อผิดพลาด");
     },
   });
+
+  const handleAdvanceRound = (surveyId: number, customerId: number, currentRound: number) => {
+    setAdvanceTarget({ surveyId, customerId, currentRound });
+    setAdvanceNote("");
+    setAdvanceDialogOpen(true);
+  };
+
+  const confirmAdvanceRound = () => {
+    if (!advanceTarget) return;
+    advanceRoundMutation.mutate({
+      surveyId: advanceTarget.surveyId,
+      customerId: advanceTarget.customerId,
+      currentRound: advanceTarget.currentRound,
+      note: advanceNote.trim() || undefined,
+    });
+  };
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -47,6 +68,10 @@ export default function FollowUps() {
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [roundFilter, setRoundFilter] = useState<string>("all");
+  // Advance round dialog state
+  const [advanceDialogOpen, setAdvanceDialogOpen] = useState(false);
+  const [advanceNote, setAdvanceNote] = useState("");
+  const [advanceTarget, setAdvanceTarget] = useState<{ surveyId: number; customerId: number; currentRound: number } | null>(null);
 
   // Fetch team members for assignee filter
   const { data: teamMembers } = trpc.teamMember.listAll.useQuery();
@@ -127,6 +152,20 @@ export default function FollowUps() {
     };
   }, [data]);
 
+  // Round stats (count by followUpCount)
+  const roundStats = useMemo(() => {
+    if (!data?.data) return { round1: 0, round2: 0, round3: 0, noFollowUp: 0 };
+    let round1 = 0, round2 = 0, round3 = 0, noFollowUp = 0;
+    for (const item of data.data) {
+      const count = (item as any).followUpCount ?? 0;
+      if (count === 1) round1++;
+      else if (count === 2) round2++;
+      else if (count >= 3) round3++;
+      else noFollowUp++;
+    }
+    return { round1, round2, round3, noFollowUp };
+  }, [data]);
+
   const formatDate = (ts: number | Date | string) => {
     const d = ts instanceof Date ? ts : new Date(ts);
     return d.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" });
@@ -198,6 +237,34 @@ export default function FollowUps() {
             <CardContent className="p-3">
               <div className="text-2xl font-bold">{stats.negotiating}</div>
               <div className="text-xs text-muted-foreground">เจรจาต่อรอง</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Round Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Card className={`border-l-4 border-l-emerald-400 cursor-pointer hover:shadow-md transition-shadow ${roundFilter === 'all' ? 'ring-1 ring-emerald-400' : ''}`} onClick={() => { setRoundFilter('all'); setPage(1); }}>
+            <CardContent className="p-3">
+              <div className="text-lg font-bold">{roundStats.noFollowUp}</div>
+              <div className="text-[11px] text-muted-foreground">ยังไม่มี Follow-up</div>
+            </CardContent>
+          </Card>
+          <Card className={`border-l-4 border-l-sky-400 cursor-pointer hover:shadow-md transition-shadow ${roundFilter === '1' ? 'ring-1 ring-sky-400' : ''}`} onClick={() => { setRoundFilter(roundFilter === '1' ? 'all' : '1'); setPage(1); }}>
+            <CardContent className="p-3">
+              <div className="text-lg font-bold">{roundStats.round1}</div>
+              <div className="text-[11px] text-muted-foreground">ติดตามครั้งที่ 1</div>
+            </CardContent>
+          </Card>
+          <Card className={`border-l-4 border-l-amber-400 cursor-pointer hover:shadow-md transition-shadow ${roundFilter === '2' ? 'ring-1 ring-amber-400' : ''}`} onClick={() => { setRoundFilter(roundFilter === '2' ? 'all' : '2'); setPage(1); }}>
+            <CardContent className="p-3">
+              <div className="text-lg font-bold">{roundStats.round2}</div>
+              <div className="text-[11px] text-muted-foreground">ติดตามครั้งที่ 2</div>
+            </CardContent>
+          </Card>
+          <Card className={`border-l-4 border-l-rose-400 cursor-pointer hover:shadow-md transition-shadow ${roundFilter === '3' ? 'ring-1 ring-rose-400' : ''}`} onClick={() => { setRoundFilter(roundFilter === '3' ? 'all' : '3'); setPage(1); }}>
+            <CardContent className="p-3">
+              <div className="text-lg font-bold">{roundStats.round3}</div>
+              <div className="text-[11px] text-muted-foreground">ติดตามครั้งที่ 3</div>
             </CardContent>
           </Card>
         </div>
@@ -511,11 +578,7 @@ export default function FollowUps() {
                                 className="h-6 px-1.5 text-[10px] text-blue-600 hover:text-blue-800 hover:bg-blue-50"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  advanceRoundMutation.mutate({
-                                    surveyId: survey.id,
-                                    customerId: cust.id,
-                                    currentRound: item.followUpCount,
-                                  });
+                                  handleAdvanceRound(survey.id, cust.id, item.followUpCount);
                                 }}
                                 disabled={advanceRoundMutation.isPending}
                               >
@@ -544,6 +607,39 @@ export default function FollowUps() {
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} totalItems={data?.total} />
         )}
       </div>
+
+      {/* Advance Round Confirmation Dialog */}
+      <Dialog open={advanceDialogOpen} onOpenChange={setAdvanceDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              เลื่อนเป็นติดตามครั้งที่ {advanceTarget ? advanceTarget.currentRound + 1 : ""}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">
+              กรุณาระบุหมายเหตุ (ไม่บังคับ) เช่น เหตุผลที่ต้องติดตามต่อ
+            </p>
+            <Textarea
+              placeholder="เช่น ลูกค้ายังไม่ตัดสินใจ, รอเปรียบเทียบราคา, ติดต่อไม่ได้..."
+              value={advanceNote}
+              onChange={(e) => setAdvanceNote(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setAdvanceDialogOpen(false)}>
+              ยกเลิก
+            </Button>
+            <Button
+              onClick={confirmAdvanceRound}
+              disabled={advanceRoundMutation.isPending}
+            >
+              {advanceRoundMutation.isPending ? "กำลังดำเนินการ..." : "ยืนยันเลื่อนสถานะ"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

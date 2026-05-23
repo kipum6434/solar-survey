@@ -59,6 +59,20 @@ describe("followUp.advanceRound", () => {
     expect(result).toEqual({ success: true, newRound: 3 });
   });
 
+  it("should advance with a note", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.followUp.advanceRound({
+      surveyId: 1,
+      customerId: 1,
+      currentRound: 1,
+      note: "ลูกค้ายังไม่ตัดสินใจ",
+    });
+
+    expect(result).toEqual({ success: true, newRound: 2 });
+  });
+
   it("should reject advancing beyond round 3", async () => {
     const { ctx } = createAuthContext();
     const caller = appRouter.createCaller(ctx);

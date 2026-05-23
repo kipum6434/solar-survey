@@ -1056,14 +1056,15 @@ const followUpRouter = router({
       surveyId: z.number(),
       customerId: z.number(),
       currentRound: z.number(),
+      note: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const nextRound = input.currentRound + 1;
       if (nextRound > 3) throw new TRPCError({ code: 'BAD_REQUEST', message: 'ไม่สามารถเลื่อนเกินครั้งที่ 3 ได้' });
-      // Mark current latest follow-up as completed
+      // Mark current latest follow-up as completed with note
       const latestFu = await db.getLatestFollowUpBySurvey(input.surveyId);
       if (latestFu) {
-        await db.updateFollowUp(latestFu.id, { status: 'completed', completedAt: Date.now() });
+        await db.updateFollowUp(latestFu.id, { status: 'completed', completedAt: Date.now(), notes: input.note || latestFu.notes });
       }
       // Create new follow-up with next round, due in 2 days
       const dueDate = Date.now() + 2 * 24 * 60 * 60 * 1000;
@@ -1073,7 +1074,8 @@ const followUpRouter = router({
         dueDate,
         createdBy: ctx.user.id,
       });
-      await db.logActivity({ userId: ctx.user.id, action: 'advance_round', entityType: 'follow_up', entityId: id, details: `เลื่อนเป็นติดตามครั้งที่ ${nextRound} สำหรับงาน #${input.surveyId}` });
+      const noteText = input.note ? ` (หมายเหตุ: ${input.note})` : '';
+      await db.logActivity({ userId: ctx.user.id, action: 'advance_round', entityType: 'follow_up', entityId: id, details: `เลื่อนเป็นติดตามครั้งที่ ${nextRound} สำหรับงาน #${input.surveyId}${noteText}` });
       return { success: true, newRound: nextRound };
     }),
 
