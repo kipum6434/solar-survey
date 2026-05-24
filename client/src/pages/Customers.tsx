@@ -18,7 +18,9 @@ import {
   ClipboardCopy, FileText, Check, AlertTriangle,
 } from "lucide-react";
 import { StickyScrollbar } from "@/components/StickyScrollbar";
-import * as XLSX from "xlsx";
+// XLSX loaded dynamically for code splitting
+type XLSXType = typeof import("xlsx");
+const getXLSX = (): Promise<XLSXType> => import("xlsx");
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -135,10 +137,11 @@ export default function Customers() {
   const totalPages = Math.ceil((data?.total ?? 0) / 50);
 
   // Export selected customers to Excel
-  const handleExportSelected = useCallback(() => {
+  const handleExportSelected = useCallback(async () => {
     if (!data?.data || selectedIds.size === 0) return;
     const selected = data.data.filter((c: any) => selectedIds.has(c.id));
     if (selected.length === 0) { toast.error("ไม่พบข้อมูลที่เลือก"); return; }
+    const XLSX = await getXLSX();
     const headers = ["ชื่อลูกค้า", "เบอร์โทร", "ที่อยู่", "โลเคชั่น", "ช่องทาง", "คนส่งสำรวจ", "เขต/อำเภอ", "จังหวัด", "ค่าไฟ/เดือน", "ประเภทหลังคา", "ระบบไฟ", "ชื่อ FB", "หมายเหตุ", "สถานะ", "วันที่สร้าง"];
     const rows = selected.map((c: any) => ({
       "ชื่อลูกค้า": c.name || "",
@@ -1139,8 +1142,9 @@ function ImportExcelDialog({ open, onOpenChange, onImport, onForceImport, loadin
     setParsedData([]);
 
     const reader = new FileReader();
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       try {
+        const XLSX = await getXLSX();
         const wb = XLSX.read(evt.target?.result, { type: "binary" });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: "" });
@@ -1193,7 +1197,8 @@ function ImportExcelDialog({ open, onOpenChange, onImport, onForceImport, loadin
     reader.readAsBinaryString(file);
   };
 
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
+    const XLSX = await getXLSX();
     const ws = XLSX.utils.aoa_to_sheet([
       ["ชื่อลูกค้า", "เบอร์โทร", "ที่อยู่", "โลเคชั่น", "เขต/อำเภอ", "จังหวัด", "แหล่งที่มา", "ค่าไฟ/เดือน", "ประเภทหลังคา", "ระบบไฟฟ้า", "คนส่งสำรวจ", "ชื่อ FB", "หมายเหตุ"],
       ["สมชาย ใจดี", "0812345678", "48/22 มบ.เมืองประชา ถนนหทัยราษฎร์", "https://maps.google.com/...", "คลองสามวา", "กรุงเทพ", "FB เพจ SET", "3500", "เมทัลชีท", "3 เฟส", "กุลธิดา บุนนาค", "Somchai Jaidi", "สนใจติดตั้ง 10kW"],

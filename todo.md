@@ -1423,3 +1423,9 @@
 - [x] ปรับ CancelledCases.tsx ให้รับ group param จาก URL และแสดงเฉพาะเคสของ group นั้น
 - [x] ปรับ DashboardLayout sidebar ให้มีเมนู "เคสที่ยกเลิก" ในแต่ละ group
 - [x] เพิ่ม Export Excel สำหรับรายการเคสที่ยกเลิก (Backend endpoint + ปุ่มใน UI)
+
+## Performance Optimization (Phase 3)
+- [x] Code Splitting with React.lazy() for all pages
+- [x] Dynamic import for heavy libs (xlsx, pdfmake, jszip, recharts)
+- [x] Database Index for surveys, customers, followUps tables
+- [x] Verify bundle size reduction from 4.57 MB (now 640 KB initial)

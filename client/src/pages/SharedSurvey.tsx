@@ -24,7 +24,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
-import { exportSurveyPDF, exportInstallationPDF, type ImageProxyFn, type CompanyInfo } from "@/lib/pdfExport";
+import type { ImageProxyFn, CompanyInfo } from "@/lib/pdfExport";
+const getPdfExport = () => import("@/lib/pdfExport");
 import { FileDown } from "lucide-react";
 
 export default function SharedSurvey() {
@@ -140,6 +141,7 @@ export default function SharedSurvey() {
               onClick={async () => {
                 setIsExportingPDF(true);
                 try {
+                  const { exportSurveyPDF } = await getPdfExport();
                   await exportSurveyPDF(
                     {
                       id: s.id,
@@ -625,6 +627,7 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
                     const catMap: Record<string, string> = {};
                     const catOrder: string[] = [];
                     for (const cat of photoCategories) { catMap[cat.key] = cat.label; catOrder.push(cat.key); }
+                    const { exportInstallationPDF } = await getPdfExport();
                     await exportInstallationPDF(
                       {
                         id: surveyData.id, status: surveyData.status,

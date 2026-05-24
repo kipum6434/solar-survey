@@ -24,7 +24,8 @@ import {
   Image, Eye, X, Package, Plus, AlertTriangle, Download, FolderDown,
   MessageSquare, SendHorizontal, CircleAlert, CircleCheck, Info, FileDown,
 } from "lucide-react";
-import { exportInstallationPDF, type ImageProxyFn, type CompanyInfo } from "@/lib/pdfExport";
+import type { ImageProxyFn, CompanyInfo } from "@/lib/pdfExport";
+const getPdfExport = () => import("@/lib/pdfExport");
 import DeliveryFormSection from "@/components/DeliveryFormSection";
 
 interface DeliveryTabProps {
@@ -323,6 +324,7 @@ export default function DeliveryTab({ surveyId, installationStatus, surveyData, 
                   onClick={async () => {
                     setIsExportingPDF(true);
                     try {
+                      const { exportInstallationPDF } = await getPdfExport();
                       await exportInstallationPDF(
                         {
                           id: surveyData.id,

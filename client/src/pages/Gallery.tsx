@@ -18,7 +18,8 @@ import {
   ImageIcon,
 } from "lucide-react";
 import { useLocation } from "wouter";
-import JSZip from "jszip";
+// JSZip loaded dynamically for code splitting
+const getJSZip = () => import("jszip").then(m => m.default);
 
 const THAI_MONTHS_SHORT = [
   "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
@@ -144,6 +145,7 @@ export default function Gallery() {
         toast.error("ไม่มีรูปในอัลบั้มนี้");
         return;
       }
+      const JSZip = await getJSZip();
       const zip = new JSZip();
       const catCounts: Record<string, number> = {};
       for (const photo of photos) {

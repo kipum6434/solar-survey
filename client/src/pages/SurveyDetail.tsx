@@ -32,7 +32,8 @@ import { MultiUserSelect } from "@/components/MultiUserSelect";
 import { SourceCombobox } from "@/components/SourceCombobox";
 import { StatusDropdown } from "@/components/StatusDropdown";
 import DeliveryTab from "@/components/DeliveryTab";
-import { exportSurveyPDF, type ImageProxyFn, type CompanyInfo } from "@/lib/pdfExport";
+import type { ImageProxyFn, CompanyInfo } from "@/lib/pdfExport";
+const getPdfExport = () => import("@/lib/pdfExport");
 import { FileDown } from "lucide-react";
 
 export default function SurveyDetail() {
@@ -380,6 +381,7 @@ export default function SurveyDetail() {
               onClick={async () => {
                 try {
                   toast.info("กำลังสร้าง PDF...");
+                  const { exportSurveyPDF } = await getPdfExport();
                   await exportSurveyPDF(
                     {
                       id: s.id, status: s.status, scheduledDate: s.scheduledDate,
