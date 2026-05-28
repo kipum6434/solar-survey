@@ -2306,6 +2306,27 @@ const deliveryRouter = router({
       return result;
     }),
 
+  // Withdraw delivery (technician can undo submit to edit photos)
+  withdraw: protectedProcedure
+    .input(z.object({ surveyId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await db.withdrawDelivery(input.surveyId);
+      await db.logActivity({ userId: ctx.user.id, action: "update", entityType: "delivery", entityId: input.surveyId, details: `ถอนส่งมอบงาน surveyId: ${input.surveyId}` });
+      return result;
+    }),
+
+  // Public withdraw for share link (no login required)
+  publicWithdraw: publicProcedure
+    .input(z.object({ token: z.string(), surveyId: z.number() }))
+    .mutation(async ({ input }) => {
+      const link = await db.getShareLinkByToken(input.token);
+      if (!link || !link.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
+      if (link.expiresAt && link.expiresAt < Date.now()) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์หมดอายุ" });
+      if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
+      const result = await db.withdrawDelivery(input.surveyId);
+      return result;
+    }),
+
   completeInstallation: protectedProcedure
     .input(z.object({ surveyId: z.number() }))
     .mutation(async ({ input, ctx }) => {

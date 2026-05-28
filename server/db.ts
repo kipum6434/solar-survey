@@ -2111,6 +2111,22 @@ export async function rejectDelivery(surveyId: number, userId: number, reason?: 
   return { surveyId, deliveryStatus: "rejected" };
 }
 
+export async function withdrawDelivery(surveyId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // Only allow withdraw if current status is 'submitted'
+  const [survey] = await db.select({ deliveryStatus: surveys.deliveryStatus }).from(surveys).where(eq(surveys.id, surveyId));
+  if (!survey || survey.deliveryStatus !== "submitted") {
+    throw new Error("Cannot withdraw: delivery is not in submitted status");
+  }
+  await db.update(surveys).set({
+    deliveryStatus: "pending",
+    deliverySubmittedAt: null,
+    deliverySubmittedBy: null,
+  }).where(eq(surveys.id, surveyId));
+  return { surveyId, deliveryStatus: "pending" };
+}
+
 export async function getDeliveryInfo(surveyId: number) {
   const db = await getDb();
   if (!db) return null;

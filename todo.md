@@ -1429,3 +1429,8 @@
 - [x] Dynamic import for heavy libs (xlsx, pdfmake, jszip, recharts)
 - [x] Database Index for surveys, customers, followUps tables
 - [x] Verify bundle size reduction from 4.57 MB (now 640 KB initial)
+
+## Withdraw Delivery - Phase C
+- [x] Backend: withdrawDelivery procedure (change deliveryStatus from submitted to pending)
+- [x] Frontend: Withdraw button in SharedSurvey.tsx when deliveryStatus = submitted
+- [x] After withdraw, technician can edit/delete/add photos immediately

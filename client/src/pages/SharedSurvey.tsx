@@ -540,6 +540,13 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
     onError: (e: any) => { toast.error(e.message || "ส่งมอบล้มเหลว"); setConfirmSubmit(false); },
   });
 
+  // Withdraw delivery mutation
+  const [confirmWithdraw, setConfirmWithdraw] = useState(false);
+  const withdrawMutation = trpc.delivery.publicWithdraw.useMutation({
+    onSuccess: () => { refetchDelivery(); toast.success("ถอนส่งมอบสำเร็จ สามารถแก้ไขรูปได้แล้ว"); setConfirmWithdraw(false); },
+    onError: (e: any) => { toast.error(e.message || "ถอนส่งมอบล้มเหลว"); setConfirmWithdraw(false); },
+  });
+
   // Postpone/Cancel Installation state
   const [showPostponeInstallDialog, setShowPostponeInstallDialog] = useState(false);
   const [showCancelInstallDialog, setShowCancelInstallDialog] = useState(false);
@@ -947,10 +954,21 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
         )}
 
         {deliveryStatus === "submitted" && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
-            <Package className="h-8 w-8 text-amber-500 mx-auto mb-2" />
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center space-y-3">
+            <Package className="h-8 w-8 text-amber-500 mx-auto" />
             <p className="text-sm font-medium text-amber-700">ส่งมอบงานแล้ว</p>
-            <p className="text-xs text-amber-600 mt-1">รอผู้ดูแลตรวจสอบและอนุมัติ</p>
+            <p className="text-xs text-amber-600">รอผู้ดูแลตรวจสอบและอนุมัติ</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-amber-300 text-amber-700 hover:bg-amber-100"
+              onClick={() => setConfirmWithdraw(true)}
+              disabled={withdrawMutation.isPending}
+            >
+              <XCircle className="h-4 w-4 mr-1" />
+              {withdrawMutation.isPending ? "กำลังถอน..." : "ถอนส่งมอบ (แก้ไขรูป)"}
+            </Button>
+            <p className="text-[11px] text-amber-500">กดถอนเพื่อแก้ไข/เพิ่ม/ลบรูป แล้วส่งมอบใหม่อีกครั้ง</p>
           </div>
         )}
       </CardContent>
@@ -984,6 +1002,24 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
             <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
             <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => confirmDeleteId && deleteMutation.mutate({ token, surveyId, id: confirmDeleteId })}>
               ลบ
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm withdraw dialog */}
+      <AlertDialog open={confirmWithdraw} onOpenChange={setConfirmWithdraw}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ถอนส่งมอบงาน?</AlertDialogTitle>
+            <AlertDialogDescription>
+              สถานะจะกลับเป็น "รออัพรูป" คุณสามารถแก้ไข/เพิ่ม/ลบรูปได้ แล้วกดส่งมอบใหม่อีกครั้งเมื่อพร้อม
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction className="bg-amber-600 text-white hover:bg-amber-700" onClick={() => withdrawMutation.mutate({ token, surveyId })}>
+              ยืนยันถอนส่งมอบ
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
