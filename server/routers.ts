@@ -642,7 +642,7 @@ const surveyRouter = router({
     }),
 
   postponeInstallation: protectedProcedure
-    .input(z.object({ id: z.number(), reason: z.string().min(1) }))
+    .input(z.object({ id: z.number(), reason: z.string().min(1), newDate: z.number().optional() }))
     .mutation(async ({ input, ctx }) => {
       const survey = await db.getSurveyById(input.id);
       if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบงานสำรวจ" });
@@ -651,16 +651,20 @@ const surveyRouter = router({
         action: "postpone_install",
         reason: input.reason,
         previousDate: survey.installationDate || undefined,
+        newDate: input.newDate || undefined,
         actionBy: ctx.user.name || "Admin",
         actionByRole: "admin",
       });
-      await db.updateSurvey(input.id, { installationStatus: "postponed" } as any);
-      await db.logActivity({ userId: ctx.user.id, action: "postpone", entityType: "survey", entityId: input.id, details: `เลื่อนติดตั้ง: ${input.reason}` });
+      const updateData: any = { installationStatus: "postponed" };
+      if (input.newDate) updateData.installationDate = input.newDate;
+      await db.updateSurvey(input.id, updateData);
+      await db.logActivity({ userId: ctx.user.id, action: "postpone", entityType: "survey", entityId: input.id, details: `เลื่อนติดตั้ง: ${input.reason}${input.newDate ? ` (วันใหม่: ${new Date(input.newDate).toLocaleDateString("th-TH")})` : ""}` });
       // Notify
       try {
         const surveyData = await db.getSurveyWithCustomer(input.id);
         const customerName = surveyData?.customer?.name || `งาน #${input.id}`;
-        const notifContent = `⏸️ เลื่อนติดตั้ง\nลูกค้า: ${customerName} (ID: ${input.id})\nสาเหตุ: ${input.reason}\nโดย: ${ctx.user.name || "Admin"}`;
+        const newDateStr = input.newDate ? `\nวันติดตั้งใหม่: ${new Date(input.newDate).toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" })}` : "";
+        const notifContent = `⏸️ เลื่อนติดตั้ง\nลูกค้า: ${customerName} (ID: ${input.id})\nสาเหตุ: ${input.reason}${newDateStr}\nโดย: ${ctx.user.name || "Admin"}`;
         await notifyOwner({ title: "เลื่อนติดตั้ง", content: notifContent });
         await sendLineNotification("เลื่อนติดตั้ง", notifContent);
       } catch (e) { console.warn("[Postpone Install] notify failed:", e); }
@@ -753,7 +757,7 @@ const surveyRouter = router({
     }),
 
   publicPostponeInstallation: publicProcedure
-    .input(z.object({ token: z.string(), surveyId: z.number(), reason: z.string().min(1), actionBy: z.string().min(1), actionByRole: z.enum(["admin", "surveyor", "installer"]) }))
+    .input(z.object({ token: z.string(), surveyId: z.number(), reason: z.string().min(1), actionBy: z.string().min(1), actionByRole: z.enum(["admin", "surveyor", "installer"]), newDate: z.number().optional() }))
     .mutation(async ({ input }) => {
       const link = await db.getShareLinkByToken(input.token);
       if (!link || !link.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
@@ -766,15 +770,19 @@ const surveyRouter = router({
         action: "postpone_install",
         reason: input.reason,
         previousDate: survey.installationDate || undefined,
+        newDate: input.newDate || undefined,
         actionBy: input.actionBy,
         actionByRole: input.actionByRole,
       });
-      await db.updateSurvey(input.surveyId, { installationStatus: "postponed" } as any);
+      const updateData: any = { installationStatus: "postponed" };
+      if (input.newDate) updateData.installationDate = input.newDate;
+      await db.updateSurvey(input.surveyId, updateData);
       // Notify
       try {
         const surveyData = await db.getSurveyWithCustomer(input.surveyId);
         const customerName = surveyData?.customer?.name || `งาน #${input.surveyId}`;
-        const notifContent = `⏸️ เลื่อนติดตั้ง (Share Link)\nลูกค้า: ${customerName} (ID: ${input.surveyId})\nสาเหตุ: ${input.reason}\nโดย: ${input.actionBy} (${input.actionByRole})`;
+        const newDateStr = input.newDate ? `\nวันติดตั้งใหม่: ${new Date(input.newDate).toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" })}` : "";
+        const notifContent = `⏸️ เลื่อนติดตั้ง (Share Link)\nลูกค้า: ${customerName} (ID: ${input.surveyId})\nสาเหตุ: ${input.reason}${newDateStr}\nโดย: ${input.actionBy} (${input.actionByRole})`;
         await notifyOwner({ title: "เลื่อนติดตั้ง", content: notifContent });
         await sendLineNotification("เลื่อนติดตั้ง", notifContent);
       } catch (e) { console.warn("[Public Postpone Install] notify failed:", e); }

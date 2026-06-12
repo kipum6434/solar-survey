@@ -1434,3 +1434,12 @@
 - [x] Backend: withdrawDelivery procedure (change deliveryStatus from submitted to pending)
 - [x] Frontend: Withdraw button in SharedSurvey.tsx when deliveryStatus = submitted
 - [x] After withdraw, technician can edit/delete/add photos immediately
+
+## Reschedule Installation Date Picker
+- [x] Backend: เพิ่ม optional newDate parameter ใน postponeInstallation (protected)
+- [x] Backend: เพิ่ม optional newDate parameter ใน publicPostponeInstallation (public)
+- [x] Backend: เมื่อมี newDate ให้ update installationDate ใน survey
+- [x] Backend: แสดง newDate ใน LINE notification
+- [x] Frontend (SharedSurvey): เพิ่ม date picker ใน dialog เลื่อนติดตั้ง
+- [x] Frontend (SurveyDetail): เพิ่ม date picker ใน dialog เลื่อนติดตั้ง
+- [x] DB: newDate column มีอยู่แล้วใน postpone_cancel_logs table

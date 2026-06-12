@@ -15,6 +15,8 @@ import {
   CircleAlert, CircleCheck, Info, XCircle, PauseCircle, FileText, MessageSquare,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarUI } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -547,15 +549,15 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
     onError: (e: any) => { toast.error(e.message || "ถอนส่งมอบล้มเหลว"); setConfirmWithdraw(false); },
   });
 
-  // Postpone/Cancel Installation state
+    // Postpone/Cancel Installation state
   const [showPostponeInstallDialog, setShowPostponeInstallDialog] = useState(false);
   const [showCancelInstallDialog, setShowCancelInstallDialog] = useState(false);
   const [postponeInstallReason, setPostponeInstallReason] = useState("");
   const [cancelInstallReason, setCancelInstallReason] = useState("");
   const [installActionByName, setInstallActionByName] = useState("");
-
+  const [newInstallDate, setNewInstallDate] = useState<Date | undefined>(undefined);
   const postponeInstallMut = trpc.survey.publicPostponeInstallation.useMutation({
-    onSuccess: () => { toast.success("เลื่อนติดตั้งสำเร็จ"); setShowPostponeInstallDialog(false); setPostponeInstallReason(""); setInstallActionByName(""); window.location.reload(); },
+    onSuccess: () => { toast.success("เลื่อนติดตั้งสำเร็จ"); setShowPostponeInstallDialog(false); setPostponeInstallReason(""); setInstallActionByName(""); setNewInstallDate(undefined); window.location.reload(); },
     onError: (e: any) => toast.error(e.message || "เกิดข้อผิดพลาด"),
   });
   const cancelInstallMut = trpc.survey.publicCancelInstallation.useMutation({
@@ -1062,11 +1064,11 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
       </CardContent>
 
       {/* Postpone Installation Dialog */}
-      <Dialog open={showPostponeInstallDialog} onOpenChange={(open) => { if (!open) { setShowPostponeInstallDialog(false); setPostponeInstallReason(""); setInstallActionByName(""); } }}>
+      <Dialog open={showPostponeInstallDialog} onOpenChange={(open) => { if (!open) { setShowPostponeInstallDialog(false); setPostponeInstallReason(""); setInstallActionByName(""); setNewInstallDate(undefined); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><PauseCircle className="h-5 w-5 text-yellow-600" /> เลื่อนติดตั้ง</DialogTitle>
-            <DialogDescription>สถานะจะเปลี่ยนเป็น "เลื่อนติดตั้ง" รอนัดวันใหม่</DialogDescription>
+            <DialogDescription>สถานะจะเปลี่ยนเป็น "เลื่อนติดตั้ง" สามารถเลือกวันติดตั้งใหม่ได้</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div>
@@ -1077,13 +1079,32 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
               <Label className="text-sm font-medium mb-1.5 block">สาเหตุ <span className="text-red-500">*</span></Label>
               <Textarea placeholder="ระบุสาเหตุที่ต้องเลื่อน..." value={postponeInstallReason} onChange={(e) => setPostponeInstallReason(e.target.value)} rows={3} />
             </div>
+            <div>
+              <Label className="text-sm font-medium mb-1.5 block">วันติดตั้งใหม่ <span className="text-muted-foreground text-xs">(ถ้าทราบแล้ว)</span></Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    <Calendar className="h-4 w-4 mr-2" />
+                    {newInstallDate ? newInstallDate.toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" }) : <span className="text-muted-foreground">เลือกวันที่ใหม่...</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarUI
+                    mode="single"
+                    selected={newInstallDate}
+                    onSelect={setNewInstallDate}
+                    disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowPostponeInstallDialog(false); setPostponeInstallReason(""); setInstallActionByName(""); }}>ยกเลิก</Button>
+            <Button variant="outline" onClick={() => { setShowPostponeInstallDialog(false); setPostponeInstallReason(""); setInstallActionByName(""); setNewInstallDate(undefined); }}>ยกเลิก</Button>
             <Button
               className="bg-yellow-600 hover:bg-yellow-700 text-white gap-1.5"
               disabled={!postponeInstallReason.trim() || !installActionByName.trim() || postponeInstallMut.isPending}
-              onClick={() => postponeInstallMut.mutate({ token, surveyId, reason: postponeInstallReason.trim(), actionBy: installActionByName.trim(), actionByRole: "installer" })}
+              onClick={() => postponeInstallMut.mutate({ token, surveyId, reason: postponeInstallReason.trim(), actionBy: installActionByName.trim(), actionByRole: "installer", newDate: newInstallDate ? newInstallDate.getTime() : undefined })}
             >
               <PauseCircle className="h-4 w-4" /> ยืนยันเลื่อน
             </Button>

@@ -250,6 +250,88 @@ describe("survey.publicPostponeInstallation (public)", () => {
     );
     expect(db.updateSurvey).toHaveBeenCalledWith(5, expect.objectContaining({ installationStatus: "postponed" }));
   });
+
+  it("postpones installation with newDate via public link", async () => {
+    const newDate = new Date("2026-07-15").getTime();
+    (db.getShareLinkByToken as any).mockResolvedValue({ id: 1, surveyId: 5, isActive: true, expiresAt: null });
+    (db.getSurveyById as any).mockResolvedValue({ id: 5, installationDate: Date.now(), installationStatus: "waiting" });
+    (db.getSurveyWithCustomer as any).mockResolvedValue({ customer: { name: "ลูกค้า E" } });
+    (db.createPostponeCancelLog as any).mockResolvedValue({ insertId: 5 });
+    (db.updateSurvey as any).mockResolvedValue({});
+
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.survey.publicPostponeInstallation({
+      token: "install-token-2",
+      surveyId: 5,
+      reason: "ลูกค้าขอเลื่อนวัน",
+      actionBy: "ช่าง สมชาย",
+      actionByRole: "installer",
+      newDate,
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(db.createPostponeCancelLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "postpone_install",
+        reason: "ลูกค้าขอเลื่อนวัน",
+        newDate,
+      })
+    );
+    expect(db.updateSurvey).toHaveBeenCalledWith(5, expect.objectContaining({ installationStatus: "postponed", installationDate: newDate }));
+  });
+});
+
+describe("survey.postponeInstallation (protected) - with newDate", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("postpones installation and updates installationDate when newDate is provided", async () => {
+    const newDate = new Date("2026-08-01").getTime();
+    (db.getSurveyById as any).mockResolvedValue({ id: 7, installationDate: Date.now(), installationStatus: "waiting" });
+    (db.getSurveyWithCustomer as any).mockResolvedValue({ customer: { name: "ลูกค้า F" } });
+    (db.createPostponeCancelLog as any).mockResolvedValue({ insertId: 6 });
+    (db.updateSurvey as any).mockResolvedValue({});
+    (db.logActivity as any).mockResolvedValue({});
+
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.survey.postponeInstallation({
+      id: 7,
+      reason: "อุปกรณ์ไม่พร้อม",
+      newDate,
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(db.createPostponeCancelLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "postpone_install",
+        reason: "อุปกรณ์ไม่พร้อม",
+        newDate,
+      })
+    );
+    expect(db.updateSurvey).toHaveBeenCalledWith(7, expect.objectContaining({ installationStatus: "postponed", installationDate: newDate }));
+  });
+
+  it("postpones installation without changing date when newDate is not provided", async () => {
+    (db.getSurveyById as any).mockResolvedValue({ id: 8, installationDate: Date.now(), installationStatus: "waiting" });
+    (db.getSurveyWithCustomer as any).mockResolvedValue({ customer: { name: "ลูกค้า G" } });
+    (db.createPostponeCancelLog as any).mockResolvedValue({ insertId: 7 });
+    (db.updateSurvey as any).mockResolvedValue({});
+    (db.logActivity as any).mockResolvedValue({});
+
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.survey.postponeInstallation({
+      id: 8,
+      reason: "ลูกค้าไม่สะดวก",
+    });
+
+    expect(result).toEqual({ success: true });
+    // Should NOT include installationDate in update
+    expect(db.updateSurvey).toHaveBeenCalledWith(8, { installationStatus: "postponed" });
+  });
 });
 
 describe("survey.reopenSurvey (protected)", () => {

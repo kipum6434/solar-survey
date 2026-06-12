@@ -239,6 +239,7 @@ export default function SurveyDetail() {
   const [showCancelDialog, setShowCancelDialog] = useState<"survey" | "install" | null>(null);
   const [postponeReason, setPostponeReason] = useState("");
   const [cancelReason, setCancelReason] = useState("");
+  const [newPostponeDate, setNewPostponeDate] = useState<Date | undefined>(undefined);
 
   // Postpone/Cancel mutations
   const postponeSurvey = trpc.survey.postponeSurvey.useMutation({
@@ -250,7 +251,7 @@ export default function SurveyDetail() {
     onError: (e: any) => toast.error(e.message),
   });
   const postponeInstallation = trpc.survey.postponeInstallation.useMutation({
-    onSuccess: () => { toast.success("เลื่อนติดตั้งสำเร็จ"); setShowPostponeDialog(null); setPostponeReason(""); refetch(); refetchLogs(); },
+    onSuccess: () => { toast.success("เลื่อนติดตั้งสำเร็จ"); setShowPostponeDialog(null); setPostponeReason(""); setNewPostponeDate(undefined); refetch(); refetchLogs(); },
     onError: (e: any) => toast.error(e.message),
   });
   const cancelInstallation = trpc.survey.cancelInstallation.useMutation({
@@ -1253,20 +1254,43 @@ export default function SurveyDetail() {
         </DialogContent>
       </Dialog>
       {/* Postpone Dialog */}
-      <Dialog open={showPostponeDialog !== null} onOpenChange={(open) => { if (!open) { setShowPostponeDialog(null); setPostponeReason(""); } }}>
+      <Dialog open={showPostponeDialog !== null} onOpenChange={(open) => { if (!open) { setShowPostponeDialog(null); setPostponeReason(""); setNewPostponeDate(undefined); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><PauseCircle className="h-5 w-5 text-yellow-600" /> {showPostponeDialog === "survey" ? "เลื่อนสำรวจ" : "เลื่อนติดตั้ง"}</DialogTitle>
             <DialogDescription>
-              {showPostponeDialog === "survey" ? "สถานะจะเปลี่ยนเป็น \"เลื่อนสำรวจ\" รอนัดวันใหม่" : "สถานะติดตั้งจะเปลี่ยนเป็น \"เลื่อนติดตั้ง\" รอนัดวันใหม่"}
+              {showPostponeDialog === "survey" ? "สถานะจะเปลี่ยนเป็น \"เลื่อนสำรวจ\" รอนัดวันใหม่" : "สถานะติดตั้งจะเปลี่ยนเป็น \"เลื่อนติดตั้ง\" สามารถเลือกวันใหม่ได้"}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Label className="text-sm font-medium mb-2 block">สาเหตุ <span className="text-red-500">*</span></Label>
-            <Textarea placeholder="ระบุสาเหตุที่ต้องเลื่อน..." value={postponeReason} onChange={(e) => setPostponeReason(e.target.value)} rows={3} />
+          <div className="space-y-4 py-4">
+            <div>
+              <Label className="text-sm font-medium mb-2 block">สาเหตุ <span className="text-red-500">*</span></Label>
+              <Textarea placeholder="ระบุสาเหตุที่ต้องเลื่อน..." value={postponeReason} onChange={(e) => setPostponeReason(e.target.value)} rows={3} />
+            </div>
+            {showPostponeDialog === "install" && (
+              <div>
+                <Label className="text-sm font-medium mb-2 block">วันติดตั้งใหม่ <span className="text-muted-foreground text-xs">(ถ้าทราบแล้ว)</span></Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start text-left font-normal">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      {newPostponeDate ? newPostponeDate.toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" }) : <span className="text-muted-foreground">เลือกวันที่ใหม่...</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarUI
+                      mode="single"
+                      selected={newPostponeDate}
+                      onSelect={setNewPostponeDate}
+                      disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowPostponeDialog(null); setPostponeReason(""); }}>ยกเลิก</Button>
+            <Button variant="outline" onClick={() => { setShowPostponeDialog(null); setPostponeReason(""); setNewPostponeDate(undefined); }}>ยกเลิก</Button>
             <Button
               className="bg-yellow-600 hover:bg-yellow-700 text-white gap-1.5"
               disabled={!postponeReason.trim() || postponeSurvey.isPending || postponeInstallation.isPending}
@@ -1274,7 +1298,7 @@ export default function SurveyDetail() {
                 if (showPostponeDialog === "survey") {
                   postponeSurvey.mutate({ id: surveyId, reason: postponeReason.trim() });
                 } else {
-                  postponeInstallation.mutate({ id: surveyId, reason: postponeReason.trim() });
+                  postponeInstallation.mutate({ id: surveyId, reason: postponeReason.trim(), newDate: newPostponeDate ? newPostponeDate.getTime() : undefined });
                 }
               }}
             >
