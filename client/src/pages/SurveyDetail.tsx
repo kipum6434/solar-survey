@@ -26,7 +26,7 @@ import {
   ArrowLeft, Camera, FileText, PhoneCall, Share2, MapPin, Calendar, User, Pencil,
   Upload, Trash2, Download, Link2, Copy, X, Image, Eye, CheckCircle2, Clock,
   Zap, Sun, Home, Gauge, Receipt, Settings2, Users, Wrench, FolderDown, Package,
-  PauseCircle, XCircle, RotateCcw, History, Plus, MessageSquare,
+  PauseCircle, XCircle, RotateCcw, History, Plus, MessageSquare, ArrowRight,
 } from "lucide-react";
 import { MultiUserSelect } from "@/components/MultiUserSelect";
 import { SourceCombobox } from "@/components/SourceCombobox";
@@ -967,11 +967,33 @@ export default function SurveyDetail() {
                               <span className={`text-sm font-medium ${isPostpone ? 'text-yellow-700' : 'text-red-700'}`}>{actionLabel}</span>
                               <Badge variant="secondary" className="text-xs">{roleLabel}: {log.actionBy}</Badge>
                             </div>
-                            <p className="text-sm text-muted-foreground mt-1">สาเหตุ: {log.reason}</p>
-                            {log.previousDate && (
-                              <p className="text-xs text-muted-foreground mt-0.5">วันเดิม: {new Date(log.previousDate).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}</p>
+                            <p className="text-sm text-muted-foreground mt-1"><span className="font-medium text-foreground">สาเหตุ:</span> {log.reason}</p>
+                            {(log.previousDate || log.newDate) && (
+                              <div className="flex items-center gap-1.5 mt-1.5 text-xs">
+                                {log.previousDate && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                                    <Calendar className="h-3 w-3" />
+                                    {new Date(log.previousDate).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}
+                                  </span>
+                                )}
+                                {log.previousDate && log.newDate && (
+                                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                )}
+                                {log.newDate && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-green-100 text-green-700 font-medium">
+                                    <Calendar className="h-3 w-3" />
+                                    {new Date(log.newDate).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}
+                                  </span>
+                                )}
+                                {log.previousDate && !log.newDate && (
+                                  <>
+                                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted text-muted-foreground italic">รอนัดใหม่</span>
+                                  </>
+                                )}
+                              </div>
                             )}
-                            <p className="text-xs text-muted-foreground mt-0.5">{new Date(log.createdAt).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+                            <p className="text-xs text-muted-foreground mt-1.5">{new Date(log.createdAt).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
                           </div>
                         </div>
                       );

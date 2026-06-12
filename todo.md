@@ -1443,3 +1443,8 @@
 - [x] Frontend (SharedSurvey): เพิ่ม date picker ใน dialog เลื่อนติดตั้ง
 - [x] Frontend (SurveyDetail): เพิ่ม date picker ใน dialog เลื่อนติดตั้ง
 - [x] DB: newDate column มีอยู่แล้วใน postpone_cancel_logs table
+
+## Timeline: แสดงประวัติการเลื่อนวัน + ช่องกรอกเหตุผล
+- [x] Timeline: แสดงวันเดิม → วันใหม่ เมื่อมี newDate ใน postpone_cancel_logs
+- [x] Timeline: แสดงเหตุผลการเลื่อนใน log entry
+- [x] ตรวจสอบว่า dialog เลื่อนติดตั้งมีช่องกรอกเหตุผลครบทั้ง SharedSurvey และ SurveyDetail
