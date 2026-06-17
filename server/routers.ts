@@ -1385,10 +1385,12 @@ const notificationRouter = router({
 
 // ==================== DASHBOARD ROUTER ====================
 const dashboardRouter = router({
-  stats: protectedProcedure.query(async ({ ctx }) => {
-    const scope = await getUserScope(ctx.user);
-    return db.getDashboardStats(scope?.surveyIds, scope?.customerIds);
-  }),
+  stats: protectedProcedure
+    .input(z.object({ month: z.number().optional(), year: z.number().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const scope = await getUserScope(ctx.user);
+      return db.getDashboardStats(scope?.surveyIds, scope?.customerIds, input?.month, input?.year);
+    }),
   recentActivities: protectedProcedure
     .input(z.object({ limit: z.number().default(20) }).optional())
     .query(({ input }) => db.getRecentActivities(input?.limit)),

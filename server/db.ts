@@ -942,31 +942,57 @@ export async function getRecentActivities(limit = 20) {
 }
 
 // ==================== DASHBOARD STATS ====================
-export async function getDashboardStats(scopedSurveyIds?: number[], scopedCustomerIds?: number[]) {
+export async function getDashboardStats(scopedSurveyIds?: number[], scopedCustomerIds?: number[], month?: number, year?: number) {
   const db = await getDb();
   if (!db) return { totalCustomers: 0, totalSurveys: 0, pendingSurveys: 0, completedSurveys: 0, wonDeals: 0, pendingFollowUps: 0 };
   // If scoped and empty arrays, return zeros
   if (scopedSurveyIds !== undefined && scopedSurveyIds.length === 0) {
     return { totalCustomers: 0, totalSurveys: 0, pendingSurveys: 0, completedSurveys: 0, wonDeals: 0, pendingFollowUps: 0 };
   }
+
+  // Build date range filter if month/year provided
+  let dateStart: Date | undefined;
+  let dateEnd: Date | undefined;
+  if (month !== undefined && year !== undefined) {
+    dateStart = new Date(year, month - 1, 1);
+    dateEnd = new Date(year, month, 1); // first day of next month
+  } else if (year !== undefined) {
+    dateStart = new Date(year, 0, 1);
+    dateEnd = new Date(year + 1, 0, 1);
+  }
+
   const custConditions: any[] = [];
   if (scopedCustomerIds !== undefined) {
     if (scopedCustomerIds.length === 0) custConditions.push(sql`1=0`);
     else custConditions.push(inArray(customers.id, scopedCustomerIds));
   }
+  if (dateStart && dateEnd) {
+    custConditions.push(gte(customers.createdAt, dateStart));
+    custConditions.push(lte(customers.createdAt, dateEnd));
+  }
+
   const survConditions: any[] = [];
   if (scopedSurveyIds !== undefined) {
     survConditions.push(inArray(surveys.id, scopedSurveyIds));
   }
+  if (dateStart && dateEnd) {
+    survConditions.push(gte(surveys.createdAt, dateStart));
+    survConditions.push(lte(surveys.createdAt, dateEnd));
+  }
+
   const [custCount] = await db.select({ count: sql<number>`count(*)` }).from(customers).where(custConditions.length > 0 ? and(...custConditions) : undefined);
   const [survCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).where(survConditions.length > 0 ? and(...survConditions) : undefined);
-  const [pendCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).where(and(...survConditions, inArray(surveys.status, ["pending", "scheduled"])));
-  const [compCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).where(and(...survConditions, eq(surveys.status, "surveyed")));
-  const [wonCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).where(and(...survConditions, eq(surveys.status, "won")));
+  const [pendCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).where(and(...(survConditions.length > 0 ? survConditions : [sql`1=1`]), inArray(surveys.status, ["pending", "scheduled"])));
+  const [compCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).where(and(...(survConditions.length > 0 ? survConditions : [sql`1=1`]), eq(surveys.status, "surveyed")));
+  const [wonCount] = await db.select({ count: sql<number>`count(*)` }).from(surveys).where(and(...(survConditions.length > 0 ? survConditions : [sql`1=1`]), eq(surveys.status, "won")));
   // Follow-ups: scope by surveyId if scoped
   const fuConditions: any[] = [eq(followUps.status, "pending")];
   if (scopedSurveyIds !== undefined) {
     fuConditions.push(inArray(followUps.surveyId, scopedSurveyIds));
+  }
+  if (dateStart && dateEnd) {
+    fuConditions.push(gte(followUps.createdAt, dateStart));
+    fuConditions.push(lte(followUps.createdAt, dateEnd));
   }
   const [fuCount] = await db.select({ count: sql<number>`count(*)` }).from(followUps).where(and(...fuConditions));
   return {

@@ -23,12 +23,24 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useState } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function Home() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
-  const { data: stats, isLoading: statsLoading } = trpc.dashboard.stats.useQuery();
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState<number | undefined>(undefined);
+  const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined);
+  const { data: stats, isLoading: statsLoading } = trpc.dashboard.stats.useQuery(
+    selectedMonth !== undefined && selectedYear !== undefined
+      ? { month: selectedMonth, year: selectedYear }
+      : selectedYear !== undefined
+      ? { year: selectedYear }
+      : undefined
+  );
   const { data: activities, isLoading: activitiesLoading } = trpc.dashboard.recentActivities.useQuery({ limit: 10 }, { enabled: isAdmin });
   const { data: upcomingSurveys } = trpc.survey.list.useQuery({ limit: 5, status: "scheduled" });
   const { data: storageStats } = trpc.storage.stats.useQuery();
@@ -56,6 +68,111 @@ export default function Home() {
             เพิ่มลูกค้าใหม่
           </Button>
         </div>
+
+        {/* Month/Year Filter */}
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-sm font-medium text-muted-foreground">กรองตามเดือน:</span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => {
+                    if (selectedMonth !== undefined && selectedYear !== undefined) {
+                      if (selectedMonth === 1) {
+                        setSelectedMonth(12);
+                        setSelectedYear(selectedYear - 1);
+                      } else {
+                        setSelectedMonth(selectedMonth - 1);
+                      }
+                    }
+                  }}
+                  disabled={selectedMonth === undefined}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Select
+                  value={selectedMonth !== undefined ? String(selectedMonth) : "all"}
+                  onValueChange={(val) => {
+                    if (val === "all") {
+                      setSelectedMonth(undefined);
+                      setSelectedYear(undefined);
+                    } else {
+                      setSelectedMonth(Number(val));
+                      if (selectedYear === undefined) setSelectedYear(now.getFullYear());
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-[140px] h-8">
+                    <SelectValue placeholder="ทั้งหมด" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">ทั้งหมด</SelectItem>
+                    {["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"].map((m, i) => (
+                      <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={selectedYear !== undefined ? String(selectedYear) : "all"}
+                  onValueChange={(val) => {
+                    if (val === "all") {
+                      setSelectedYear(undefined);
+                      setSelectedMonth(undefined);
+                    } else {
+                      setSelectedYear(Number(val));
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-[100px] h-8">
+                    <SelectValue placeholder="ปี" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">ทุกปี</SelectItem>
+                    {Array.from({ length: 5 }, (_, i) => now.getFullYear() - i).map((y) => (
+                      <SelectItem key={y} value={String(y)}>{y + 543}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => {
+                    if (selectedMonth !== undefined && selectedYear !== undefined) {
+                      if (selectedMonth === 12) {
+                        setSelectedMonth(1);
+                        setSelectedYear(selectedYear + 1);
+                      } else {
+                        setSelectedMonth(selectedMonth + 1);
+                      }
+                    }
+                  }}
+                  disabled={selectedMonth === undefined}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              {(selectedMonth !== undefined || selectedYear !== undefined) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={() => { setSelectedMonth(undefined); setSelectedYear(undefined); }}
+                >
+                  ดูทั้งหมด
+                </Button>
+              )}
+              {selectedMonth !== undefined && selectedYear !== undefined && (
+                <Badge variant="secondary" className="text-xs">
+                  {["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."][selectedMonth - 1]} {selectedYear + 543}
+                </Badge>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {statCards.map((stat) => (

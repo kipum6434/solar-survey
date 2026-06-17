@@ -1463,3 +1463,9 @@
 - [x] Sidebar: แสดง badge จำนวนงานรออนุมัติ ข้าง menu "รออนุมัติ"
 - [x] แก้ error "Failed to fetch dynamically imported module" เมื่อกดเปลี่ยนหน้าใน sidebar (stale chunk after deploy)
 - [x] หน้าส่งมอบงาน (Delivery tab): เพิ่มแจ้งเตือน/banner เมื่อมีงานค้างรออนุมัติ
+
+## Dashboard: ตัวกรองรายเดือน
+- [x] Backend: เพิ่ม optional month/year parameter ใน dashboard.stats procedure
+- [x] Backend: แก้ getDashboardStats ให้กรองตาม createdAt ของเดือนที่เลือก
+- [x] Frontend: เพิ่ม month/year picker ใน Dashboard header
+- [x] Frontend: ส่ง month/year parameter ไปกับ query
