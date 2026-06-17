@@ -1452,3 +1452,9 @@
 ## SharedSurvey: แสดงข้อมูลทางเทคนิคครบถ้วน
 - [x] SharedSurvey (survey-field): เพิ่มแสดง แบตเตอรี่, Optimizer, ราคาเสนอ, ยี่ห้อแผง, ประเภทระบบ, หมายเหตุสำรวจ
 - [x] SharedSurvey (share/installation): เพิ่มแสดงข้อมูลทางเทคนิคครบถ้วนเหมือนหน้า survey-field
+
+## SharedSurvey: ปรับปรุงหน้าแชร์ช่าง (Round 2)
+- [x] ซ่อนราคาเสนอ (quotedPrice) จากหน้าแชร์ช่าง (SharedSurvey + SharedSurveyField)
+- [x] Highlight แบตเตอรี่ (needBattery) ด้วยสีพิเศษ (bg-blue-50 + border)
+- [x] Highlight Optimizer (needOptimizer) ด้วยสีพิเศษ (bg-purple-50 + border)
+- [x] เพิ่มปุ่ม "โทรหาลูกค้า" (tel: link) ในหน้าแชร์ช่าง (SharedSurvey + SharedSurveyField)

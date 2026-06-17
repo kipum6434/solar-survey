@@ -569,7 +569,14 @@ export default function SharedSurveyField() {
                 </span>
               )}
             </div>
-            {c.phone && <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" />{formatPhone(c.phone)}</div>}
+            {c.phone && (
+              <div className="flex items-center gap-2">
+                <Phone className="h-4 w-4 text-muted-foreground" />{formatPhone(c.phone)}
+                <a href={`tel:${c.phone}`} className="ml-2 inline-flex items-center gap-1 bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-3 py-1 rounded-full transition-colors">
+                  <Phone className="h-3 w-3" />โทรหาลูกค้า
+                </a>
+              </div>
+            )}
             {c.fullAddress && (
               <div className="flex items-start gap-2">
                 <MapPin className="h-4 w-4 text-blue-500 mt-0.5" />
@@ -608,10 +615,17 @@ export default function SharedSurveyField() {
               {s.panelCount && <div className="flex items-center gap-2">จำนวนแผง: {s.panelCount} แผง</div>}
               {s.panelBrand && <div className="flex items-center gap-2">ยี่ห้อแผง: {s.panelBrand}</div>}
               {s.inverterModel && <div className="flex items-center gap-2">อินเวอร์เตอร์: {s.inverterModel}</div>}
-              {s.quotedPrice && <div className="flex items-center gap-2">ราคาเสนอ: {Number(s.quotedPrice).toLocaleString()} บาท</div>}
               {s.systemType && <div className="flex items-center gap-2">ประเภทระบบ: {s.systemType === "hybrid" ? "Hybrid" : s.systemType === "string" ? "String" : s.systemType === "micro" ? "Micro" : "ทั้งสอง"}</div>}
-              {(s as any).needBattery && (s as any).needBattery !== "-" && <div className="flex items-center gap-2"><Package className="h-4 w-4 text-blue-500" />แบตเตอรี่: {(s as any).needBattery}</div>}
-              {(s as any).needOptimizer && (s as any).needOptimizer !== "-" && <div className="flex items-center gap-2"><Wrench className="h-4 w-4 text-muted-foreground" />Optimizer: {(s as any).needOptimizer}</div>}
+              {(s as any).needBattery && (s as any).needBattery !== "-" && (
+                <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-md px-3 py-1.5 text-blue-800 font-medium">
+                  <Package className="h-4 w-4 text-blue-600" />แบตเตอรี่: {(s as any).needBattery}
+                </div>
+              )}
+              {(s as any).needOptimizer && (s as any).needOptimizer !== "-" && (
+                <div className="flex items-center gap-2 bg-purple-50 border border-purple-200 rounded-md px-3 py-1.5 text-purple-800 font-medium">
+                  <Wrench className="h-4 w-4 text-purple-600" />Optimizer: {(s as any).needOptimizer}
+                </div>
+              )}
               {s.surveyNotes && <div className="mt-2 pt-2 border-t"><p className="text-xs text-muted-foreground font-medium mb-1">หมายเหตุสำรวจ:</p><p className="text-sm whitespace-pre-wrap">{s.surveyNotes}</p></div>}
             </CardContent>
           </Card>
