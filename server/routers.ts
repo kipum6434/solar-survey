@@ -2204,6 +2204,10 @@ const installerTeamRouter = router({
 
 // ==================== DELIVERY ROUTER ====================
 const deliveryRouter = router({
+  pendingCount: protectedProcedure
+    .query(async () => {
+      return db.getPendingApprovalCount();
+    }),
   list: protectedProcedure
     .input(z.object({
       page: z.number().optional(),

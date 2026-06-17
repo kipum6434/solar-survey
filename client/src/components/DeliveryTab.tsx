@@ -430,6 +430,17 @@ export default function DeliveryTab({ surveyId, installationStatus, surveyData, 
           </div>
         </CardHeader>
         <CardContent>
+          {/* Pending approval alert banner */}
+          {deliveryStatus === "submitted" && (
+            <div className="flex items-start gap-3 p-4 mb-4 rounded-lg border border-blue-200 bg-blue-50 text-blue-800">
+              <Info className="h-5 w-5 mt-0.5 shrink-0 text-blue-600" />
+              <div>
+                <p className="font-semibold text-sm">งานนี้ส่งมอบแล้ว รอการอนุมัติจากแอดมิน</p>
+                <p className="text-xs mt-1 text-blue-600">กรุณาตรวจสอบรูปภาพและข้อมูลให้ครบถ้วน แล้วกดอนุมัติหรือปฏิเสธ</p>
+              </div>
+            </div>
+          )}
+
           {/* Delivery info details */}
           {deliveryInfo && (deliveryInfo.deliverySubmittedAt || deliveryInfo.deliveryApprovedAt || deliveryInfo.deliveryRejectionReason) && (
             <div className="space-y-2 text-sm mb-4">

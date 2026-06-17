@@ -2833,6 +2833,15 @@ export async function getPendingApprovals(opts: {
   };
 }
 
+export async function getPendingApprovalCount(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.select({ count: sql<number>`count(*)` })
+    .from(surveys)
+    .where(eq(surveys.deliveryStatus, "submitted"));
+  return Number(result[0]?.count || 0);
+}
+
 // ==================== POSTPONE / CANCEL LOGS ====================
 
 export async function createPostponeCancelLog(data: InsertPostponeCancelLog) {

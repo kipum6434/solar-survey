@@ -1458,3 +1458,8 @@
 - [x] Highlight แบตเตอรี่ (needBattery) ด้วยสีพิเศษ (bg-blue-50 + border)
 - [x] Highlight Optimizer (needOptimizer) ด้วยสีพิเศษ (bg-purple-50 + border)
 - [x] เพิ่มปุ่ม "โทรหาลูกค้า" (tel: link) ในหน้าแชร์ช่าง (SharedSurvey + SharedSurveyField)
+
+## Bug Fixes & UX Improvements - Sidebar + Approvals + Delivery
+- [x] Sidebar: แสดง badge จำนวนงานรออนุมัติ ข้าง menu "รออนุมัติ"
+- [x] แก้ error "Failed to fetch dynamically imported module" เมื่อกดเปลี่ยนหน้าใน sidebar (stale chunk after deploy)
+- [x] หน้าส่งมอบงาน (Delivery tab): เพิ่มแจ้งเตือน/banner เมื่อมีงานค้างรออนุมัติ

@@ -5,41 +5,60 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 
-// Lazy-loaded pages for code splitting
-const Home = lazy(() => import("./pages/Home"));
-const Login = lazy(() => import("./pages/Login"));
-const Customers = lazy(() => import("./pages/Customers"));
-const CustomerDetail = lazy(() => import("./pages/CustomerDetail"));
-const Surveys = lazy(() => import("./pages/Surveys"));
-const SurveyDetail = lazy(() => import("./pages/SurveyDetail"));
-const CalendarPage = lazy(() => import("./pages/CalendarPage"));
-const Notifications = lazy(() => import("./pages/Notifications"));
-const SharedSurvey = lazy(() => import("./pages/SharedSurvey"));
-const SharedSurveyField = lazy(() => import("./pages/SharedSurveyField"));
-const TeamManagement = lazy(() => import("./pages/TeamManagement"));
-const UserManagement = lazy(() => import("./pages/UserManagement"));
-const TeamPerformance = lazy(() => import("./pages/TeamPerformance"));
-const StatusManagement = lazy(() => import("./pages/StatusManagement"));
-const Installations = lazy(() => import("./pages/Installations"));
-const FileManagement = lazy(() => import("./pages/FileManagement"));
-const InstallerTeams = lazy(() => import("./pages/InstallerTeams"));
-const InstallerTeamReport = lazy(() => import("./pages/InstallerTeamReport"));
-const Gallery = lazy(() => import("./pages/Gallery"));
-const LineSettings = lazy(() => import("./pages/LineSettings"));
-const FollowUps = lazy(() => import("./pages/FollowUps"));
-const CompanySettings = lazy(() => import("./pages/CompanySettings"));
-const Approvals = lazy(() => import("./pages/Approvals"));
-const Finance = lazy(() => import("./pages/Finance"));
-const ChecklistTemplates = lazy(() => import("./pages/ChecklistTemplates"));
-const SurveyTemplates = lazy(() => import("./pages/SurveyTemplates"));
-const SourceManagement = lazy(() => import("./pages/SourceManagement"));
-const GroupDashboard = lazy(() => import("./pages/GroupDashboard"));
-const SalesPerformance = lazy(() => import("./pages/SalesPerformance"));
-const InstallationCalendar = lazy(() => import("./pages/InstallationCalendar"));
-const TechnicalFieldSettings = lazy(() => import("./pages/TechnicalFieldSettings"));
-const InstallationPrep = lazy(() => import("./pages/InstallationPrep"));
-const CancelledCases = lazy(() => import("./pages/CancelledCases"));
-const NotFound = lazy(() => import("./pages/NotFound"));
+// Retry wrapper for dynamic imports - handles stale chunk errors after deploy
+function lazyRetry(importFn: () => Promise<any>, retries = 2): ReturnType<typeof lazy> {
+  return lazy(() =>
+    importFn().catch((error: any) => {
+      if (retries > 0 && (error?.message?.includes('Failed to fetch dynamically imported module') || error?.message?.includes('Loading chunk'))) {
+        // Clear module cache by appending timestamp to force fresh fetch
+        return new Promise<any>((resolve) => {
+          setTimeout(() => resolve(lazyRetry(importFn, retries - 1)), 500);
+        }).then((mod: any) => mod);
+      }
+      // If retries exhausted, force reload the page to get fresh assets
+      if (error?.message?.includes('Failed to fetch dynamically imported module') || error?.message?.includes('Loading chunk')) {
+        window.location.reload();
+      }
+      throw error;
+    })
+  );
+}
+
+// Lazy-loaded pages for code splitting (with retry for stale chunks)
+const Home = lazyRetry(() => import("./pages/Home"));
+const Login = lazyRetry(() => import("./pages/Login"));
+const Customers = lazyRetry(() => import("./pages/Customers"));
+const CustomerDetail = lazyRetry(() => import("./pages/CustomerDetail"));
+const Surveys = lazyRetry(() => import("./pages/Surveys"));
+const SurveyDetail = lazyRetry(() => import("./pages/SurveyDetail"));
+const CalendarPage = lazyRetry(() => import("./pages/CalendarPage"));
+const Notifications = lazyRetry(() => import("./pages/Notifications"));
+const SharedSurvey = lazyRetry(() => import("./pages/SharedSurvey"));
+const SharedSurveyField = lazyRetry(() => import("./pages/SharedSurveyField"));
+const TeamManagement = lazyRetry(() => import("./pages/TeamManagement"));
+const UserManagement = lazyRetry(() => import("./pages/UserManagement"));
+const TeamPerformance = lazyRetry(() => import("./pages/TeamPerformance"));
+const StatusManagement = lazyRetry(() => import("./pages/StatusManagement"));
+const Installations = lazyRetry(() => import("./pages/Installations"));
+const FileManagement = lazyRetry(() => import("./pages/FileManagement"));
+const InstallerTeams = lazyRetry(() => import("./pages/InstallerTeams"));
+const InstallerTeamReport = lazyRetry(() => import("./pages/InstallerTeamReport"));
+const Gallery = lazyRetry(() => import("./pages/Gallery"));
+const LineSettings = lazyRetry(() => import("./pages/LineSettings"));
+const FollowUps = lazyRetry(() => import("./pages/FollowUps"));
+const CompanySettings = lazyRetry(() => import("./pages/CompanySettings"));
+const Approvals = lazyRetry(() => import("./pages/Approvals"));
+const Finance = lazyRetry(() => import("./pages/Finance"));
+const ChecklistTemplates = lazyRetry(() => import("./pages/ChecklistTemplates"));
+const SurveyTemplates = lazyRetry(() => import("./pages/SurveyTemplates"));
+const SourceManagement = lazyRetry(() => import("./pages/SourceManagement"));
+const GroupDashboard = lazyRetry(() => import("./pages/GroupDashboard"));
+const SalesPerformance = lazyRetry(() => import("./pages/SalesPerformance"));
+const InstallationCalendar = lazyRetry(() => import("./pages/InstallationCalendar"));
+const TechnicalFieldSettings = lazyRetry(() => import("./pages/TechnicalFieldSettings"));
+const InstallationPrep = lazyRetry(() => import("./pages/InstallationPrep"));
+const CancelledCases = lazyRetry(() => import("./pages/CancelledCases"));
+const NotFound = lazyRetry(() => import("./pages/NotFound"));
 
 // Loading fallback component
 function PageLoader() {

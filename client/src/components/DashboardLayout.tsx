@@ -261,6 +261,11 @@ function DashboardLayoutContent({
     refetchInterval: 60000,
   });
 
+  // Pending approval count for sidebar badge
+  const { data: pendingApprovalCount } = trpc.delivery.pendingCount.useQuery(undefined, {
+    refetchInterval: 30000,
+  });
+
   useEffect(() => {
     if (isCollapsed) {
       setIsResizing(false);
@@ -402,6 +407,8 @@ function DashboardLayoutContent({
               <li aria-hidden="true" className="my-2 mx-2 h-px bg-sidebar-border" />
               {commonItems.map((item) => {
                 const isActive = location === item.path || location.startsWith(item.path + "/");
+                const isApprovalItem = item.path === "/approvals";
+                const approvalNum = isApprovalItem ? (pendingApprovalCount ?? 0) : 0;
                 return (
                   <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton
@@ -412,6 +419,11 @@ function DashboardLayoutContent({
                     >
                       <item.icon className="h-4 w-4" />
                       <span className="flex-1">{item.label}</span>
+                      {isApprovalItem && approvalNum > 0 && (
+                        <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 text-[10px] font-bold rounded-full bg-red-500 text-white">
+                          {approvalNum > 99 ? "99+" : approvalNum}
+                        </span>
+                      )}
                       {isActive && !isCollapsed && <ChevronRight className="h-3 w-3 opacity-50" />}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
