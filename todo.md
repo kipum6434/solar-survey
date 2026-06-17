@@ -1448,3 +1448,7 @@
 - [x] Timeline: แสดงวันเดิม → วันใหม่ เมื่อมี newDate ใน postpone_cancel_logs
 - [x] Timeline: แสดงเหตุผลการเลื่อนใน log entry
 - [x] ตรวจสอบว่า dialog เลื่อนติดตั้งมีช่องกรอกเหตุผลครบทั้ง SharedSurvey และ SurveyDetail
+
+## SharedSurvey: แสดงข้อมูลทางเทคนิคครบถ้วน
+- [x] SharedSurvey (survey-field): เพิ่มแสดง แบตเตอรี่, Optimizer, ราคาเสนอ, ยี่ห้อแผง, ประเภทระบบ, หมายเหตุสำรวจ
+- [x] SharedSurvey (share/installation): เพิ่มแสดงข้อมูลทางเทคนิคครบถ้วนเหมือนหน้า survey-field

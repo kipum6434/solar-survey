@@ -14,7 +14,7 @@ import {
   Camera, MapPin, Calendar, Phone, Zap, Home, Gauge,
   X, Sun, Upload, Trash2, CheckCircle2, Clock,
   Save, FileText, ChevronDown, ChevronUp, Info, User, ImagePlus, GripVertical,
-  PauseCircle, XCircle, History, MessageSquare,
+  PauseCircle, XCircle, History, MessageSquare, Package, Wrench,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -596,6 +596,26 @@ export default function SharedSurveyField() {
             {c.phaseType && <div className="flex items-center gap-2"><Gauge className="h-4 w-4 text-muted-foreground" />ระบบไฟ: {c.phaseType === "single" ? "1 เฟส" : "3 เฟส"}</div>}
           </CardContent>
         </Card>
+
+        {/* Technical Info Summary (read-only, always visible) */}
+        {(s.systemSize || s.panelCount || s.panelBrand || s.inverterModel || s.quotedPrice || s.systemType || (s as any).needBattery || (s as any).needOptimizer || s.surveyNotes) && (
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2"><FileText className="h-4 w-4" /> ข้อมูลทางเทคนิค</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {s.systemSize && <div className="flex items-center gap-2"><Sun className="h-4 w-4 text-amber-500" />ขนาดระบบ: {s.systemSize} kW</div>}
+              {s.panelCount && <div className="flex items-center gap-2">จำนวนแผง: {s.panelCount} แผง</div>}
+              {s.panelBrand && <div className="flex items-center gap-2">ยี่ห้อแผง: {s.panelBrand}</div>}
+              {s.inverterModel && <div className="flex items-center gap-2">อินเวอร์เตอร์: {s.inverterModel}</div>}
+              {s.quotedPrice && <div className="flex items-center gap-2">ราคาเสนอ: {Number(s.quotedPrice).toLocaleString()} บาท</div>}
+              {s.systemType && <div className="flex items-center gap-2">ประเภทระบบ: {s.systemType === "hybrid" ? "Hybrid" : s.systemType === "string" ? "String" : s.systemType === "micro" ? "Micro" : "ทั้งสอง"}</div>}
+              {(s as any).needBattery && (s as any).needBattery !== "-" && <div className="flex items-center gap-2"><Package className="h-4 w-4 text-blue-500" />แบตเตอรี่: {(s as any).needBattery}</div>}
+              {(s as any).needOptimizer && (s as any).needOptimizer !== "-" && <div className="flex items-center gap-2"><Wrench className="h-4 w-4 text-muted-foreground" />Optimizer: {(s as any).needOptimizer}</div>}
+              {s.surveyNotes && <div className="mt-2 pt-2 border-t"><p className="text-xs text-muted-foreground font-medium mb-1">หมายเหตุสำรวจ:</p><p className="text-sm whitespace-pre-wrap">{s.surveyNotes}</p></div>}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Template Fields OR Legacy Technical/Customer Forms */}
         {hasTemplate ? (

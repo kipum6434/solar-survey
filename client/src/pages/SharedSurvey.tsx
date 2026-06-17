@@ -254,7 +254,12 @@ export default function SharedSurvey() {
               {c.phaseType && <div className="flex items-center gap-2"><Gauge className="h-4 w-4 text-muted-foreground" />ระบบไฟ: {c.phaseType === "single" ? "1 เฟส" : "3 เฟส"}</div>}
               {s.systemSize && <div className="flex items-center gap-2"><Sun className="h-4 w-4 text-amber-500" />ขนาดระบบ: {s.systemSize} kW</div>}
               {s.panelCount && <div className="flex items-center gap-2">จำนวนแผง: {s.panelCount} แผง</div>}
+              {s.panelBrand && <div className="flex items-center gap-2">ยี่ห้อแผง: {s.panelBrand}</div>}
               {s.inverterModel && <div className="flex items-center gap-2">อินเวอร์เตอร์: {s.inverterModel}</div>}
+              {s.quotedPrice && <div className="flex items-center gap-2">ราคาเสนอ: {Number(s.quotedPrice).toLocaleString()} บาท</div>}
+              {s.systemType && <div className="flex items-center gap-2">ประเภทระบบ: {s.systemType === "hybrid" ? "Hybrid" : s.systemType === "string" ? "String" : s.systemType === "micro" ? "Micro" : "ทั้งสอง"}</div>}
+              {s.needBattery && s.needBattery !== "-" && <div className="flex items-center gap-2"><Package className="h-4 w-4 text-blue-500" />แบตเตอรี่: {s.needBattery}</div>}
+              {s.needOptimizer && s.needOptimizer !== "-" && <div className="flex items-center gap-2"><Wrench className="h-4 w-4 text-muted-foreground" />Optimizer: {s.needOptimizer}</div>}
             </CardContent>
           </Card>
         </div>
