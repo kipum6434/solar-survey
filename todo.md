@@ -1490,3 +1490,9 @@
 - [x] แก้ CompanySettings.tsx ให้ใช้ DashboardLayout
 - [x] แก้ LineSettings.tsx ให้ใ้ DashboardLayout
 - [x] ตรวจสอบว่า SharedSurvey, SharedSurveyField, Login, NotFound ไม่ต้องมี sidebar (เป็นหน้า public)
+
+## Performance Optimization: หน้า Home โหลดช้า
+- [x] เพิ่ม staleTime ให้ QueryClient default (5 นาที) เพื่อ cache ข้อมูลระหว่าง navigation
+- [x] เพิ่ม server-side cache สำหรับ getS3BucketUsage (cache 5 นาที แทนที่จะ list objects ทุกครั้ง)
+- [x] เพิ่ม staleTime ให้ auth.me query เพื่อลด round-trip ตอนเปลี่ยนหน้า (ใช้ global default 5 นาที)
+- [x] เพิ่ม staleTime ให้ DashboardLayout queries (sourceGroups, unreadCount, etc.)

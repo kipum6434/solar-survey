@@ -255,16 +255,19 @@ function DashboardLayoutContent({
   const isMobile = useIsMobile();
 
   const { data: unreadCount } = trpc.notification.unreadCount.useQuery(undefined, {
+    staleTime: 30000,
     refetchInterval: 30000,
   });
 
   // Overdue follow-up count for sidebar badge
   const { data: overdueFollowUpCount } = trpc.followUp.overdueCount.useQuery(undefined, {
+    staleTime: 60000,
     refetchInterval: 60000,
   });
 
   // Pending approval count for sidebar badge
   const { data: pendingApprovalCount } = trpc.delivery.pendingCount.useQuery(undefined, {
+    staleTime: 30000,
     refetchInterval: 30000,
   });
 

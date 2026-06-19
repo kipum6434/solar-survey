@@ -121,6 +121,13 @@ export async function storageGet(
 
 const FREE_TIER_BYTES = 5 * 1024 * 1024 * 1024; // 5 GB
 
+// Server-side cache for S3 usage (avoid listing 19k+ objects on every request)
+let s3UsageCache: {
+  data: { totalSize: number; totalObjects: number; freeTierLimit: number; usagePercent: number; bucketName: string; region: string } | null;
+  timestamp: number;
+} = { data: null, timestamp: 0 };
+const S3_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 export async function getS3BucketUsage(): Promise<{
   totalSize: number;
   totalObjects: number;
@@ -129,6 +136,11 @@ export async function getS3BucketUsage(): Promise<{
   bucketName: string;
   region: string;
 }> {
+  // Return cached result if still fresh
+  if (s3UsageCache.data && (Date.now() - s3UsageCache.timestamp) < S3_CACHE_TTL) {
+    return s3UsageCache.data;
+  }
+
   const client = getS3Client();
   const bucket = getBucket();
   const region = process.env.AWS_S3_REGION!;
@@ -160,7 +172,7 @@ export async function getS3BucketUsage(): Promise<{
 
   const usagePercent = (totalSize / FREE_TIER_BYTES) * 100;
 
-  return {
+  const result = {
     totalSize,
     totalObjects,
     freeTierLimit: FREE_TIER_BYTES,
@@ -168,4 +180,9 @@ export async function getS3BucketUsage(): Promise<{
     bucketName: bucket,
     region,
   };
+
+  // Update cache
+  s3UsageCache = { data: result, timestamp: Date.now() };
+
+  return result;
 }

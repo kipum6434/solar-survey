@@ -44,7 +44,7 @@ export default function Home() {
   const { data: activities, isLoading: activitiesLoading } = trpc.dashboard.recentActivities.useQuery({ limit: 10 }, { enabled: isAdmin });
   const { data: upcomingSurveys } = trpc.survey.list.useQuery({ limit: 5, status: "scheduled" });
   const { data: storageStats } = trpc.storage.stats.useQuery();
-  const { data: s3Usage } = trpc.storage.s3Usage.useQuery(undefined, { refetchInterval: 60000 });
+  const { data: s3Usage } = trpc.storage.s3Usage.useQuery(undefined, { staleTime: 5 * 60 * 1000, refetchInterval: 5 * 60 * 1000 });
 
   const statCards = [
     { label: "ลูกค้าทั้งหมด", value: stats?.totalCustomers ?? 0, icon: Users, color: "from-blue-500 to-blue-600", link: "/customers" },
