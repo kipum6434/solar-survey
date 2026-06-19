@@ -1,4 +1,5 @@
 import { useState } from "react";
+import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,7 @@ export default function LineSettings() {
   const [newTargetLabel, setNewTargetLabel] = useState("");
 
   return (
+    <DashboardLayout>
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">ตั้งค่า LINE</h1>
@@ -436,5 +438,6 @@ export default function LineSettings() {
         </CardContent>
       </Card>
     </div>
+    </DashboardLayout>
   );
 }

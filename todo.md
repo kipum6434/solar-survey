@@ -1485,3 +1485,8 @@
 - [x] แก้ SurveyDetail.tsx, SharedSurvey.tsx, DeliveryTab.tsx ให้ fetch documentNumber ก่อน export PDF
 - [x] เขียน vitest test สำหรับ documentSettings procedures
 - [x] Seed default values (survey_doc_number = FM-SA-01-04 REV.00, install_doc_number = FM-SA-01-04 REV.00)
+## Bug Fix: หน้า Settings ไม่มี sidebar/navigation กลับหน้าหลัก
+- [x] แก้ DocumentSettings.tsx ให้ใช้ DashboardLayout
+- [x] แก้ CompanySettings.tsx ให้ใช้ DashboardLayout
+- [x] แก้ LineSettings.tsx ให้ใ้ DashboardLayout
+- [x] ตรวจสอบว่า SharedSurvey, SharedSurveyField, Login, NotFound ไม่ต้องมี sidebar (เป็นหน้า public)

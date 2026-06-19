@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,13 +101,16 @@ export default function CompanySettings() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
+    <DashboardLayout>
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">ตั้งค่าบริษัท</h1>
@@ -348,5 +352,6 @@ export default function CompanySettings() {
         </CardContent>
       </Card>
     </div>
+    </DashboardLayout>
   );
 }

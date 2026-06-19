@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Stamp, Save, Loader2, CheckCircle2, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
+import DashboardLayout from "@/components/DashboardLayout";
 
 export default function DocumentSettings() {
   const { data: settings, isLoading, refetch } = trpc.documentSettings.list.useQuery();
@@ -51,13 +52,16 @@ export default function DocumentSettings() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
-      </div>
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
+    <DashboardLayout>
     <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
@@ -175,5 +179,6 @@ export default function DocumentSettings() {
         )}
       </div>
     </div>
+    </DashboardLayout>
   );
 }
