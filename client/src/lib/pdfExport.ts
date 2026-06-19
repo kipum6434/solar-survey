@@ -247,6 +247,7 @@ interface HeaderConfig {
   headerColor: string; // hex color like '#f59e0b'
   companyInfo?: CompanyInfo | null;
   logoData?: string | null;
+  documentNumber?: string; // ISO document number e.g. FM-SA-01-04 REV.00
 }
 
 function buildHeader(
@@ -254,7 +255,7 @@ function buildHeader(
   currentPage: number,
   pageCount: number,
 ): any {
-  const { companyName, reportTitle, customerName, surveyId, headerColor, companyInfo, logoData } = config;
+  const { companyName, reportTitle, customerName, surveyId, headerColor, companyInfo, logoData, documentNumber } = config;
   const hasCompanyInfo = companyInfo?.companyName || companyInfo?.phone || companyInfo?.address;
 
   // Build text content for the header
@@ -291,7 +292,7 @@ function buildHeader(
       margin: [0, 0, 0, 1] as number[],
     });
 
-    // Line 4: Customer + job ID + page number
+    // Line 4: Customer + job ID + document number + page number
     headerTexts.push({
       columns: [
         {
@@ -301,7 +302,7 @@ function buildHeader(
           width: "*" as any,
         },
         {
-          text: `หน้า ${currentPage}/${pageCount}`,
+          text: [documentNumber ? `${documentNumber}  |  ` : "", `หน้า ${currentPage}/${pageCount}`],
           fontSize: 8,
           color: "#ffffff",
           alignment: "right" as const,
@@ -329,7 +330,7 @@ function buildHeader(
           width: "*" as any,
         },
         {
-          text: `หน้า ${currentPage}/${pageCount}`,
+          text: [documentNumber ? `${documentNumber}  |  ` : "", `หน้า ${currentPage}/${pageCount}`],
           fontSize: 8,
           color: "#ffffff",
           alignment: "right" as const,
@@ -561,6 +562,7 @@ export async function exportSurveyPDF(
     headerColor,
     companyInfo,
     logoData,
+    documentNumber: "FM-SA-01-04 REV.00",
   };
 
   // Build content
@@ -707,6 +709,7 @@ export async function exportInstallationPDF(
     headerColor,
     companyInfo,
     logoData,
+    documentNumber: "FM-SA-01-04 REV.00",
   };
 
   // Build content

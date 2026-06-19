@@ -1469,3 +1469,7 @@
 - [x] Backend: แก้ getDashboardStats ให้กรองตาม createdAt ของเดือนที่เลือก
 - [x] Frontend: เพิ่ม month/year picker ใน Dashboard header
 - [x] Frontend: ส่ง month/year parameter ไปกับ query
+
+## ISO Document Number: FM-SA-01-04 REV.00
+- [x] เพิ่มเลขทะเบียนเอกสาร FM-SA-01-04 REV.00 ใน header ของ exportSurveyPDF
+- [x] เพิ่มเลขทะเบียนเอกสารใน exportInstallationPDF
