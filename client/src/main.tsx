@@ -11,8 +11,8 @@ import "./index.css";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes - data stays fresh, avoids refetch on navigation
-      gcTime: 10 * 60 * 1000, // 10 minutes - keep cache longer
+      staleTime: 30 * 1000, // 30 seconds - avoids duplicate fetches on quick navigation
+      gcTime: 5 * 60 * 1000, // 5 minutes - keep cache for back/forward navigation
       refetchOnWindowFocus: false, // don't refetch when user switches tabs
     },
   },

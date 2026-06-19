@@ -1496,3 +1496,8 @@
 - [x] เพิ่ม server-side cache สำหรับ getS3BucketUsage (cache 5 นาที แทนที่จะ list objects ทุกครั้ง)
 - [x] เพิ่ม staleTime ให้ auth.me query เพื่อลด round-trip ตอนเปลี่ยนหน้า (ใช้ global default 5 นาที)
 - [x] เพิ่ม staleTime ให้ DashboardLayout queries (sourceGroups, unreadCount, etc.)
+
+## Performance Fix: ลดเวลา delay ข้อมูลหลังอัปโหลด
+- [x] เพิ่ม invalidateS3UsageCache() ใน storagePut/storageDelete เพื่อ clear cache ทันทีหลังอัปโหลด/ลบ
+- [x] ลด global staleTime จาก 5 นาที เป็น 30 วินาที (ลด delay แต่ยังลด duplicate fetch ระหว่าง navigation)
+- [x] ลด s3Usage query staleTime จาก 5 นาที เป็น 60 วินาที + server cache invalidate ทันทีหลัง upload/delete

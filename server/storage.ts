@@ -82,6 +82,9 @@ export async function storagePut(
     })
   );
 
+  // Invalidate S3 usage cache after successful upload
+  invalidateS3UsageCache();
+
   const url = buildPublicUrl(bucket, region, key);
   return { key, url };
 }
@@ -98,6 +101,10 @@ export async function storageDelete(relKey: string): Promise<boolean> {
         Key: key,
       })
     );
+
+    // Invalidate S3 usage cache after successful delete
+    invalidateS3UsageCache();
+
     return true;
   } catch (e) {
     console.warn("[Storage] Delete failed:", e);
@@ -127,6 +134,11 @@ let s3UsageCache: {
   timestamp: number;
 } = { data: null, timestamp: 0 };
 const S3_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+/** Invalidate S3 usage cache — call after upload/delete so next query fetches fresh data */
+export function invalidateS3UsageCache(): void {
+  s3UsageCache = { data: null, timestamp: 0 };
+}
 
 export async function getS3BucketUsage(): Promise<{
   totalSize: number;
