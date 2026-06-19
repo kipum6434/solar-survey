@@ -1,6 +1,6 @@
 import { eq, and, or, like, desc, gte, lte, sql, inArray, not, asc, isNotNull, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory, installerTeams, InsertInstallerTeam, deliveryComments, InsertDeliveryComment, lineGroups, InsertLineGroup, lineNotificationTargets, InsertLineNotificationTarget, companySettings, InsertCompanySettings, postponeCancelLogs, InsertPostponeCancelLog, deliveryForms, InsertDeliveryForm, deliveryChecklistTemplates, InsertDeliveryChecklistTemplate, payments, InsertPayment, sourceGroups, InsertSourceGroup, surveyTemplates, InsertSurveyTemplate, surveyTemplateFields, InsertSurveyTemplateField, surveyTemplateData, InsertSurveyTemplateData, paymentCollections, InsertPaymentCollection, technicalFieldDefinitions, InsertTechnicalFieldDefinition, surveyTechnicalValues, InsertSurveyTechnicalValue } from "../drizzle/schema";
+import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory, installerTeams, InsertInstallerTeam, deliveryComments, InsertDeliveryComment, lineGroups, InsertLineGroup, lineNotificationTargets, InsertLineNotificationTarget, companySettings, InsertCompanySettings, postponeCancelLogs, InsertPostponeCancelLog, deliveryForms, InsertDeliveryForm, deliveryChecklistTemplates, InsertDeliveryChecklistTemplate, payments, InsertPayment, sourceGroups, InsertSourceGroup, surveyTemplates, InsertSurveyTemplate, surveyTemplateFields, InsertSurveyTemplateField, surveyTemplateData, InsertSurveyTemplateData, paymentCollections, InsertPaymentCollection, technicalFieldDefinitions, InsertTechnicalFieldDefinition, surveyTechnicalValues, InsertSurveyTechnicalValue, documentSettings, InsertDocumentSetting } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -3483,4 +3483,36 @@ export async function reopenSurvey(surveyId: number) {
   if (!db) return null;
   await db.update(surveys).set({ status: "follow_up" } as any).where(eq(surveys.id, surveyId));
   return { success: true };
+}
+
+
+// ==================== DOCUMENT SETTINGS ====================
+export async function getDocumentSettings() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(documentSettings).orderBy(asc(documentSettings.id));
+}
+
+export async function getDocumentSettingByKey(key: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(documentSettings).where(eq(documentSettings.settingKey, key)).limit(1);
+  return rows[0] || null;
+}
+
+export async function upsertDocumentSetting(data: { settingKey: string; label: string; documentNumber: string; description?: string }) {
+  const db = await getDb();
+  if (!db) return null;
+  const existing = await getDocumentSettingByKey(data.settingKey);
+  if (existing) {
+    await db.update(documentSettings).set({
+      label: data.label,
+      documentNumber: data.documentNumber,
+      description: data.description ?? existing.description,
+    }).where(eq(documentSettings.id, existing.id));
+    return { ...existing, ...data };
+  } else {
+    const result = await db.insert(documentSettings).values(data as any);
+    return { id: Number((result as any)[0].insertId), ...data };
+  }
 }

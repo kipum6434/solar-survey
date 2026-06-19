@@ -59,6 +59,7 @@ export default function SurveyDetail() {
   };
 
   const { data: companySettings } = trpc.companySettings.get.useQuery(undefined, { retry: false });
+  const { data: surveyDocSetting } = trpc.documentSettings.getByKey.useQuery({ key: "survey_doc_number" }, { retry: false });
   const companyInfoForPdf: CompanyInfo | null = companySettings ? {
     companyName: companySettings.companyName,
     phone: companySettings.phone,
@@ -406,6 +407,7 @@ export default function SurveyDetail() {
                     imageProxyFn,
                     companyInfoForPdf,
                     categoryOrder,
+                    surveyDocSetting?.documentNumber,
                   );
                   toast.success("Export PDF สำเร็จ");
                 } catch (err: any) {

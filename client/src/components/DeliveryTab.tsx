@@ -55,6 +55,7 @@ export default function DeliveryTab({ surveyId, installationStatus, surveyData, 
   };
 
   const { data: companySettings } = trpc.companySettings.get.useQuery(undefined, { retry: false });
+  const { data: installDocSetting } = trpc.documentSettings.getByKey.useQuery({ key: "install_doc_number" }, { retry: false });
   const companyInfoForPdf: CompanyInfo | null = companySettings ? {
     companyName: companySettings.companyName,
     phone: companySettings.phone,
@@ -359,6 +360,7 @@ export default function DeliveryTab({ surveyId, installationStatus, surveyData, 
                         imageProxyFn,
                         companyInfoForPdf,
                         categoryOrder,
+                        installDocSetting?.documentNumber,
                       );
                       toast.success("Export PDF สำเร็จ");
                     } catch (err: any) {

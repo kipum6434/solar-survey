@@ -583,3 +583,16 @@ export const surveyTechnicalValues = mysqlTable("survey_technical_values", {
 });
 export type SurveyTechnicalValue = typeof surveyTechnicalValues.$inferSelect;
 export type InsertSurveyTechnicalValue = typeof surveyTechnicalValues.$inferInsert;
+
+
+// ==================== DOCUMENT SETTINGS (ISO Document Numbers) ====================
+export const documentSettings = mysqlTable("document_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  settingKey: varchar("settingKey", { length: 100 }).notNull().unique(), // e.g. "survey_doc_number", "install_doc_number"
+  label: varchar("label", { length: 255 }).notNull(), // Thai display label
+  documentNumber: varchar("documentNumber", { length: 100 }).notNull(), // e.g. "FM-SA-01-04 REV.00"
+  description: text("description"), // optional description
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type DocumentSetting = typeof documentSettings.$inferSelect;
+export type InsertDocumentSetting = typeof documentSettings.$inferInsert;

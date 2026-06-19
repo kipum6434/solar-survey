@@ -542,6 +542,7 @@ export async function exportSurveyPDF(
   imageProxyFn?: ImageProxyFn,
   companyInfo?: CompanyInfo | null,
   categoryOrder?: string[],
+  documentNumber?: string,
 ): Promise<void> {
   onProgress?.("กำลังเตรียมเอกสาร...");
   ensureFontsRegistered();
@@ -562,7 +563,7 @@ export async function exportSurveyPDF(
     headerColor,
     companyInfo,
     logoData,
-    documentNumber: "FM-SA-01-04 REV.00",
+    documentNumber: documentNumber || "FM-SA-01-04 REV.00",
   };
 
   // Build content
@@ -689,6 +690,7 @@ export async function exportInstallationPDF(
   imageProxyFn?: ImageProxyFn,
   companyInfo?: CompanyInfo | null,
   categoryOrder?: string[],
+  documentNumber?: string,
 ): Promise<void> {
   onProgress?.("กำลังเตรียมเอกสาร...");
   ensureFontsRegistered();
@@ -709,7 +711,7 @@ export async function exportInstallationPDF(
     headerColor,
     companyInfo,
     logoData,
-    documentNumber: "FM-SA-01-04 REV.00",
+    documentNumber: documentNumber || "FM-SA-01-04 REV.00",
   };
 
   // Build content

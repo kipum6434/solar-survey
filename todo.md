@@ -1473,3 +1473,15 @@
 ## ISO Document Number: FM-SA-01-04 REV.00
 - [x] เพิ่มเลขทะเบียนเอกสาร FM-SA-01-04 REV.00 ใน header ของ exportSurveyPDF
 - [x] เพิ่มเลขทะเบียนเอกสารใน exportInstallationPDF
+## ISO Document Number Settings (ตั้งค่าเลขทะเบียนเอกสารจากหน้า Settings)
+- [x] สร้าง DB table `document_settings` (key, label, documentNumber, updatedAt)
+- [x] สร้าง migration SQL และ apply
+- [x] สร้าง backend CRUD: documentSettings.list / documentSettings.upsert (adminProcedure)
+- [x] สร้าง backend publicProcedure: documentSettings.getByKey (สำหรับ PDF export ดึงค่า)
+- [x] สร้างหน้า DocumentSettings.tsx (admin) แสดง/แก้ไขเลขทะเบียนเอกสาร
+- [x] เพิ่มเมนู "เลขทะเบียนเอกสาร" ใน sidebar settings group
+- [x] เพิ่ม route ใน App.tsx
+- [x] แก้ pdfExport.ts ให้รับ documentNumber เป็น parameter (ลบ hardcode)
+- [x] แก้ SurveyDetail.tsx, SharedSurvey.tsx, DeliveryTab.tsx ให้ fetch documentNumber ก่อน export PDF
+- [x] เขียน vitest test สำหรับ documentSettings procedures
+- [x] Seed default values (survey_doc_number = FM-SA-01-04 REV.00, install_doc_number = FM-SA-01-04 REV.00)

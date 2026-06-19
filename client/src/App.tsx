@@ -58,6 +58,7 @@ const InstallationCalendar = lazyRetry(() => import("./pages/InstallationCalenda
 const TechnicalFieldSettings = lazyRetry(() => import("./pages/TechnicalFieldSettings"));
 const InstallationPrep = lazyRetry(() => import("./pages/InstallationPrep"));
 const CancelledCases = lazyRetry(() => import("./pages/CancelledCases"));
+const DocumentSettings = lazyRetry(() => import("./pages/DocumentSettings"));
 const NotFound = lazyRetry(() => import("./pages/NotFound"));
 
 // Loading fallback component
@@ -103,6 +104,7 @@ function Router() {
         <Route path="/finance/:group">{(params) => <Finance sourceMode={params.group} />}</Route>
         <Route path="/source-management" component={SourceManagement} />
         <Route path="/technical-field-settings" component={TechnicalFieldSettings} />
+        <Route path="/document-settings" component={DocumentSettings} />
         <Route path="/installation-prep" component={InstallationPrep} />
         <Route path="/cancelled-cases" component={CancelledCases} />
         <Route path="/survey-templates" component={SurveyTemplates} />

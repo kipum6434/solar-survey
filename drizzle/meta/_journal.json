@@ -246,6 +246,13 @@
       "when": 1779516893304,
       "tag": "0034_first_slipstream",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "5",
+      "when": 1781871657538,
+      "tag": "0035_flashy_loki",
+      "breakpoints": true
     }
   ]
 }

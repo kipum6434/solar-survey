@@ -2651,6 +2651,32 @@ const lineSettingsRouter = router({
   }),
 });
 
+// ==================== DOCUMENT SETTINGS ROUTER ====================
+const documentSettingsRouter = router({
+  list: protectedProcedure.query(async () => {
+    return db.getDocumentSettings();
+  }),
+
+  getByKey: publicProcedure
+    .input(z.object({ key: z.string() }))
+    .query(async ({ input }) => {
+      const setting = await db.getDocumentSettingByKey(input.key);
+      return setting;
+    }),
+
+  upsert: adminProcedure
+    .input(z.object({
+      settingKey: z.string().min(1),
+      label: z.string().min(1),
+      documentNumber: z.string().min(1),
+      description: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const result = await db.upsertDocumentSetting(input);
+      return result;
+    }),
+});
+
 // ==================== COMPANY SETTINGS ROUTER ====================
 const companySettingsRouter = router({
   get: publicProcedure.query(async () => {
@@ -3334,6 +3360,7 @@ export const appRouter = router({
   lineSettings: lineSettingsRouter,
   gallery: galleryRouter,
   companySettings: companySettingsRouter,
+  documentSettings: documentSettingsRouter,
   deliveryForm: deliveryFormRouter,
   checklistTemplate: checklistTemplateRouter,
   payment: paymentRouter,

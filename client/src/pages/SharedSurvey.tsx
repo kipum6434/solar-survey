@@ -53,6 +53,7 @@ export default function SharedSurvey() {
 
   // Company settings for PDF header
   const { data: companySettings } = trpc.companySettings.get.useQuery(undefined, { retry: false });
+  const { data: surveyDocSetting } = trpc.documentSettings.getByKey.useQuery({ key: "survey_doc_number" }, { retry: false });
   const companyInfoForPdf: CompanyInfo | null = companySettings ? {
     companyName: companySettings.companyName,
     phone: companySettings.phone,
@@ -181,6 +182,7 @@ export default function SharedSurvey() {
                     imageProxyFn,
                     companyInfoForPdf,
                     categoryOrder,
+                    surveyDocSetting?.documentNumber,
                   );
                   toast.success("Export PDF สำเร็จ");
                 } catch (err: any) {
@@ -522,6 +524,7 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
   };
 
   const { data: companySettings2 } = trpc.companySettings.get.useQuery(undefined, { retry: false });
+  const { data: installDocSetting } = trpc.documentSettings.getByKey.useQuery({ key: "install_doc_number" }, { retry: false });
   const companyInfoForPdf2: CompanyInfo | null = companySettings2 ? {
     companyName: companySettings2.companyName,
     phone: companySettings2.phone,
@@ -687,6 +690,7 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
                       imageProxyFn,
                       companyInfoForPdf2,
                       catOrder,
+                      installDocSetting?.documentNumber,
                     );
                     toast.success("Export PDF สำเร็จ");
                   } catch (err: any) {
