@@ -1501,3 +1501,10 @@
 - [x] เพิ่ม invalidateS3UsageCache() ใน storagePut/storageDelete เพื่อ clear cache ทันทีหลังอัปโหลด/ลบ
 - [x] ลด global staleTime จาก 5 นาที เป็น 30 วินาที (ลด delay แต่ยังลด duplicate fetch ระหว่าง navigation)
 - [x] ลด s3Usage query staleTime จาก 5 นาที เป็น 60 วินาที + server cache invalidate ทันทีหลัง upload/delete
+
+## Move S3 Usage Card to Storage Settings
+- [x] ลบ S3 usage card (Storage Usage Card) จาก Home.tsx
+- [x] ลบ s3Usage query จาก Home.tsx (ลบ storageStats ด้วยเพราะย้ายไปหน้า Storage Settings)
+- [x] สร้างหน้า StorageSettings.tsx พร้อม S3 usage card + file counts
+- [x] เพิ่มเมนู "พื้นที่จัดเก็บ" ใน sidebar settings group (DashboardLayout.tsx)
+- [x] เพิ่ม route /storage-settings ใน App.tsx

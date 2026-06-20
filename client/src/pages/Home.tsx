@@ -12,11 +12,6 @@ import {
   ArrowRight,
   TrendingUp,
   CalendarDays,
-  HardDrive,
-  Image,
-  FileText,
-  AlertTriangle,
-  Cloud,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
@@ -43,8 +38,6 @@ export default function Home() {
   );
   const { data: activities, isLoading: activitiesLoading } = trpc.dashboard.recentActivities.useQuery({ limit: 10 }, { enabled: isAdmin });
   const { data: upcomingSurveys } = trpc.survey.list.useQuery({ limit: 5, status: "scheduled" });
-  const { data: storageStats } = trpc.storage.stats.useQuery();
-  const { data: s3Usage } = trpc.storage.s3Usage.useQuery(undefined, { staleTime: 60 * 1000, refetchInterval: 60 * 1000 });
 
   const statCards = [
     { label: "ลูกค้าทั้งหมด", value: stats?.totalCustomers ?? 0, icon: Users, color: "from-blue-500 to-blue-600", link: "/customers" },
@@ -199,110 +192,7 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Storage Usage Card */}
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-slate-500 to-slate-600 flex items-center justify-center shadow-sm">
-                <HardDrive className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-semibold text-foreground">พื้นที่จัดเก็บ</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">ข้อมูลรูปภาพและเอกสารที่อัพโหลดในระบบ</p>
-              </div>
-            </div>
-            {/* File counts row */}
-            <div className="grid grid-cols-3 gap-4 mt-4">
-              <div className="text-center p-3 rounded-lg bg-muted/50">
-                <div className="flex items-center justify-center gap-1.5 mb-1">
-                  <Image className="h-3.5 w-3.5 text-blue-500" />
-                  <span className="text-lg font-bold text-foreground">{storageStats?.totalPhotos ?? 0}</span>
-                </div>
-                <p className="text-[10px] text-muted-foreground">รูปภาพ</p>
-              </div>
-              <div className="text-center p-3 rounded-lg bg-muted/50">
-                <div className="flex items-center justify-center gap-1.5 mb-1">
-                  <FileText className="h-3.5 w-3.5 text-amber-500" />
-                  <span className="text-lg font-bold text-foreground">{storageStats?.totalDocuments ?? 0}</span>
-                </div>
-                <p className="text-[10px] text-muted-foreground">เอกสาร</p>
-              </div>
-              <div className="text-center p-3 rounded-lg bg-muted/50">
-                <div className="flex items-center justify-center gap-1.5 mb-1">
-                  <Cloud className="h-3.5 w-3.5 text-sky-500" />
-                  <span className="text-lg font-bold text-foreground">{s3Usage?.totalObjects ?? 0}</span>
-                </div>
-                <p className="text-[10px] text-muted-foreground">ไฟล์บน S3</p>
-              </div>
-            </div>
 
-            {/* AWS S3 Usage Section */}
-            {s3Usage && (
-              <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-border/50">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-1.5">
-                    <Cloud className="h-3.5 w-3.5 text-sky-500" />
-                    <span className="text-xs font-semibold text-foreground">AWS S3 Storage</span>
-                  </div>
-                  <span className="text-[10px] text-muted-foreground">{s3Usage.bucketName}</span>
-                </div>
-                {/* Progress bar */}
-                <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      s3Usage.usagePercent > 90 ? 'bg-red-500' :
-                      s3Usage.usagePercent > 70 ? 'bg-amber-500' :
-                      'bg-emerald-500'
-                    }`}
-                    style={{ width: `${Math.min(s3Usage.usagePercent, 100)}%` }}
-                  />
-                </div>
-                {/* Usage text */}
-                <div className="flex items-center justify-between mt-1.5">
-                  <span className="text-xs text-muted-foreground">
-                    ใช้ไป{" "}
-                    <span className="font-semibold text-foreground">
-                      {s3Usage.totalSize > 1073741824
-                        ? `${(s3Usage.totalSize / 1073741824).toFixed(2)} GB`
-                        : s3Usage.totalSize > 1048576
-                        ? `${(s3Usage.totalSize / 1048576).toFixed(1)} MB`
-                        : s3Usage.totalSize > 1024
-                        ? `${(s3Usage.totalSize / 1024).toFixed(0)} KB`
-                        : `${s3Usage.totalSize} B`}
-                    </span>
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    Free Tier: <span className="font-semibold text-foreground">5 GB</span>
-                  </span>
-                </div>
-                <div className="text-right mt-0.5">
-                  <span className={`text-[10px] font-medium ${
-                    s3Usage.usagePercent > 90 ? 'text-red-500' :
-                    s3Usage.usagePercent > 70 ? 'text-amber-500' :
-                    'text-emerald-500'
-                  }`}>
-                    {s3Usage.usagePercent}% ของ Free Tier
-                  </span>
-                </div>
-                {/* Warning when approaching limit */}
-                {s3Usage.usagePercent > 80 && (
-                  <div className={`mt-2 p-2 rounded-md flex items-center gap-2 text-xs ${
-                    s3Usage.usagePercent > 90
-                      ? 'bg-red-500/10 text-red-600 dark:text-red-400'
-                      : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                  }`}>
-                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                    <span>
-                      {s3Usage.usagePercent > 90
-                        ? 'ใกล้เต็ม Free Tier แล้ว! หลังจากนี้จะเริ่มมีค่าใช้จ่าย (~$0.023/GB/เดือน)'
-                        : 'ใกล้ถึง Free Tier Limit แล้ว ควรพิจารณาลบไฟล์ที่ไม่ใช้แล้ว'}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="border-0 shadow-sm">

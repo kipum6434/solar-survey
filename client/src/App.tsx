@@ -59,6 +59,7 @@ const TechnicalFieldSettings = lazyRetry(() => import("./pages/TechnicalFieldSet
 const InstallationPrep = lazyRetry(() => import("./pages/InstallationPrep"));
 const CancelledCases = lazyRetry(() => import("./pages/CancelledCases"));
 const DocumentSettings = lazyRetry(() => import("./pages/DocumentSettings"));
+const StorageSettings = lazyRetry(() => import("./pages/StorageSettings"));
 const NotFound = lazyRetry(() => import("./pages/NotFound"));
 
 // Loading fallback component
@@ -105,6 +106,7 @@ function Router() {
         <Route path="/source-management" component={SourceManagement} />
         <Route path="/technical-field-settings" component={TechnicalFieldSettings} />
         <Route path="/document-settings" component={DocumentSettings} />
+        <Route path="/storage-settings" component={StorageSettings} />
         <Route path="/installation-prep" component={InstallationPrep} />
         <Route path="/cancelled-cases" component={CancelledCases} />
         <Route path="/survey-templates" component={SurveyTemplates} />
