@@ -2233,13 +2233,13 @@ function TeamCard({ data, surveyId, teamAdminSenders, teamSurveyors, teamClosers
   const assignments = data?.assignments || [];
   const adminSender = assignments.find((a: any) => a.assignment.role === "admin_sender");
   const surveyors = assignments.filter((a: any) => a.assignment.role === "surveyor");
-  const closer = assignments.find((a: any) => a.assignment.role === "closer");
+  const closers = assignments.filter((a: any) => a.assignment.role === "closer");
 
   const [editingTeam, setEditingTeam] = useState(false);
   const [teamForm, setTeamForm] = useState({
     adminSenderId: "",
     surveyorIds: [] as string[],
-    closerId: "",
+    closerIds: [] as string[],
   });
 
   const updateSurvey = trpc.survey.update.useMutation({
@@ -2251,7 +2251,7 @@ function TeamCard({ data, surveyId, teamAdminSenders, teamSurveyors, teamClosers
     setTeamForm({
       adminSenderId: adminSender?.user?.id ? String(adminSender.user.id) : "",
       surveyorIds: surveyors.map((a: any) => String(a.user?.id || "")),
-      closerId: closer?.user?.id ? String(closer.user.id) : "",
+      closerIds: closers.map((a: any) => String(a.user?.id || "")).filter(Boolean),
     });
     setEditingTeam(true);
   };
@@ -2261,7 +2261,7 @@ function TeamCard({ data, surveyId, teamAdminSenders, teamSurveyors, teamClosers
     // Send null to explicitly remove, number to set, omit to keep
     payload.adminSenderId = teamForm.adminSenderId ? parseInt(teamForm.adminSenderId) : null;
     payload.surveyorIds = teamForm.surveyorIds.filter(Boolean).map(Number);
-    payload.closerId = teamForm.closerId ? parseInt(teamForm.closerId) : null;
+    payload.closerIds = teamForm.closerIds.filter(Boolean).map(Number);
     updateSurvey.mutate(payload);
   };
 
@@ -2318,22 +2318,13 @@ function TeamCard({ data, surveyId, teamAdminSenders, teamSurveyors, teamClosers
               />
             </div>
             <div>
-              <Label className="text-xs">ผู้ปิดการขาย</Label>
-              <div className="flex gap-1">
-                <Select value={teamForm.closerId || "placeholder"} onValueChange={(v) => setTeamForm({ ...teamForm, closerId: v === "placeholder" ? "" : v })}>
-                  <SelectTrigger className="h-9 flex-1"><SelectValue placeholder="เลือก" /></SelectTrigger>
-                  <SelectContent>
-                    {closerOpts.length > 0 ? closerOpts.map((m: any) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>) : (
-                      <div className="px-2 py-1.5 text-sm text-muted-foreground">ยังไม่มีสมาชิก - เพิ่มที่หน้าจัดการทีมงาน</div>
-                    )}
-                  </SelectContent>
-                </Select>
-                {teamForm.closerId && (
-                  <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-destructive hover:text-destructive" onClick={() => setTeamForm({ ...teamForm, closerId: "" })} title="ลบ">
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
+              <Label className="text-xs">ผู้ปิดการขาย (เลือกได้หลายคน)</Label>
+              <MultiUserSelect
+                users={closerOpts}
+                selectedIds={teamForm.closerIds.filter(Boolean).map(Number)}
+                onChange={(ids) => setTeamForm({ ...teamForm, closerIds: ids.map(String) })}
+                placeholder="เลือกผู้ปิดการขาย..."
+              />
             </div>
           </div>
         ) : (
@@ -2355,7 +2346,13 @@ function TeamCard({ data, surveyId, teamAdminSenders, teamSurveyors, teamClosers
               </div>
               <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/30">
                 <p className="text-xs text-muted-foreground mb-1">ผู้ปิดการขาย</p>
-                <p className="font-medium">{closer?.user?.name || "-"}</p>
+                {closers.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {closers.map((a: any) => (
+                      <Badge key={a.assignment.id} variant="secondary" className="text-xs">{a.user?.name || "-"}</Badge>
+                    ))}
+                  </div>
+                ) : <p className="font-medium">-</p>}
               </div>
             </div>
             {/* Installer Team - always visible & editable */}

@@ -247,7 +247,7 @@ export default function Installations() {
 
       const rows = exportData.map((item: any, idx: number) => {
         const surveyor = item.assignments?.find((a: any) => a.role === "surveyor");
-        const closer = item.assignments?.find((a: any) => a.role === "closer");
+        const closerNames = (item.assignments || []).filter((a: any) => a.role === "closer").map((a: any) => a.userName).filter(Boolean).join(", ");
         return [
           idx + 1,
           item.survey.installationDate ? new Date(item.survey.installationDate).toLocaleDateString("th-TH") : "-",
@@ -258,7 +258,7 @@ export default function Installations() {
           item.survey.systemSize || "-",
           item.survey.systemType || "-",
           surveyor?.userName || "-",
-          closer?.userName || "-",
+          closerNames || "-",
           item.customStatus?.label || "-",
           getInstallStatusLabel(item.survey.installationStatus),
           item.survey.notes || "-",
@@ -513,7 +513,7 @@ export default function Installations() {
               </div>}
               {items.map((item: any) => {
                 const surveyor = item.assignments?.find((a: any) => a.role === "surveyor");
-                const closer = item.assignments?.find((a: any) => a.role === "closer");
+                const closerNames = (item.assignments || []).filter((a: any) => a.role === "closer").map((a: any) => a.userName).filter(Boolean).join(", ");
                 const daysUntil = getDaysUntil(item.survey.installationDate);
                 const isSelected = selectedIds.has(item.survey.id);
                 return (
@@ -563,10 +563,10 @@ export default function Installations() {
                         )}
                       </div>
 
-                      {(surveyor || closer || item.installerTeam) && (
+                      {(surveyor || closerNames || item.installerTeam) && (
                         <div className="flex flex-wrap gap-2 text-xs">
                           {surveyor && <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">สำรวจ: {surveyor.userName}</span>}
-                          {closer && <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded-full">ปิดงาน: {closer.userName}</span>}
+                          {closerNames && <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded-full">ปิดงาน: {closerNames}</span>}
                           {item.installerTeam && <span className="px-2 py-0.5 rounded-full flex items-center gap-1" style={item.installerTeam.color ? { backgroundColor: item.installerTeam.color + '18', color: item.installerTeam.color } : { backgroundColor: 'rgb(243 232 255)', color: 'rgb(126 34 206)' }}><HardHat className="h-3 w-3" />{item.installerTeam.name}</span>}
                         </div>
                       )}
@@ -668,7 +668,7 @@ function InstallationDesktopTable({
     _districtProvince: [item.customer.district, item.customer.province].filter(Boolean).join(", "),
     _systemSize: item.survey.systemSize ? Number(item.survey.systemSize) : null,
     _surveyor: item.assignments?.find((a: any) => a.role === "surveyor")?.userName || "",
-    _closer: item.assignments?.find((a: any) => a.role === "closer")?.userName || "",
+    _closer: (item.assignments || []).filter((a: any) => a.role === "closer").map((a: any) => a.userName).filter(Boolean).join(", ") || "",
     _statusLabel: item.customStatus?.label || "",
     _installationStatus: item.survey.installationStatus || "waiting",
     _installerTeam: item.installerTeam?.name || "",

@@ -363,13 +363,14 @@ const surveyRouter = router({
       adminSenderId: z.number().nullable().optional(),
       surveyorIds: z.array(z.number()).optional(),
       closerId: z.number().nullable().optional(),
+      closerIds: z.array(z.number()).optional(),
       statusId: z.number().nullable().optional(),
       installationDate: z.number().nullable().optional(),
       installationStatus: z.enum(["waiting", "in_progress", "completed", "delivered"]).nullable().optional(),
       installerTeamId: z.number().nullable().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const { id, surveyorIds, ...rawData } = input;
+      const { id, surveyorIds, closerIds, ...rawData } = input;
       // Sanitize numeric fields before processing
       if (rawData.systemSize !== undefined && rawData.systemSize !== null) {
         const num = parseFloat(rawData.systemSize.replace(/[^0-9.]/g, ""));
@@ -407,8 +408,8 @@ const surveyRouter = router({
       } catch (e: any) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "บันทึกไม่สำเร็จ กรุณาตรวจสอบข้อมูลอีกครั้ง" });
       }
-      // Update assignments if surveyorIds provided — use rawData for null checks
-      if (surveyorIds !== undefined || rawData.adminSenderId !== undefined || rawData.closerId !== undefined) {
+      // Update assignments if surveyorIds/closerIds provided — use rawData for null checks
+      if (surveyorIds !== undefined || closerIds !== undefined || rawData.adminSenderId !== undefined || rawData.closerId !== undefined) {
         const currentAssignments = await db.getSurveyAssignments(id);
         const assignments: { userId: number; role: "admin_sender" | "surveyor" | "closer" }[] = [];
         // Admin sender - null means remove, undefined means keep existing
@@ -425,12 +426,20 @@ const surveyRouter = router({
           const existingSurveyors = currentAssignments.filter(a => a.assignment.role === "surveyor");
           existingSurveyors.forEach(a => assignments.push({ userId: a.assignment.userId, role: "surveyor" }));
         }
-        // Closer - null means remove, undefined means keep existing
-        if (rawData.closerId === null) {
-          // explicitly removed
+        // Closers - support multi-closer via closerIds array
+        if (closerIds !== undefined) {
+          // closerIds is the new multi-closer array (empty array = remove all closers)
+          const uniqueCloserIds = Array.from(new Set(closerIds));
+          uniqueCloserIds.forEach(uid => assignments.push({ userId: uid, role: "closer" }));
+        } else if (rawData.closerId === null) {
+          // explicitly removed (legacy single closer)
+        } else if (rawData.closerId) {
+          // legacy single closer support
+          assignments.push({ userId: rawData.closerId, role: "closer" });
         } else {
-          const closerIdVal = rawData.closerId || currentAssignments.find(a => a.assignment.role === "closer")?.assignment.userId;
-          if (closerIdVal) assignments.push({ userId: closerIdVal, role: "closer" });
+          // keep existing closers
+          const existingClosers = currentAssignments.filter(a => a.assignment.role === "closer");
+          existingClosers.forEach(a => assignments.push({ userId: a.assignment.userId, role: "closer" }));
         }
         await db.setSurveyAssignments(id, assignments);
         // Sync customer.surveyorId when adminSenderId changes

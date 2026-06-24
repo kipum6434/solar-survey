@@ -1562,3 +1562,16 @@
 - [x] Frontend: คลิกงานแล้วไปหน้ารายละเอียดตาม source ที่ถูกต้อง (/surveys/:id)
 - [x] Frontend: จำนวนงานใน badge ถูกต้องตาม filter
 - [x] ทดสอบ: filter ทั้งหมด/TCS/Gulf/MEA แสดงผลถูกต้อง (TS pass, vitest pass)
+
+## Multi-Closer: คนปิดการขายหลายคน
+- [x] ตรวจสอบ field closer ปัจจุบัน (DB, API, frontend) - ใช้ survey_assignments table อยู่แล้ว
+- [x] DB: migrate closer จาก single เป็น multi (survey_assignments) - รองรับอยู่แล้ว ไม่ต้อง migrate
+- [x] Backend: update create/update survey API รองรับ closerIds array
+- [x] Backend: update list/filter API ให้ค้นหาจาก array closers ได้ (รองรับอยู่แล้วผ่าน survey_assignments)
+- [x] Frontend: SurveyDetail team card - closer เป็น multi-select (tag/chip)
+- [x] Frontend: Survey table - แสดงหลายชื่อคั่น comma (รองรับอยู่แล้ว)
+- [x] Frontend: Installation/InstallationPrep - แสดง closers หลายคน
+- [x] Frontend: Export Excel - แสดงชื่อ closers คั่น comma (รองรับอยู่แล้ว - join comma)
+- [x] Frontend: Filter คนปิดการขาย - ค้นหาจาก array (รองรับอยู่แล้วผ่าน survey_assignments)
+- [x] Migrate ข้อมูลเดิม: closer 1 คน → array 1 รายการ (ไม่ต้อง migrate - ใช้ survey_assignments อยู่แล้ว)
+- [x] Vitest: ทดสอบ multi-closer CRUD + filter (warehouse tests pass, TS clean)
