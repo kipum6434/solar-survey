@@ -1,15 +1,18 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import {
-  Package, Calendar, MapPin, User, Zap, Sun,
+  Package, Calendar as CalendarIcon, MapPin, User, Zap, Sun,
   Battery, Cpu, ChevronLeft, ChevronRight, Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLocation, useSearch } from "wouter";
 
 const THAI_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -23,6 +26,8 @@ const SYSTEM_TYPE_MAP: Record<string, string> = {
   hybrid: "Hybrid",
 };
 
+type FilterMode = "month" | "week" | "day" | "custom";
+
 interface EquipmentSummary {
   inverters: Record<string, number>;
   panels: Record<string, { count: number; brand: string }>;
@@ -32,19 +37,135 @@ interface EquipmentSummary {
   totalPanels: number;
 }
 
-export default function InstallationPrep() {
-  const now = new Date();
-  const [month, setMonth] = useState(now.getMonth() + 1);
-  const [year, setYear] = useState(now.getFullYear());
+// Helper: format date to YYYY-MM-DD in Asia/Bangkok timezone
+function toDateString(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
-  // Fetch all installations for the selected month (no pagination, get all)
-  const { data, isLoading } = trpc.installation.list.useQuery({
-    page: 1,
-    limit: 200,
-    month,
-    year,
-    installationStatus: "all",
+// Helper: get Monday of the week for a given date
+function getMonday(d: Date): Date {
+  const result = new Date(d);
+  const day = result.getDay();
+  const diff = day === 0 ? -6 : 1 - day; // Monday = 1
+  result.setDate(result.getDate() + diff);
+  result.setHours(0, 0, 0, 0);
+  return result;
+}
+
+// Helper: get Sunday of the week for a given date
+function getSunday(d: Date): Date {
+  const monday = getMonday(d);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return sunday;
+}
+
+// Helper: format date range for display in Thai Buddhist Era
+function formatDateThai(d: Date): string {
+  return `${d.getDate()} ${THAI_MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear() + 543}`;
+}
+
+export default function InstallationPrep() {
+  const [, setLocation] = useLocation();
+  const searchString = useSearch();
+  const params = new URLSearchParams(searchString);
+
+  // Parse filter mode from URL
+  const initialMode = (params.get("mode") as FilterMode) || "month";
+  const [filterMode, setFilterMode] = useState<FilterMode>(initialMode);
+
+  // Monthly filter state
+  const now = new Date();
+  const [month, setMonth] = useState(() => {
+    const m = params.get("month");
+    return m ? Number(m) : now.getMonth() + 1;
   });
+  const [year, setYear] = useState(() => {
+    const y = params.get("year");
+    return y ? Number(y) : now.getFullYear();
+  });
+
+  // Week filter state
+  const [weekStart, setWeekStart] = useState<Date>(() => {
+    const ws = params.get("weekStart");
+    if (ws) return new Date(ws + "T00:00:00+07:00");
+    return getMonday(now);
+  });
+
+  // Day filter state
+  const [dayDate, setDayDate] = useState<Date>(() => {
+    const dd = params.get("day");
+    if (dd) return new Date(dd + "T00:00:00+07:00");
+    return now;
+  });
+
+  // Custom range state
+  const [customStart, setCustomStart] = useState<Date | undefined>(() => {
+    const cs = params.get("startDate");
+    if (cs) return new Date(cs + "T00:00:00+07:00");
+    return undefined;
+  });
+  const [customEnd, setCustomEnd] = useState<Date | undefined>(() => {
+    const ce = params.get("endDate");
+    if (ce) return new Date(ce + "T00:00:00+07:00");
+    return undefined;
+  });
+
+  // Compute query params based on filter mode
+  const queryParams = useMemo(() => {
+    const base = { page: 1, limit: 200, installationStatus: "all" as const };
+
+    if (filterMode === "month") {
+      return { ...base, month, year };
+    }
+
+    if (filterMode === "week") {
+      const endOfWeek = new Date(weekStart);
+      endOfWeek.setDate(weekStart.getDate() + 6);
+      return { ...base, startDate: toDateString(weekStart), endDate: toDateString(endOfWeek) };
+    }
+
+    if (filterMode === "day") {
+      return { ...base, startDate: toDateString(dayDate), endDate: toDateString(dayDate) };
+    }
+
+    if (filterMode === "custom" && customStart && customEnd) {
+      return { ...base, startDate: toDateString(customStart), endDate: toDateString(customEnd) };
+    }
+
+    // Fallback to current month
+    return { ...base, month: now.getMonth() + 1, year: now.getFullYear() };
+  }, [filterMode, month, year, weekStart, dayDate, customStart, customEnd]);
+
+  // Sync filter state to URL
+  useEffect(() => {
+    const p = new URLSearchParams();
+    p.set("mode", filterMode);
+
+    if (filterMode === "month") {
+      p.set("month", String(month));
+      p.set("year", String(year));
+    } else if (filterMode === "week") {
+      p.set("weekStart", toDateString(weekStart));
+    } else if (filterMode === "day") {
+      p.set("day", toDateString(dayDate));
+    } else if (filterMode === "custom" && customStart && customEnd) {
+      p.set("startDate", toDateString(customStart));
+      p.set("endDate", toDateString(customEnd));
+    }
+
+    const newSearch = p.toString();
+    const currentSearch = new URLSearchParams(searchString).toString();
+    if (newSearch !== currentSearch) {
+      setLocation(`/installation-prep?${newSearch}`, { replace: true });
+    }
+  }, [filterMode, month, year, weekStart, dayDate, customStart, customEnd]);
+
+  // Fetch installations
+  const { data, isLoading } = trpc.installation.list.useQuery(queryParams);
 
   // Compute equipment summary
   const { installations, summary } = useMemo(() => {
@@ -77,29 +198,24 @@ export default function InstallationPrep() {
     };
 
     for (const item of items) {
-      // Inverters
       if (item.inverterModel) {
         const key = item.inverterModel.trim();
         sum.inverters[key] = (sum.inverters[key] || 0) + 1;
       }
-      // Panels
       if (item.panelBrand) {
         const key = item.panelBrand.trim();
         if (!sum.panels[key]) sum.panels[key] = { count: 0, brand: key };
         sum.panels[key].count += item.panelCount || 0;
       }
       sum.totalPanels += item.panelCount || 0;
-      // Battery
       if (item.battery && item.battery.trim() !== "" && item.battery.trim() !== "-") {
         const key = item.battery.trim();
         sum.batteries[key] = (sum.batteries[key] || 0) + 1;
       }
-      // Optimizer
       if (item.optimizer && item.optimizer.trim() !== "" && item.optimizer.trim() !== "-") {
         const key = item.optimizer.trim();
         sum.optimizers[key] = (sum.optimizers[key] || 0) + 1;
       }
-      // System size
       if (item.systemSize) {
         sum.totalSystemKW += item.systemSize;
       }
@@ -108,6 +224,7 @@ export default function InstallationPrep() {
     return { installations: items, summary: sum };
   }, [data]);
 
+  // Navigation handlers
   const handlePrevMonth = () => {
     if (month === 1) { setMonth(12); setYear(y => y - 1); }
     else setMonth(m => m - 1);
@@ -115,6 +232,46 @@ export default function InstallationPrep() {
   const handleNextMonth = () => {
     if (month === 12) { setMonth(1); setYear(y => y + 1); }
     else setMonth(m => m + 1);
+  };
+
+  const handlePrevWeek = () => {
+    const prev = new Date(weekStart);
+    prev.setDate(prev.getDate() - 7);
+    setWeekStart(prev);
+  };
+  const handleNextWeek = () => {
+    const next = new Date(weekStart);
+    next.setDate(next.getDate() + 7);
+    setWeekStart(next);
+  };
+
+  const handlePrevDay = () => {
+    const prev = new Date(dayDate);
+    prev.setDate(prev.getDate() - 1);
+    setDayDate(prev);
+  };
+  const handleNextDay = () => {
+    const next = new Date(dayDate);
+    next.setDate(next.getDate() + 1);
+    setDayDate(next);
+  };
+
+  // Quick filter: this week
+  const goThisWeek = () => {
+    setFilterMode("week");
+    setWeekStart(getMonday(now));
+  };
+  // Quick filter: next week
+  const goNextWeek = () => {
+    setFilterMode("week");
+    const nextMonday = new Date(getMonday(now));
+    nextMonday.setDate(nextMonday.getDate() + 7);
+    setWeekStart(nextMonday);
+  };
+  // Quick filter: today
+  const goToday = () => {
+    setFilterMode("day");
+    setDayDate(new Date());
   };
 
   const formatDate = (ts: number | null) => {
@@ -133,51 +290,177 @@ export default function InstallationPrep() {
     }
   };
 
+  // Get display title for current filter
+  const getFilterTitle = () => {
+    if (filterMode === "month") {
+      return `สรุปอุปกรณ์ประจำเดือน ${THAI_MONTHS[month - 1]} ${year + 543}`;
+    }
+    if (filterMode === "week") {
+      const endOfWeek = getSunday(weekStart);
+      return `สรุปอุปกรณ์ ${formatDateThai(weekStart)} - ${formatDateThai(endOfWeek)}`;
+    }
+    if (filterMode === "day") {
+      return `สรุปอุปกรณ์วันที่ ${formatDateThai(dayDate)}`;
+    }
+    if (filterMode === "custom" && customStart && customEnd) {
+      return `สรุปอุปกรณ์ ${formatDateThai(customStart)} - ${formatDateThai(customEnd)}`;
+    }
+    return "สรุปอุปกรณ์";
+  };
+
   return (
     <DashboardLayout>
       <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Package className="h-6 w-6 text-orange-600" />
-              เตรียมสินค้าติดตั้ง
-            </h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              ดูรายการอุปกรณ์ที่ต้องเตรียมสำหรับงานติดตั้งในแต่ละเดือน
-            </p>
-          </div>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <Package className="h-6 w-6 text-orange-600" />
+                เตรียมสินค้าติดตั้ง
+              </h1>
+              <p className="text-muted-foreground text-sm mt-1">
+                ดูรายการอุปกรณ์ที่ต้องเตรียมสำหรับงานติดตั้ง
+              </p>
+            </div>
 
-          {/* Month selector */}
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={handlePrevMonth}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
+            {/* Mode selector */}
             <div className="flex items-center gap-2">
-              <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
+              <Select value={filterMode} onValueChange={(v) => setFilterMode(v as FilterMode)}>
                 <SelectTrigger className="w-[130px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {THAI_MONTHS.map((m, i) => (
-                    <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
-                <SelectTrigger className="w-[90px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[2024, 2025, 2026, 2027].map(y => (
-                    <SelectItem key={y} value={String(y)}>{y + 543}</SelectItem>
-                  ))}
+                  <SelectItem value="month">รายเดือน</SelectItem>
+                  <SelectItem value="week">รายสัปดาห์</SelectItem>
+                  <SelectItem value="day">รายวัน</SelectItem>
+                  <SelectItem value="custom">กำหนดเอง</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <Button variant="outline" size="icon" onClick={handleNextMonth}>
-              <ChevronRight className="h-4 w-4" />
+          </div>
+
+          {/* Quick filters */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={goToday} className="text-xs">
+              วันนี้
             </Button>
+            <Button variant="outline" size="sm" onClick={goThisWeek} className="text-xs">
+              สัปดาห์นี้
+            </Button>
+            <Button variant="outline" size="sm" onClick={goNextWeek} className="text-xs bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100">
+              สัปดาห์หน้า
+            </Button>
+
+            <div className="h-4 w-px bg-border mx-1" />
+
+            {/* Filter-specific controls */}
+            {filterMode === "month" && (
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrevMonth}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
+                  <SelectTrigger className="w-[120px] h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {THAI_MONTHS.map((m, i) => (
+                      <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
+                  <SelectTrigger className="w-[80px] h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[2024, 2025, 2026, 2027, 2028].map(y => (
+                      <SelectItem key={y} value={String(y)}>{y + 543}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNextMonth}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+
+            {filterMode === "week" && (
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrevWeek}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium px-2">
+                  {formatDateThai(weekStart)} - {formatDateThai(getSunday(weekStart))}
+                </span>
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNextWeek}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+
+            {filterMode === "day" && (
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrevDay}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
+                      <CalendarIcon className="h-3.5 w-3.5" />
+                      {formatDateThai(dayDate)}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dayDate}
+                      onSelect={(d) => d && setDayDate(d)}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNextDay}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+
+            {filterMode === "custom" && (
+              <div className="flex items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
+                      <CalendarIcon className="h-3.5 w-3.5" />
+                      {customStart ? formatDateThai(customStart) : "เริ่มต้น"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={customStart}
+                      onSelect={(d) => d && setCustomStart(d)}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <span className="text-sm text-muted-foreground">ถึง</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
+                      <CalendarIcon className="h-3.5 w-3.5" />
+                      {customEnd ? formatDateThai(customEnd) : "สิ้นสุด"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={customEnd}
+                      onSelect={(d) => d && setCustomEnd(d)}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
           </div>
         </div>
 
@@ -191,12 +474,12 @@ export default function InstallationPrep() {
 
         {!isLoading && summary && (
           <>
-            {/* Monthly Equipment Summary */}
+            {/* Equipment Summary */}
             <Card className="border-orange-200 bg-orange-50/30">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Layers className="h-5 w-5 text-orange-600" />
-                  สรุปอุปกรณ์ประจำเดือน {THAI_MONTHS[month - 1]} {year + 543}
+                  {getFilterTitle()}
                   <Badge variant="secondary" className="ml-2">{installations.length} งาน</Badge>
                 </CardTitle>
               </CardHeader>
@@ -305,7 +588,7 @@ export default function InstallationPrep() {
                 <Card className="py-12">
                   <CardContent className="text-center text-muted-foreground">
                     <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                    <p>ไม่มีงานติดตั้งในเดือนนี้</p>
+                    <p>ไม่มีงานติดตั้งในช่วงเวลาที่เลือก</p>
                   </CardContent>
                 </Card>
               )}
@@ -319,7 +602,7 @@ export default function InstallationPrep() {
                         {/* Left: Date + Status */}
                         <div className="flex items-center gap-3 lg:w-[180px] shrink-0">
                           <div className="text-center bg-orange-50 rounded-lg p-2 min-w-[60px]">
-                            <Calendar className="h-3.5 w-3.5 mx-auto text-orange-600 mb-0.5" />
+                            <CalendarIcon className="h-3.5 w-3.5 mx-auto text-orange-600 mb-0.5" />
                             <p className="text-xs font-bold text-orange-800">
                               {formatDate(item.installationDate)}
                             </p>

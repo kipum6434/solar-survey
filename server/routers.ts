@@ -1840,6 +1840,8 @@ const installationRouter = router({
       search: z.string().optional(),
       month: z.number().min(1).max(12).optional(),
       year: z.number().optional(),
+      startDate: z.string().optional(), // YYYY-MM-DD format for date range filter
+      endDate: z.string().optional(), // YYYY-MM-DD format for date range filter
       district: z.string().optional(),
       province: z.string().optional(),
       surveyorId: z.number().optional(),

@@ -1508,3 +1508,13 @@
 - [x] สร้างหน้า StorageSettings.tsx พร้อม S3 usage card + file counts
 - [x] เพิ่มเมนู "พื้นที่จัดเก็บ" ใน sidebar settings group (DashboardLayout.tsx)
 - [x] เพิ่ม route /storage-settings ใน App.tsx
+
+## Date Range Filter for Installation Prep Page
+- [ ] แก้ไข Backend: เพิ่ม startDate/endDate parameters ใน installation.list API
+- [ ] สร้าง UI filter: mode selector (เดือน/สัปดาห์/วัน/กำหนดเอง) + quick filters (สัปดาห์นี้/สัปดาห์หน้า)
+- [ ] เพิ่ม date picker สำหรับ custom range
+- [ ] Sync filter กับ URL (query params) เพื่อให้ refresh แล้ว filter ยังอยู่
+- [ ] สรุปอุปกรณ์และรายการงานอัปเดตตาม filter ที่เลือก
+- [ ] Monthly filter เดิมยังใช้งานได้เหมือนเดิม
+- [ ] แสดงวันที่ใน พ.ศ. แต่ส่ง API เป็น ค.ศ. YYYY-MM-DD
+- [ ] ใช้ timezone Asia/Bangkok

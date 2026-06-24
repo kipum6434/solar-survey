@@ -1700,7 +1700,7 @@ export async function updateInstallationStatus(surveyId: number, installationSta
 export async function getInstallations(opts: any) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { page = 1, limit = 20, search, month, year, district, province, installationStatus, surveyorId, closerId, installerTeamId, scopedSurveyIds, sourceGroup } = opts;
+  const { page = 1, limit = 20, search, month, year, startDate, endDate, district, province, installationStatus, surveyorId, closerId, installerTeamId, scopedSurveyIds, sourceGroup } = opts;
   const offset = (page - 1) * limit;
 
   // Data scoping: เซลล์เห็นเฉพาะงานติดตั้งที่ตัวเองเกี่ยวข้อง
@@ -1719,7 +1719,13 @@ export async function getInstallations(opts: any) {
   }
   if (district) conditions.push(eq(customers.district, district));
   if (province) conditions.push(eq(customers.province, province));
-  if (month && year) {
+  if (startDate && endDate) {
+    // Date range filter: convert YYYY-MM-DD to timestamps in Asia/Bangkok timezone
+    const startTs = new Date(startDate + 'T00:00:00+07:00').getTime();
+    const endTs = new Date(endDate + 'T23:59:59.999+07:00').getTime();
+    conditions.push(sql`${surveys.installationDate} >= ${startTs}`);
+    conditions.push(sql`${surveys.installationDate} <= ${endTs}`);
+  } else if (month && year) {
     // Filter by installation month/year (UTC+7 Thailand: +25200 seconds)
     conditions.push(sql`MONTH(FROM_UNIXTIME(${surveys.installationDate} / 1000 + 25200)) = ${month}`);
     conditions.push(sql`YEAR(FROM_UNIXTIME(${surveys.installationDate} / 1000 + 25200)) = ${year}`);
