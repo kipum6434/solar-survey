@@ -1510,14 +1510,14 @@
 - [x] เพิ่ม route /storage-settings ใน App.tsx
 
 ## Date Range Filter for Installation Prep Page
-- [ ] แก้ไข Backend: เพิ่ม startDate/endDate parameters ใน installation.list API
-- [ ] สร้าง UI filter: mode selector (เดือน/สัปดาห์/วัน/กำหนดเอง) + quick filters (สัปดาห์นี้/สัปดาห์หน้า)
-- [ ] เพิ่ม date picker สำหรับ custom range
-- [ ] Sync filter กับ URL (query params) เพื่อให้ refresh แล้ว filter ยังอยู่
-- [ ] สรุปอุปกรณ์และรายการงานอัปเดตตาม filter ที่เลือก
-- [ ] Monthly filter เดิมยังใช้งานได้เหมือนเดิม
-- [ ] แสดงวันที่ใน พ.ศ. แต่ส่ง API เป็น ค.ศ. YYYY-MM-DD
-- [ ] ใช้ timezone Asia/Bangkok
+- [x] แก้ไข Backend: เพิ่ม startDate/endDate parameters ใน installation.list API (already implemented)
+- [x] สร้าง UI filter: mode selector (เดือน/สัปดาห์/วัน/กำหนดเอง) + quick filters (สัปดาห์นี้/สัปดาห์หน้า) (already implemented)
+- [x] เพิ่ม date picker สำหรับ custom range (already implemented)
+- [x] Sync filter กับ URL (query params) เพื่อให้ refresh แล้ว filter ยังอยู่ (already implemented)
+- [x] สรุปอุปกรณ์และรายการงานอัปเดตตาม filter ที่เลือก (already implemented)
+- [x] Monthly filter เดิมยังใช้งานได้เหมือนเดิม (already implemented)
+- [x] แสดงวันที่ใน พ.ศ. แต่ส่ง API เป็น ค.ศ. YYYY-MM-DD (already implemented)
+- [x] ใช้ timezone Asia/Bangkok (already implemented)
 
 ## Warehouse Role (คลังสินค้า) - RBAC Implementation
 
