@@ -9,19 +9,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Shield, ShieldCheck, User, Mail, Clock, KeyRound, AtSign, ShieldAlert } from "lucide-react";
+import { Plus, Pencil, Trash2, Shield, ShieldCheck, User, Mail, Clock, KeyRound, AtSign, ShieldAlert, Package } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Redirect } from "wouter";
 
 const ROLE_OPTIONS = [
   { value: "admin", label: "แอดมิน", color: "bg-amber-100 text-amber-800", icon: ShieldCheck },
   { value: "user", label: "ผู้ใช้ทั่วไป", color: "bg-blue-100 text-blue-800", icon: User },
+  { value: "warehouse", label: "คลังสินค้า", color: "bg-teal-100 text-teal-800", icon: Package },
 ] as const;
 
 const ALL_ROLE_DISPLAY: Record<string, { label: string; color: string; icon: any }> = {
   superadmin: { label: "Super Admin", color: "bg-purple-100 text-purple-800", icon: ShieldAlert },
   admin: { label: "แอดมิน", color: "bg-amber-100 text-amber-800", icon: ShieldCheck },
   user: { label: "ผู้ใช้ทั่วไป", color: "bg-blue-100 text-blue-800", icon: User },
+  warehouse: { label: "คลังสินค้า", color: "bg-teal-100 text-teal-800", icon: Package },
 };
 
 function getRoleLabel(role: string) {
@@ -89,6 +91,7 @@ export default function UserManagement() {
   const superadminCount = usersList.filter((u: any) => u.role === "superadmin").length;
   const adminCount = usersList.filter((u: any) => u.role === "admin").length;
   const userCount = usersList.filter((u: any) => u.role === "user").length;
+  const warehouseCount = usersList.filter((u: any) => u.role === "warehouse").length;
 
   return (
     <DashboardLayout>
@@ -106,7 +109,7 @@ export default function UserManagement() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
           <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilterRole("all")}>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
@@ -159,6 +162,19 @@ export default function UserManagement() {
               </div>
             </CardContent>
           </Card>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilterRole(filterRole === "warehouse" ? "all" : "warehouse")}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg p-2 bg-teal-100 text-teal-800">
+                  <Package className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">คลังสินค้า</p>
+                  <p className="text-2xl font-bold">{warehouseCount}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Filter */}
@@ -174,6 +190,9 @@ export default function UserManagement() {
           </Button>
           <Button variant={filterRole === "user" ? "default" : "outline"} size="sm" onClick={() => setFilterRole("user")}>
             ผู้ใช้ทั่วไป ({userCount})
+          </Button>
+          <Button variant={filterRole === "warehouse" ? "default" : "outline"} size="sm" onClick={() => setFilterRole("warehouse")}>
+            คลังสินค้า ({warehouseCount})
           </Button>
         </div>
 

@@ -1615,7 +1615,7 @@ const usersRouter = router({
       username: z.string().min(3, "ชื่อผู้ใช้ต้องมีอย่างน้อย 3 ตัวอักษร"),
       password: z.string().min(4, "รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร"),
       email: z.string().optional(),
-      role: z.enum(["user", "admin"]),
+      role: z.enum(["user", "admin", "warehouse"]),
     }))
     .mutation(async ({ input, ctx }) => {
       const passwordHash = await bcrypt.hash(input.password, 10);
@@ -1635,7 +1635,7 @@ const usersRouter = router({
       id: z.number(),
       name: z.string().optional(),
       email: z.string().optional(),
-      role: z.enum(["user", "admin"]).optional(),
+      role: z.enum(["user", "admin", "warehouse"]).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const { id, ...data } = input;

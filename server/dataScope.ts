@@ -18,7 +18,7 @@ import { getDb } from "./db";
 
 export interface ScopeUser {
   id: number;
-  role: "user" | "admin" | "superadmin";
+  role: "user" | "admin" | "superadmin" | "warehouse";
 }
 
 /**
@@ -99,6 +99,7 @@ export async function getScopedCustomerIds(surveyIds: number[]): Promise<number[
  */
 export function needsScoping(user: ScopeUser): boolean {
   return user.role === "user";
+  // warehouse sees all installations - no scoping needed
 }
 
 /**

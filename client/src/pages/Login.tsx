@@ -32,7 +32,7 @@ export default function Login() {
   }, []);
 
   const loginMutation = trpc.users.login.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
       // Save or clear credentials based on Remember Me
       if (rememberMe) {
         localStorage.setItem(REMEMBER_KEY, "true");
@@ -44,7 +44,12 @@ export default function Login() {
         localStorage.removeItem(SAVED_PASSWORD_KEY);
       }
       toast.success("เข้าสู่ระบบสำเร็จ");
-      window.location.href = "/";
+      // Warehouse users go to installation-prep page
+      if (data.user?.role === "warehouse") {
+        window.location.href = "/installation-prep";
+      } else {
+        window.location.href = "/";
+      }
     },
     onError: (err) => {
       toast.error(err.message || "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");

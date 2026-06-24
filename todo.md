@@ -1518,3 +1518,33 @@
 - [ ] Monthly filter เดิมยังใช้งานได้เหมือนเดิม
 - [ ] แสดงวันที่ใน พ.ศ. แต่ส่ง API เป็น ค.ศ. YYYY-MM-DD
 - [ ] ใช้ timezone Asia/Bangkok
+
+## Warehouse Role (คลังสินค้า) - RBAC Implementation
+
+### DB & Backend
+- [x] Schema: เพิ่ม 'warehouse' ใน role enum ของ users table
+- [x] Backend: เพิ่ม warehouseProcedure guard (อนุญาตเฉพาะ warehouse + admin + superadmin)
+- [x] Backend: อัปเดต users.create/update ให้รองรับ role 'warehouse'
+- [x] Backend: อัปเดต db.ts type signatures ให้รองรับ 'warehouse'
+- [x] Backend: อัปเดต dataScope.ts ให้ warehouse ไม่ต้อง scope (เห็นงานติดตั้งทั้งหมด)
+- [x] Backend: installation.updateStatus ต้องอนุญาต warehouse role
+
+### Frontend - Sidebar & Route Guards
+- [x] DashboardLayout: warehouse role เห็นเฉพาะ "เตรียมสินค้า" และ "งานติดตั้ง" (ทุก group)
+- [x] Home.tsx: warehouse redirect ไปหน้า /installation-prep
+- [x] Login.tsx: warehouse redirect ไปหน้า /installation-prep หลัง login สำเร็จ
+- [x] Route guard: warehouse ไม่สามารถเข้าหน้าอื่นนอกจาก installation-prep, installations, surveys/:id (read-only)
+
+### Frontend - Read-only Installation Views
+- [x] Installations.tsx: warehouse เห็นรายการงานติดตั้ง (ซ่อน export/delete/bulk actions)
+- [x] SurveyDetail: warehouse เห็นข้อมูลพื้นฐาน + อุปกรณ์ (ซ่อนข้อมูลการเงิน + ปุ่มแก้ไข)
+- [x] InstallationPrep.tsx: warehouse ใช้งานได้ปกติ (เป็นหน้าหลัก)
+
+### Frontend - User Management
+- [x] UserManagement.tsx: เพิ่ม role 'warehouse' (คลังสินค้า) ใน dropdown + badge + filter
+- [x] DashboardLayout footer: แสดง "คลังสินค้า" สำหรับ warehouse role
+
+### Testing
+- [x] Vitest: ทดสอบ warehouse role guards (ไม่สามารถเข้า admin procedures)
+- [x] Vitest: ทดสอบ warehouse สามารถ list installations ได้
+- [x] Vitest: ทดสอบ warehouse สามารถ updateStatus ได้

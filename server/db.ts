@@ -1149,7 +1149,7 @@ export async function getAllUsers() {
   }).from(users).orderBy(desc(users.createdAt));
 }
 
-export async function createManualUser(data: { name: string; email?: string; username: string; passwordHash: string; role: "user" | "admin" }) {
+export async function createManualUser(data: { name: string; email?: string; username: string; passwordHash: string; role: "user" | "admin" | "warehouse" }) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   // Check if username already exists
@@ -1176,13 +1176,13 @@ export async function getUserByUsername(username: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function updateUserRole(id: number, role: "user" | "admin") {
+export async function updateUserRole(id: number, role: "user" | "admin" | "warehouse") {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.update(users).set({ role }).where(eq(users.id, id));
 }
 
-export async function updateUser(id: number, data: { name?: string; email?: string; role?: "user" | "admin"; passwordHash?: string }) {
+export async function updateUser(id: number, data: { name?: string; email?: string; role?: "user" | "admin" | "warehouse"; passwordHash?: string }) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   const updateSet: Record<string, unknown> = {};

@@ -60,3 +60,21 @@ export const superadminProcedure = t.procedure.use(
     });
   }),
 );
+
+// Warehouse procedure: allows warehouse + admin + superadmin
+export const warehouseProcedure = t.procedure.use(
+  t.middleware(async opts => {
+    const { ctx, next } = opts;
+
+    if (!ctx.user || !['warehouse', 'admin', 'superadmin'].includes(ctx.user.role)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "ไม่มีสิทธิ์เข้าถึง (เฉพาะคลังสินค้า/แอดมิน)" });
+    }
+
+    return next({
+      ctx: {
+        ...ctx,
+        user: ctx.user,
+      },
+    });
+  }),
+);

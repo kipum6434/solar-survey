@@ -108,7 +108,7 @@ const commonMenuItems = [
   { icon: FolderOpen, label: "จัดการไฟล์", path: "/file-management" },
   { icon: CalendarDays, label: "ปฏิทิน", path: "/calendar" },
   { icon: Wrench, label: "ปฏิทินติดตั้ง", path: "/installation-calendar" },
-  { icon: Package, label: "เตรียมสินค้า", path: "/installation-prep" },
+  { icon: Package, label: "เตรียมสินค้า", path: "/installation-prep", warehouseVisible: true },
 ];
 
 const settingsMenuItems = [
@@ -183,13 +183,16 @@ function DashboardLayoutContent({
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const isWarehouse = user?.role === "warehouse";
   const filterByRole = (items: typeof commonMenuItems) => items.filter((item) => {
     if ((item as any).superadminOnly && user?.role !== "superadmin") return false;
+    // Warehouse role only sees specific pages
+    if (isWarehouse && (item as any).warehouseVisible !== true) return false;
     return true;
   });
-  const topItems = topMenuItems;
+  const topItems = isWarehouse ? [] : topMenuItems;
   const commonItems = filterByRole(commonMenuItems);
-  const settingsItems = filterByRole(settingsMenuItems);
+  const settingsItems = isWarehouse ? [] : filterByRole(settingsMenuItems);
   const settingsPaths = settingsItems.map(i => i.path);
 
   // Fetch source groups dynamically from DB
@@ -215,10 +218,14 @@ function DashboardLayoutContent({
     return groups.map((groupName, idx) => {
       const slug = groupName.toLowerCase();
       const theme = GROUP_THEMES[idx % GROUP_THEMES.length];
-      const menuItems = getGroupMenuItems(slug);
+      let menuItems = getGroupMenuItems(slug);
+      // Warehouse only sees installations within each group
+      if (isWarehouse) {
+        menuItems = menuItems.filter(item => item.path.endsWith("/installations"));
+      }
       return { groupName, slug, theme, menuItems };
     });
-  }, [groups]);
+  }, [groups, isWarehouse]);
 
   // Expanded state for each group (keyed by group name)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
@@ -438,6 +445,7 @@ function DashboardLayoutContent({
               })}
 
               {/* ===== Settings Group ===== */}
+              {!isWarehouse && <>
               <li aria-hidden="true" className="my-2 mx-2 h-px bg-sidebar-border" />
               <SidebarMenuItem>
                 <SidebarMenuButton
@@ -472,6 +480,7 @@ function DashboardLayoutContent({
                   </SidebarMenuItem>
                 );
               })}
+              </>}
             </SidebarMenu>
           </SidebarContent>
 
@@ -489,7 +498,7 @@ function DashboardLayoutContent({
                       {user?.name || "User"}
                     </p>
                     <p className="text-[11px] text-sidebar-foreground/50 truncate mt-1">
-                      {user?.role === "superadmin" ? "Super Admin" : user?.role === "admin" ? "ผู้ดูแลระบบ" : "ทีมสำรวจ"}
+                      {user?.role === "superadmin" ? "Super Admin" : user?.role === "admin" ? "ผู้ดูแลระบบ" : user?.role === "warehouse" ? "คลังสินค้า" : "ทีมสำรวจ"}
                     </p>
                   </div>
                 </button>

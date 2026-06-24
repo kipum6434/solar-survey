@@ -26,6 +26,12 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+
+  // Warehouse users should not see dashboard - redirect to installation-prep
+  if (user?.role === "warehouse") {
+    window.location.href = "/installation-prep";
+    return null;
+  }
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState<number | undefined>(undefined);
   const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined);

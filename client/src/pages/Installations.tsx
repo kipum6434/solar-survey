@@ -3,6 +3,7 @@ import { useSort } from "@/hooks/useSort";
 import { SortableHeader } from "@/components/SortableHeader";
 import { trpc } from "@/lib/trpc";
 import { formatPhone } from "@/lib/formatPhone";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Pagination } from "@/components/Pagination";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -90,6 +91,8 @@ function InstallationStatusBadge({ status, surveyId, onChanged }: { status: stri
 
 export default function Installations() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  const isWarehouse = user?.role === "warehouse";
   const sourceGroup = useSourceGroup();
   const [search, setSearch] = useState("");
   const [statusTab, setStatusTab] = useState<string>("all");
@@ -311,6 +314,7 @@ export default function Installations() {
                 <>งานติดตั้งทั้งหมด <span className="font-semibold text-foreground">({total} รายการ)</span></>
               )}
             </div>
+            {!isWarehouse && (
             <Button
               variant="outline"
               size="sm"
@@ -321,6 +325,7 @@ export default function Installations() {
               <Download className="h-4 w-4" />
               {isExporting ? "กำลังส่งออก..." : "Export Excel"}
             </Button>
+            )}
           </div>
         </div>
 
@@ -459,7 +464,7 @@ export default function Installations() {
         </div>
 
         {/* Bulk Action Bar */}
-        {selectedIds.size > 0 && (
+        {!isWarehouse && selectedIds.size > 0 && (
           <div className="flex items-center gap-3 p-3 bg-destructive/5 border border-destructive/20 rounded-lg animate-in fade-in slide-in-from-top-2 duration-200">
             <div className="flex items-center gap-2 flex-1">
               <div className="h-8 w-8 rounded-full bg-destructive/10 flex items-center justify-center">
@@ -498,14 +503,14 @@ export default function Installations() {
             {/* Mobile Card View */}
             <div className="block sm:hidden space-y-3">
               {/* Select all bar for mobile */}
-              <div className="flex items-center gap-2 px-1">
+              {!isWarehouse && <div className="flex items-center gap-2 px-1">
                 <Checkbox
                   checked={allSelected ? true : someSelected ? "indeterminate" : false}
                   onCheckedChange={toggleSelectAll}
                   aria-label="เลือกทั้งหมด"
                 />
                 <span className="text-xs text-muted-foreground">เลือกทั้งหมด</span>
-              </div>
+              </div>}
               {items.map((item: any) => {
                 const surveyor = item.assignments?.find((a: any) => a.role === "surveyor");
                 const closer = item.assignments?.find((a: any) => a.role === "closer");
@@ -520,13 +525,13 @@ export default function Installations() {
                     <CardContent className="p-4 space-y-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
-                          <div onClick={(e) => e.stopPropagation()}>
+                          {!isWarehouse && <div onClick={(e) => e.stopPropagation()}>
                             <Checkbox
                               checked={isSelected}
                               onCheckedChange={() => toggleSelect(item.survey.id)}
                               aria-label={`เลือก ${item.customer.name}`}
                             />
-                          </div>
+                          </div>}
                           <div className="min-w-0">
                             <p className="font-semibold truncate">{item.customer.name}</p>
                             {item.customer.phone && (
@@ -600,6 +605,7 @@ export default function Installations() {
               formatDate={formatDate}
               getDaysUntil={getDaysUntil}
               onRowClick={(id: number) => setLocation(`/surveys/${id}`)}
+              isWarehouse={isWarehouse}
             />
 
             {/* Pagination */}
@@ -646,11 +652,12 @@ interface InstallationDesktopTableProps {
   formatDate: (ts: number | null) => string;
   getDaysUntil: (ts: number | null) => string | null;
   onRowClick: (id: number) => void;
+  isWarehouse?: boolean;
 }
 
 function InstallationDesktopTable({
   items, allSelected, someSelected, toggleSelectAll, selectedIds, toggleSelect,
-  formatDate, getDaysUntil, onRowClick,
+  formatDate, getDaysUntil, onRowClick, isWarehouse,
 }: InstallationDesktopTableProps) {
   // Flatten data for sorting
   const flatData = useMemo(() => items.map((item: any) => ({
@@ -677,13 +684,13 @@ function InstallationDesktopTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/30">
-                <th className="py-3 px-4 w-10">
+                {!isWarehouse && <th className="py-3 px-4 w-10">
                   <Checkbox
                     checked={allSelected ? true : someSelected ? "indeterminate" : false}
                     onCheckedChange={toggleSelectAll}
                     aria-label="เลือกทั้งหมด"
                   />
-                </th>
+                </th>}
                 <th className="py-3 px-4 text-left font-medium text-muted-foreground"><SortableHeader label="วันนัดติดตั้ง" sortKey="_installationDate" sortConfig={sortConfig} onSort={requestSort} /></th>
                 <th className="py-3 px-4 text-left font-medium text-muted-foreground"><SortableHeader label="ชื่อลูกค้า" sortKey="_customerName" sortConfig={sortConfig} onSort={requestSort} /></th>
                 <th className="py-3 px-4 text-left font-medium text-muted-foreground"><SortableHeader label="เบอร์โทร" sortKey="_phone" sortConfig={sortConfig} onSort={requestSort} /></th>
@@ -707,13 +714,13 @@ function InstallationDesktopTable({
                     className={`border-b last:border-0 hover:bg-muted/50 cursor-pointer transition-colors ${isSelected ? "bg-destructive/5" : ""}`}
                     onClick={() => onRowClick(item.survey.id)}
                   >
-                    <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                    {!isWarehouse && <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={() => toggleSelect(item.survey.id)}
                         aria-label={`เลือก ${item.customer.name}`}
                       />
-                    </td>
+                    </td>}
                     <td className="py-3 px-4">
                       <div className="flex flex-col">
                         <span className="font-medium text-primary">{formatDate(item.survey.installationDate)}</span>
