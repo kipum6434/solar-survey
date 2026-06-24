@@ -218,7 +218,7 @@ export default function UserManagement() {
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className={`rounded-full p-2 shrink-0 ${getRoleColor(user.role)}`}>
-                        {user.role === "superadmin" ? <ShieldAlert className="h-4 w-4" /> : user.role === "admin" ? <ShieldCheck className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                        {user.role === "superadmin" ? <ShieldAlert className="h-4 w-4" /> : user.role === "admin" ? <ShieldCheck className="h-4 w-4" /> : user.role === "warehouse" ? <Package className="h-4 w-4" /> : <User className="h-4 w-4" />}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -327,7 +327,7 @@ export default function UserManagement() {
 function AddUserDialog({ open, onClose, onSave, isLoading }: {
   open: boolean;
   onClose: () => void;
-  onSave: (data: { name: string; username: string; password: string; email?: string; role: "user" | "admin" }) => void;
+  onSave: (data: { name: string; username: string; password: string; email?: string; role: "user" | "admin" | "warehouse" }) => void;
   isLoading: boolean;
 }) {
   const [name, setName] = useState("");
@@ -355,7 +355,7 @@ function AddUserDialog({ open, onClose, onSave, isLoading }: {
       username: username.trim().toLowerCase(),
       password,
       email: email.trim() || undefined,
-      role: role as "user" | "admin",
+      role: role as "user" | "admin" | "warehouse",
     });
   };
 
@@ -402,6 +402,7 @@ function AddUserDialog({ open, onClose, onSave, isLoading }: {
               <SelectContent>
                 <SelectItem value="admin">แอดมิน (เข้าถึงทุกข้อมูล)</SelectItem>
                 <SelectItem value="user">ผู้ใช้ทั่วไป (เห็นเฉพาะข้อมูลตัวเอง)</SelectItem>
+                <SelectItem value="warehouse">คลังสินค้า (ดูงานติดตั้ง/เตรียมสินค้า)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -421,7 +422,7 @@ function AddUserDialog({ open, onClose, onSave, isLoading }: {
 function EditUserDialog({ open, onClose, onSave, isLoading, defaultValues }: {
   open: boolean;
   onClose: () => void;
-  onSave: (data: { name: string; email?: string; role: "user" | "admin" }) => void;
+  onSave: (data: { name: string; email?: string; role: "user" | "admin" | "warehouse" }) => void;
   isLoading: boolean;
   defaultValues: { name?: string; email?: string; role?: string };
 }) {
@@ -438,7 +439,7 @@ function EditUserDialog({ open, onClose, onSave, isLoading, defaultValues }: {
     onSave({
       name: name.trim(),
       email: email.trim() || undefined,
-      role: role as "user" | "admin",
+      role: role as "user" | "admin" | "warehouse",
     });
   };
 
@@ -466,6 +467,7 @@ function EditUserDialog({ open, onClose, onSave, isLoading, defaultValues }: {
               <SelectContent>
                 <SelectItem value="admin">แอดมิน (เข้าถึงทุกข้อมูล)</SelectItem>
                 <SelectItem value="user">ผู้ใช้ทั่วไป (เห็นเฉพาะข้อมูลตัวเอง)</SelectItem>
+                <SelectItem value="warehouse">คลังสินค้า (ดูงานติดตั้ง/เตรียมสินค้า)</SelectItem>
               </SelectContent>
             </Select>
           </div>

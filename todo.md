@@ -1548,3 +1548,6 @@
 - [x] Vitest: ทดสอบ warehouse role guards (ไม่สามารถเข้า admin procedures)
 - [x] Vitest: ทดสอบ warehouse สามารถ list installations ได้
 - [x] Vitest: ทดสอบ warehouse สามารถ updateStatus ได้
+
+## Bug Fix: Cannot assign warehouse role to user
+- [x] Fix: เปลี่ยน role user เป็น warehouse ไม่ได้ (แสดงเป็น "ผู้ใช้ทั่วไป" แทน "คลังสินค้า") - fixed type + dropdown options
