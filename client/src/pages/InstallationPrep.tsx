@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import {
   Package, Calendar as CalendarIcon, MapPin, User, Zap, Sun,
-  Battery, Cpu, ChevronLeft, ChevronRight, Layers,
+  Battery, Cpu, ChevronLeft, ChevronRight, Layers, Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation, useSearch } from "wouter";
@@ -27,6 +27,13 @@ const SYSTEM_TYPE_MAP: Record<string, string> = {
 };
 
 type FilterMode = "month" | "week" | "day" | "custom";
+type SourceFilter = "all" | "tcs" | "gulf" | "mea";
+
+const SOURCE_COLORS: Record<string, string> = {
+  TCS: "bg-blue-100 text-blue-800 border-blue-200",
+  Gulf: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  MEA: "bg-violet-100 text-violet-800 border-violet-200",
+};
 
 interface EquipmentSummary {
   inverters: Record<string, number>;
@@ -77,6 +84,10 @@ export default function InstallationPrep() {
   const initialMode = (params.get("mode") as FilterMode) || "month";
   const [filterMode, setFilterMode] = useState<FilterMode>(initialMode);
 
+  // Source filter state
+  const initialSource = (params.get("source") as SourceFilter) || "all";
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>(initialSource);
+
   // Monthly filter state
   const now = new Date();
   const [month, setMonth] = useState(() => {
@@ -116,7 +127,11 @@ export default function InstallationPrep() {
 
   // Compute query params based on filter mode
   const queryParams = useMemo(() => {
-    const base = { page: 1, limit: 200, installationStatus: "all" as const };
+    const base: any = { page: 1, limit: 200, installationStatus: "all" as const };
+    // Add sourceGroup filter if not "all"
+    if (sourceFilter !== "all") {
+      base.sourceGroup = sourceFilter;
+    }
 
     if (filterMode === "month") {
       return { ...base, month, year };
@@ -138,12 +153,13 @@ export default function InstallationPrep() {
 
     // Fallback to current month
     return { ...base, month: now.getMonth() + 1, year: now.getFullYear() };
-  }, [filterMode, month, year, weekStart, dayDate, customStart, customEnd]);
+  }, [filterMode, month, year, weekStart, dayDate, customStart, customEnd, sourceFilter]);
 
   // Sync filter state to URL
   useEffect(() => {
     const p = new URLSearchParams();
     p.set("mode", filterMode);
+    p.set("source", sourceFilter);
 
     if (filterMode === "month") {
       p.set("month", String(month));
@@ -162,7 +178,7 @@ export default function InstallationPrep() {
     if (newSearch !== currentSearch) {
       setLocation(`/installation-prep?${newSearch}`, { replace: true });
     }
-  }, [filterMode, month, year, weekStart, dayDate, customStart, customEnd]);
+  }, [filterMode, month, year, weekStart, dayDate, customStart, customEnd, sourceFilter]);
 
   // Fetch installations
   const { data, isLoading } = trpc.installation.list.useQuery(queryParams);
@@ -185,6 +201,8 @@ export default function InstallationPrep() {
       optimizer: d.survey.needOptimizer,
       systemType: d.survey.systemType,
       installerTeam: d.installerTeam,
+      sourceGroup: d.sourceGroup || null,
+      phone: d.customer.phone,
     }));
 
     // Build summary
@@ -354,6 +372,28 @@ export default function InstallationPrep() {
 
             <div className="h-4 w-px bg-border mx-1" />
 
+            {/* Source filter */}
+            <div className="flex items-center gap-1">
+              <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+              {(["all", "tcs", "gulf", "mea"] as SourceFilter[]).map((s) => {
+                const labels: Record<SourceFilter, string> = { all: "ทั้งหมด", tcs: "TCS", gulf: "Gulf", mea: "MEA" };
+                const isActive = sourceFilter === s;
+                return (
+                  <Button
+                    key={s}
+                    variant={isActive ? "default" : "outline"}
+                    size="sm"
+                    className={`text-xs h-7 px-2 ${isActive ? "" : ""}`}
+                    onClick={() => setSourceFilter(s)}
+                  >
+                    {labels[s]}
+                  </Button>
+                );
+              })}
+            </div>
+
+            <div className="h-4 w-px bg-border mx-1" />
+
             {/* Filter-specific controls */}
             {filterMode === "month" && (
               <div className="flex items-center gap-2">
@@ -474,6 +514,28 @@ export default function InstallationPrep() {
 
         {!isLoading && summary && (
           <>
+            {/* Source counts */}
+            {sourceFilter === "all" && (
+              <div className="flex flex-wrap gap-2">
+                {["TCS", "Gulf", "MEA"].map((src) => {
+                  const count = installations.filter((i) => i.sourceGroup === src).length;
+                  return (
+                    <Badge key={src} variant="outline" className={`text-xs ${SOURCE_COLORS[src] || ""}`}>
+                      {src}: {count} งาน
+                    </Badge>
+                  );
+                })}
+                {(() => {
+                  const noGroup = installations.filter((i) => !i.sourceGroup).length;
+                  return noGroup > 0 ? (
+                    <Badge variant="outline" className="text-xs bg-gray-100 text-gray-700">
+                      อื่นๆ: {noGroup} งาน
+                    </Badge>
+                  ) : null;
+                })()}
+              </div>
+            )}
+
             {/* Equipment Summary */}
             <Card className="border-orange-200 bg-orange-50/30">
               <CardHeader className="pb-3">
@@ -595,12 +657,18 @@ export default function InstallationPrep() {
 
               {installations.map((item) => {
                 const status = statusLabel(item.installationStatus);
+                const sourceGroupLower = item.sourceGroup?.toLowerCase() || "tcs";
+                const detailPath = `/${sourceGroupLower}/installations`;
                 return (
-                  <Card key={item.id} className="hover:shadow-sm transition-shadow">
+                  <Card
+                    key={item.id}
+                    className="hover:shadow-sm transition-shadow cursor-pointer"
+                    onClick={() => setLocation(`/surveys/${item.id}`)}
+                  >
                     <CardContent className="p-4">
                       <div className="flex flex-col lg:flex-row lg:items-start gap-3">
-                        {/* Left: Date + Status */}
-                        <div className="flex items-center gap-3 lg:w-[180px] shrink-0">
+                        {/* Left: Date + Status + Source Badge */}
+                        <div className="flex items-center gap-2 lg:w-[240px] shrink-0 flex-wrap">
                           <div className="text-center bg-orange-50 rounded-lg p-2 min-w-[60px]">
                             <CalendarIcon className="h-3.5 w-3.5 mx-auto text-orange-600 mb-0.5" />
                             <p className="text-xs font-bold text-orange-800">
@@ -610,6 +678,11 @@ export default function InstallationPrep() {
                           <Badge className={`text-xs ${status.color} border-0`}>
                             {status.text}
                           </Badge>
+                          {item.sourceGroup && (
+                            <Badge className={`text-xs border ${SOURCE_COLORS[item.sourceGroup] || "bg-gray-100 text-gray-700"}`}>
+                              {item.sourceGroup}
+                            </Badge>
+                          )}
                         </div>
 
                         {/* Middle: Customer info */}

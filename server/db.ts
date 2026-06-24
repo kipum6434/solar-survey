@@ -1769,8 +1769,10 @@ export async function getInstallations(opts: any) {
   const data = await db.select({
     survey: surveys,
     customer: customers,
+    sourceGroupName: sources.groupName,
   }).from(surveys)
     .innerJoin(customers, eq(surveys.customerId, customers.id))
+    .leftJoin(sources, eq(customers.source, sources.name))
     .where(whereClause)
     .orderBy(asc(surveys.installationDate), desc(surveys.id))
     .limit(limit)
@@ -1819,7 +1821,9 @@ export async function getInstallations(opts: any) {
 
   return {
     data: data.map(d => ({
-      ...d,
+      survey: d.survey,
+      customer: d.customer,
+      sourceGroup: d.sourceGroupName || null,
       assignments: assignmentsMap[d.survey.id] || [],
       customStatus: d.survey.statusId ? surveyCustomStatusMap[d.survey.statusId] || null : null,
       installerTeam: d.survey.installerTeamId ? installerTeamMap[d.survey.installerTeamId] || null : null,

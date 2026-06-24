@@ -1551,3 +1551,14 @@
 
 ## Bug Fix: Cannot assign warehouse role to user
 - [x] Fix: เปลี่ยน role user เป็น warehouse ไม่ได้ (แสดงเป็น "ผู้ใช้ทั่วไป" แทน "คลังสินค้า") - fixed type + dropdown options
+
+## Multi-Source Installation Prep (TCS/Gulf/MEA)
+- [x] ตรวจสอบ data model ปัจจุบัน: field source/group ของงานติดตั้ง
+- [x] Backend: เพิ่ม source filter parameter ใน installation-prep API (already supported via sourceGroup param)
+- [x] Backend: ดึงงานจากทั้ง 3 แหล่ง (TCS/Gulf/MEA) + normalize data (added sourceGroup join)
+- [x] Frontend: เพิ่ม source filter UI (ทั้งหมด/TCS/Gulf/MEA) + URL sync
+- [x] Frontend: แสดง badge แหล่งที่มาในรายการงาน
+- [x] Frontend: สรุปอุปกรณ์คำนวณตาม source filter
+- [x] Frontend: คลิกงานแล้วไปหน้ารายละเอียดตาม source ที่ถูกต้อง (/surveys/:id)
+- [x] Frontend: จำนวนงานใน badge ถูกต้องตาม filter
+- [x] ทดสอบ: filter ทั้งหมด/TCS/Gulf/MEA แสดงผลถูกต้อง (TS pass, vitest pass)
