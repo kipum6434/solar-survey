@@ -103,11 +103,20 @@ export default function DeliveryFormSection({ surveyId, installationStatus, surv
   }, [activeSignature, surveyId, saveSignature]);
 
   const handleCreateForm = () => {
-    const checklistItems = checklistTemplates.map((t: any) => ({
-      templateId: t.id,
-      label: t.label,
-      checked: false,
-    }));
+    // Each template has: id, name, items (JSON string array of checklist labels)
+    // We need to flatten all template items into individual checklist items
+    const checklistItems: { templateId: number; label: string; checked: boolean }[] = [];
+    for (const t of checklistTemplates as any[]) {
+      try {
+        const items: string[] = typeof t.items === "string" ? JSON.parse(t.items) : (t.items || []);
+        for (const label of items) {
+          checklistItems.push({ templateId: t.id, label, checked: false });
+        }
+      } catch {
+        // If items parsing fails, use template name as fallback
+        checklistItems.push({ templateId: t.id, label: t.name || "รายการตรวจสอบ", checked: false });
+      }
+    }
     createForm.mutate({
       surveyId,
       checklistItems,

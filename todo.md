@@ -1575,3 +1575,6 @@
 - [x] Frontend: Filter คนปิดการขาย - ค้นหาจาก array (รองรับอยู่แล้วผ่าน survey_assignments)
 - [x] Migrate ข้อมูลเดิม: closer 1 คน → array 1 รายการ (ไม่ต้อง migrate - ใช้ survey_assignments อยู่แล้ว)
 - [x] Vitest: ทดสอบ multi-closer CRUD + filter (warehouse tests pass, TS clean)
+
+## Bug Fix: สร้างใบส่งมอบงาน error - checklistItems expected string, received undefined
+- [x] Fix: checklistItems validation error เมื่อกดสร้างใบส่งมอบงาน - fixed: parse items JSON array from templates correctly
