@@ -617,7 +617,7 @@ const surveyRouter = router({
       try {
         const surveyData = await db.getSurveyWithCustomer(input.id);
         const customerName = surveyData?.customer?.name || `งาน #${input.id}`;
-        const notifContent = `⏸️ เลื่อนสำรวจ\nลูกค้า: ${customerName} (ID: ${input.id})\nสาเหตุ: ${input.reason}\nโดย: ${ctx.user.name || "Admin"}`;
+        const notifContent = `⏸️ เลื่อนสำรวจ\nลูกค้า: ${customerName} (ID: ${input.id})\nสาเหตุ: ${input.reason}\nโดย: ${ctx.user.name || "Admin"}\n\n🔗 ดูงาน: ${ENV.siteUrl}/surveys/${input.id}`;
         await notifyOwner({ title: "เลื่อนสำรวจ", content: notifContent });
         await sendLineNotification("เลื่อนสำรวจ", notifContent);
       } catch (e) { console.warn("[Postpone] notify failed:", e); }
@@ -643,7 +643,7 @@ const surveyRouter = router({
       try {
         const surveyData = await db.getSurveyWithCustomer(input.id);
         const customerName = surveyData?.customer?.name || `งาน #${input.id}`;
-        const notifContent = `❌ ยกเลิกสำรวจ\nลูกค้า: ${customerName} (ID: ${input.id})\nสาเหตุ: ${input.reason}\nโดย: ${ctx.user.name || "Admin"}`;
+        const notifContent = `❌ ยกเลิกสำรวจ\nลูกค้า: ${customerName} (ID: ${input.id})\nสาเหตุ: ${input.reason}\nโดย: ${ctx.user.name || "Admin"}\n\n🔗 ดูงาน: ${ENV.siteUrl}/surveys/${input.id}`;
         await notifyOwner({ title: "ยกเลิกสำรวจ", content: notifContent });
         await sendLineNotification("ยกเลิกสำรวจ", notifContent);
       } catch (e) { console.warn("[Cancel] notify failed:", e); }
@@ -673,7 +673,7 @@ const surveyRouter = router({
         const surveyData = await db.getSurveyWithCustomer(input.id);
         const customerName = surveyData?.customer?.name || `งาน #${input.id}`;
         const newDateStr = input.newDate ? `\nวันติดตั้งใหม่: ${new Date(input.newDate).toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" })}` : "";
-        const notifContent = `⏸️ เลื่อนติดตั้ง\nลูกค้า: ${customerName} (ID: ${input.id})\nสาเหตุ: ${input.reason}${newDateStr}\nโดย: ${ctx.user.name || "Admin"}`;
+        const notifContent = `⏸️ เลื่อนติดตั้ง\nลูกค้า: ${customerName} (ID: ${input.id})\nสาเหตุ: ${input.reason}${newDateStr}\nโดย: ${ctx.user.name || "Admin"}\n\n🔗 ดูงาน: ${ENV.siteUrl}/surveys/${input.id}`;
         await notifyOwner({ title: "เลื่อนติดตั้ง", content: notifContent });
         await sendLineNotification("เลื่อนติดตั้ง", notifContent);
       } catch (e) { console.warn("[Postpone Install] notify failed:", e); }
@@ -699,7 +699,7 @@ const surveyRouter = router({
       try {
         const surveyData = await db.getSurveyWithCustomer(input.id);
         const customerName = surveyData?.customer?.name || `งาน #${input.id}`;
-        const notifContent = `❌ ยกเลิกติดตั้ง\nลูกค้า: ${customerName} (ID: ${input.id})\nสาเหตุ: ${input.reason}\nโดย: ${ctx.user.name || "Admin"}`;
+        const notifContent = `❌ ยกเลิกติดตั้ง\nลูกค้า: ${customerName} (ID: ${input.id})\nสาเหตุ: ${input.reason}\nโดย: ${ctx.user.name || "Admin"}\n\n🔗 ดูงาน: ${ENV.siteUrl}/surveys/${input.id}`;
         await notifyOwner({ title: "ยกเลิกติดตั้ง", content: notifContent });
         await sendLineNotification("ยกเลิกติดตั้ง", notifContent);
       } catch (e) { console.warn("[Cancel Install] notify failed:", e); }
@@ -729,7 +729,7 @@ const surveyRouter = router({
       try {
         const surveyData = await db.getSurveyWithCustomer(input.surveyId);
         const customerName = surveyData?.customer?.name || `งาน #${input.surveyId}`;
-        const notifContent = `⏸️ เลื่อนสำรวจ (Share Link)\nลูกค้า: ${customerName} (ID: ${input.surveyId})\nสาเหตุ: ${input.reason}\nโดย: ${input.actionBy} (${input.actionByRole})`;
+        const notifContent = `⏸️ เลื่อนสำรวจ (Share Link)\nลูกค้า: ${customerName} (ID: ${input.surveyId})\nสาเหตุ: ${input.reason}\nโดย: ${input.actionBy} (${input.actionByRole})\n\n🔗 ดูงาน: ${ENV.siteUrl}/surveys/${input.surveyId}`;
         await notifyOwner({ title: "เลื่อนสำรวจ", content: notifContent });
         await sendLineNotification("เลื่อนสำรวจ", notifContent);
       } catch (e) { console.warn("[Public Postpone] notify failed:", e); }
@@ -758,7 +758,7 @@ const surveyRouter = router({
       try {
         const surveyData = await db.getSurveyWithCustomer(input.surveyId);
         const customerName = surveyData?.customer?.name || `งาน #${input.surveyId}`;
-        const notifContent = `❌ ยกเลิกสำรวจ (Share Link)\nลูกค้า: ${customerName} (ID: ${input.surveyId})\nสาเหตุ: ${input.reason}\nโดย: ${input.actionBy} (${input.actionByRole})`;
+        const notifContent = `❌ ยกเลิกสำรวจ (Share Link)\nลูกค้า: ${customerName} (ID: ${input.surveyId})\nสาเหตุ: ${input.reason}\nโดย: ${input.actionBy} (${input.actionByRole})\n\n🔗 ดูงาน: ${ENV.siteUrl}/surveys/${input.surveyId}`;
         await notifyOwner({ title: "ยกเลิกสำรวจ", content: notifContent });
         await sendLineNotification("ยกเลิกสำรวจ", notifContent);
       } catch (e) { console.warn("[Public Cancel] notify failed:", e); }
@@ -791,7 +791,7 @@ const surveyRouter = router({
         const surveyData = await db.getSurveyWithCustomer(input.surveyId);
         const customerName = surveyData?.customer?.name || `งาน #${input.surveyId}`;
         const newDateStr = input.newDate ? `\nวันติดตั้งใหม่: ${new Date(input.newDate).toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" })}` : "";
-        const notifContent = `⏸️ เลื่อนติดตั้ง (Share Link)\nลูกค้า: ${customerName} (ID: ${input.surveyId})\nสาเหตุ: ${input.reason}${newDateStr}\nโดย: ${input.actionBy} (${input.actionByRole})`;
+        const notifContent = `⏸️ เลื่อนติดตั้ง (Share Link)\nลูกค้า: ${customerName} (ID: ${input.surveyId})\nสาเหตุ: ${input.reason}${newDateStr}\nโดย: ${input.actionBy} (${input.actionByRole})\n\n🔗 ดูงาน: ${ENV.siteUrl}/surveys/${input.surveyId}`;
         await notifyOwner({ title: "เลื่อนติดตั้ง", content: notifContent });
         await sendLineNotification("เลื่อนติดตั้ง", notifContent);
       } catch (e) { console.warn("[Public Postpone Install] notify failed:", e); }
@@ -820,7 +820,7 @@ const surveyRouter = router({
       try {
         const surveyData = await db.getSurveyWithCustomer(input.surveyId);
         const customerName = surveyData?.customer?.name || `งาน #${input.surveyId}`;
-        const notifContent = `❌ ยกเลิกติดตั้ง (Share Link)\nลูกค้า: ${customerName} (ID: ${input.surveyId})\nสาเหตุ: ${input.reason}\nโดย: ${input.actionBy} (${input.actionByRole})`;
+        const notifContent = `❌ ยกเลิกติดตั้ง (Share Link)\nลูกค้า: ${customerName} (ID: ${input.surveyId})\nสาเหตุ: ${input.reason}\nโดย: ${input.actionBy} (${input.actionByRole})\n\n🔗 ดูงาน: ${ENV.siteUrl}/surveys/${input.surveyId}`;
         await notifyOwner({ title: "ยกเลิกติดตั้ง", content: notifContent });
         await sendLineNotification("ยกเลิกติดตั้ง", notifContent);
       } catch (e) { console.warn("[Public Cancel Install] notify failed:", e); }
@@ -1120,7 +1120,7 @@ const followUpRouter = router({
       try {
         const surveyData = await db.getSurveyWithCustomer(input.surveyId);
         const customerName = surveyData?.customer?.name || `งาน #${input.surveyId}`;
-        const notifContent = `❌ ยกเลิกติดตาม\nลูกค้า: ${customerName} (ID: ${input.surveyId})\nสาเหตุ: ${input.reason}\nโดย: ${ctx.user.name || "Admin"}`;
+        const notifContent = `❌ ยกเลิกติดตาม\nลูกค้า: ${customerName} (ID: ${input.surveyId})\nสาเหตุ: ${input.reason}\nโดย: ${ctx.user.name || "Admin"}\n\n🔗 ดูงาน: ${ENV.siteUrl}/surveys/${input.surveyId}`;
         await notifyOwner({ title: "ยกเลิกติดตาม", content: notifContent });
         await sendLineNotification("ยกเลิกติดตาม", notifContent);
       } catch (e) { console.warn("[CancelFollowUp] notify failed:", e); }
@@ -2302,7 +2302,7 @@ const deliveryRouter = router({
         const customerName = surveyInfo?.customer?.name || `งาน #${input.surveyId}`;
         await notifyOwner({
           title: "ช่างส่งมอบงานติดตั้ง",
-          content: `ทีมช่างได้ส่งมอบงานติดตั้งของลูกค้า "${customerName}" (ID: ${input.surveyId}) ผ่าน Share Link แล้ว กรุณาตรวจสอบและอนุมัติ`,
+          content: `ทีมช่างได้ส่งมอบงานติดตั้งของลูกค้า "${customerName}" (ID: ${input.surveyId}) ผ่าน Share Link แล้ว กรุณาตรวจสอบและอนุมัติ\n\n🔗 ดูงาน: ${ENV.siteUrl}/surveys/${input.surveyId}`,
         });
       } catch (e) {
         console.warn("[Delivery] Failed to notify owner:", e);
@@ -2375,7 +2375,7 @@ const deliveryRouter = router({
           .join(", ") || "-";
         await sendLineNotification(
           "ติดตั้งเสร็จสิ้น",
-          `งานติดตั้งของลูกค้า "${customerName}" (ID: ${input.surveyId})\nเซลล์/ผู้สำรวจ: ${surveyorNames}\nติดตั้งเสร็จสิ้นแล้ว`
+          `งานติดตั้งของลูกค้า "${customerName}" (ID: ${input.surveyId})\nเซลล์/ผู้สำรวจ: ${surveyorNames}\nติดตั้งเสร็จสิ้นแล้ว\n\n🔗 ดูงาน: ${ENV.siteUrl}/surveys/${input.surveyId}`
         );
       } catch (e) {
         console.warn("[Installation] Failed to send LINE notification:", e);
@@ -3341,7 +3341,7 @@ const cancelledCasesRouter = router({
       try {
         const surveyData = await db.getSurveyWithCustomer(input.surveyId);
         const customerName = surveyData?.customer?.name || `งาน #${input.surveyId}`;
-        const notifContent = `🔄 เปิดเคสใหม่\nลูกค้า: ${customerName} (ID: ${input.surveyId})\nโดย: ${ctx.user.name || "Admin"}`;
+        const notifContent = `🔄 เปิดเคสใหม่\nลูกค้า: ${customerName} (ID: ${input.surveyId})\nโดย: ${ctx.user.name || "Admin"}\n\n🔗 ดูงาน: ${ENV.siteUrl}/surveys/${input.surveyId}`;
         await notifyOwner({ title: "เปิดเคสใหม่", content: notifContent });
         await sendLineNotification("เปิดเคสใหม่", notifContent);
       } catch (e) { console.warn("[ReopenSurvey] notify failed:", e); }
