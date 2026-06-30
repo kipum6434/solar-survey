@@ -145,7 +145,7 @@ export default function DeliveryFormSection({ surveyId, installationStatus, surv
     setIsGeneratingPdf(true);
     try {
       const pdfMakeModule = await import("pdfmake/build/pdfmake");
-      const pdfMake = pdfMakeModule.default || pdfMakeModule;
+      const pdfMake: any = pdfMakeModule.default || pdfMakeModule;
       const { SARABUN_REGULAR_BASE64, SARABUN_BOLD_BASE64 } = await import("@/lib/sarabunFont");
 
       const vfs: Record<string, string> = {

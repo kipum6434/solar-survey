@@ -1592,3 +1592,7 @@
 - [x] เพิ่ม bulk delete (เลือกหลายรายการแล้วลบพร้อมกัน) ในหน้าใบส่งมอบงาน
 - [x] Backend: เพิ่ม deliveryForm.bulkDelete API
 - [x] Frontend: เพิ่ม checkbox + select all + bulk action bar
+
+## Bug Fix: PDF download ไม่ทำงาน + เพิ่มหน้ารายละเอียดใบส่งมอบงาน
+- [x] Fix: ปุ่ม "ดาวน์โหลด PDF" ไม่ทำงาน (กดแล้วไม่มีอะไรเกิดขึ้น) - แก้ pdfmake import interop
+- [x] เพิ่มหน้ารายละเอียดใบส่งมอบงาน (/delivery-forms/:id) - คลิกจากรายการแล้วเห็น checklist, ลายเซ็น, หมายเหตุ ได้เลย

@@ -235,7 +235,7 @@ export default function DeliveryForms() {
                     <div
                       key={form.id}
                       className="flex items-center gap-4 p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
-                      onClick={() => setLocation(`/surveys/${form.surveyId}`)}
+                      onClick={() => setLocation(`/delivery-forms/${form.id}`)}
                     >
                       {/* Checkbox */}
                       {isAdmin && (

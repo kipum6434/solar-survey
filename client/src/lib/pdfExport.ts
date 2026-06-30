@@ -1,4 +1,5 @@
-import * as pdfMake from "pdfmake/build/pdfmake";
+import pdfMakeModule from "pdfmake/build/pdfmake";
+const pdfMake = pdfMakeModule as any;
 import { SARABUN_REGULAR_BASE64, SARABUN_BOLD_BASE64 } from "./sarabunFont";
 
 // ==================== TYPES ====================
