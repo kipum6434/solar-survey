@@ -58,6 +58,7 @@ import {
   XCircle,
   Stamp,
   HardDrive,
+  ClipboardCheck,
 } from "lucide-react";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Redirect } from "wouter";
@@ -103,6 +104,7 @@ const commonMenuItems = [
   { icon: HardHat, label: "ทีมช่างติดตั้ง", path: "/installer-teams" },
   { icon: BarChart3, label: "สรุปผลงานช่าง", path: "/installer-team-report" },
   { icon: ImageIcon, label: "แกลลอรี่รูปติดตั้ง", path: "/gallery" },
+  { icon: ClipboardCheck, label: "ใบส่งมอบงาน", path: "/delivery-forms" },
   { icon: CheckSquare, label: "Checklist ส่งมอบ", path: "/checklist-templates" },
   { icon: Tags, label: "จัดการสถานะ", path: "/status-management" },
   { icon: FolderOpen, label: "จัดการไฟล์", path: "/file-management" },

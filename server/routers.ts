@@ -2830,6 +2830,17 @@ const deliveryFormRouter = router({
       await db.updateDeliveryFormNotes(input.id, input.notes);
       return { success: true };
     }),
+
+  list: protectedProcedure.query(async () => {
+    return db.listDeliveryForms();
+  }),
+
+  delete: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await db.deleteDeliveryForm(input.id);
+      return { success: true };
+    }),
 });
 
 // ==================== CHECKLIST TEMPLATE ROUTER ====================

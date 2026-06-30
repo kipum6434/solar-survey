@@ -60,6 +60,7 @@ const InstallationPrep = lazyRetry(() => import("./pages/InstallationPrep"));
 const CancelledCases = lazyRetry(() => import("./pages/CancelledCases"));
 const DocumentSettings = lazyRetry(() => import("./pages/DocumentSettings"));
 const StorageSettings = lazyRetry(() => import("./pages/StorageSettings"));
+const DeliveryForms = lazyRetry(() => import("./pages/DeliveryForms"));
 const NotFound = lazyRetry(() => import("./pages/NotFound"));
 
 // Loading fallback component
@@ -111,6 +112,7 @@ function Router() {
         <Route path="/cancelled-cases" component={CancelledCases} />
         <Route path="/survey-templates" component={SurveyTemplates} />
         <Route path="/checklist-templates" component={ChecklistTemplates} />
+        <Route path="/delivery-forms" component={DeliveryForms} />
         <Route path="/share/:token" component={SharedSurvey} />
         <Route path="/survey-field/:token" component={SharedSurveyField} />
         <Route path="/404" component={NotFound} />

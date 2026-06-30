@@ -2949,6 +2949,34 @@ export async function updateDeliveryFormPdf(id: number, pdfUrl: string, pdfFileK
   await db.update(deliveryForms).set({ pdfUrl, pdfFileKey }).where(eq(deliveryForms.id, id));
 }
 
+export async function listDeliveryForms() {
+  const db = await getDb();
+  if (!db) return [];
+  const results = await db
+    .select({
+      id: deliveryForms.id,
+      surveyId: deliveryForms.surveyId,
+      customerId: deliveryForms.customerId,
+      status: deliveryForms.status,
+      signedAt: deliveryForms.signedAt,
+      createdAt: deliveryForms.createdAt,
+      notes: deliveryForms.notes,
+      pdfUrl: deliveryForms.pdfUrl,
+      customerName: customers.name,
+      customerPhone: customers.phone,
+    })
+    .from(deliveryForms)
+    .leftJoin(customers, eq(deliveryForms.customerId, customers.id))
+    .orderBy(desc(deliveryForms.createdAt));
+  return results;
+}
+
+export async function deleteDeliveryForm(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(deliveryForms).where(eq(deliveryForms.id, id));
+}
+
 // ==================== DELIVERY CHECKLIST TEMPLATE QUERIES ====================
 export async function getChecklistTemplates() {
   const db = await getDb();

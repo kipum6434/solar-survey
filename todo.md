@@ -1578,3 +1578,11 @@
 
 ## Bug Fix: สร้างใบส่งมอบงาน error - checklistItems expected string, received undefined
 - [x] Fix: checklistItems validation error เมื่อกดสร้างใบส่งมอบงาน - fixed: parse items JSON array from templates correctly
+
+## Delivery Form Enhancement: เพิ่มเมนู sidebar + list page + ลบ + แก้ template + PDF export
+- [x] ตรวจสอบระบบใบส่งมอบงานปัจจุบัน (DB, API, frontend)
+- [x] เพิ่มเมนู "ใบส่งมอบงาน" ใน sidebar
+- [x] สร้างหน้า list ใบส่งมอบงานทั้งหมด (แสดงสถานะ, ลูกค้า, วันที่สร้าง)
+- [x] เพิ่มปุ่มลบใบส่งมอบงาน (admin only)
+- [x] เพิ่มความสามารถแก้ไข template ใบส่งมอบงาน (มีอยู่แล้วใน Checklist ส่งมอบ)
+- [x] ตรวจสอบและแก้ไข PDF export ให้ทำงานได้ (มีอยู่แล้ว - pdfmake + Sarabun font)

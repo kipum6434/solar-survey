@@ -1,0 +1,241 @@
+import { useState } from "react";
+import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { useLocation } from "wouter";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
+import {
+  ClipboardCheck, Search, Trash2, ExternalLink, FileText,
+  CheckCircle2, PenTool, Clock,
+} from "lucide-react";
+
+export default function DeliveryForms() {
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
+  const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+  const [search, setSearch] = useState("");
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+
+  const { data: forms, isLoading, refetch } = trpc.deliveryForm.list.useQuery();
+  const deleteMutation = trpc.deliveryForm.delete.useMutation({
+    onSuccess: () => {
+      toast.success("ลบใบส่งมอบงานสำเร็จ");
+      refetch();
+      setDeleteId(null);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const filteredForms = (forms || []).filter((f) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      f.customerName?.toLowerCase().includes(q) ||
+      f.customerPhone?.includes(q) ||
+      String(f.surveyId).includes(q)
+    );
+  });
+
+  const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
+    draft: { label: "ร่าง", color: "bg-gray-100 text-gray-700", icon: Clock },
+    signed: { label: "เซ็นแล้ว", color: "bg-blue-100 text-blue-700", icon: PenTool },
+    completed: { label: "เสร็จสิ้น", color: "bg-green-100 text-green-700", icon: CheckCircle2 },
+  };
+
+  const formatDate = (date: Date | string | null) => {
+    if (!date) return "-";
+    const d = new Date(date);
+    return d.toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "numeric" });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <ClipboardCheck className="h-6 w-6 text-amber-500" />
+            ใบส่งมอบงาน
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            รายการใบส่งมอบงานทั้งหมดที่สร้างในระบบ
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-sm">
+            ทั้งหมด {forms?.length ?? 0} รายการ
+          </Badge>
+        </div>
+      </div>
+
+      {/* Search */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="ค้นหาชื่อลูกค้า, เบอร์โทร, หรือรหัสงาน..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center">
+              <Clock className="h-5 w-5 text-gray-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{forms?.filter(f => f.status === "draft").length ?? 0}</p>
+              <p className="text-xs text-muted-foreground">ร่าง</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
+              <PenTool className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{forms?.filter(f => f.status === "signed").length ?? 0}</p>
+              <p className="text-xs text-muted-foreground">เซ็นแล้ว</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-green-100 flex items-center justify-center">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{forms?.filter(f => f.status === "completed").length ?? 0}</p>
+              <p className="text-xs text-muted-foreground">เสร็จสิ้น</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* List */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">รายการใบส่งมอบงาน</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-16 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : filteredForms.length === 0 ? (
+            <div className="text-center py-12">
+              <FileText className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-muted-foreground">
+                {search ? "ไม่พบใบส่งมอบงานที่ค้นหา" : "ยังไม่มีใบส่งมอบงาน"}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {filteredForms.map((form) => {
+                const sc = statusConfig[form.status] || statusConfig.draft;
+                const StatusIcon = sc.icon;
+                return (
+                  <div
+                    key={form.id}
+                    className="flex items-center gap-4 p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => setLocation(`/surveys/${form.surveyId}`)}
+                  >
+                    <div className="h-10 w-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+                      <ClipboardCheck className="h-5 w-5 text-amber-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-sm truncate">
+                          {form.customerName || `งาน #${form.surveyId}`}
+                        </p>
+                        <Badge className={`${sc.color} text-[10px] px-1.5 py-0 h-5 gap-1`}>
+                          <StatusIcon className="h-3 w-3" />
+                          {sc.label}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                        <span>งาน #{form.surveyId}</span>
+                        {form.customerPhone && <span>{form.customerPhone}</span>}
+                        <span>สร้าง: {formatDate(form.createdAt)}</span>
+                        {form.signedAt && <span>เซ็น: {formatDate(new Date(form.signedAt))}</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {form.pdfUrl && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(form.pdfUrl!, "_blank");
+                          }}
+                          title="ดู PDF"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteId(form.id);
+                          }}
+                          title="ลบ"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteId !== null} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ยืนยันการลบใบส่งมอบงาน</AlertDialogTitle>
+            <AlertDialogDescription>
+              คุณต้องการลบใบส่งมอบงานนี้หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteId && deleteMutation.mutate({ id: deleteId })}
+            >
+              ลบ
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
