@@ -2977,6 +2977,14 @@ export async function deleteDeliveryForm(id: number) {
   await db.delete(deliveryForms).where(eq(deliveryForms.id, id));
 }
 
+export async function bulkDeleteDeliveryForms(ids: number[]) {
+  if (ids.length === 0) return { deleted: 0 };
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(deliveryForms).where(inArray(deliveryForms.id, ids));
+  return { deleted: ids.length };
+}
+
 // ==================== DELIVERY CHECKLIST TEMPLATE QUERIES ====================
 export async function getChecklistTemplates() {
   const db = await getDb();

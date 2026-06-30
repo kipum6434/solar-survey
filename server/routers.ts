@@ -2841,6 +2841,12 @@ const deliveryFormRouter = router({
       await db.deleteDeliveryForm(input.id);
       return { success: true };
     }),
+
+  bulkDelete: adminProcedure
+    .input(z.object({ ids: z.array(z.number()).min(1).max(100) }))
+    .mutation(async ({ input }) => {
+      return db.bulkDeleteDeliveryForms(input.ids);
+    }),
 });
 
 // ==================== CHECKLIST TEMPLATE ROUTER ====================

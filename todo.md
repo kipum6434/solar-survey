@@ -1586,3 +1586,9 @@
 - [x] เพิ่มปุ่มลบใบส่งมอบงาน (admin only)
 - [x] เพิ่มความสามารถแก้ไข template ใบส่งมอบงาน (มีอยู่แล้วใน Checklist ส่งมอบ)
 - [x] ตรวจสอบและแก้ไข PDF export ให้ทำงานได้ (มีอยู่แล้ว - pdfmake + Sarabun font)
+
+## Bug Fix: หน้าใบส่งมอบงาน - sidebar ไม่แสดง + เพิ่ม bulk delete
+- [x] Fix: หน้า DeliveryForms ไม่ได้ wrap ด้วย DashboardLayout ทำให้ sidebar หายไป
+- [x] เพิ่ม bulk delete (เลือกหลายรายการแล้วลบพร้อมกัน) ในหน้าใบส่งมอบงาน
+- [x] Backend: เพิ่ม deliveryForm.bulkDelete API
+- [x] Frontend: เพิ่ม checkbox + select all + bulk action bar
