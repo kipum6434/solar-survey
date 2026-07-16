@@ -80,6 +80,7 @@ export default function Gallery() {
   const [lightboxPhotos, setLightboxPhotos] = useState<{ url: string; caption?: string | null }[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [downloadingSurveyId, setDownloadingSurveyId] = useState<number | null>(null);
+  const utils = trpc.useUtils();
 
   // Debounce search
   const [searchTimeout, setSearchTimeout] = useState<any>(null);
@@ -138,16 +139,17 @@ export default function Gallery() {
   const handleDownloadZip = async (surveyId: number, customerName: string) => {
     setDownloadingSurveyId(surveyId);
     try {
-      const res = await fetch(`/api/trpc/gallery.albumPhotos?input=${encodeURIComponent(JSON.stringify({ surveyId }))}`);
-      const json = await res.json();
-      const photos = json?.result?.data || [];
-      if (photos.length === 0) {
+      // Use tRPC client to properly handle superjson deserialization
+      const photos = await utils.gallery.albumPhotos.fetch({ surveyId });
+      if (!photos || photos.length === 0) {
         toast.error("ไม่มีรูปในอัลบั้มนี้");
         return;
       }
       const JSZip = await getJSZip();
       const zip = new JSZip();
       const catCounts: Record<string, number> = {};
+      let successCount = 0;
+      toast.info(`กำลังดาวน์โหลด ${photos.length} รูป...`);
       for (const photo of photos) {
         const cat = photo.category || "other";
         catCounts[cat] = (catCounts[cat] || 0) + 1;
@@ -156,11 +158,20 @@ export default function Gallery() {
         const fileName = `${catLabel}/${catCounts[cat]}.${ext}`;
         try {
           const imgRes = await fetch(photo.url);
-          const blob = await imgRes.blob();
-          zip.file(fileName, blob);
+          if (imgRes.ok) {
+            const blob = await imgRes.blob();
+            zip.file(fileName, blob);
+            successCount++;
+          } else {
+            console.warn(`Failed to fetch (${imgRes.status}): ${photo.url}`);
+          }
         } catch {
           console.warn(`Failed to fetch: ${photo.url}`);
         }
+      }
+      if (successCount === 0) {
+        toast.error("ไม่สามารถดาวน์โหลดรูปได้");
+        return;
       }
       const content = await zip.generateAsync({ type: "blob" });
       const url = URL.createObjectURL(content);
@@ -169,8 +180,9 @@ export default function Gallery() {
       a.download = `${customerName}_installation_photos.zip`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success(`ดาวน์โหลด ${photos.length} รูปสำเร็จ`);
+      toast.success(`ดาวน์โหลด ${successCount}/${photos.length} รูปสำเร็จ`);
     } catch (e) {
+      console.error("Download error:", e);
       toast.error("เกิดข้อผิดพลาดในการดาวน์โหลด");
     } finally {
       setDownloadingSurveyId(null);

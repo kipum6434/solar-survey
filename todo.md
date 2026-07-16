@@ -1599,3 +1599,8 @@
 
 ## Enhancement: เพิ่มลิงก์ในข้อความแจ้งเตือน
 - [x] เพิ่ม URL ลิงก์ไปยังหน้างานในทุกข้อความแจ้งเตือน (notifyOwner + LINE)
+
+## Bug Fix: Gallery download ขึ้น "ไม่มีรูปในอัลบัมนี้" + ดาวน์โหลดรูปไม่ครบ
+- [x] Fix: Gallery handleDownloadZip ใช้ raw fetch กับ tRPC endpoint ทำให้ superjson response ถูก parse ผิด → เปลี่ยนเป็นใช้ trpc.useUtils().gallery.albumPhotos.fetch()
+- [x] Fix: DeliveryTab handleDownloadAll เพิ่ม retry logic + error tracking เพื่อให้ดาวน์โหลดรูปครบ
+- [x] เพิ่ม toast แสดงจำนวนรูปที่ดาวน์โหลดสำเร็จ/ทั้งหมด

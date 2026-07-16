@@ -241,15 +241,34 @@ export default function DeliveryTab({ surveyId, installationStatus, surveyData, 
     try {
       const JSZip = (await import("jszip")).default;
       const zip = new JSZip();
+      let successCount = 0;
+      const catCounts: Record<string, number> = {};
+      toast.info(`กำลังดาวน์โหลด ${installPhotos.length} รูป...`);
       for (let i = 0; i < installPhotos.length; i++) {
         const photo = installPhotos[i] as any;
-        try {
-          const resp = await fetch(photo.url);
-          const blob = await resp.blob();
-          const catLabel = categoryLabelMap[photo.category] || photo.category || "other";
-          const ext = photo.url.split(".").pop()?.split("?")[0] || "jpg";
-          zip.file(`${catLabel}/${i + 1}.${ext}`, blob);
-        } catch { /* skip failed */ }
+        const catLabel = categoryLabelMap[photo.category] || photo.category || "other";
+        catCounts[catLabel] = (catCounts[catLabel] || 0) + 1;
+        const ext = (photo.fileName || photo.url || "photo.jpg").split(".").pop()?.split("?")[0] || "jpg";
+        const fileName = `${catLabel}/${catCounts[catLabel]}.${ext}`;
+        // Try fetch with retry
+        let blob: Blob | null = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const resp = await fetch(photo.url);
+            if (resp.ok) {
+              blob = await resp.blob();
+              break;
+            }
+          } catch { /* retry */ }
+        }
+        if (blob) {
+          zip.file(fileName, blob);
+          successCount++;
+        }
+      }
+      if (successCount === 0) {
+        toast.error("ไม่สามารถดาวน์โหลดรูปได้");
+        return;
       }
       const content = await zip.generateAsync({ type: "blob" });
       const url = URL.createObjectURL(content);
@@ -258,7 +277,11 @@ export default function DeliveryTab({ surveyId, installationStatus, surveyData, 
       a.download = `installation-photos-${surveyId}.zip`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("ดาวน์โหลดรูปทั้งหมดสำเร็จ");
+      if (successCount < installPhotos.length) {
+        toast.warning(`ดาวน์โหลดสำเร็จ ${successCount}/${installPhotos.length} รูป (บางรูปโหลดไม่สำเร็จ)`);
+      } else {
+        toast.success(`ดาวน์โหลด ${successCount} รูปสำเร็จ`);
+      }
     } catch {
       toast.error("ดาวน์โหลดล้มเหลว");
     } finally {
