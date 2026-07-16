@@ -135,7 +135,7 @@ export default function Gallery() {
     return new Date(ts).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" });
   };
 
-  // ZIP download
+  // ZIP download with retry and parallel fetching
   const handleDownloadZip = async (surveyId: number, customerName: string) => {
     setDownloadingSurveyId(surveyId);
     try {
@@ -149,26 +149,69 @@ export default function Gallery() {
       const zip = new JSZip();
       const catCounts: Record<string, number> = {};
       let successCount = 0;
-      toast.info(`กำลังดาวน์โหลด ${photos.length} รูป...`);
-      for (const photo of photos) {
+      const failedPhotos: string[] = [];
+      const toastId = toast.info(`กำลังดาวน์โหลด 0/${photos.length} รูป...`, { duration: Infinity });
+
+      // Helper: fetch with retry and timeout
+      const fetchWithRetry = async (url: string, maxRetries = 3): Promise<Blob | null> => {
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+            const res = await fetch(url, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            if (res.ok) {
+              return await res.blob();
+            }
+            // If 4xx error, don't retry
+            if (res.status >= 400 && res.status < 500) {
+              console.warn(`Client error (${res.status}) for: ${url}`);
+              return null;
+            }
+          } catch (err: any) {
+            if (attempt === maxRetries) {
+              console.warn(`Failed after ${maxRetries} attempts: ${url}`, err?.message);
+              return null;
+            }
+          }
+          // Wait before retry (exponential backoff: 1s, 2s, 4s)
+          await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
+        }
+        return null;
+      };
+
+      // Prepare file names first
+      const photoTasks = photos.map(photo => {
         const cat = photo.category || "other";
         catCounts[cat] = (catCounts[cat] || 0) + 1;
         const catLabel = categoryLabelMap[cat] || cat;
         const ext = (photo.fileName || "photo.jpg").split(".").pop() || "jpg";
         const fileName = `${catLabel}/${catCounts[cat]}.${ext}`;
-        try {
-          const imgRes = await fetch(photo.url);
-          if (imgRes.ok) {
-            const blob = await imgRes.blob();
-            zip.file(fileName, blob);
-            successCount++;
-          } else {
-            console.warn(`Failed to fetch (${imgRes.status}): ${photo.url}`);
-          }
-        } catch {
-          console.warn(`Failed to fetch: ${photo.url}`);
-        }
+        return { photo, fileName };
+      });
+
+      // Download in parallel batches of 5
+      const BATCH_SIZE = 5;
+      for (let i = 0; i < photoTasks.length; i += BATCH_SIZE) {
+        const batch = photoTasks.slice(i, i + BATCH_SIZE);
+        const results = await Promise.all(
+          batch.map(async ({ photo, fileName }) => {
+            const blob = await fetchWithRetry(photo.url);
+            if (blob) {
+              zip.file(fileName, blob);
+              return true;
+            } else {
+              failedPhotos.push(fileName);
+              return false;
+            }
+          })
+        );
+        successCount += results.filter(Boolean).length;
+        toast.info(`กำลังดาวน์โหลด ${successCount}/${photos.length} รูป...`, { id: toastId as any, duration: Infinity });
       }
+
+      toast.dismiss(toastId as any);
+
       if (successCount === 0) {
         toast.error("ไม่สามารถดาวน์โหลดรูปได้");
         return;
@@ -180,7 +223,12 @@ export default function Gallery() {
       a.download = `${customerName}_installation_photos.zip`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success(`ดาวน์โหลด ${successCount}/${photos.length} รูปสำเร็จ`);
+      if (failedPhotos.length > 0) {
+        toast.warning(`ดาวน์โหลด ${successCount}/${photos.length} รูปสำเร็จ (${failedPhotos.length} รูปโหลดไม่ได้)`, { duration: 8000 });
+        console.warn("Failed photos:", failedPhotos);
+      } else {
+        toast.success(`ดาวน์โหลด ${successCount}/${photos.length} รูปสำเร็จ`);
+      }
     } catch (e) {
       console.error("Download error:", e);
       toast.error("เกิดข้อผิดพลาดในการดาวน์โหลด");

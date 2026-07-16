@@ -1604,3 +1604,10 @@
 - [x] Fix: Gallery handleDownloadZip ใช้ raw fetch กับ tRPC endpoint ทำให้ superjson response ถูก parse ผิด → เปลี่ยนเป็นใช้ trpc.useUtils().gallery.albumPhotos.fetch()
 - [x] Fix: DeliveryTab handleDownloadAll เพิ่ม retry logic + error tracking เพื่อให้ดาวน์โหลดรูปครบ
 - [x] เพิ่ม toast แสดงจำนวนรูปที่ดาวน์โหลดสำเร็จ/ทั้งหมด
+
+## Bug Fix: Gallery download 119/120 (ดาวน์โหลดรูปไม่ครบ)
+- [x] เพิ่ม retry 3 ครั้ง + exponential backoff (1s, 2s, 4s) ในการ fetch รูปแต่ละรูป
+- [x] เพิ่ม timeout 30 วินาทีต่อรูป (AbortController)
+- [x] เปลี่ยนเป็น parallel download (batch 5 รูปพร้อมกัน) เพื่อเพิ่มความเร็ว
+- [x] แสดง progress toast แบบ real-time (อัพเดตจำนวนที่โหลดได้)
+- [x] แสดง warning เมื่อมีรูปที่โหลดไม่สำเร็จ พร้อมจำนวน
