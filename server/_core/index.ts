@@ -9,6 +9,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { registerLineWebhook } from "../lineWebhook";
 import { registerPhotoDownloadRoutes } from "../photoDownload";
+import { registerGalleryDownloadRoutes } from "../galleryDownload";
 import { backfillPayments } from "../backfill";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -42,6 +43,8 @@ async function startServer() {
   registerLineWebhook(app);
   // Photo ZIP download endpoint
   registerPhotoDownloadRoutes(app);
+  // Gallery (installation photos) ZIP download endpoint
+  registerGalleryDownloadRoutes(app);
   // tRPC API
   app.use(
     "/api/trpc",

@@ -1611,3 +1611,11 @@
 - [x] เปลี่ยนเป็น parallel download (batch 5 รูปพร้อมกัน) เพื่อเพิ่มความเร็ว
 - [x] แสดง progress toast แบบ real-time (อัพเดตจำนวนที่โหลดได้)
 - [x] แสดง warning เมื่อมีรูปที่โหลดไม่สำเร็จ พร้อมจำนวน
+
+## Bug Fix - Gallery Download Missing 1 Photo (211/212)
+
+- [x] สร้าง server-side gallery ZIP endpoint (/api/gallery/download-zip/:surveyId) เพื่อดาวน์โหลดรูปจาก S3 ฝั่ง server แทน browser
+- [x] เพิ่ม retry 5 ครั้ง + timeout 60 วินาที + parallel fetch (10 at a time) ฝั่ง server
+- [x] Frontend: เปลี่ยน handleDownloadZip ให้เรียก server-side endpoint แทน client-side fetch
+- [x] แสดง progress toast ระหว่างรอ server สร้าง ZIP
+- [x] แสดงจำนวนรูปที่สำเร็จ/ทั้งหมดใน response header (X-Photos-Success, X-Photos-Total, X-Photos-Failed)

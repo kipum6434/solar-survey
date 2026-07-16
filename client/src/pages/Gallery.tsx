@@ -18,8 +18,7 @@ import {
   ImageIcon,
 } from "lucide-react";
 import { useLocation } from "wouter";
-// JSZip loaded dynamically for code splitting
-const getJSZip = () => import("jszip").then(m => m.default);
+// JSZip no longer needed - ZIP generation moved to server-side
 
 const THAI_MONTHS_SHORT = [
   "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
@@ -80,7 +79,7 @@ export default function Gallery() {
   const [lightboxPhotos, setLightboxPhotos] = useState<{ url: string; caption?: string | null }[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [downloadingSurveyId, setDownloadingSurveyId] = useState<number | null>(null);
-  const utils = trpc.useUtils();
+  // utils removed - gallery download now uses server-side endpoint
 
   // Debounce search
   const [searchTimeout, setSearchTimeout] = useState<any>(null);
@@ -135,101 +134,42 @@ export default function Gallery() {
     return new Date(ts).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" });
   };
 
-  // ZIP download with retry and parallel fetching
+  // ZIP download via server-side endpoint (avoids browser CORS/timeout issues)
   const handleDownloadZip = async (surveyId: number, customerName: string) => {
     setDownloadingSurveyId(surveyId);
+    const toastId = toast.info("กำลังเตรียมไฟล์ ZIP... (อาจใช้เวลา 1-3 นาที)", { duration: Infinity });
     try {
-      // Use tRPC client to properly handle superjson deserialization
-      const photos = await utils.gallery.albumPhotos.fetch({ surveyId });
-      if (!photos || photos.length === 0) {
-        toast.error("ไม่มีรูปในอัลบั้มนี้");
-        return;
-      }
-      const JSZip = await getJSZip();
-      const zip = new JSZip();
-      const catCounts: Record<string, number> = {};
-      let successCount = 0;
-      const failedPhotos: string[] = [];
-      const toastId = toast.info(`กำลังดาวน์โหลด 0/${photos.length} รูป...`, { duration: Infinity });
-
-      // Helper: fetch with retry and timeout
-      const fetchWithRetry = async (url: string, maxRetries = 3): Promise<Blob | null> => {
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-          try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
-            const res = await fetch(url, { signal: controller.signal });
-            clearTimeout(timeoutId);
-            if (res.ok) {
-              return await res.blob();
-            }
-            // If 4xx error, don't retry
-            if (res.status >= 400 && res.status < 500) {
-              console.warn(`Client error (${res.status}) for: ${url}`);
-              return null;
-            }
-          } catch (err: any) {
-            if (attempt === maxRetries) {
-              console.warn(`Failed after ${maxRetries} attempts: ${url}`, err?.message);
-              return null;
-            }
-          }
-          // Wait before retry (exponential backoff: 1s, 2s, 4s)
-          await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
-        }
-        return null;
-      };
-
-      // Prepare file names first
-      const photoTasks = photos.map(photo => {
-        const cat = photo.category || "other";
-        catCounts[cat] = (catCounts[cat] || 0) + 1;
-        const catLabel = categoryLabelMap[cat] || cat;
-        const ext = (photo.fileName || "photo.jpg").split(".").pop() || "jpg";
-        const fileName = `${catLabel}/${catCounts[cat]}.${ext}`;
-        return { photo, fileName };
-      });
-
-      // Download in parallel batches of 5
-      const BATCH_SIZE = 5;
-      for (let i = 0; i < photoTasks.length; i += BATCH_SIZE) {
-        const batch = photoTasks.slice(i, i + BATCH_SIZE);
-        const results = await Promise.all(
-          batch.map(async ({ photo, fileName }) => {
-            const blob = await fetchWithRetry(photo.url);
-            if (blob) {
-              zip.file(fileName, blob);
-              return true;
-            } else {
-              failedPhotos.push(fileName);
-              return false;
-            }
-          })
-        );
-        successCount += results.filter(Boolean).length;
-        toast.info(`กำลังดาวน์โหลด ${successCount}/${photos.length} รูป...`, { id: toastId as any, duration: Infinity });
-      }
-
+      const response = await fetch(`/api/gallery/download-zip/${surveyId}`);
       toast.dismiss(toastId as any);
-
-      if (successCount === 0) {
-        toast.error("ไม่สามารถดาวน์โหลดรูปได้");
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          toast.error("ไม่มีรูปในอัลบั้มนี้");
+        } else {
+          toast.error("เกิดข้อผิดพลาดในการดาวน์โหลด");
+        }
         return;
       }
-      const content = await zip.generateAsync({ type: "blob" });
-      const url = URL.createObjectURL(content);
+
+      const successCount = parseInt(response.headers.get("X-Photos-Success") || "0");
+      const totalCount = parseInt(response.headers.get("X-Photos-Total") || "0");
+      const failedCount = parseInt(response.headers.get("X-Photos-Failed") || "0");
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = `${customerName}_installation_photos.zip`;
       a.click();
       URL.revokeObjectURL(url);
-      if (failedPhotos.length > 0) {
-        toast.warning(`ดาวน์โหลด ${successCount}/${photos.length} รูปสำเร็จ (${failedPhotos.length} รูปโหลดไม่ได้)`, { duration: 8000 });
-        console.warn("Failed photos:", failedPhotos);
+
+      if (failedCount > 0) {
+        toast.warning(`ดาวน์โหลด ${successCount}/${totalCount} รูปสำเร็จ (${failedCount} รูปโหลดไม่ได้)`, { duration: 8000 });
       } else {
-        toast.success(`ดาวน์โหลด ${successCount}/${photos.length} รูปสำเร็จ`);
+        toast.success(`ดาวน์โหลด ${successCount}/${totalCount} รูปสำเร็จ`);
       }
     } catch (e) {
+      toast.dismiss(toastId as any);
       console.error("Download error:", e);
       toast.error("เกิดข้อผิดพลาดในการดาวน์โหลด");
     } finally {
