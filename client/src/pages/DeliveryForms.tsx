@@ -16,7 +16,7 @@ import {
 import { toast } from "sonner";
 import {
   ClipboardCheck, Search, Trash2, ExternalLink, FileText,
-  CheckCircle2, PenTool, Clock, Send,
+  CheckCircle2, PenTool, Clock, Send, FileSignature,
 } from "lucide-react";
 
 export default function DeliveryForms() {
@@ -280,6 +280,20 @@ export default function DeliveryForms() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
+                        {/* Shortcut: จัดการหนังสือส่งมอบ */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 gap-1.5 text-amber-600 hover:text-amber-700 hover:bg-amber-50 px-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLocation(`/delivery-forms/${form.id}/handover`);
+                          }}
+                          title="จัดการหนังสือส่งมอบ"
+                        >
+                          <FileSignature className="h-4 w-4" />
+                          <span className="hidden sm:inline text-xs">จัดการส่งมอบ</span>
+                        </Button>
                         {form.pdfUrl && (
                           <Button
                             variant="ghost"
