@@ -180,23 +180,15 @@ export default function DeliveryFormDetail() {
       };
 
       const pdfDoc = pdfMake.createPdf(docDef);
-      await new Promise<void>((resolve, reject) => {
-        pdfDoc.getBlob((blob: Blob) => {
-          try {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `DF-${String(formId).padStart(6, "0")}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(url), 5000);
-            resolve();
-          } catch (e) {
-            reject(e);
-          }
-        });
-      });
+      const blob = await pdfDoc.getBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `DF-${String(formId).padStart(6, "0")}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
       toast.success("ดาวน์โหลด PDF สำเร็จ");
     } catch (err: any) {
       console.error("PDF generation error:", err);
