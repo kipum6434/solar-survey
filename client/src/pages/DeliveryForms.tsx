@@ -16,14 +16,17 @@ import {
 import { toast } from "sonner";
 import {
   ClipboardCheck, Search, Trash2, ExternalLink, FileText,
-  CheckCircle2, PenTool, Clock, Send, FileSignature,
+  CheckCircle2, PenTool, Clock, Send, FileSignature, UserCheck, AlertCircle,
 } from "lucide-react";
+
+type SignatureStatus = "all" | "not_sent" | "waiting_tech" | "waiting_customer" | "signed";
 
 export default function DeliveryForms() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
   const [search, setSearch] = useState("");
+  const [signatureFilter, setSignatureFilter] = useState<SignatureStatus>("all");
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [showBulkDelete, setShowBulkDelete] = useState(false);
@@ -50,17 +53,43 @@ export default function DeliveryForms() {
     onError: (e) => toast.error(e.message),
   });
 
+  // Compute signature status for each form
+  const getSignatureStatus = useCallback((form: NonNullable<typeof forms>[number]) => {
+    if (form.customerSignatureUrl && form.signedAt) return "signed";
+    if (form.technicianSignatureUrl && !form.customerSignatureUrl) return "waiting_customer";
+    if (form.handoverToken && !form.technicianSignatureUrl) return "waiting_tech";
+    return "not_sent";
+  }, []);
+
+  // Signature status counts
+  const signatureCounts = useMemo(() => {
+    if (!forms) return { not_sent: 0, waiting_tech: 0, waiting_customer: 0, signed: 0 };
+    const counts = { not_sent: 0, waiting_tech: 0, waiting_customer: 0, signed: 0 };
+    forms.forEach((f) => {
+      const status = getSignatureStatus(f);
+      counts[status]++;
+    });
+    return counts;
+  }, [forms, getSignatureStatus]);
+
   const filteredForms = useMemo(() => {
     return (forms || []).filter((f) => {
-      if (!search) return true;
-      const q = search.toLowerCase();
-      return (
-        f.customerName?.toLowerCase().includes(q) ||
-        f.customerPhone?.includes(q) ||
-        String(f.surveyId).includes(q)
-      );
+      // Search filter
+      if (search) {
+        const q = search.toLowerCase();
+        const matchSearch =
+          f.customerName?.toLowerCase().includes(q) ||
+          f.customerPhone?.includes(q) ||
+          String(f.surveyId).includes(q);
+        if (!matchSearch) return false;
+      }
+      // Signature status filter
+      if (signatureFilter !== "all") {
+        return getSignatureStatus(f) === signatureFilter;
+      }
+      return true;
     });
-  }, [forms, search]);
+  }, [forms, search, signatureFilter, getSignatureStatus]);
 
   // Bulk select helpers
   const currentIds = useMemo(() => filteredForms.map((f) => f.id), [filteredForms]);
@@ -88,18 +117,26 @@ export default function DeliveryForms() {
     });
   }, [currentIds]);
 
-  const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
-    draft: { label: "ร่าง", color: "bg-gray-100 text-gray-700", icon: Clock },
-    pending_signature: { label: "รอลูกค้าเซ็น", color: "bg-amber-100 text-amber-700", icon: Send },
-    signed: { label: "เซ็นแล้ว", color: "bg-blue-100 text-blue-700", icon: PenTool },
-    completed: { label: "เสร็จสิ้น", color: "bg-green-100 text-green-700", icon: CheckCircle2 },
-  };
-
   const formatDate = (date: Date | string | null) => {
     if (!date) return "-";
     const d = new Date(date);
     return d.toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "numeric" });
   };
+
+  const signatureStatusConfig: Record<string, { label: string; color: string; icon: any }> = {
+    not_sent: { label: "ยังไม่ส่งลิงก์", color: "bg-gray-100 text-gray-600", icon: Clock },
+    waiting_tech: { label: "รอช่างเซ็น", color: "bg-orange-100 text-orange-700", icon: AlertCircle },
+    waiting_customer: { label: "รอลูกค้าเซ็น", color: "bg-amber-100 text-amber-700", icon: Send },
+    signed: { label: "เซ็นครบแล้ว", color: "bg-green-100 text-green-700", icon: UserCheck },
+  };
+
+  const filterTabs: { key: SignatureStatus; label: string; count: number }[] = [
+    { key: "all", label: "ทั้งหมด", count: forms?.length ?? 0 },
+    { key: "not_sent", label: "ยังไม่ส่งลิงก์", count: signatureCounts.not_sent },
+    { key: "waiting_tech", label: "รอช่างเซ็น", count: signatureCounts.waiting_tech },
+    { key: "waiting_customer", label: "รอลูกค้าเซ็น", count: signatureCounts.waiting_customer },
+    { key: "signed", label: "เซ็นครบแล้ว", count: signatureCounts.signed },
+  ];
 
   return (
     <DashboardLayout>
@@ -112,19 +149,80 @@ export default function DeliveryForms() {
               ใบส่งมอบงาน
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              รายการใบส่งมอบงานทั้งหมดที่สร้างในระบบ
+              ติดตามสถานะลายเซ็นและจัดการใบส่งมอบงานทั้งหมด
             </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-sm">
-              ทั้งหมด {forms?.length ?? 0} รายการ
-            </Badge>
           </div>
         </div>
 
-        {/* Search */}
+        {/* Signature Summary Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <Card className={`cursor-pointer transition-all ${signatureFilter === "not_sent" ? "ring-2 ring-gray-400" : "hover:shadow-md"}`} onClick={() => setSignatureFilter(signatureFilter === "not_sent" ? "all" : "not_sent")}>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                <Clock className="h-5 w-5 text-gray-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{signatureCounts.not_sent}</p>
+                <p className="text-xs text-muted-foreground">ยังไม่ส่งลิงก์</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className={`cursor-pointer transition-all ${signatureFilter === "waiting_tech" ? "ring-2 ring-orange-400" : "hover:shadow-md"}`} onClick={() => setSignatureFilter(signatureFilter === "waiting_tech" ? "all" : "waiting_tech")}>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-orange-100 flex items-center justify-center">
+                <AlertCircle className="h-5 w-5 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{signatureCounts.waiting_tech}</p>
+                <p className="text-xs text-muted-foreground">รอช่างเซ็น</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className={`cursor-pointer transition-all ${signatureFilter === "waiting_customer" ? "ring-2 ring-amber-400" : "hover:shadow-md"}`} onClick={() => setSignatureFilter(signatureFilter === "waiting_customer" ? "all" : "waiting_customer")}>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                <Send className="h-5 w-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{signatureCounts.waiting_customer}</p>
+                <p className="text-xs text-muted-foreground">รอลูกค้าเซ็น</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className={`cursor-pointer transition-all ${signatureFilter === "signed" ? "ring-2 ring-green-400" : "hover:shadow-md"}`} onClick={() => setSignatureFilter(signatureFilter === "signed" ? "all" : "signed")}>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-green-100 flex items-center justify-center">
+                <UserCheck className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{signatureCounts.signed}</p>
+                <p className="text-xs text-muted-foreground">เซ็นครบแล้ว</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Filter Tabs + Search */}
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 space-y-3">
+            {/* Filter Tabs */}
+            <div className="flex flex-wrap gap-2">
+              {filterTabs.map((tab) => (
+                <Button
+                  key={tab.key}
+                  variant={signatureFilter === tab.key ? "default" : "outline"}
+                  size="sm"
+                  className="h-8 text-xs gap-1.5"
+                  onClick={() => setSignatureFilter(tab.key)}
+                >
+                  {tab.label}
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                    {tab.count}
+                  </Badge>
+                </Button>
+              ))}
+            </div>
+            {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -136,54 +234,6 @@ export default function DeliveryForms() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                <Clock className="h-5 w-5 text-gray-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{forms?.filter(f => f.status === "draft").length ?? 0}</p>
-                <p className="text-xs text-muted-foreground">ร่าง</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                <Send className="h-5 w-5 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{forms?.filter(f => f.status === "pending_signature").length ?? 0}</p>
-                <p className="text-xs text-muted-foreground">รอเซ็น</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                <PenTool className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{forms?.filter(f => f.status === "signed").length ?? 0}</p>
-                <p className="text-xs text-muted-foreground">เซ็นแล้ว</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-green-100 flex items-center justify-center">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{forms?.filter(f => f.status === "completed").length ?? 0}</p>
-                <p className="text-xs text-muted-foreground">เสร็จสิ้น</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Bulk Action Bar */}
         {isAdmin && selectedIds.size > 0 && (
@@ -211,7 +261,10 @@ export default function DeliveryForms() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">รายการใบส่งมอบงาน</CardTitle>
+              <CardTitle className="text-base">
+                {signatureFilter === "all" ? "รายการทั้งหมด" : filterTabs.find(t => t.key === signatureFilter)?.label}
+                <span className="text-muted-foreground font-normal ml-2 text-sm">({filteredForms.length} รายการ)</span>
+              </CardTitle>
               {isAdmin && filteredForms.length > 0 && (
                 <div className="flex items-center gap-2">
                   <Checkbox
@@ -235,14 +288,15 @@ export default function DeliveryForms() {
               <div className="text-center py-12">
                 <FileText className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
                 <p className="text-muted-foreground">
-                  {search ? "ไม่พบใบส่งมอบงานที่ค้นหา" : "ยังไม่มีใบส่งมอบงาน"}
+                  {search ? "ไม่พบใบส่งมอบงานที่ค้นหา" : signatureFilter !== "all" ? "ไม่มีรายการในหมวดนี้" : "ยังไม่มีใบส่งมอบงาน"}
                 </p>
               </div>
             ) : (
               <div className="space-y-2">
                 {filteredForms.map((form) => {
-                  const sc = statusConfig[form.status] || statusConfig.draft;
-                  const StatusIcon = sc.icon;
+                  const sigStatus = getSignatureStatus(form);
+                  const sigConfig = signatureStatusConfig[sigStatus];
+                  const SigIcon = sigConfig.icon;
                   return (
                     <div
                       key={form.id}
@@ -259,24 +313,40 @@ export default function DeliveryForms() {
                           />
                         </div>
                       )}
-                      <div className="h-10 w-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
-                        <ClipboardCheck className="h-5 w-5 text-amber-600" />
+                      <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${
+                        sigStatus === "signed" ? "bg-green-50" :
+                        sigStatus === "waiting_customer" ? "bg-amber-50" :
+                        sigStatus === "waiting_tech" ? "bg-orange-50" : "bg-gray-50"
+                      }`}>
+                        <ClipboardCheck className={`h-5 w-5 ${
+                          sigStatus === "signed" ? "text-green-600" :
+                          sigStatus === "waiting_customer" ? "text-amber-600" :
+                          sigStatus === "waiting_tech" ? "text-orange-600" : "text-gray-500"
+                        }`} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-medium text-sm truncate">
                             {form.customerName || `งาน #${form.surveyId}`}
                           </p>
-                          <Badge className={`${sc.color} text-[10px] px-1.5 py-0 h-5 gap-1`}>
-                            <StatusIcon className="h-3 w-3" />
-                            {sc.label}
+                          {/* Signature Status Badge */}
+                          <Badge className={`${sigConfig.color} text-[10px] px-1.5 py-0 h-5 gap-1 shrink-0`}>
+                            <SigIcon className="h-3 w-3" />
+                            {sigConfig.label}
                           </Badge>
                         </div>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          <span>งาน #{form.surveyId}</span>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                          <span>#{form.surveyId}</span>
                           {form.customerPhone && <span>{form.customerPhone}</span>}
-                          <span>สร้าง: {formatDate(form.createdAt)}</span>
-                          {form.signedAt && <span>เซ็น: {formatDate(new Date(form.signedAt))}</span>}
+                          {form.technicianName && (
+                            <span className="text-blue-600">ช่าง: {form.technicianName}</span>
+                          )}
+                          {form.signedAt && (
+                            <span className="text-green-600">เซ็น: {formatDate(new Date(form.signedAt))}</span>
+                          )}
+                          {!form.signedAt && (
+                            <span>สร้าง: {formatDate(form.createdAt)}</span>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">

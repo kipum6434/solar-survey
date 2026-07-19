@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocation } from "wouter";
-import { toast } from "sonner";
 import {
   Search, ChevronLeft, ChevronRight, Clock, CheckCircle2,
   XCircle, FileCheck, Phone, MapPin, Camera, HardHat, Calendar,
+  UserCheck, Send, AlertCircle, FileX,
 } from "lucide-react";
 
 const THAI_MONTHS_SHORT = [
@@ -209,9 +209,18 @@ export default function Approvals() {
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className="font-semibold truncate">{item.customer.name}</span>
                         {getStatusBadge(item.survey.deliveryStatus)}
+                        {/* Signature Status Badge */}
+                        {(() => {
+                          const sig = item.deliverySignature;
+                          if (!sig) return <Badge variant="outline" className="bg-gray-50 text-gray-500 border-gray-200 text-[10px]"><FileX className="w-3 h-3 mr-0.5" />ไม่มีใบส่งมอบ</Badge>;
+                          if (sig.customerSignatureUrl && sig.signedAt) return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[10px]"><UserCheck className="w-3 h-3 mr-0.5" />ลูกค้าเซ็นแล้ว</Badge>;
+                          if (sig.technicianSignatureUrl && !sig.customerSignatureUrl) return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px]"><Send className="w-3 h-3 mr-0.5" />รอลูกค้าเซ็น</Badge>;
+                          if (sig.handoverToken && !sig.technicianSignatureUrl) return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-[10px]"><AlertCircle className="w-3 h-3 mr-0.5" />รอช่างเซ็น</Badge>;
+                          return <Badge variant="outline" className="bg-gray-50 text-gray-500 border-gray-200 text-[10px]"><Clock className="w-3 h-3 mr-0.5" />ยังไม่ส่งลิงก์</Badge>;
+                        })()}
                         <span className="text-xs text-muted-foreground">#{item.survey.id}</span>
                       </div>
                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">

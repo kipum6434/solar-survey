@@ -2856,6 +2856,29 @@ export async function getPendingApprovals(opts: {
     }
   }
 
+  // Get delivery form signature status per survey
+  let deliveryFormSignatureMap: Record<number, { customerSignatureUrl: string | null; technicianSignatureUrl: string | null; signedAt: number | null; technicianSignedAt: number | null; handoverToken: string | null }> = {};
+  if (surveyIds.length > 0) {
+    const dfData = await db.select({
+      surveyId: deliveryForms.surveyId,
+      customerSignatureUrl: deliveryForms.customerSignatureUrl,
+      technicianSignatureUrl: deliveryForms.technicianSignatureUrl,
+      signedAt: deliveryForms.signedAt,
+      technicianSignedAt: deliveryForms.technicianSignedAt,
+      handoverToken: deliveryForms.handoverToken,
+    }).from(deliveryForms)
+      .where(inArray(deliveryForms.surveyId, surveyIds));
+    for (const df of dfData) {
+      deliveryFormSignatureMap[df.surveyId] = {
+        customerSignatureUrl: df.customerSignatureUrl,
+        technicianSignatureUrl: df.technicianSignatureUrl,
+        signedAt: df.signedAt,
+        technicianSignedAt: df.technicianSignedAt,
+        handoverToken: df.handoverToken,
+      };
+    }
+  }
+
   const countQ = await db.select({ count: sql<number>`count(*)` }).from(surveys).innerJoin(customers, eq(surveys.customerId, customers.id)).where(whereClause);
 
   return {
@@ -2864,6 +2887,7 @@ export async function getPendingApprovals(opts: {
       installerTeam: d.survey.installerTeamId ? installerTeamMap[d.survey.installerTeamId] || null : null,
       assignments: assignmentsMap[d.survey.id] || [],
       photoCount: photoCountMap[d.survey.id] || 0,
+      deliverySignature: deliveryFormSignatureMap[d.survey.id] || null,
     })),
     total: Number(countQ[0]?.count || 0),
   };
@@ -2970,6 +2994,11 @@ export async function listDeliveryForms() {
       pdfUrl: deliveryForms.pdfUrl,
       customerName: customers.name,
       customerPhone: customers.phone,
+      customerSignatureUrl: deliveryForms.customerSignatureUrl,
+      technicianSignatureUrl: deliveryForms.technicianSignatureUrl,
+      technicianSignedAt: deliveryForms.technicianSignedAt,
+      technicianName: deliveryForms.technicianName,
+      handoverToken: deliveryForms.handoverToken,
     })
     .from(deliveryForms)
     .leftJoin(customers, eq(deliveryForms.customerId, customers.id))

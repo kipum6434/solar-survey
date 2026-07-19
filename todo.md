@@ -1705,3 +1705,10 @@
 - [x] Show technicianSignedAt in DeliveryFormSection admin view
 - [x] Return technicianSignedAt in getByHandoverToken response
 - [x] PDF export already supports both signatures (was pre-existing)
+
+## Signature Status Tracking (Delivery Forms & Approvals)
+- [x] Add signature status badge to DeliveryForms page list items (เซ็นแล้ว/รอลูกค้าเซ็น/ยังไม่เซ็น)
+- [x] Add filter tabs in DeliveryForms page (ทั้งหมด/รอเซ็น/เซ็นแล้ว)
+- [x] Add summary counts at top of DeliveryForms page (รอเซ็น X ราย / เซ็นแล้ว Y ราย)
+- [x] Add signature status badge to Approvals page list items
+- [x] Update backend getPendingApprovals to include delivery form signature data
