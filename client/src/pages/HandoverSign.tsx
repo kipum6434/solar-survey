@@ -57,6 +57,7 @@ export default function HandoverSign() {
         address: data.companyAddress,
         logoUrl: data.companyLogoUrl,
         photoBorderColor: data.photoBorderColor,
+        deliveryReportTitle: data.deliveryReportTitle,
       } : null;
 
       const pdfData: DeliveryPDFData = {

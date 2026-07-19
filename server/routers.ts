@@ -2714,7 +2714,7 @@ const documentSettingsRouter = router({
 const companySettingsRouter = router({
   get: publicProcedure.query(async () => {
     const settings = await db.getCompanySettings();
-    return settings || { id: 0, companyName: "", phone: "", address: "", logoUrl: null, logoFileKey: null, photoBorderColor: "#d4d4d4", disclaimerText: null };
+    return settings || { id: 0, companyName: "", phone: "", address: "", logoUrl: null, logoFileKey: null, photoBorderColor: "#d4d4d4", disclaimerText: null, deliveryReportTitle: null, surveyReportTitle: null, installReportTitle: null };
   }),
 
   update: adminProcedure
@@ -2724,6 +2724,9 @@ const companySettingsRouter = router({
       address: z.string().optional(),
       photoBorderColor: z.string().optional(),
       disclaimerText: z.string().nullable().optional(),
+      deliveryReportTitle: z.string().nullable().optional(),
+      surveyReportTitle: z.string().nullable().optional(),
+      installReportTitle: z.string().nullable().optional(),
     }))
     .mutation(async ({ input }) => {
       const result = await db.updateCompanySettings(input);
@@ -2963,6 +2966,7 @@ const deliveryFormRouter = router({
         companyAddress: settings?.address || null,
         companyLogoUrl: settings?.logoUrl || null,
         photoBorderColor: settings?.photoBorderColor || null,
+        deliveryReportTitle: settings?.deliveryReportTitle || null,
         documentNumber: docSetting?.documentNumber || null,
       };
     }),

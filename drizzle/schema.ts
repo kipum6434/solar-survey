@@ -409,6 +409,9 @@ export const companySettings = mysqlTable("company_settings", {
   logoFileKey: varchar("logoFileKey", { length: 500 }),
   photoBorderColor: varchar("photoBorderColor", { length: 20 }).default("#d4d4d4"),
   disclaimerText: text("disclaimerText"),
+  deliveryReportTitle: varchar("deliveryReportTitle", { length: 255 }),
+  surveyReportTitle: varchar("surveyReportTitle", { length: 255 }),
+  installReportTitle: varchar("installReportTitle", { length: 255 }),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type CompanySettings = typeof companySettings.$inferSelect;

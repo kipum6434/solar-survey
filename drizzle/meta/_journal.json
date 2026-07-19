@@ -260,6 +260,13 @@
       "when": 1784454778757,
       "tag": "0036_fancy_mole_man",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "5",
+      "when": 1784482573448,
+      "tag": "0037_large_viper",
+      "breakpoints": true
     }
   ]
 }

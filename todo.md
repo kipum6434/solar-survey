@@ -1675,3 +1675,12 @@
 ## Fix PDF Export Issues (Handover Photos + Signature Layout)
 - [x] Fix handover public page PDF photos not loading (switched to server-side proxy via tRPC util.proxyImage)
 - [x] Redesign signature section in exportDeliveryPDF to be professional, balanced, and formal
+
+## PDF Document Settings Page
+- [x] Add pdfSettings fields to companySettings schema (deliveryReportTitle, surveyReportTitle, installReportTitle)
+- [x] Create backend API procedures for PDF settings CRUD
+- [x] Build PdfDocumentSettings.tsx page with form fields
+- [x] Add sidebar navigation entry for PDF document settings
+- [x] Integrate PDF settings into exportDeliveryPDF (use custom title from settings)
+- [x] Integrate PDF settings into exportSurveyPDF and exportInstallationPDF
+- [x] Pass deliveryReportTitle from getByHandoverToken API to public handover page

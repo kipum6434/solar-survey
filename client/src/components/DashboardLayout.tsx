@@ -120,6 +120,7 @@ const settingsMenuItems = [
   { icon: Globe, label: "จัดการแหล่งที่มา", path: "/source-management" },
   { icon: SlidersHorizontal, label: "ฟิลด์ข้อมูลเทคนิค", path: "/technical-field-settings" },
   { icon: Stamp, label: "เลขทะเบียนเอกสาร", path: "/document-settings" },
+  { icon: FileText, label: "ตั้งค่าเอกสาร PDF", path: "/pdf-settings" },
   { icon: HardDrive, label: "พื้นที่จัดเก็บ", path: "/storage-settings" },
   { icon: Bell, label: "แจ้งเตือน", path: "/notifications" },
 ];

@@ -51,6 +51,9 @@ export interface CompanyInfo {
   address?: string | null;
   logoUrl?: string | null;
   photoBorderColor?: string | null;
+  deliveryReportTitle?: string | null;
+  surveyReportTitle?: string | null;
+  installReportTitle?: string | null;
 }
 
 // ==================== CONSTANTS ====================
@@ -558,7 +561,7 @@ export async function exportSurveyPDF(
 
   const headerConfig: HeaderConfig = {
     companyName: footerCompanyName,
-    reportTitle: "รายงานการสำรวจ Solar",
+    reportTitle: companyInfo?.surveyReportTitle || "รายงานการสำรวจ Solar",
     customerName: customer.name,
     surveyId: survey.id,
     headerColor,
@@ -706,7 +709,7 @@ export async function exportInstallationPDF(
 
   const headerConfig: HeaderConfig = {
     companyName: footerCompanyName,
-    reportTitle: "รายงานส่งมอบงานติดตั้ง Solar",
+    reportTitle: companyInfo?.installReportTitle || "รายงานส่งมอบงานติดตั้ง Solar",
     customerName: customer.name,
     surveyId: survey.id,
     headerColor,
@@ -907,7 +910,7 @@ export async function exportDeliveryPDF(
 
   const headerConfig: HeaderConfig = {
     companyName: footerCompanyName,
-    reportTitle: "ใบส่งมอบงานติดตั้ง Solar",
+    reportTitle: companyInfo?.deliveryReportTitle || "ใบส่งมอบงานติดตั้ง Solar",
     customerName: data.customerName,
     surveyId: data.surveyId,
     headerColor,

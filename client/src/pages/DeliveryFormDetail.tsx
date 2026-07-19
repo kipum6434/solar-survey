@@ -88,6 +88,7 @@ export default function DeliveryFormDetail() {
         address: companySettingsData.address,
         logoUrl: companySettingsData.logoUrl,
         photoBorderColor: companySettingsData.photoBorderColor,
+        deliveryReportTitle: companySettingsData.deliveryReportTitle,
       } : null;
 
       // Build full address

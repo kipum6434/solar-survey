@@ -62,6 +62,8 @@ export default function SharedSurvey() {
     address: companySettings.address,
     logoUrl: companySettings.logoUrl,
     photoBorderColor: companySettings.photoBorderColor,
+    surveyReportTitle: companySettings.surveyReportTitle,
+    installReportTitle: companySettings.installReportTitle,
   } : null;
 
   const completeSurveyMut = trpc.survey.publicCompleteSurvey.useMutation({
@@ -574,6 +576,8 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
     address: companySettings2.address,
     logoUrl: companySettings2.logoUrl,
     photoBorderColor: companySettings2.photoBorderColor,
+    surveyReportTitle: companySettings2.surveyReportTitle,
+    installReportTitle: companySettings2.installReportTitle,
   } : null;
 
   const { data: deliveryInfo, refetch: refetchDelivery } = trpc.delivery.publicInfo.useQuery(
