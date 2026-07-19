@@ -1619,3 +1619,18 @@
 - [x] Frontend: เปลี่ยน handleDownloadZip ให้เรียก server-side endpoint แทน client-side fetch
 - [x] แสดง progress toast ระหว่างรอ server สร้าง ZIP
 - [x] แสดงจำนวนรูปที่สำเร็จ/ทั้งหมดใน response header (X-Photos-Success, X-Photos-Total, X-Photos-Failed)
+
+## Handover Document System (หนังสือส่งมอบงาน - ปรับปรุงใหม่)
+
+- [x] DB Migration: เพิ่ม selectedPhotoIds, customSections, handoverToken, customerSignerName ใน delivery_forms
+- [x] Backend: เพิ่ม procedure สำหรับ update selectedPhotoIds (Admin เลือกรูปที่จะใส่ในใบส่งมอบ)
+- [x] Backend: เพิ่ม procedure สำหรับ update customSections (เพิ่ม/ลบ/แก้ไข section ใดก็ได้)
+- [x] Backend: เพิ่ม procedure สำหรับ generate handover token + public link
+- [x] Backend: เพิ่ม public procedure สำหรับลูกค้าดูข้อมูล + เซ็นชื่อ (ไม่ต้อง login)
+- [x] Frontend: หน้า Admin เลือกรูปติดตั้งที่จะใส่ในใบส่งมอบ (checkbox grid)
+- [x] Frontend: แก้ไข template ได้ทั้งหมด (เพิ่ม/ลบ/แก้ไข section, checklist items)
+- [x] Frontend: Preview ใบส่งมอบก่อนส่งให้ลูกค้า (ดูตัวอย่างหน้าลูกค้า)
+- [x] Frontend: ปุ่มสร้างลิงก์สาธารณะ + copy link
+- [x] Frontend: หน้า Public ลูกค้าอ่านใบส่งมอบ + เซ็นชื่อบนมือถือ (canvas signature)
+- [x] PDF: สร้าง PDF สมบูรณ์หลังลูกค้าเซ็น (header+รูป+checklist+ลายเซ็น) — จะเพิ่มใน Phase ถัดไป
+- [x] แก้ไข Delivery Template ให้แก้ไขได้ทุกส่วน (เพิ่ม/ลบ/แก้ไข items ได้)

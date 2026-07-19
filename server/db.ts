@@ -2985,6 +2985,55 @@ export async function bulkDeleteDeliveryForms(ids: number[]) {
   return { deleted: ids.length };
 }
 
+// ==================== HANDOVER DOCUMENT HELPERS ====================
+export async function updateDeliveryFormSelectedPhotos(id: number, selectedPhotoIds: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(deliveryForms).set({ selectedPhotoIds }).where(eq(deliveryForms.id, id));
+}
+
+export async function updateDeliveryFormCustomSections(id: number, customSections: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(deliveryForms).set({ customSections }).where(eq(deliveryForms.id, id));
+}
+
+export async function generateHandoverToken(id: number, token: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(deliveryForms).set({
+    handoverToken: token,
+    status: "pending_signature",
+    handoverSentAt: Date.now(),
+  }).where(eq(deliveryForms.id, id));
+}
+
+export async function getDeliveryFormByToken(token: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(deliveryForms).where(eq(deliveryForms.handoverToken, token)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function signDeliveryFormByCustomer(id: number, data: { customerSignatureUrl: string; customerSignatureKey: string; customerSignerName: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(deliveryForms).set({
+    customerSignatureUrl: data.customerSignatureUrl,
+    customerSignatureKey: data.customerSignatureKey,
+    customerSignerName: data.customerSignerName,
+    status: "signed",
+    signedAt: Date.now(),
+  }).where(eq(deliveryForms.id, id));
+}
+
+export async function getDeliveryFormById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(deliveryForms).where(eq(deliveryForms.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
 // ==================== DELIVERY CHECKLIST TEMPLATE QUERIES ====================
 export async function getChecklistTemplates() {
   const db = await getDb();

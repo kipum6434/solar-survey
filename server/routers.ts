@@ -2847,6 +2847,129 @@ const deliveryFormRouter = router({
     .mutation(async ({ input }) => {
       return db.bulkDeleteDeliveryForms(input.ids);
     }),
+
+  // ==================== HANDOVER PROCEDURES ====================
+  updateSelectedPhotos: protectedProcedure
+    .input(z.object({ id: z.number(), photoIds: z.array(z.number()) }))
+    .mutation(async ({ input }) => {
+      await db.updateDeliveryFormSelectedPhotos(input.id, JSON.stringify(input.photoIds));
+      return { success: true };
+    }),
+
+  updateCustomSections: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      sections: z.array(z.object({ title: z.string(), content: z.string() })),
+    }))
+    .mutation(async ({ input }) => {
+      await db.updateDeliveryFormCustomSections(input.id, JSON.stringify(input.sections));
+      return { success: true };
+    }),
+
+  generateHandoverLink: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const form = await db.getDeliveryFormById(input.id);
+      if (!form) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบใบส่งมอบงาน" });
+      // Generate or reuse existing token
+      const token = form.handoverToken || nanoid(32);
+      await db.generateHandoverToken(input.id, token);
+      return { token };
+    }),
+
+  // Public: get handover data by token (no auth required)
+  getByHandoverToken: publicProcedure
+    .input(z.object({ token: z.string().min(1) }))
+    .query(async ({ input }) => {
+      const form = await db.getDeliveryFormByToken(input.token);
+      if (!form) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้องหรือหมดอายุ" });
+      // Get customer + survey info
+      const survey = await db.getSurveyById(form.surveyId);
+      const customer = survey ? await db.getCustomerById(survey.customerId) : null;
+      // Get selected photos
+      let photos: any[] = [];
+      if (form.selectedPhotoIds) {
+        const photoIds: number[] = JSON.parse(form.selectedPhotoIds);
+        if (photoIds.length > 0) {
+          const allPhotos = await db.getInstallationPhotos(form.surveyId);
+          photos = allPhotos.filter((p: any) => photoIds.includes(p.id));
+        }
+      }
+      // Parse checklist and custom sections
+      const checklistItems = form.checklistData ? JSON.parse(form.checklistData) : [];
+      const customSections = form.customSections ? JSON.parse(form.customSections) : [];
+      return {
+        id: form.id,
+        status: form.status,
+        customerName: customer?.name || "",
+        customerPhone: customer?.phone || "",
+        customerAddress: customer?.fullAddress || customer?.address || "",
+        systemSize: survey?.systemSize || "",
+        panelBrand: survey?.panelBrand || "",
+        inverterModel: survey?.inverterModel || "",
+        panelCount: survey?.panelCount || "",
+        phaseType: customer?.phaseType || "",
+        roofType: customer?.roofType || "",
+        checklistItems,
+        customSections,
+        photos,
+        notes: form.notes || "",
+        customerSignatureUrl: form.customerSignatureUrl,
+        customerSignerName: form.customerSignerName,
+        signedAt: form.signedAt,
+        technicianSignatureUrl: form.technicianSignatureUrl,
+        technicianName: form.technicianName,
+      };
+    }),
+
+  // Public: customer signs the handover document
+  publicSignHandover: publicProcedure
+    .input(z.object({
+      token: z.string().min(1),
+      signatureData: z.string(), // base64 data URL
+      signerName: z.string().min(1),
+    }))
+    .mutation(async ({ input }) => {
+      const form = await db.getDeliveryFormByToken(input.token);
+      if (!form) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
+      if (form.status === "signed" || form.status === "completed") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "เอกสารนี้ถูกเซ็นไปแล้ว" });
+      }
+      // Upload signature to S3
+      const base64Data = input.signatureData.replace(/^data:image\/\w+;base64,/, "");
+      const buffer = Buffer.from(base64Data, "base64");
+      const key = `signatures/handover_${form.id}_customer_${Date.now()}_${nanoid(6)}.png`;
+      const { url } = await storagePut(key, buffer, "image/png");
+      await db.signDeliveryFormByCustomer(form.id, {
+        customerSignatureUrl: url,
+        customerSignatureKey: key,
+        customerSignerName: input.signerName,
+      });
+      return { success: true };
+    }),
+
+  // Get full handover data for admin preview/edit
+  getHandoverData: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      const form = await db.getDeliveryFormById(input.id);
+      if (!form) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบใบส่งมอบงาน" });
+      const survey = await db.getSurveyById(form.surveyId);
+      const customer = survey ? await db.getCustomerById(survey.customerId) : null;
+      const allPhotos = await db.getInstallationPhotos(form.surveyId);
+      const selectedPhotoIds: number[] = form.selectedPhotoIds ? JSON.parse(form.selectedPhotoIds) : [];
+      const checklistItems = form.checklistData ? JSON.parse(form.checklistData) : [];
+      const customSections = form.customSections ? JSON.parse(form.customSections) : [];
+      return {
+        form,
+        survey,
+        customer,
+        allPhotos,
+        selectedPhotoIds,
+        checklistItems,
+        customSections,
+      };
+    }),
 });
 
 // ==================== CHECKLIST TEMPLATE ROUTER ====================

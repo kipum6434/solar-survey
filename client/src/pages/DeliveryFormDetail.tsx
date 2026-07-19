@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
   ArrowLeft, ClipboardCheck, CheckCircle2, XCircle, PenTool,
-  Download, Loader2, FileText, User, Wrench, Clock,
+  Download, Loader2, FileText, User, Wrench, Clock, Send,
 } from "lucide-react";
 
 export default function DeliveryFormDetail() {
@@ -255,6 +255,15 @@ export default function DeliveryFormDetail() {
                     </Badge>
                   );
                 })()}
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setLocation(`/delivery-forms/${formId}/handover`)}
+                  className="gap-1.5"
+                >
+                  <Send className="h-4 w-4" />
+                  จัดการหนังสือส่งมอบ
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"

@@ -445,9 +445,15 @@ export const deliveryForms = mysqlTable("delivery_forms", {
   notes: text("notes"),
   pdfUrl: text("pdfUrl"),
   pdfFileKey: varchar("pdfFileKey", { length: 512 }),
-  status: mysqlEnum("status", ["draft", "signed", "completed"]).notNull().default("draft"),
+  status: mysqlEnum("status", ["draft", "pending_signature", "signed", "completed"]).notNull().default("draft"),
   signedAt: bigint("signedAt", { mode: "number" }),
   createdBy: int("createdBy"),
+  // New handover fields
+  selectedPhotoIds: text("selectedPhotoIds"), // JSON array of installation photo IDs to include
+  customSections: text("customSections"), // JSON array of {title, content} custom sections
+  handoverToken: varchar("handoverToken", { length: 64 }), // Public link token for customer signing
+  customerSignerName: varchar("customerSignerName", { length: 255 }), // Name of person who signed
+  handoverSentAt: bigint("handoverSentAt", { mode: "number" }), // When link was sent to customer
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

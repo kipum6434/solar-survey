@@ -16,7 +16,7 @@ import {
 import { toast } from "sonner";
 import {
   ClipboardCheck, Search, Trash2, ExternalLink, FileText,
-  CheckCircle2, PenTool, Clock,
+  CheckCircle2, PenTool, Clock, Send,
 } from "lucide-react";
 
 export default function DeliveryForms() {
@@ -90,6 +90,7 @@ export default function DeliveryForms() {
 
   const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
     draft: { label: "ร่าง", color: "bg-gray-100 text-gray-700", icon: Clock },
+    pending_signature: { label: "รอลูกค้าเซ็น", color: "bg-amber-100 text-amber-700", icon: Send },
     signed: { label: "เซ็นแล้ว", color: "bg-blue-100 text-blue-700", icon: PenTool },
     completed: { label: "เสร็จสิ้น", color: "bg-green-100 text-green-700", icon: CheckCircle2 },
   };
@@ -137,7 +138,7 @@ export default function DeliveryForms() {
         </Card>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-4 flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center">
@@ -146,6 +147,17 @@ export default function DeliveryForms() {
               <div>
                 <p className="text-2xl font-bold">{forms?.filter(f => f.status === "draft").length ?? 0}</p>
                 <p className="text-xs text-muted-foreground">ร่าง</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                <Send className="h-5 w-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{forms?.filter(f => f.status === "pending_signature").length ?? 0}</p>
+                <p className="text-xs text-muted-foreground">รอเซ็น</p>
               </div>
             </CardContent>
           </Card>

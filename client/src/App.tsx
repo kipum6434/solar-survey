@@ -62,6 +62,8 @@ const DocumentSettings = lazyRetry(() => import("./pages/DocumentSettings"));
 const StorageSettings = lazyRetry(() => import("./pages/StorageSettings"));
 const DeliveryForms = lazyRetry(() => import("./pages/DeliveryForms"));
 const DeliveryFormDetail = lazyRetry(() => import("./pages/DeliveryFormDetail"));
+const HandoverEditor = lazyRetry(() => import("./pages/HandoverEditor"));
+const HandoverSign = lazyRetry(() => import("./pages/HandoverSign"));
 const NotFound = lazyRetry(() => import("./pages/NotFound"));
 
 // Loading fallback component
@@ -115,6 +117,8 @@ function Router() {
         <Route path="/checklist-templates" component={ChecklistTemplates} />
         <Route path="/delivery-forms" component={DeliveryForms} />
         <Route path="/delivery-forms/:id" component={DeliveryFormDetail} />
+        <Route path="/delivery-forms/:id/handover" component={HandoverEditor} />
+        <Route path="/handover/:token" component={HandoverSign} />
         <Route path="/share/:token" component={SharedSurvey} />
         <Route path="/survey-field/:token" component={SharedSurveyField} />
         <Route path="/404" component={NotFound} />
