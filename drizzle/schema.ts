@@ -446,6 +446,7 @@ export const deliveryForms = mysqlTable("delivery_forms", {
   technicianSignatureUrl: text("technicianSignatureUrl"),
   technicianSignatureKey: varchar("technicianSignatureKey", { length: 512 }),
   technicianName: varchar("technicianName", { length: 255 }),
+  technicianSignedAt: bigint("technicianSignedAt", { mode: "number" }),
   notes: text("notes"),
   pdfUrl: text("pdfUrl"),
   pdfFileKey: varchar("pdfFileKey", { length: 512 }),

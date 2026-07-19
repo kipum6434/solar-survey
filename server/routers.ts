@@ -2832,12 +2832,11 @@ const deliveryFormRouter = router({
       if (input.type === "customer") {
         updateData.customerSignatureUrl = url;
         updateData.customerSignatureKey = key;
-      } else {
+            } else {
         updateData.technicianSignatureUrl = url;
         updateData.technicianSignatureKey = key;
         updateData.technicianName = ctx.user.name || "ช่าง";
       }
-      
       // Check if both signatures exist after this update
       const hasCustomerSig = input.type === "customer" ? true : !!form.customerSignatureUrl;
       const hasTechSig = input.type === "technician" ? true : !!form.technicianSignatureUrl;
@@ -2845,8 +2844,11 @@ const deliveryFormRouter = router({
         updateData.status = "signed";
         updateData.signedAt = Date.now();
       }
-      
       await db.updateDeliveryFormSignature(form.id, updateData);
+      // Update technicianSignedAt if technician just signed
+      if (input.type === "technician") {
+        await db.updateDeliveryFormTechSignedAt(form.id, Date.now());
+      }
       return { success: true, url };
     }),
 
@@ -2960,6 +2962,7 @@ const deliveryFormRouter = router({
         signedAt: form.signedAt,
         technicianSignatureUrl: form.technicianSignatureUrl,
         technicianName: form.technicianName,
+        technicianSignedAt: form.technicianSignedAt,
         // Company info for PDF header
         companyName: settings?.companyName || null,
         companyPhone: settings?.phone || null,
@@ -2972,6 +2975,38 @@ const deliveryFormRouter = router({
     }),
 
   // Public: customer signs the handover document
+  // Public: technician signs the handover document (signs FIRST before customer)
+  publicSignTechnician: publicProcedure
+    .input(z.object({
+      token: z.string().min(1),
+      signatureData: z.string(), // base64 data URL
+      technicianName: z.string().min(1),
+    }))
+    .mutation(async ({ input }) => {
+      const form = await db.getDeliveryFormByToken(input.token);
+      if (!form) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
+      if (form.status === "signed" || form.status === "completed") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "เอกสารนี้ถูกเซ็นไปแล้ว" });
+      }
+      if (form.technicianSignatureUrl) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "ช่างเซ็นไปแล้ว" });
+      }
+      // Upload technician signature to S3
+      const base64Data = input.signatureData.replace(/^data:image\/\w+;base64,/, "");
+      const buffer = Buffer.from(base64Data, "base64");
+      const key = `signatures/handover_${form.id}_technician_${Date.now()}_${nanoid(6)}.png`;
+      const { url } = await storagePut(key, buffer, "image/png");
+      await db.updateDeliveryFormSignature(form.id, {
+        technicianSignatureUrl: url,
+        technicianSignatureKey: key,
+        technicianName: input.technicianName,
+      });
+      // Update technicianSignedAt
+      await db.updateDeliveryFormTechSignedAt(form.id, Date.now());
+      return { success: true };
+    }),
+
+  // Public: customer signs the handover document (signs AFTER technician)
   publicSignHandover: publicProcedure
     .input(z.object({
       token: z.string().min(1),
@@ -2983,6 +3018,9 @@ const deliveryFormRouter = router({
       if (!form) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
       if (form.status === "signed" || form.status === "completed") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "เอกสารนี้ถูกเซ็นไปแล้ว" });
+      }
+      if (!form.technicianSignatureUrl) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "กรุณาให้ช่างเซ็นก่อน" });
       }
       // Upload signature to S3
       const base64Data = input.signatureData.replace(/^data:image\/\w+;base64,/, "");

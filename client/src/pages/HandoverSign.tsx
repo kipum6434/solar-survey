@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import {
   CheckCircle2, XCircle, ClipboardCheck, PenTool,
   RotateCcw, Loader2, FileText, User, Wrench, Image as ImageIcon,
-  AlertTriangle, Download,
+  AlertTriangle, Download, HardHat,
 } from "lucide-react";
 import ProfilePickerDialog, { type SelectedProfileData } from "@/components/ProfilePickerDialog";
 
@@ -24,15 +24,25 @@ export default function HandoverSign() {
     { enabled: !!token, retry: 1 }
   );
 
-  const signMutation = trpc.deliveryForm.publicSignHandover.useMutation({
+  // Technician sign mutation
+  const techSignMutation = trpc.deliveryForm.publicSignTechnician.useMutation({
     onSuccess: () => {
-      toast.success("เซ็นรับมอบงานสำเร็จ!");
+      toast.success("ช่างเซ็นส่งมอบงานสำเร็จ!");
       refetch();
     },
     onError: (e) => toast.error(e.message),
   });
 
-  // Image proxy for PDF generation (same server-side proxy as admin)
+  // Customer sign mutation
+  const customerSignMutation = trpc.deliveryForm.publicSignHandover.useMutation({
+    onSuccess: () => {
+      toast.success("ลูกค้าเซ็นรับมอบงานสำเร็จ!");
+      refetch();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  // Image proxy for PDF generation
   const proxyImageMut = trpc.util.proxyImage.useMutation();
   const imageProxyFn: ImageProxyFn = async (url: string) => {
     try {
@@ -42,8 +52,10 @@ export default function HandoverSign() {
   };
 
   // State
-  const [signerName, setSignerName] = useState("");
-  const [showSignaturePad, setShowSignaturePad] = useState(false);
+  const [techName, setTechName] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [showTechPad, setShowTechPad] = useState(false);
+  const [showCustomerPad, setShowCustomerPad] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [showProfilePicker, setShowProfilePicker] = useState(false);
@@ -58,7 +70,6 @@ export default function HandoverSign() {
     if (!data) return;
     setPdfLoading(true);
     try {
-      // Build company info from selected profile + API response for report title
       const companyInfo: CompanyInfo = {
         companyName: profile.name,
         phone: profile.phone,
@@ -103,43 +114,81 @@ export default function HandoverSign() {
     }
   };
 
-  // Signature pad
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const padRef = useRef<SignaturePad | null>(null);
+  // Technician signature pad
+  const techCanvasRef = useRef<HTMLCanvasElement>(null);
+  const techPadRef = useRef<SignaturePad | null>(null);
 
   useEffect(() => {
-    if (showSignaturePad && canvasRef.current) {
-      const canvas = canvasRef.current;
+    if (showTechPad && techCanvasRef.current) {
+      const canvas = techCanvasRef.current;
       const ratio = Math.max(window.devicePixelRatio || 1, 1);
       canvas.width = canvas.offsetWidth * ratio;
       canvas.height = canvas.offsetHeight * ratio;
       const ctx = canvas.getContext("2d");
       if (ctx) ctx.scale(ratio, ratio);
-      padRef.current = new SignaturePad(canvas, {
+      techPadRef.current = new SignaturePad(canvas, {
         backgroundColor: "rgb(255, 255, 255)",
         penColor: "rgb(0, 0, 0)",
       });
     }
-    return () => { padRef.current = null; };
-  }, [showSignaturePad]);
+    return () => { if (showTechPad) techPadRef.current = null; };
+  }, [showTechPad]);
 
-  const handleSign = useCallback(() => {
-    if (!padRef.current) return;
-    if (padRef.current.isEmpty()) {
+  // Customer signature pad
+  const customerCanvasRef = useRef<HTMLCanvasElement>(null);
+  const customerPadRef = useRef<SignaturePad | null>(null);
+
+  useEffect(() => {
+    if (showCustomerPad && customerCanvasRef.current) {
+      const canvas = customerCanvasRef.current;
+      const ratio = Math.max(window.devicePixelRatio || 1, 1);
+      canvas.width = canvas.offsetWidth * ratio;
+      canvas.height = canvas.offsetHeight * ratio;
+      const ctx = canvas.getContext("2d");
+      if (ctx) ctx.scale(ratio, ratio);
+      customerPadRef.current = new SignaturePad(canvas, {
+        backgroundColor: "rgb(255, 255, 255)",
+        penColor: "rgb(0, 0, 0)",
+      });
+    }
+    return () => { if (showCustomerPad) customerPadRef.current = null; };
+  }, [showCustomerPad]);
+
+  const handleTechSign = useCallback(() => {
+    if (!techPadRef.current) return;
+    if (techPadRef.current.isEmpty()) {
       toast.error("กรุณาเซ็นลายเซ็นก่อน");
       return;
     }
-    if (!signerName.trim()) {
+    if (!techName.trim()) {
+      toast.error("กรุณากรอกชื่อช่าง");
+      return;
+    }
+    const dataUrl = techPadRef.current.toDataURL("image/png");
+    techSignMutation.mutate({
+      token,
+      signatureData: dataUrl,
+      technicianName: techName.trim(),
+    });
+  }, [token, techName, techSignMutation]);
+
+  const handleCustomerSign = useCallback(() => {
+    if (!customerPadRef.current) return;
+    if (customerPadRef.current.isEmpty()) {
+      toast.error("กรุณาเซ็นลายเซ็นก่อน");
+      return;
+    }
+    if (!customerName.trim()) {
       toast.error("กรุณากรอกชื่อผู้เซ็น");
       return;
     }
-    const dataUrl = padRef.current.toDataURL("image/png");
-    signMutation.mutate({
+    const dataUrl = customerPadRef.current.toDataURL("image/png");
+    customerSignMutation.mutate({
       token,
       signatureData: dataUrl,
-      signerName: signerName.trim(),
+      signerName: customerName.trim(),
     });
-  }, [token, signerName, signMutation]);
+  }, [token, customerName, customerSignMutation]);
 
   // Loading state
   if (isLoading) {
@@ -170,8 +219,10 @@ export default function HandoverSign() {
     );
   }
 
-  // Already signed
+  // Determine states
   const isSigned = data.status === "signed" || data.status === "completed";
+  const techSigned = !!data.technicianSignatureUrl;
+  const customerSigned = !!data.customerSignatureUrl;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -358,19 +409,116 @@ export default function HandoverSign() {
           </Card>
         )}
 
-        {/* Signature Section */}
-        <Card className="border-2 border-amber-200">
+        {/* ===== SIGNATURE SECTION ===== */}
+        {/* Step 1: Technician Signature */}
+        <Card className={`border-2 ${techSigned ? "border-green-200" : "border-orange-200"}`}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              <PenTool className="h-4 w-4 text-amber-600" />
-              ลายเซ็นรับมอบงาน
+              <HardHat className="h-4 w-4 text-orange-600" />
+              ขั้นตอนที่ 1: ลายเซ็นช่าง (ผู้ส่งมอบ)
+              {techSigned && (
+                <Badge className="bg-green-100 text-green-700 text-[10px] ml-auto">
+                  <CheckCircle2 className="h-3 w-3 mr-0.5" /> เซ็นแล้ว
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {isSigned ? (
+            {techSigned ? (
+              <div className="text-center py-3">
+                <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                <p className="text-sm font-medium text-green-800">ช่างเซ็นส่งมอบงานแล้ว</p>
+                {data.technicianName && (
+                  <p className="text-xs text-muted-foreground mt-1">โดย: {data.technicianName}</p>
+                )}
+                {data.technicianSignedAt && (
+                  <p className="text-xs text-muted-foreground">
+                    เมื่อ: {new Date(data.technicianSignedAt).toLocaleDateString("th-TH", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                )}
+                {data.technicianSignatureUrl && (
+                  <div className="mt-2 border rounded-lg p-2 inline-block bg-white">
+                    <img src={data.technicianSignatureUrl} alt="ลายเซ็นช่าง" className="max-h-[60px]" />
+                  </div>
+                )}
+              </div>
+            ) : showTechPad ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">ชื่อช่างผู้ส่งมอบ</label>
+                  <Input
+                    placeholder="กรอกชื่อ-นามสกุล ช่าง"
+                    value={techName}
+                    onChange={(e) => setTechName(e.target.value)}
+                    className="text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">ลายเซ็นช่าง</label>
+                  <div className="border-2 border-dashed rounded-lg overflow-hidden bg-white">
+                    <canvas
+                      ref={techCanvasRef}
+                      className="w-full touch-none"
+                      style={{ height: "180px" }}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => techPadRef.current?.clear()} className="gap-1.5">
+                      <RotateCcw className="h-3.5 w-3.5" /> ล้าง
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setShowTechPad(false)}>
+                      ยกเลิก
+                    </Button>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={handleTechSign}
+                    disabled={techSignMutation.isPending}
+                    className="gap-1.5 bg-orange-600 hover:bg-orange-700"
+                  >
+                    {techSignMutation.isPending ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    )}
+                    ยืนยันเซ็นส่งมอบ
+                  </Button>
+                </div>
+              </div>
+            ) : (
               <div className="text-center py-4">
-                <CheckCircle2 className="h-10 w-10 text-green-500 mx-auto mb-2" />
-                <p className="text-sm font-medium text-green-800">เซ็นรับมอบงานเรียบร้อยแล้ว</p>
+                <HardHat className="h-10 w-10 text-orange-400 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground mb-3">
+                  ช่างผู้ติดตั้งกรุณาเซ็นส่งมอบงานก่อน
+                </p>
+                <Button onClick={() => setShowTechPad(true)} className="gap-1.5 bg-orange-600 hover:bg-orange-700">
+                  <PenTool className="h-4 w-4" /> เซ็นส่งมอบงาน (ช่าง)
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Step 2: Customer Signature */}
+        <Card className={`border-2 ${customerSigned ? "border-green-200" : techSigned ? "border-amber-200" : "border-gray-200 opacity-60"}`}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <PenTool className="h-4 w-4 text-amber-600" />
+              ขั้นตอนที่ 2: ลายเซ็นลูกค้า (ผู้รับมอบ)
+              {customerSigned && (
+                <Badge className="bg-green-100 text-green-700 text-[10px] ml-auto">
+                  <CheckCircle2 className="h-3 w-3 mr-0.5" /> เซ็นแล้ว
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {customerSigned ? (
+              <div className="text-center py-3">
+                <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                <p className="text-sm font-medium text-green-800">ลูกค้าเซ็นรับมอบงานเรียบร้อยแล้ว</p>
                 {data.customerSignerName && (
                   <p className="text-xs text-muted-foreground mt-1">โดย: {data.customerSignerName}</p>
                 )}
@@ -380,10 +528,11 @@ export default function HandoverSign() {
                   </p>
                 )}
                 {data.customerSignatureUrl && (
-                  <div className="mt-3 border rounded-lg p-3 inline-block bg-white">
-                    <img src={data.customerSignatureUrl} alt="ลายเซ็น" className="max-h-[80px]" />
+                  <div className="mt-2 border rounded-lg p-2 inline-block bg-white">
+                    <img src={data.customerSignatureUrl} alt="ลายเซ็นลูกค้า" className="max-h-[60px]" />
                   </div>
                 )}
+                {/* Download PDF button after both signed */}
                 <div className="mt-4">
                   <Button
                     onClick={handleDownloadPdf}
@@ -399,22 +548,29 @@ export default function HandoverSign() {
                   </Button>
                 </div>
               </div>
-            ) : showSignaturePad ? (
+            ) : !techSigned ? (
+              <div className="text-center py-4">
+                <PenTool className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  กรุณาให้ช่างเซ็นส่งมอบงานก่อน (ขั้นตอนที่ 1)
+                </p>
+              </div>
+            ) : showCustomerPad ? (
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">ชื่อผู้เซ็น</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">ชื่อผู้รับมอบ (ลูกค้า)</label>
                   <Input
-                    placeholder="กรอกชื่อ-นามสกุล"
-                    value={signerName}
-                    onChange={(e) => setSignerName(e.target.value)}
+                    placeholder="กรอกชื่อ-นามสกุล ลูกค้า"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
                     className="text-sm"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">ลายเซ็น</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">ลายเซ็นลูกค้า</label>
                   <div className="border-2 border-dashed rounded-lg overflow-hidden bg-white">
                     <canvas
-                      ref={canvasRef}
+                      ref={customerCanvasRef}
                       className="w-full touch-none"
                       style={{ height: "180px" }}
                     />
@@ -422,20 +578,20 @@ export default function HandoverSign() {
                 </div>
                 <div className="flex justify-between gap-2">
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => padRef.current?.clear()} className="gap-1.5">
+                    <Button variant="outline" size="sm" onClick={() => customerPadRef.current?.clear()} className="gap-1.5">
                       <RotateCcw className="h-3.5 w-3.5" /> ล้าง
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setShowSignaturePad(false)}>
+                    <Button variant="ghost" size="sm" onClick={() => setShowCustomerPad(false)}>
                       ยกเลิก
                     </Button>
                   </div>
                   <Button
                     size="sm"
-                    onClick={handleSign}
-                    disabled={signMutation.isPending}
+                    onClick={handleCustomerSign}
+                    disabled={customerSignMutation.isPending}
                     className="gap-1.5 bg-green-600 hover:bg-green-700"
                   >
-                    {signMutation.isPending ? (
+                    {customerSignMutation.isPending ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
                       <CheckCircle2 className="h-3.5 w-3.5" />
@@ -448,10 +604,10 @@ export default function HandoverSign() {
               <div className="text-center py-4">
                 <PenTool className="h-10 w-10 text-amber-400 mx-auto mb-3" />
                 <p className="text-sm text-muted-foreground mb-3">
-                  กรุณาตรวจสอบข้อมูลด้านบนให้ครบถ้วน แล้วกดเซ็นรับมอบงาน
+                  ลูกค้ากรุณาตรวจสอบข้อมูลด้านบนให้ครบถ้วน แล้วกดเซ็นรับมอบงาน
                 </p>
-                <Button onClick={() => setShowSignaturePad(true)} className="gap-1.5">
-                  <PenTool className="h-4 w-4" /> เซ็นรับมอบงาน
+                <Button onClick={() => setShowCustomerPad(true)} className="gap-1.5 bg-green-600 hover:bg-green-700">
+                  <PenTool className="h-4 w-4" /> เซ็นรับมอบงาน (ลูกค้า)
                 </Button>
               </div>
             )}

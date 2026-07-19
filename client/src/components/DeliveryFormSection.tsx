@@ -448,6 +448,11 @@ export default function DeliveryFormSection({ surveyId, installationStatus, surv
                 <div className="border rounded-lg p-2 bg-white">
                   <img src={form.technicianSignatureUrl} alt="ลายเซ็นช่าง" className="w-full h-24 object-contain" />
                   <p className="text-xs text-center text-muted-foreground mt-1">{form.technicianName || "-"}</p>
+                  {form.technicianSignedAt && (
+                    <p className="text-[10px] text-center text-muted-foreground">
+                      เซ็นเมื่อ: {new Date(form.technicianSignedAt).toLocaleDateString("th-TH", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"

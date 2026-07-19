@@ -1695,3 +1695,13 @@
 - [x] Integrate ProfilePickerDialog into SurveyDetail and DeliveryTab (installation PDF)
 - [x] Add publicList procedure for company profiles (for public pages)
 - [x] Update pdfExport.ts to use selected profile data for header
+
+## Technician Signature on Handover Page
+- [x] Add technicianSignedAt field to delivery_forms DB schema
+- [x] Add publicSignTechnician procedure (tech signs first, customer signs after)
+- [x] Update publicSignHandover to require tech signature before customer can sign
+- [x] Rewrite HandoverSign UI with 2-step flow (tech pad → customer pad)
+- [x] Update admin saveSignature to also record technicianSignedAt
+- [x] Show technicianSignedAt in DeliveryFormSection admin view
+- [x] Return technicianSignedAt in getByHandoverToken response
+- [x] PDF export already supports both signatures (was pre-existing)

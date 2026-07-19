@@ -2937,6 +2937,12 @@ export async function updateDeliveryFormSignature(id: number, data: { customerSi
   await db.update(deliveryForms).set(updateData).where(eq(deliveryForms.id, id));
 }
 
+export async function updateDeliveryFormTechSignedAt(id: number, timestamp: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(deliveryForms).set({ technicianSignedAt: timestamp }).where(eq(deliveryForms.id, id));
+}
+
 export async function updateDeliveryFormNotes(id: number, notes: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

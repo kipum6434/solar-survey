@@ -1,0 +1,1 @@
+ALTER TABLE `delivery_forms` ADD `technicianSignedAt` bigint;

@@ -274,6 +274,13 @@
       "when": 1784484094633,
       "tag": "0038_familiar_grandmaster",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "5",
+      "when": 1784487324594,
+      "tag": "0039_bored_big_bertha",
+      "breakpoints": true
     }
   ]
 }
