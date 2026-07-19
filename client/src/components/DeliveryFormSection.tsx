@@ -174,16 +174,43 @@ export default function DeliveryFormSection({ surveyId, installationStatus, surv
         { text: item.checked ? "✓" : "✗", alignment: "center" as const, fontSize: 12, color: item.checked ? "#16a34a" : "#dc2626" },
       ]);
 
+      // Convert signature URLs to base64 for pdfmake
+      const toBase64 = (url: string): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext("2d");
+            ctx?.drawImage(img, 0, 0);
+            resolve(canvas.toDataURL("image/png"));
+          };
+          img.onerror = () => reject(new Error("Failed to load image"));
+          img.src = url;
+        });
+      };
+
+      let customerSigBase64: string | null = null;
+      let techSigBase64: string | null = null;
+      try {
+        if (form.customerSignatureUrl) customerSigBase64 = await toBase64(form.customerSignatureUrl);
+      } catch { /* skip */ }
+      try {
+        if (form.technicianSignatureUrl) techSigBase64 = await toBase64(form.technicianSignatureUrl);
+      } catch { /* skip */ }
+
       // Signature images
       const sigImages: any[] = [];
-      if (form.customerSignatureUrl || form.technicianSignatureUrl) {
+      if (customerSigBase64 || techSigBase64) {
         sigImages.push({
           columns: [
             {
               width: "50%",
-              stack: form.customerSignatureUrl ? [
+              stack: customerSigBase64 ? [
                 { text: "ลายเซ็นลูกค้า", bold: true, fontSize: 10, margin: [0, 0, 0, 5] },
-                { image: form.customerSignatureUrl, width: 180, height: 80 },
+                { image: customerSigBase64, width: 180, height: 80 },
                 { text: customerData?.name || "-", fontSize: 9, margin: [0, 5, 0, 0], alignment: "center" as const },
               ] : [
                 { text: "ลายเซ็นลูกค้า", bold: true, fontSize: 10, margin: [0, 0, 0, 5] },
@@ -192,9 +219,9 @@ export default function DeliveryFormSection({ surveyId, installationStatus, surv
             },
             {
               width: "50%",
-              stack: form.technicianSignatureUrl ? [
+              stack: techSigBase64 ? [
                 { text: "ลายเซ็นช่าง", bold: true, fontSize: 10, margin: [0, 0, 0, 5] },
-                { image: form.technicianSignatureUrl, width: 180, height: 80 },
+                { image: techSigBase64, width: 180, height: 80 },
                 { text: form.technicianName || "-", fontSize: 9, margin: [0, 5, 0, 0], alignment: "center" as const },
               ] : [
                 { text: "ลายเซ็นช่าง", bold: true, fontSize: 10, margin: [0, 0, 0, 5] },

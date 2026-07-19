@@ -253,6 +253,13 @@
       "when": 1781871657538,
       "tag": "0035_flashy_loki",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1784454778757,
+      "tag": "0036_fancy_mole_man",
+      "breakpoints": true
     }
   ]
 }

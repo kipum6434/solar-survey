@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -13,8 +13,56 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
-  Plus, Trash2, CheckSquare, Pencil, Save, X, Loader2, Star,
+  Plus, Trash2, CheckSquare, Pencil, Save, X, Loader2, Star, FileText,
 } from "lucide-react";
+
+function DisclaimerTextSection() {
+  const { data: settings, refetch: refetchSettings } = trpc.companySettings.get.useQuery();
+  const updateSettings = trpc.companySettings.update.useMutation({
+    onSuccess: () => { toast.success("บันทึกข้อความสำเร็จ"); refetchSettings(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const [text, setText] = useState("");
+  const [changed, setChanged] = useState(false);
+
+  useEffect(() => {
+    if (settings?.disclaimerText !== undefined) {
+      setText(settings.disclaimerText || "");
+    }
+  }, [settings?.disclaimerText]);
+
+  const handleSave = () => {
+    updateSettings.mutate({ disclaimerText: text || null });
+    setChanged(false);
+  };
+
+  return (
+    <Card className="mb-6 border-blue-200">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <FileText className="h-5 w-5 text-blue-600" />
+          ข้อความท้ายใบส่งมอบ
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">ข้อความนี้จะแสดงท้ายใบส่งมอบทุกฉบับ (ก่อนลายเซ็น) เพื่อแจ้งเงื่อนไขการรับประกัน</p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Textarea
+          placeholder="เช่น: ผู้รับมอบงานรับรองว่าได้ตรวจสอบ..."
+          value={text}
+          onChange={(e) => { setText(e.target.value); setChanged(true); }}
+          rows={4}
+          className="text-sm"
+        />
+        {changed && (
+          <Button onClick={handleSave} disabled={updateSettings.isPending} size="sm" className="gap-1.5">
+            {updateSettings.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            บันทึก
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function ChecklistTemplates() {
   const { user } = useAuth();
@@ -239,6 +287,9 @@ export default function ChecklistTemplates() {
           )}
         </CardContent>
       </Card>
+
+      {/* Disclaimer Text Section */}
+      <DisclaimerTextSection />
 
       {/* Delete confirmation */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>

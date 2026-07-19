@@ -2714,7 +2714,7 @@ const documentSettingsRouter = router({
 const companySettingsRouter = router({
   get: publicProcedure.query(async () => {
     const settings = await db.getCompanySettings();
-    return settings || { id: 0, companyName: "", phone: "", address: "", logoUrl: null, logoFileKey: null, photoBorderColor: "#d4d4d4" };
+    return settings || { id: 0, companyName: "", phone: "", address: "", logoUrl: null, logoFileKey: null, photoBorderColor: "#d4d4d4", disclaimerText: null };
   }),
 
   update: adminProcedure
@@ -2723,6 +2723,7 @@ const companySettingsRouter = router({
       phone: z.string().optional(),
       address: z.string().optional(),
       photoBorderColor: z.string().optional(),
+      disclaimerText: z.string().nullable().optional(),
     }))
     .mutation(async ({ input }) => {
       const result = await db.updateCompanySettings(input);
@@ -2920,6 +2921,14 @@ const deliveryFormRouter = router({
       // Parse checklist and custom sections
       const checklistItems = form.checklistData ? JSON.parse(form.checklistData) : [];
       const customSections = form.customSections ? JSON.parse(form.customSections) : [];
+      // Get template names for grouping
+      const templates = await db.getChecklistTemplates();
+      const templateNameMap: Record<number, string> = {};
+      for (const t of templates) {
+        templateNameMap[t.id] = t.name;
+      }
+      // Get disclaimer text
+      const settings = await db.getCompanySettings();
       return {
         id: form.id,
         status: form.status,
@@ -2934,6 +2943,8 @@ const deliveryFormRouter = router({
         roofType: customer?.roofType || "",
         checklistItems,
         customSections,
+        templateNameMap,
+        disclaimerText: settings?.disclaimerText || null,
         photos,
         notes: form.notes || "",
         customerSignatureUrl: form.customerSignatureUrl,
@@ -2982,6 +2993,14 @@ const deliveryFormRouter = router({
       const selectedPhotoIds: number[] = form.selectedPhotoIds ? JSON.parse(form.selectedPhotoIds) : [];
       const checklistItems = form.checklistData ? JSON.parse(form.checklistData) : [];
       const customSections = form.customSections ? JSON.parse(form.customSections) : [];
+      // Get template names for grouping
+      const templates = await db.getChecklistTemplates();
+      const templateNameMap: Record<number, string> = {};
+      for (const t of templates) {
+        templateNameMap[t.id] = t.name;
+      }
+      // Get disclaimer text
+      const settings = await db.getCompanySettings();
       return {
         form,
         survey,
@@ -2990,6 +3009,8 @@ const deliveryFormRouter = router({
         selectedPhotoIds,
         checklistItems,
         customSections,
+        templateNameMap,
+        disclaimerText: settings?.disclaimerText || null,
       };
     }),
 });

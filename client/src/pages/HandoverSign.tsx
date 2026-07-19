@@ -334,7 +334,7 @@ export default function HandoverSign() {
           </Card>
         )}
 
-        {/* Checklist */}
+        {/* Checklist - grouped by template */}
         {data.checklistItems && data.checklistItems.length > 0 && (
           <Card>
             <CardHeader className="pb-2">
@@ -344,19 +344,41 @@ export default function HandoverSign() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-1.5">
-                {data.checklistItems.map((item: any, idx: number) => (
-                  <div key={idx} className={`flex items-center gap-2 p-2 rounded text-sm ${
-                    item.checked ? "bg-green-50" : "bg-gray-50"
-                  }`}>
-                    {item.checked ? (
-                      <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-gray-300 shrink-0" />
-                    )}
-                    <span className={item.checked ? "text-green-800" : "text-gray-600"}>{item.label}</span>
-                  </div>
-                ))}
+              <div className="space-y-3">
+                {(() => {
+                  const templateNameMap = data.templateNameMap || {};
+                  const groups: { templateId: number | undefined; name: string; items: any[] }[] = [];
+                  let currentGroup: typeof groups[0] | null = null;
+                  data.checklistItems.forEach((item: any) => {
+                    const tid = item.templateId;
+                    if (!currentGroup || currentGroup.templateId !== tid) {
+                      currentGroup = { templateId: tid, name: tid ? (templateNameMap[tid] || `หมวด ${tid}`) : "รายการเพิ่มเติม", items: [] };
+                      groups.push(currentGroup);
+                    }
+                    currentGroup.items.push(item);
+                  });
+                  return groups.map((group, gi) => (
+                    <div key={gi}>
+                      {groups.length > 1 && (
+                        <p className="text-xs font-semibold text-muted-foreground mb-1.5 border-b pb-1">{group.name}</p>
+                      )}
+                      <div className="space-y-1.5">
+                        {group.items.map((item: any, idx: number) => (
+                          <div key={idx} className={`flex items-center gap-2 p-2 rounded text-sm ${
+                            item.checked ? "bg-green-50" : "bg-gray-50"
+                          }`}>
+                            {item.checked ? (
+                              <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-gray-300 shrink-0" />
+                            )}
+                            <span className={item.checked ? "text-green-800" : "text-gray-600"}>{item.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ));
+                })()}
               </div>
             </CardContent>
           </Card>
@@ -392,6 +414,15 @@ export default function HandoverSign() {
             </CardHeader>
             <CardContent>
               <p className="text-sm whitespace-pre-wrap">{data.notes}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Disclaimer Text */}
+        {data.disclaimerText && (
+          <Card className="border-blue-200 bg-blue-50/30">
+            <CardContent className="pt-4">
+              <p className="text-xs text-gray-600 whitespace-pre-line">{data.disclaimerText}</p>
             </CardContent>
           </Card>
         )}

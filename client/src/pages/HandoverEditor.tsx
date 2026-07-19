@@ -418,29 +418,56 @@ export default function HandoverEditor() {
                     ยังไม่มีรายการตรวจสอบ กดปุ่ม "เพิ่มรายการ" เพื่อเพิ่ม
                   </p>
                 ) : (
-                  <div className="space-y-2">
-                    {checklistItems.map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <Checkbox
-                          checked={item.checked}
-                          onCheckedChange={() => toggleChecklistItem(idx)}
-                        />
-                        <Input
-                          value={item.label}
-                          onChange={(e) => updateChecklistLabel(idx, e.target.value)}
-                          placeholder="รายการตรวจสอบ..."
-                          className={`text-sm flex-1 ${item.checked ? 'line-through text-muted-foreground' : ''}`}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-500 hover:text-red-700 shrink-0 h-8 w-8 p-0"
-                          onClick={() => removeChecklistItem(idx)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    ))}
+                  <div className="space-y-4">
+                    {(() => {
+                      const templateNameMap = data?.templateNameMap || {};
+                      // Group items by templateId
+                      const groups: { templateId: number | undefined; name: string; items: { item: typeof checklistItems[0]; idx: number }[] }[] = [];
+                      let currentGroup: typeof groups[0] | null = null;
+                      checklistItems.forEach((item, idx) => {
+                        const tid = item.templateId;
+                        if (!currentGroup || currentGroup.templateId !== tid) {
+                          currentGroup = { templateId: tid, name: tid ? (templateNameMap[tid] || `หมวด ${tid}`) : "รายการเพิ่มเติม", items: [] };
+                          groups.push(currentGroup);
+                        }
+                        currentGroup.items.push({ item, idx });
+                      });
+                      return groups.map((group, gi) => (
+                        <div key={gi}>
+                          {groups.length > 1 && (
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="h-px flex-1 bg-border" />
+                              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{group.name}</span>
+                              <div className="h-px flex-1 bg-border" />
+                            </div>
+                          )}
+                          <div className="space-y-2">
+                            {group.items.map(({ item, idx }) => (
+                              <div key={idx} className="flex items-center gap-2">
+                                <Checkbox
+                                  checked={item.checked}
+                                  onCheckedChange={() => toggleChecklistItem(idx)}
+                                />
+                                <Input
+                                  value={item.label}
+                                  onChange={(e) => updateChecklistLabel(idx, e.target.value)}
+                                  placeholder="รายการตรวจสอบ..."
+                                  className={`text-sm flex-1 ${item.checked ? 'line-through text-muted-foreground' : ''}`}
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-red-500 hover:text-red-700 shrink-0 h-8 w-8 p-0"
+                                  onClick={() => removeChecklistItem(idx)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ));
+                    })()}
                   </div>
                 )}
               </CardContent>
@@ -505,6 +532,22 @@ export default function HandoverEditor() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Disclaimer Text */}
+            {data?.disclaimerText && (
+              <Card className="border-blue-200 bg-blue-50/30">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2 text-blue-700">
+                    <FileText className="h-4 w-4" />
+                    ข้อความท้ายใบส่งมอบ (แสดงทุกฟอร์ม)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-xs text-muted-foreground whitespace-pre-line">{data.disclaimerText}</p>
+                  <p className="text-[10px] text-muted-foreground mt-2 italic">แก้ไขข้อความนี้ได้ที่หน้า Checklist ส่งมอบ &gt; ข้อความท้ายใบส่งมอบ</p>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Generate Link / Status */}
             <Card>
