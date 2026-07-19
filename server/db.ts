@@ -1,6 +1,6 @@
 import { eq, and, or, like, desc, gte, lte, sql, inArray, not, asc, isNotNull, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory, installerTeams, InsertInstallerTeam, deliveryComments, InsertDeliveryComment, lineGroups, InsertLineGroup, lineNotificationTargets, InsertLineNotificationTarget, companySettings, InsertCompanySettings, postponeCancelLogs, InsertPostponeCancelLog, deliveryForms, InsertDeliveryForm, deliveryChecklistTemplates, InsertDeliveryChecklistTemplate, payments, InsertPayment, sourceGroups, InsertSourceGroup, surveyTemplates, InsertSurveyTemplate, surveyTemplateFields, InsertSurveyTemplateField, surveyTemplateData, InsertSurveyTemplateData, paymentCollections, InsertPaymentCollection, technicalFieldDefinitions, InsertTechnicalFieldDefinition, surveyTechnicalValues, InsertSurveyTechnicalValue, documentSettings, InsertDocumentSetting } from "../drizzle/schema";
+import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory, installerTeams, InsertInstallerTeam, deliveryComments, InsertDeliveryComment, lineGroups, InsertLineGroup, lineNotificationTargets, InsertLineNotificationTarget, companySettings, InsertCompanySettings, postponeCancelLogs, InsertPostponeCancelLog, deliveryForms, InsertDeliveryForm, deliveryChecklistTemplates, InsertDeliveryChecklistTemplate, payments, InsertPayment, sourceGroups, InsertSourceGroup, surveyTemplates, InsertSurveyTemplate, surveyTemplateFields, InsertSurveyTemplateField, surveyTemplateData, InsertSurveyTemplateData, paymentCollections, InsertPaymentCollection, technicalFieldDefinitions, InsertTechnicalFieldDefinition, surveyTechnicalValues, InsertSurveyTechnicalValue, documentSettings, InsertDocumentSetting, companyProfiles, InsertCompanyProfile } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -3610,4 +3610,59 @@ export async function upsertDocumentSetting(data: { settingKey: string; label: s
     const result = await db.insert(documentSettings).values(data as any);
     return { id: Number((result as any)[0].insertId), ...data };
   }
+}
+
+
+// ==================== COMPANY PROFILES ====================
+export async function getCompanyProfiles() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(companyProfiles).orderBy(desc(companyProfiles.isDefault), asc(companyProfiles.createdAt));
+}
+
+export async function getCompanyProfileById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(companyProfiles).where(eq(companyProfiles.id, id)).limit(1);
+  return rows[0] || null;
+}
+
+export async function getDefaultCompanyProfile() {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(companyProfiles).where(eq(companyProfiles.isDefault, true)).limit(1);
+  if (rows[0]) return rows[0];
+  // Fallback to first profile
+  const all = await db.select().from(companyProfiles).limit(1);
+  return all[0] || null;
+}
+
+export async function createCompanyProfile(data: Omit<InsertCompanyProfile, "id" | "createdAt" | "updatedAt">) {
+  const db = await getDb();
+  if (!db) return null;
+  // If this is set as default, unset other defaults
+  if (data.isDefault) {
+    await db.update(companyProfiles).set({ isDefault: false }).where(eq(companyProfiles.isDefault, true));
+  }
+  const result = await db.insert(companyProfiles).values(data as any);
+  const insertId = Number((result as any)[0].insertId);
+  return getCompanyProfileById(insertId);
+}
+
+export async function updateCompanyProfile(id: number, data: Partial<InsertCompanyProfile>) {
+  const db = await getDb();
+  if (!db) return null;
+  // If setting as default, unset other defaults
+  if (data.isDefault) {
+    await db.update(companyProfiles).set({ isDefault: false }).where(and(eq(companyProfiles.isDefault, true), not(eq(companyProfiles.id, id))));
+  }
+  await db.update(companyProfiles).set(data).where(eq(companyProfiles.id, id));
+  return getCompanyProfileById(id);
+}
+
+export async function deleteCompanyProfile(id: number) {
+  const db = await getDb();
+  if (!db) return false;
+  await db.delete(companyProfiles).where(eq(companyProfiles.id, id));
+  return true;
 }

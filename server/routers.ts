@@ -3531,6 +3531,92 @@ const cancelledCasesRouter = router({
     }),
 });
 
+// ==================== COMPANY PROFILE ROUTER ====================
+const companyProfileRouter = router({
+  list: protectedProcedure.query(async () => {
+    return db.getCompanyProfiles();
+  }),
+
+  publicList: publicProcedure.query(async () => {
+    return db.getCompanyProfiles();
+  }),
+
+  getById: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      return db.getCompanyProfileById(input.id);
+    }),
+
+  getDefault: publicProcedure.query(async () => {
+    return db.getDefaultCompanyProfile();
+  }),
+
+  create: adminProcedure
+    .input(z.object({
+      name: z.string().min(1),
+      address: z.string().optional(),
+      phone: z.string().optional(),
+      logoUrl: z.string().optional(),
+      logoFileKey: z.string().optional(),
+      headerColor: z.string().optional(),
+      isDefault: z.boolean().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      return db.createCompanyProfile(input);
+    }),
+
+  update: adminProcedure
+    .input(z.object({
+      id: z.number(),
+      name: z.string().min(1).optional(),
+      address: z.string().nullable().optional(),
+      phone: z.string().nullable().optional(),
+      logoUrl: z.string().nullable().optional(),
+      logoFileKey: z.string().nullable().optional(),
+      headerColor: z.string().nullable().optional(),
+      isDefault: z.boolean().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      return db.updateCompanyProfile(id, data);
+    }),
+
+  uploadLogo: adminProcedure
+    .input(z.object({
+      profileId: z.number(),
+      base64Data: z.string(),
+      fileName: z.string(),
+      mimeType: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      const buffer = Buffer.from(input.base64Data, "base64");
+      if (buffer.length > 2 * 1024 * 1024) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "ไฟล์โลโก้ต้องมีขนาดไม่เกิน 2MB" });
+      }
+      // Delete old logo if exists
+      const existing = await db.getCompanyProfileById(input.profileId);
+      if (existing?.logoFileKey) {
+        try { await storageDelete(existing.logoFileKey); } catch { /* ignore */ }
+      }
+      const ext = input.fileName.split(".").pop() || "png";
+      const key = `company-profiles/logo_${input.profileId}_${Date.now()}_${nanoid(8)}.${ext}`;
+      const { url } = await storagePut(key, buffer, input.mimeType);
+      await db.updateCompanyProfile(input.profileId, { logoUrl: url, logoFileKey: key });
+      return { url, fileKey: key };
+    }),
+
+  delete: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      // Delete logo from S3 if exists
+      const profile = await db.getCompanyProfileById(input.id);
+      if (profile?.logoFileKey) {
+        try { await storageDelete(profile.logoFileKey); } catch { /* ignore */ }
+      }
+      return db.deleteCompanyProfile(input.id);
+    }),
+});
+
 // ==================== APP ROUTER ====================
 export const appRouter = router({
   system: systemRouter,
@@ -3577,6 +3663,7 @@ export const appRouter = router({
   surveyTemplate: surveyTemplateRouter,
   technicalField: technicalFieldRouter,
   cancelledCases: cancelledCasesRouter,
+  companyProfile: companyProfileRouter,
   util: router({
     proxyImage: publicProcedure
       .input(z.object({ url: z.string().url() }))

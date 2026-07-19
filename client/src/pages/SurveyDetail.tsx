@@ -35,6 +35,7 @@ import DeliveryTab from "@/components/DeliveryTab";
 import type { ImageProxyFn, CompanyInfo } from "@/lib/pdfExport";
 const getPdfExport = () => import("@/lib/pdfExport");
 import { FileDown, FileSignature } from "lucide-react";
+import ProfilePickerDialog, { type SelectedProfileData } from "@/components/ProfilePickerDialog";
 
 export default function SurveyDetail() {
   const params = useParams<{ id: string }>();
@@ -49,6 +50,7 @@ export default function SurveyDetail() {
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState<number | null>(null);
   const [editingCaptionId, setEditingCaptionId] = useState<number | null>(null);
   const [captionText, setCaptionText] = useState("");
+  const [showSurveyProfilePicker, setShowSurveyProfilePicker] = useState(false);
 
   const proxyImageMut = trpc.util.proxyImage.useMutation();
   const imageProxyFn: ImageProxyFn = async (url: string) => {
@@ -60,13 +62,6 @@ export default function SurveyDetail() {
 
   const { data: companySettings } = trpc.companySettings.get.useQuery(undefined, { retry: false });
   const { data: surveyDocSetting } = trpc.documentSettings.getByKey.useQuery({ key: "survey_doc_number" }, { retry: false });
-  const companyInfoForPdf: CompanyInfo | null = companySettings ? {
-    companyName: companySettings.companyName,
-    phone: companySettings.phone,
-    address: companySettings.address,
-    logoUrl: companySettings.logoUrl,
-    photoBorderColor: companySettings.photoBorderColor,
-  } : null;
 
   const { data, isLoading, refetch } = trpc.survey.getById.useQuery({ id: surveyId });
   const { data: photos, refetch: refetchPhotos } = trpc.photo.list.useQuery({ surveyId });
@@ -381,40 +376,7 @@ export default function SurveyDetail() {
               variant="outline"
               size="sm"
               className="gap-1.5"
-              onClick={async () => {
-                try {
-                  toast.info("กำลังสร้าง PDF...");
-                  const { exportSurveyPDF } = await getPdfExport();
-                  await exportSurveyPDF(
-                    {
-                      id: s.id, status: s.status, scheduledDate: s.scheduledDate,
-                      systemSize: s.systemSize, panelCount: s.panelCount,
-                      panelBrand: s.panelBrand, inverterModel: s.inverterModel,
-                      quotedPrice: s.quotedPrice, systemType: s.systemType,
-                      needBattery: s.needBattery, needOptimizer: s.needOptimizer,
-                      surveyNotes: s.surveyNotes,
-                    },
-                    {
-                      name: c.name, phone: c.phone, email: c.email,
-                      fullAddress: c.fullAddress, subDistrict: c.subDistrict,
-                      district: c.district, province: c.province,
-                      postalCode: c.postalCode, electricityBill: c.electricityBill,
-                      roofType: c.roofType, roofArea: c.roofArea,
-                      phaseType: c.phaseType, meterSize: c.meterSize, notes: c.notes,
-                    },
-                    (photos || []).map((p: any) => ({ url: p.url, category: p.category, caption: p.caption })),
-                    categoryMap,
-                    undefined,
-                    imageProxyFn,
-                    companyInfoForPdf,
-                    categoryOrder,
-                    surveyDocSetting?.documentNumber,
-                  );
-                  toast.success("Export PDF สำเร็จ");
-                } catch (err: any) {
-                  toast.error(err?.message || "Export PDF ล้มเหลว");
-                }
-              }}
+              onClick={() => setShowSurveyProfilePicker(true)}
             >
               <FileDown className="h-3.5 w-3.5" /> Export PDF
             </Button>
@@ -1375,6 +1337,58 @@ export default function SurveyDetail() {
           }
         }}
         onDismiss={clearUploadState}
+      />
+
+      {/* Profile Picker for Survey PDF */}
+      <ProfilePickerDialog
+        open={showSurveyProfilePicker}
+        onOpenChange={setShowSurveyProfilePicker}
+        onConfirm={async (profile: SelectedProfileData) => {
+          setShowSurveyProfilePicker(false);
+          try {
+            toast.info("กำลังสร้าง PDF...");
+            const companyInfoForPdf: CompanyInfo = {
+              companyName: profile.name,
+              phone: profile.phone,
+              address: profile.address,
+              logoUrl: profile.logoUrl,
+              photoBorderColor: profile.headerColor || companySettings?.photoBorderColor || "#1e3a5f",
+              surveyReportTitle: companySettings?.surveyReportTitle,
+              installReportTitle: companySettings?.installReportTitle,
+            };
+            const { survey: s, customer: c } = data!;
+            const { exportSurveyPDF } = await getPdfExport();
+            await exportSurveyPDF(
+              {
+                id: s.id, status: s.status, scheduledDate: s.scheduledDate,
+                systemSize: s.systemSize, panelCount: s.panelCount,
+                panelBrand: s.panelBrand, inverterModel: s.inverterModel,
+                quotedPrice: s.quotedPrice, systemType: s.systemType,
+                needBattery: s.needBattery, needOptimizer: s.needOptimizer,
+                surveyNotes: s.surveyNotes,
+              },
+              {
+                name: c.name, phone: c.phone, email: c.email,
+                fullAddress: c.fullAddress, subDistrict: c.subDistrict,
+                district: c.district, province: c.province,
+                postalCode: c.postalCode, electricityBill: c.electricityBill,
+                roofType: c.roofType, roofArea: c.roofArea,
+                phaseType: c.phaseType, meterSize: c.meterSize, notes: c.notes,
+              },
+              (photos || []).map((p: any) => ({ url: p.url, category: p.category, caption: p.caption })),
+              categoryMap,
+              undefined,
+              imageProxyFn,
+              companyInfoForPdf,
+              categoryOrder,
+              surveyDocSetting?.documentNumber,
+            );
+            toast.success("Export PDF สำเร็จ");
+          } catch (err: any) {
+            toast.error(err?.message || "Export PDF ล้มเหลว");
+          }
+        }}
+        title="เลือกโปรไฟล์บริษัทสำหรับรายงานสำรวจ"
       />
     </DashboardLayout>
   );

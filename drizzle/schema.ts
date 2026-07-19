@@ -606,3 +606,19 @@ export const documentSettings = mysqlTable("document_settings", {
 });
 export type DocumentSetting = typeof documentSettings.$inferSelect;
 export type InsertDocumentSetting = typeof documentSettings.$inferInsert;
+
+// ==================== COMPANY PROFILES (Multiple Company Headers for PDF) ====================
+export const companyProfiles = mysqlTable("company_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(), // Company name
+  address: text("address"), // Full address
+  phone: varchar("phone", { length: 100 }), // Phone number
+  logoUrl: text("logoUrl"), // Logo image URL (S3)
+  logoFileKey: varchar("logoFileKey", { length: 500 }), // S3 file key for logo
+  headerColor: varchar("headerColor", { length: 20 }).default("#1e3a5f"), // Header background color
+  isDefault: boolean("isDefault").default(false).notNull(), // Default profile flag
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CompanyProfile = typeof companyProfiles.$inferSelect;
+export type InsertCompanyProfile = typeof companyProfiles.$inferInsert;

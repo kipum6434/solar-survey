@@ -14,6 +14,7 @@ import {
   ArrowLeft, ClipboardCheck, CheckCircle2, XCircle, PenTool,
   Download, Loader2, FileText, User, Wrench, Clock, Send,
 } from "lucide-react";
+import ProfilePickerDialog, { type SelectedProfileData } from "@/components/ProfilePickerDialog";
 
 export default function DeliveryFormDetail() {
   const { user } = useAuth();
@@ -58,6 +59,7 @@ export default function DeliveryFormDetail() {
   const isLoading = listLoading || deliveryLoading || surveyLoading;
 
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [showProfilePicker, setShowProfilePicker] = useState(false);
 
   const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
     draft: { label: "ร่าง", color: "bg-gray-100 text-gray-700", icon: Clock },
@@ -65,7 +67,13 @@ export default function DeliveryFormDetail() {
     completed: { label: "เสร็จสิ้น", color: "bg-green-100 text-green-700", icon: CheckCircle2 },
   };
 
-  const handleGeneratePdf = async () => {
+  const handleGeneratePdf = () => {
+    if (!deliveryForm || !surveyData) return;
+    setShowProfilePicker(true);
+  };
+
+  const handleProfileSelected = async (profile: SelectedProfileData) => {
+    setShowProfilePicker(false);
     if (!deliveryForm || !surveyData) return;
     setPdfLoading(true);
     try {
@@ -81,15 +89,15 @@ export default function DeliveryFormDetail() {
         (checklistTemplates as any[]).map((t) => [t.id, t.name])
       );
 
-      // Build companyInfo
-      const companyInfo: CompanyInfo | null = companySettingsData ? {
-        companyName: companySettingsData.companyName,
-        phone: companySettingsData.phone,
-        address: companySettingsData.address,
-        logoUrl: companySettingsData.logoUrl,
-        photoBorderColor: companySettingsData.photoBorderColor,
-        deliveryReportTitle: companySettingsData.deliveryReportTitle,
-      } : null;
+      // Build companyInfo from selected profile + companySettings for report titles
+      const companyInfo: CompanyInfo = {
+        companyName: profile.name,
+        phone: profile.phone,
+        address: profile.address,
+        logoUrl: profile.logoUrl,
+        photoBorderColor: profile.headerColor || companySettingsData?.photoBorderColor || "#1e3a5f",
+        deliveryReportTitle: companySettingsData?.deliveryReportTitle,
+      };
 
       // Build full address
       const fullAddress = [customer?.address, customer?.district, customer?.subDistrict, customer?.province].filter(Boolean).join(" ") || undefined;
@@ -388,6 +396,13 @@ export default function DeliveryFormDetail() {
           </>
         )}
       </div>
+      {/* Profile Picker Dialog */}
+      <ProfilePickerDialog
+        open={showProfilePicker}
+        onOpenChange={setShowProfilePicker}
+        onConfirm={handleProfileSelected}
+        title="เลือกโปรไฟล์บริษัทสำหรับใบส่งมอบงาน"
+      />
     </DashboardLayout>
   );
 }

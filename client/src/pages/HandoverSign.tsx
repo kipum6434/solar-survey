@@ -13,6 +13,7 @@ import {
   RotateCcw, Loader2, FileText, User, Wrench, Image as ImageIcon,
   AlertTriangle, Download,
 } from "lucide-react";
+import ProfilePickerDialog, { type SelectedProfileData } from "@/components/ProfilePickerDialog";
 
 export default function HandoverSign() {
   const params = useParams<{ token: string }>();
@@ -45,20 +46,27 @@ export default function HandoverSign() {
   const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [showProfilePicker, setShowProfilePicker] = useState(false);
 
-  const handleDownloadPdf = async () => {
+  const handleDownloadPdf = () => {
+    if (!data) return;
+    setShowProfilePicker(true);
+  };
+
+  const handleProfileSelected = async (profile: SelectedProfileData) => {
+    setShowProfilePicker(false);
     if (!data) return;
     setPdfLoading(true);
     try {
-      // Build company info from API response
-      const companyInfo: CompanyInfo | null = data.companyName ? {
-        companyName: data.companyName,
-        phone: data.companyPhone,
-        address: data.companyAddress,
-        logoUrl: data.companyLogoUrl,
-        photoBorderColor: data.photoBorderColor,
+      // Build company info from selected profile + API response for report title
+      const companyInfo: CompanyInfo = {
+        companyName: profile.name,
+        phone: profile.phone,
+        address: profile.address,
+        logoUrl: profile.logoUrl,
+        photoBorderColor: profile.headerColor || data.photoBorderColor || "#1e3a5f",
         deliveryReportTitle: data.deliveryReportTitle,
-      } : null;
+      };
 
       const pdfData: DeliveryPDFData = {
         formId: data.id,
@@ -471,6 +479,15 @@ export default function HandoverSign() {
           </button>
         </div>
       )}
+
+      {/* Profile Picker Dialog */}
+      <ProfilePickerDialog
+        open={showProfilePicker}
+        onOpenChange={setShowProfilePicker}
+        onConfirm={handleProfileSelected}
+        title="เลือกโปรไฟล์บริษัทสำหรับใบส่งมอบงาน"
+        usePublicList
+      />
     </div>
   );
 }

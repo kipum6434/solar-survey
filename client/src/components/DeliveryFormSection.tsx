@@ -17,6 +17,7 @@ import {
   FileSignature, CheckCircle2, XCircle, ClipboardCheck, PenTool,
   RotateCcw, Download, Loader2, FileText, User, Wrench,
 } from "lucide-react";
+import ProfilePickerDialog, { type SelectedProfileData } from "@/components/ProfilePickerDialog";
 
 interface DeliveryFormSectionProps {
   surveyId: number;
@@ -59,6 +60,7 @@ export default function DeliveryFormSection({ surveyId, installationStatus, surv
   const [notesChanged, setNotesChanged] = useState(false);
   const [activeSignature, setActiveSignature] = useState<"customer" | "technician" | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [showProfilePicker, setShowProfilePicker] = useState(false);
 
   // Signature pad refs
   const signatureCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -152,7 +154,13 @@ export default function DeliveryFormSection({ surveyId, installationStatus, surv
     } catch { return null; }
   };
 
-  const handleGeneratePdf = async () => {
+  const handleGeneratePdf = () => {
+    if (!form || !surveyData || !customerData) return;
+    setShowProfilePicker(true);
+  };
+
+  const handleProfileSelected = async (profile: SelectedProfileData) => {
+    setShowProfilePicker(false);
     if (!form || !surveyData || !customerData) return;
     setIsGeneratingPdf(true);
     try {
@@ -165,15 +173,15 @@ export default function DeliveryFormSection({ surveyId, installationStatus, surv
         (checklistTemplates as any[]).map((t) => [t.id, t.name])
       );
 
-      // Build companyInfo
-      const companyInfo: CompanyInfo | null = companySettingsData ? {
-        companyName: companySettingsData.companyName,
-        phone: companySettingsData.phone,
-        address: companySettingsData.address,
-        logoUrl: companySettingsData.logoUrl,
-        photoBorderColor: companySettingsData.photoBorderColor,
-        deliveryReportTitle: companySettingsData.deliveryReportTitle,
-      } : null;
+      // Build companyInfo from selected profile + companySettings for report titles
+      const companyInfo: CompanyInfo = {
+        companyName: profile.name,
+        phone: profile.phone,
+        address: profile.address,
+        logoUrl: profile.logoUrl,
+        photoBorderColor: profile.headerColor || companySettingsData?.photoBorderColor || "#1e3a5f",
+        deliveryReportTitle: companySettingsData?.deliveryReportTitle,
+      };
 
       // Build full address
       const fullAddress = [customerData?.fullAddress, customerData?.subDistrict, customerData?.district, customerData?.province, customerData?.postalCode].filter(Boolean).join(" ") || undefined;
@@ -508,6 +516,13 @@ export default function DeliveryFormSection({ surveyId, installationStatus, surv
           </div>
         </div>
       )}
+      {/* Profile Picker Dialog */}
+      <ProfilePickerDialog
+        open={showProfilePicker}
+        onOpenChange={setShowProfilePicker}
+        onConfirm={handleProfileSelected}
+        title="เลือกโปรไฟล์บริษัทสำหรับใบส่งมอบงาน"
+      />
     </div>
   );
 }

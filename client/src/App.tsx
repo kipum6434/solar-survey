@@ -61,6 +61,7 @@ const CancelledCases = lazyRetry(() => import("./pages/CancelledCases"));
 const DocumentSettings = lazyRetry(() => import("./pages/DocumentSettings"));
 const StorageSettings = lazyRetry(() => import("./pages/StorageSettings"));
 const PdfDocumentSettings = lazyRetry(() => import("./pages/PdfDocumentSettings"));
+const CompanyProfiles = lazyRetry(() => import("./pages/CompanyProfiles"));
 const DeliveryForms = lazyRetry(() => import("./pages/DeliveryForms"));
 const DeliveryFormDetail = lazyRetry(() => import("./pages/DeliveryFormDetail"));
 const HandoverEditor = lazyRetry(() => import("./pages/HandoverEditor"));
@@ -113,6 +114,7 @@ function Router() {
         <Route path="/document-settings" component={DocumentSettings} />
         <Route path="/storage-settings" component={StorageSettings} />
         <Route path="/pdf-settings" component={PdfDocumentSettings} />
+        <Route path="/company-profiles" component={CompanyProfiles} />
         <Route path="/installation-prep" component={InstallationPrep} />
         <Route path="/cancelled-cases" component={CancelledCases} />
         <Route path="/survey-templates" component={SurveyTemplates} />

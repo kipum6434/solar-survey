@@ -27,6 +27,7 @@ import {
 import type { ImageProxyFn, CompanyInfo } from "@/lib/pdfExport";
 const getPdfExport = () => import("@/lib/pdfExport");
 import DeliveryFormSection from "@/components/DeliveryFormSection";
+import ProfilePickerDialog, { type SelectedProfileData } from "@/components/ProfilePickerDialog";
 
 interface DeliveryTabProps {
   surveyId: number;
@@ -56,13 +57,6 @@ export default function DeliveryTab({ surveyId, installationStatus, surveyData, 
 
   const { data: companySettings } = trpc.companySettings.get.useQuery(undefined, { retry: false });
   const { data: installDocSetting } = trpc.documentSettings.getByKey.useQuery({ key: "install_doc_number" }, { retry: false });
-  const companyInfoForPdf: CompanyInfo | null = companySettings ? {
-    companyName: companySettings.companyName,
-    phone: companySettings.phone,
-    address: companySettings.address,
-    logoUrl: companySettings.logoUrl,
-    photoBorderColor: companySettings.photoBorderColor,
-  } : null;
 
   // Queries
   const { data: deliveryInfo, refetch: refetchDelivery } = trpc.delivery.info.useQuery({ surveyId });
@@ -109,6 +103,7 @@ export default function DeliveryTab({ surveyId, installationStatus, surveyData, 
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [pdfProgress, setPdfProgress] = useState<string>("");
+  const [showInstProfilePicker, setShowInstProfilePicker] = useState(false);
   const [showUploadOptions, setShowUploadOptions] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -345,54 +340,7 @@ export default function DeliveryTab({ surveyId, installationStatus, surveyData, 
                   size="sm"
                   className="gap-1.5 text-xs"
                   disabled={isExportingPDF}
-                  onClick={async () => {
-                    setIsExportingPDF(true);
-                    try {
-                      const { exportInstallationPDF } = await getPdfExport();
-                      await exportInstallationPDF(
-                        {
-                          id: surveyData.id,
-                          status: surveyData.status,
-                          systemSize: surveyData.systemSize,
-                          panelCount: surveyData.panelCount,
-                          panelBrand: surveyData.panelBrand,
-                          inverterModel: surveyData.inverterModel,
-                          systemType: surveyData.systemType,
-                          installationDate: surveyData.installationDate,
-                          installationStatus: surveyData.installationStatus,
-                          completedAt: surveyData.completedAt,
-                        },
-                        {
-                          name: customerData.name,
-                          phone: customerData.phone,
-                          fullAddress: customerData.fullAddress,
-                          subDistrict: customerData.subDistrict,
-                          district: customerData.district,
-                          province: customerData.province,
-                          postalCode: customerData.postalCode,
-                        },
-                        installPhotos.map((p: any) => ({ url: p.url, category: p.category, caption: p.caption })),
-                        categoryLabelMap,
-                        deliveryInfo ? {
-                          deliveryStatus: deliveryInfo.deliveryStatus || undefined,
-                          deliverySubmittedAt: deliveryInfo.deliverySubmittedAt || undefined,
-                          deliveryApprovedAt: deliveryInfo.deliveryApprovedAt || undefined,
-                          deliveryRejectionReason: deliveryInfo.deliveryRejectionReason || undefined,
-                        } : null,
-                        (step) => setPdfProgress(step),
-                        imageProxyFn,
-                        companyInfoForPdf,
-                        categoryOrder,
-                        installDocSetting?.documentNumber,
-                      );
-                      toast.success("Export PDF สำเร็จ");
-                    } catch (err: any) {
-                      toast.error(err?.message || "Export PDF ล้มเหลว");
-                    } finally {
-                      setIsExportingPDF(false);
-                      setPdfProgress("");
-                    }
-                  }}
+                  onClick={() => setShowInstProfilePicker(true)}
                 >
                   <FileDown className="h-3.5 w-3.5" />
                   {isExportingPDF ? pdfProgress || "กำลัง Export..." : "Export PDF"}
@@ -905,6 +853,69 @@ export default function DeliveryTab({ surveyId, installationStatus, surveyData, 
         customerData={customerData}
       />
 
+      {/* Profile Picker for Installation PDF */}
+      <ProfilePickerDialog
+        open={showInstProfilePicker}
+        onOpenChange={setShowInstProfilePicker}
+        onConfirm={async (profile: SelectedProfileData) => {
+          setShowInstProfilePicker(false);
+          setIsExportingPDF(true);
+          try {
+            const companyInfoForPdf: CompanyInfo = {
+              companyName: profile.name,
+              phone: profile.phone,
+              address: profile.address,
+              logoUrl: profile.logoUrl,
+              photoBorderColor: profile.headerColor || companySettings?.photoBorderColor || "#1e3a5f",
+              installReportTitle: companySettings?.installReportTitle,
+            };
+            const { exportInstallationPDF } = await getPdfExport();
+            await exportInstallationPDF(
+              {
+                id: surveyData!.id,
+                status: surveyData!.status,
+                systemSize: surveyData!.systemSize,
+                panelCount: surveyData!.panelCount,
+                panelBrand: surveyData!.panelBrand,
+                inverterModel: surveyData!.inverterModel,
+                systemType: surveyData!.systemType,
+                installationDate: surveyData!.installationDate,
+                installationStatus: surveyData!.installationStatus,
+                completedAt: surveyData!.completedAt,
+              },
+              {
+                name: customerData!.name,
+                phone: customerData!.phone,
+                fullAddress: customerData!.fullAddress,
+                subDistrict: customerData!.subDistrict,
+                district: customerData!.district,
+                province: customerData!.province,
+                postalCode: customerData!.postalCode,
+              },
+              (installPhotos || []).map((p: any) => ({ url: p.url, category: p.category, caption: p.caption })),
+              categoryLabelMap,
+              deliveryInfo ? {
+                deliveryStatus: deliveryInfo.deliveryStatus || undefined,
+                deliverySubmittedAt: deliveryInfo.deliverySubmittedAt || undefined,
+                deliveryApprovedAt: deliveryInfo.deliveryApprovedAt || undefined,
+                deliveryRejectionReason: deliveryInfo.deliveryRejectionReason || undefined,
+              } : null,
+              (step) => setPdfProgress(step),
+              imageProxyFn,
+              companyInfoForPdf,
+              categoryOrder,
+              installDocSetting?.documentNumber,
+            );
+            toast.success("Export PDF สำเร็จ");
+          } catch (err: any) {
+            toast.error(err?.message || "Export PDF ล้มเหลว");
+          } finally {
+            setIsExportingPDF(false);
+            setPdfProgress("");
+          }
+        }}
+        title="เลือกโปรไฟล์บริษัทสำหรับรายงานติดตั้ง"
+      />
     </div>
   );
 }

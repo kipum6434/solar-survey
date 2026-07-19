@@ -1684,3 +1684,14 @@
 - [x] Integrate PDF settings into exportDeliveryPDF (use custom title from settings)
 - [x] Integrate PDF settings into exportSurveyPDF and exportInstallationPDF
 - [x] Pass deliveryReportTitle from getByHandoverToken API to public handover page
+
+## Company Profiles System (Multiple Company Headers for PDF)
+- [x] Create company_profiles DB table (name, address, phone, logo, headerColor, isDefault)
+- [x] Add backend CRUD API for company profiles
+- [x] Build CompanyProfiles management page with logo upload and color picker
+- [x] Add sidebar navigation entry for company profiles
+- [x] Create ProfilePickerDialog component for PDF export
+- [x] Integrate ProfilePickerDialog into DeliveryFormSection, DeliveryFormDetail, HandoverSign, SharedSurvey
+- [x] Integrate ProfilePickerDialog into SurveyDetail and DeliveryTab (installation PDF)
+- [x] Add publicList procedure for company profiles (for public pages)
+- [x] Update pdfExport.ts to use selected profile data for header
