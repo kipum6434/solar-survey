@@ -1671,3 +1671,7 @@
 - [x] Fix getByHandoverToken API to return full customer address (fullAddress + subDistrict + district + province)
 - [x] Update HandoverSign.tsx to build companyInfo from API response and pass surveyId
 - [x] PDF from handover public page now matches admin PDF (header, photos, full address)
+
+## Fix PDF Export Issues (Handover Photos + Signature Layout)
+- [x] Fix handover public page PDF photos not loading (switched to server-side proxy via tRPC util.proxyImage)
+- [x] Redesign signature section in exportDeliveryPDF to be professional, balanced, and formal

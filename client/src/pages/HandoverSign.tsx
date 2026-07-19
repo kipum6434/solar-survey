@@ -31,6 +31,15 @@ export default function HandoverSign() {
     onError: (e) => toast.error(e.message),
   });
 
+  // Image proxy for PDF generation (same server-side proxy as admin)
+  const proxyImageMut = trpc.util.proxyImage.useMutation();
+  const imageProxyFn: ImageProxyFn = async (url: string) => {
+    try {
+      const result = await proxyImageMut.mutateAsync({ url });
+      return result?.data || null;
+    } catch { return null; }
+  };
+
   // State
   const [signerName, setSignerName] = useState("");
   const [showSignaturePad, setShowSignaturePad] = useState(false);
@@ -75,20 +84,7 @@ export default function HandoverSign() {
         signedAt: data.signedAt,
       };
 
-      // Direct fetch for public page (images should be accessible directly from S3)
-      const directImageFn: ImageProxyFn = async (url: string) => {
-        try {
-          const resp = await fetch(url);
-          const blob = await resp.blob();
-          return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(blob);
-          });
-        } catch { return null; }
-      };
-
-      await exportDeliveryPDF(pdfData, undefined, directImageFn, companyInfo);
+      await exportDeliveryPDF(pdfData, undefined, imageProxyFn, companyInfo);
       toast.success("ดาวน์โหลด PDF สำเร็จ");
     } catch (err: any) {
       console.error("PDF error:", err);

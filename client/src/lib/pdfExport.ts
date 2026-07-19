@@ -1099,49 +1099,69 @@ export async function exportDeliveryPDF(
 
   content.push(buildSectionHeader("ลายเซ็น", sectionColor));
 
-  // Build signature columns
-  const sigLeftStack: any[] = [
-    { text: "ลายเซ็นลูกค้า (ผู้รับมอบ)", fontSize: 9, bold: true, alignment: "center" as const, margin: [0, 0, 0, 4] as number[] },
+  // Professional signature table with balanced columns
+  const SIG_IMG_W = 140;
+  const SIG_IMG_H = 60;
+  const LINE_LENGTH = 160;
+  const LINE_X_START = (LINE_LENGTH > 0) ? (200 - LINE_LENGTH) / 2 : 20;
+  const LINE_X_END = LINE_X_START + LINE_LENGTH;
+
+  // Build left column (customer)
+  const sigLeftContent: any[] = [
+    { text: "ลายเซ็นลูกค้า (ผู้รับมอบ)", fontSize: 9, bold: true, alignment: "center" as const, margin: [0, 0, 0, 8] as number[] },
   ];
   if (customerSigBase64) {
-    sigLeftStack.push({ image: customerSigBase64, width: 100, height: 50, fit: [100, 50] as [number, number], alignment: "center" as const, margin: [0, 0, 0, 4] as number[] });
+    sigLeftContent.push({ image: customerSigBase64, width: SIG_IMG_W, height: SIG_IMG_H, fit: [SIG_IMG_W, SIG_IMG_H] as [number, number], alignment: "center" as const, margin: [0, 4, 0, 8] as number[] });
   } else {
-    sigLeftStack.push({ text: "\n\n", fontSize: 9 });
+    sigLeftContent.push({ text: "(ยังไม่ได้เซ็น)", fontSize: 8, color: "#9ca3af", alignment: "center" as const, margin: [0, 20, 0, 20] as number[] });
   }
-  sigLeftStack.push({ canvas: [{ type: "line" as const, x1: 20, y1: 0, x2: 140, y2: 0, lineWidth: 0.5 }] });
-  if (data.customerSignerName) {
-    sigLeftStack.push({ text: `(${data.customerSignerName})`, fontSize: 8, alignment: "center" as const, margin: [0, 2, 0, 0] as number[] });
-  }
+  sigLeftContent.push({ canvas: [{ type: "line" as const, x1: LINE_X_START, y1: 0, x2: LINE_X_END, y2: 0, lineWidth: 0.5, lineColor: "#374151" }] });
+  sigLeftContent.push({ text: data.customerSignerName ? `(${data.customerSignerName})` : "(..................................)", fontSize: 8, alignment: "center" as const, margin: [0, 4, 0, 0] as number[], color: "#374151" });
 
-  const sigRightStack: any[] = [
-    { text: "ลายเซ็นช่าง (ผู้ส่งมอบ)", fontSize: 9, bold: true, alignment: "center" as const, margin: [0, 0, 0, 4] as number[] },
+  // Build right column (technician)
+  const sigRightContent: any[] = [
+    { text: "ลายเซ็นช่าง (ผู้ส่งมอบ)", fontSize: 9, bold: true, alignment: "center" as const, margin: [0, 0, 0, 8] as number[] },
   ];
   if (technicianSigBase64) {
-    sigRightStack.push({ image: technicianSigBase64, width: 100, height: 50, fit: [100, 50] as [number, number], alignment: "center" as const, margin: [0, 0, 0, 4] as number[] });
+    sigRightContent.push({ image: technicianSigBase64, width: SIG_IMG_W, height: SIG_IMG_H, fit: [SIG_IMG_W, SIG_IMG_H] as [number, number], alignment: "center" as const, margin: [0, 4, 0, 8] as number[] });
   } else {
-    sigRightStack.push({ text: "(ยังไม่ได้เซ็น)", fontSize: 8, color: "#9ca3af", alignment: "center" as const, margin: [0, 10, 0, 10] as number[] });
+    sigRightContent.push({ text: "(ยังไม่ได้เซ็น)", fontSize: 8, color: "#9ca3af", alignment: "center" as const, margin: [0, 20, 0, 20] as number[] });
   }
-  sigRightStack.push({ canvas: [{ type: "line" as const, x1: 20, y1: 0, x2: 140, y2: 0, lineWidth: 0.5 }] });
-  if (data.technicianName) {
-    sigRightStack.push({ text: `(${data.technicianName})`, fontSize: 8, alignment: "center" as const, margin: [0, 2, 0, 0] as number[] });
-  }
+  sigRightContent.push({ canvas: [{ type: "line" as const, x1: LINE_X_START, y1: 0, x2: LINE_X_END, y2: 0, lineWidth: 0.5, lineColor: "#374151" }] });
+  sigRightContent.push({ text: data.technicianName ? `(${data.technicianName})` : "(..................................)", fontSize: 8, alignment: "center" as const, margin: [0, 4, 0, 0] as number[], color: "#374151" });
 
+  // Signature area in a bordered table for formal look
   content.push({
-    columns: [
-      { stack: sigLeftStack, width: "*" },
-      { stack: sigRightStack, width: "*" },
-    ],
-    margin: [0, 4, 0, 8] as number[],
+    table: {
+      widths: ["*", "*"],
+      body: [
+        [
+          { stack: sigLeftContent, alignment: "center" as const, margin: [10, 12, 10, 12] as number[] },
+          { stack: sigRightContent, alignment: "center" as const, margin: [10, 12, 10, 12] as number[] },
+        ],
+      ],
+    },
+    layout: {
+      hLineWidth: () => 0.5,
+      vLineWidth: () => 0.5,
+      hLineColor: () => "#e5e7eb",
+      vLineColor: () => "#e5e7eb",
+      paddingLeft: () => 0,
+      paddingRight: () => 0,
+      paddingTop: () => 0,
+      paddingBottom: () => 0,
+    },
+    margin: [0, 8, 0, 6] as number[],
   });
 
-  // Date
+  // Date centered below signature box
   if (data.signedAt) {
     content.push({
       text: `วันที่เซ็น: ${formatDate(data.signedAt)}`,
       fontSize: 8,
-      alignment: "right" as const,
-      color: "#6b7280",
-      margin: [0, 0, 0, 0] as number[],
+      alignment: "center" as const,
+      color: "#4b5563",
+      margin: [0, 4, 0, 0] as number[],
     });
   }
 
