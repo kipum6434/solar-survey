@@ -2927,14 +2927,19 @@ const deliveryFormRouter = router({
       for (const t of templates) {
         templateNameMap[t.id] = t.name;
       }
-      // Get disclaimer text
+      // Get company settings (for header + disclaimer)
       const settings = await db.getCompanySettings();
+      // Get document number setting
+      const docSetting = await db.getDocumentSettingByKey("install_doc_number");
+      // Build full customer address
+      const fullAddress = [customer?.fullAddress || customer?.address, customer?.subDistrict, customer?.district, customer?.province, customer?.postalCode].filter(Boolean).join(" ") || "";
       return {
         id: form.id,
+        surveyId: form.surveyId,
         status: form.status,
         customerName: customer?.name || "",
         customerPhone: customer?.phone || "",
-        customerAddress: customer?.fullAddress || customer?.address || "",
+        customerAddress: fullAddress,
         systemSize: survey?.systemSize || "",
         panelBrand: survey?.panelBrand || "",
         inverterModel: survey?.inverterModel || "",
@@ -2952,6 +2957,13 @@ const deliveryFormRouter = router({
         signedAt: form.signedAt,
         technicianSignatureUrl: form.technicianSignatureUrl,
         technicianName: form.technicianName,
+        // Company info for PDF header
+        companyName: settings?.companyName || null,
+        companyPhone: settings?.phone || null,
+        companyAddress: settings?.address || null,
+        companyLogoUrl: settings?.logoUrl || null,
+        photoBorderColor: settings?.photoBorderColor || null,
+        documentNumber: docSetting?.documentNumber || null,
       };
     }),
 

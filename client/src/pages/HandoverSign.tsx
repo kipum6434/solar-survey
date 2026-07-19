@@ -41,12 +41,18 @@ export default function HandoverSign() {
     if (!data) return;
     setPdfLoading(true);
     try {
-      // No company info available on public handover page
-      const companyInfo: CompanyInfo | null = null;
+      // Build company info from API response
+      const companyInfo: CompanyInfo | null = data.companyName ? {
+        companyName: data.companyName,
+        phone: data.companyPhone,
+        address: data.companyAddress,
+        logoUrl: data.companyLogoUrl,
+        photoBorderColor: data.photoBorderColor,
+      } : null;
 
       const pdfData: DeliveryPDFData = {
         formId: data.id,
-        surveyId: 0,
+        surveyId: data.surveyId || 0,
         customerName: data.customerName || "-",
         customerPhone: data.customerPhone,
         customerAddress: data.customerAddress,
@@ -69,7 +75,7 @@ export default function HandoverSign() {
         signedAt: data.signedAt,
       };
 
-      // No image proxy needed for public page (images should be accessible directly)
+      // Direct fetch for public page (images should be accessible directly from S3)
       const directImageFn: ImageProxyFn = async (url: string) => {
         try {
           const resp = await fetch(url);

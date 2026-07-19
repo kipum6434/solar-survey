@@ -1664,3 +1664,10 @@
 - [x] Replace inline PDF code in DeliveryFormDetail.tsx with exportDeliveryPDF()
 - [x] Replace inline PDF code in HandoverSign.tsx with exportDeliveryPDF()
 - [x] Ensure all 3 files use centralized pdfExport.ts with company header, grouped checklists, custom sections, and photo grid
+
+## Fix Handover Public Page PDF - Company Header & Full Data
+- [x] Fix getByHandoverToken API to return company info (name, phone, address, logo, photoBorderColor)
+- [x] Fix getByHandoverToken API to return surveyId and documentNumber
+- [x] Fix getByHandoverToken API to return full customer address (fullAddress + subDistrict + district + province)
+- [x] Update HandoverSign.tsx to build companyInfo from API response and pass surveyId
+- [x] PDF from handover public page now matches admin PDF (header, photos, full address)
