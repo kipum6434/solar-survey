@@ -2276,7 +2276,12 @@ const deliveryRouter = router({
 
   // Public submit for share link (no login required)
   publicSubmit: publicProcedure
-    .input(z.object({ token: z.string(), surveyId: z.number() }))
+    .input(z.object({
+      token: z.string(),
+      surveyId: z.number(),
+      technicianSignature: z.string().optional(), // base64 data URL
+      technicianName: z.string().optional(),
+    }))
     .mutation(async ({ input }) => {
       const link = await db.getShareLinkByToken(input.token);
       if (!link || !link.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ถูกต้อง" });
@@ -2284,7 +2289,7 @@ const deliveryRouter = router({
       if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
       const photos = await db.getInstallationPhotos(input.surveyId);
       if (photos.length === 0) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "กรุณาอัปโหลดรูปติดตั้งก่อนส่งมอบงาน" });
+        throw new TRPCError({ code: "BAD_REQUEST", message: "กรุณาอัพโหลดรูปติดตั้งก่อนส่งมอบงาน" });
       }
       // Validate required categories
       const categories = await db.getInstallationPhotoCategories();
@@ -2294,6 +2299,23 @@ const deliveryRouter = router({
         const names = missingRequired.map((c: any) => c.label).join(", ");
         throw new TRPCError({ code: "BAD_REQUEST", message: `ยังขาดรูปหมวดหมู่ที่จำเป็น: ${names}` });
       }
+
+      // Save technician signature if provided
+      if (input.technicianSignature) {
+        const form = await db.getDeliveryFormBySurveyId(input.surveyId);
+        if (form) {
+          const base64Data = input.technicianSignature.replace(/^data:image\/\w+;base64,/, "");
+          const buffer = Buffer.from(base64Data, "base64");
+          const key = `signatures/${input.surveyId}_technician_${Date.now()}_${nanoid(6)}.png`;
+          const { url } = await storagePut(key, buffer, "image/png");
+          await db.updateDeliveryFormSignature(form.id, {
+            technicianSignatureUrl: url,
+            technicianSignatureKey: key,
+            technicianName: input.technicianName || "ช่างติดตั้ง",
+          });
+        }
+      }
+
       const result = await db.submitDelivery(input.surveyId, null);
 
       // Notify admin when technician submits delivery via share link

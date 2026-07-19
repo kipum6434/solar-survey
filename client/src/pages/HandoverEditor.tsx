@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
   ArrowLeft, Image as ImageIcon, CheckCircle2, Plus, Trash2,
-  Link2, Copy, Loader2, FileText, Send, Eye, GripVertical,
+  Link2, Copy, Loader2, FileText, Send, Eye, GripVertical, Save,
 } from "lucide-react";
 
 export default function HandoverEditor() {
@@ -171,6 +171,25 @@ export default function HandoverEditor() {
     setCustomSections((prev) => prev.map((s, i) => (i === index ? { ...s, [field]: value } : s)));
   };
 
+  // Save ALL at once (photos + checklist + sections)
+  const handleSaveAll = async () => {
+    if (!formId) return;
+    try {
+      await updatePhotos.mutateAsync({ id: formId, photoIds: selectedPhotoIds });
+      await updateSections.mutateAsync({ id: formId, sections: customSections });
+      await updateChecklist.mutateAsync({ id: formId, checklistItems });
+      setPhotosChanged(false);
+      setSectionsChanged(false);
+      setChecklistChanged(false);
+      toast.success("บันทึกทั้งหมดเรียบร้อย");
+    } catch (e: any) {
+      toast.error("บันทึกไม่สำเร็จ: " + (e.message || "Unknown error"));
+    }
+  };
+
+  const hasUnsavedChanges = photosChanged || sectionsChanged || checklistChanged;
+  const isSaving = updatePhotos.isPending || updateSections.isPending || updateChecklist.isPending;
+
   const handleGenerateLink = async () => {
     if (!formId) return;
     // Save ALL data BEFORE generating link (photos, sections, checklist)
@@ -227,7 +246,7 @@ export default function HandoverEditor() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-5xl mx-auto">
+      <div className={`space-y-6 max-w-5xl mx-auto ${hasUnsavedChanges ? 'pb-24' : ''}`}>
         {/* Header */}
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => setLocation(`/delivery-forms/${formId}`)} className="gap-1.5">
@@ -567,6 +586,28 @@ export default function HandoverEditor() {
           </>
         )}
       </div>
+
+      {/* Sticky bottom save bar */}
+      {hasUnsavedChanges && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-t shadow-lg">
+          <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
+            <p className="text-sm text-muted-foreground flex-1">
+              มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก
+            </p>
+            <Button
+              onClick={handleSaveAll}
+              disabled={isSaving}
+              className="gap-2 h-10 px-6"
+            >
+              {isSaving ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> กำลังบันทึก...</>
+              ) : (
+                <><Save className="h-4 w-4" /> บันทึกทั้งหมด</>
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

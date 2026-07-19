@@ -279,8 +279,24 @@ export default function DeliveryFormSection({ surveyId, installationStatus, surv
       };
 
       const pdfDoc = pdfMake.createPdf(docDefinition);
-      pdfDoc.download(`ใบส่งมอบงาน-${customerData?.name || surveyId}.pdf`);
-      toast.success("สร้าง PDF สำเร็จ");
+      await new Promise<void>((resolve, reject) => {
+        pdfDoc.getBlob((blob: Blob) => {
+          try {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `ใบส่งมอบงาน-${customerData?.name || surveyId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+            resolve();
+          } catch (e) {
+            reject(e);
+          }
+        });
+      });
+      toast.success("ดาวน์โหลด PDF สำเร็จ");
     } catch (err: any) {
       toast.error(err?.message || "สร้าง PDF ล้มเหลว");
     } finally {

@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import {
   CheckCircle2, XCircle, ClipboardCheck, PenTool,
   RotateCcw, Loader2, FileText, User, Wrench, Image as ImageIcon,
-  AlertTriangle,
+  AlertTriangle, Download,
 } from "lucide-react";
 
 export default function HandoverSign() {
@@ -34,6 +34,143 @@ export default function HandoverSign() {
   const [signerName, setSignerName] = useState("");
   const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    if (!data) return;
+    setPdfLoading(true);
+    try {
+      const pdfMakeModule = await import("pdfmake/build/pdfmake");
+      const pdfMake = (pdfMakeModule as any).default || pdfMakeModule;
+      const { SARABUN_REGULAR_BASE64, SARABUN_BOLD_BASE64 } = await import("@/lib/sarabunFont");
+      pdfMake.addVirtualFileSystem({
+        "Sarabun-Regular.ttf": SARABUN_REGULAR_BASE64,
+        "Sarabun-Bold.ttf": SARABUN_BOLD_BASE64,
+      });
+      pdfMake.setFonts({ Sarabun: { normal: "Sarabun-Regular.ttf", bold: "Sarabun-Bold.ttf" } });
+
+      const loadImage = async (url: string): Promise<string> => {
+        try {
+          const resp = await fetch(url);
+          const blob = await resp.blob();
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+        } catch { return ""; }
+      };
+
+      let customerSigData = "";
+      if (data.customerSignatureUrl) {
+        customerSigData = await loadImage(data.customerSignatureUrl);
+      }
+      let techSigData = "";
+      if (data.technicianSignatureUrl) {
+        techSigData = await loadImage(data.technicianSignatureUrl);
+      }
+
+      const formatDate = (ts: number | null | undefined) => {
+        if (!ts) return "-";
+        return new Date(ts).toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "numeric" });
+      };
+
+      const docDef: any = {
+        defaultStyle: { font: "Sarabun", fontSize: 10 },
+        pageMargins: [40, 40, 40, 40],
+        content: [
+          { text: "ใบส่งมอบงาน", style: "header", alignment: "center", margin: [0, 0, 0, 10] },
+          { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: "#ddd" }], margin: [0, 5, 0, 10] },
+          { text: "ข้อมูลลูกค้า", style: "subheader", margin: [0, 0, 0, 5] },
+          {
+            table: {
+              widths: [120, "*"],
+              body: [
+                [{ text: "ชื่อลูกค้า", bold: true }, data.customerName || "-"],
+                [{ text: "เบอร์โทร", bold: true }, data.customerPhone || "-"],
+                [{ text: "ที่อยู่", bold: true }, data.customerAddress || "-"],
+                ...(data.systemSize ? [[{ text: "ขนาดระบบ", bold: true }, `${data.systemSize} kW`]] : []),
+                ...(data.panelBrand ? [[{ text: "แผงโซลาร์", bold: true }, data.panelBrand]] : []),
+                ...(data.inverterModel ? [[{ text: "อินเวอร์เตอร์", bold: true }, data.inverterModel]] : []),
+              ],
+            },
+            layout: "lightHorizontalLines",
+            margin: [0, 0, 0, 15],
+          },
+          // Checklist
+          ...(data.checklistItems && data.checklistItems.length > 0 ? [
+            { text: "รายการตรวจสอบส่งมอบ", style: "subheader", margin: [0, 0, 0, 5] },
+            ...data.checklistItems.map((item: any) => ({
+              columns: [
+                { text: item.checked ? "☑" : "☐", width: 15, fontSize: 12 },
+                { text: item.label, fontSize: 10 },
+              ],
+              margin: [0, 2, 0, 2],
+            })),
+          ] : []),
+          // Signatures
+          { text: "ลายเซ็น", style: "subheader", margin: [0, 20, 0, 10] },
+          {
+            columns: [
+              {
+                width: "*",
+                stack: [
+                  { text: "ลายเซ็นลูกค้า", bold: true, alignment: "center", margin: [0, 0, 0, 5] },
+                  customerSigData
+                    ? { image: customerSigData, width: 150, height: 60, alignment: "center" }
+                    : { text: "(ยังไม่ได้เซ็น)", alignment: "center", color: "#999", italics: true },
+                  { canvas: [{ type: "line", x1: 20, y1: 0, x2: 200, y2: 0, lineWidth: 0.5 }], margin: [0, 5, 0, 0] },
+                  ...(data.customerSignerName ? [{ text: data.customerSignerName, alignment: "center", fontSize: 9, margin: [0, 3, 0, 0] }] : []),
+                ],
+              },
+              {
+                width: "*",
+                stack: [
+                  { text: "ลายเซ็นช่าง", bold: true, alignment: "center", margin: [0, 0, 0, 5] },
+                  techSigData
+                    ? { image: techSigData, width: 150, height: 60, alignment: "center" }
+                    : { text: "(ยังไม่ได้เซ็น)", alignment: "center", color: "#999", italics: true },
+                  { canvas: [{ type: "line", x1: 20, y1: 0, x2: 200, y2: 0, lineWidth: 0.5 }], margin: [0, 5, 0, 0] },
+                  ...(data.technicianName ? [{ text: data.technicianName, alignment: "center", fontSize: 9, margin: [0, 3, 0, 0] }] : []),
+                ],
+              },
+            ],
+          },
+          {
+            text: `วันที่เซ็น: ${data.signedAt ? formatDate(data.signedAt) : "-"}`,
+            alignment: "right", fontSize: 9, color: "#666", margin: [0, 15, 0, 0],
+          },
+        ],
+        styles: {
+          header: { fontSize: 16, bold: true },
+          subheader: { fontSize: 12, bold: true },
+        },
+      };
+
+      const pdfDoc = pdfMake.createPdf(docDef);
+      await new Promise<void>((resolve, reject) => {
+        pdfDoc.getBlob((blob: Blob) => {
+          try {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `ใบส่งมอบงาน-${data.customerName || "document"}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+            resolve();
+          } catch (e) { reject(e); }
+        });
+      });
+      toast.success("ดาวน์โหลด PDF สำเร็จ");
+    } catch (err: any) {
+      console.error("PDF error:", err);
+      toast.error("ไม่สามารถสร้าง PDF ได้: " + (err.message || ""));
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   // Signature pad
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -285,6 +422,20 @@ export default function HandoverSign() {
                     <img src={data.customerSignatureUrl} alt="ลายเซ็น" className="max-h-[80px]" />
                   </div>
                 )}
+                <div className="mt-4">
+                  <Button
+                    onClick={handleDownloadPdf}
+                    disabled={pdfLoading}
+                    className="gap-2"
+                    variant="outline"
+                  >
+                    {pdfLoading ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" /> กำลังสร้าง PDF...</>
+                    ) : (
+                      <><Download className="h-4 w-4" /> ดาวน์โหลดใบส่งมอบงาน (PDF)</>
+                    )}
+                  </Button>
+                </div>
               </div>
             ) : showSignaturePad ? (
               <div className="space-y-3">

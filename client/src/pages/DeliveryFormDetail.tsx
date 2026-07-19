@@ -179,8 +179,25 @@ export default function DeliveryFormDetail() {
         },
       };
 
-      pdfMake.createPdf(docDef).download(`DF-${String(formId).padStart(6, "0")}.pdf`);
-      toast.success("สร้าง PDF สำเร็จ");
+      const pdfDoc = pdfMake.createPdf(docDef);
+      await new Promise<void>((resolve, reject) => {
+        pdfDoc.getBlob((blob: Blob) => {
+          try {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `DF-${String(formId).padStart(6, "0")}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+            resolve();
+          } catch (e) {
+            reject(e);
+          }
+        });
+      });
+      toast.success("ดาวน์โหลด PDF สำเร็จ");
     } catch (err: any) {
       console.error("PDF generation error:", err);
       toast.error("ไม่สามารถสร้าง PDF ได้: " + (err.message || "Unknown error"));
