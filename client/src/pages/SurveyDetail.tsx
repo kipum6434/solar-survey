@@ -34,7 +34,7 @@ import { StatusDropdown } from "@/components/StatusDropdown";
 import DeliveryTab from "@/components/DeliveryTab";
 import type { ImageProxyFn, CompanyInfo } from "@/lib/pdfExport";
 const getPdfExport = () => import("@/lib/pdfExport");
-import { FileDown } from "lucide-react";
+import { FileDown, FileSignature } from "lucide-react";
 
 export default function SurveyDetail() {
   const params = useParams<{ id: string }>();
@@ -375,7 +375,8 @@ export default function SurveyDetail() {
               )}
             </div>
           </div>
-          <div className="flex gap-2 shrink-0">
+          <div className="flex gap-2 shrink-0 flex-wrap">
+            <CreateOrOpenDeliveryButton surveyId={surveyId} />
             <Button
               variant="outline"
               size="sm"
@@ -1376,6 +1377,48 @@ export default function SurveyDetail() {
         onDismiss={clearUploadState}
       />
     </DashboardLayout>
+  );
+}
+
+function CreateOrOpenDeliveryButton({ surveyId }: { surveyId: number }) {
+  const [, setLocation] = useLocation();
+  const { data: existingForm, isLoading } = trpc.deliveryForm.get.useQuery({ surveyId });
+  const { data: checklistTemplates } = trpc.checklistTemplate.list.useQuery();
+  const createForm = trpc.deliveryForm.create.useMutation({
+    onSuccess: (result: any) => {
+      toast.success("สร้างใบส่งมอบงานสำเร็จ");
+      setLocation(`/delivery-forms/${result.id}/handover`);
+    },
+    onError: (err: any) => toast.error(err.message || "สร้างใบส่งมอบไม่สำเร็จ"),
+  });
+
+  const handleClick = () => {
+    if (existingForm) {
+      // Already has a delivery form - go to handover editor
+      setLocation(`/delivery-forms/${existingForm.id}/handover`);
+    } else {
+      // Create new delivery form with checklist templates, then redirect
+      const checklistItems = (checklistTemplates || []).flatMap((t: any) => {
+        try {
+          const items = JSON.parse(t.items || "[]");
+          return items.map((item: any) => ({ templateId: t.id, label: item.label || item, checked: false }));
+        } catch { return []; }
+      });
+      createForm.mutate({ surveyId, checklistItems });
+    }
+  };
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-50"
+      onClick={handleClick}
+      disabled={isLoading || createForm.isPending}
+    >
+      <FileSignature className="h-3.5 w-3.5" />
+      {createForm.isPending ? "กำลังสร้าง..." : existingForm ? "จัดการส่งมอบ" : "สร้างใบส่งมอบงาน"}
+    </Button>
   );
 }
 

@@ -1634,3 +1634,8 @@
 - [x] Frontend: หน้า Public ลูกค้าอ่านใบส่งมอบ + เซ็นชื่อบนมือถือ (canvas signature)
 - [x] PDF: สร้าง PDF สมบูรณ์หลังลูกค้าเซ็น (header+รูป+checklist+ลายเซ็น) — จะเพิ่มใน Phase ถัดไป
 - [x] แก้ไข Delivery Template ให้แก้ไขได้ทุกส่วน (เพิ่ม/ลบ/แก้ไข items ได้)
+
+## สร้างใบส่งมอบงานจากหน้า Survey Detail
+- [x] เพิ่มปุ่ม "สร้างใบส่งมอบงาน" ในหน้า Survey Detail (สำหรับงานที่ติดตั้งแล้ว/งานเก่า)
+- [x] Backend: ใช้ deliveryForm.get + deliveryForm.create ที่มีอยู่แล้ว (ถ้ามีอยู่แล้วให้ navigate ไปใบเดิม)
+- [x] Frontend: ปุ่มใน Survey Detail → กดแล้วสร้าง + redirect ไป HandoverEditor
