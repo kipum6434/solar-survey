@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import SignaturePad from "signature_pad";
 import { trpc } from "@/lib/trpc";
 import { useParams } from "wouter";
+import { exportDeliveryPDF, type DeliveryPDFData, type CompanyInfo, type ImageProxyFn } from "@/lib/pdfExport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,16 +41,36 @@ export default function HandoverSign() {
     if (!data) return;
     setPdfLoading(true);
     try {
-      const pdfMakeModule = await import("pdfmake/build/pdfmake");
-      const pdfMake = (pdfMakeModule as any).default || pdfMakeModule;
-      const { SARABUN_REGULAR_BASE64, SARABUN_BOLD_BASE64 } = await import("@/lib/sarabunFont");
-      pdfMake.addVirtualFileSystem({
-        "Sarabun-Regular.ttf": SARABUN_REGULAR_BASE64,
-        "Sarabun-Bold.ttf": SARABUN_BOLD_BASE64,
-      });
-      pdfMake.setFonts({ Sarabun: { normal: "Sarabun-Regular.ttf", bold: "Sarabun-Bold.ttf", italics: "Sarabun-Regular.ttf", bolditalics: "Sarabun-Bold.ttf" } });
+      // No company info available on public handover page
+      const companyInfo: CompanyInfo | null = null;
 
-      const loadImage = async (url: string): Promise<string> => {
+      const pdfData: DeliveryPDFData = {
+        formId: data.id,
+        surveyId: 0,
+        customerName: data.customerName || "-",
+        customerPhone: data.customerPhone,
+        customerAddress: data.customerAddress,
+        roofType: data.roofType,
+        phaseType: data.phaseType,
+        systemSize: data.systemSize ? Number(data.systemSize) || undefined : undefined,
+        panelCount: data.panelCount ? Number(data.panelCount) || undefined : undefined,
+        panelBrand: data.panelBrand,
+        inverterModel: data.inverterModel,
+        checklistItems: data.checklistItems || [],
+        templateNameMap: data.templateNameMap || {},
+        customSections: Array.isArray(data.customSections) ? data.customSections : [],
+        notes: data.notes,
+        disclaimerText: data.disclaimerText,
+        photos: data.photos || [],
+        customerSignatureUrl: data.customerSignatureUrl,
+        customerSignerName: data.customerSignerName,
+        technicianSignatureUrl: data.technicianSignatureUrl,
+        technicianName: data.technicianName,
+        signedAt: data.signedAt,
+      };
+
+      // No image proxy needed for public page (images should be accessible directly)
+      const directImageFn: ImageProxyFn = async (url: string) => {
         try {
           const resp = await fetch(url);
           const blob = await resp.blob();
@@ -58,125 +79,10 @@ export default function HandoverSign() {
             reader.onloadend = () => resolve(reader.result as string);
             reader.readAsDataURL(blob);
           });
-        } catch { return ""; }
+        } catch { return null; }
       };
 
-      let customerSigData = "";
-      if (data.customerSignatureUrl) {
-        customerSigData = await loadImage(data.customerSignatureUrl);
-      }
-      let techSigData = "";
-      if (data.technicianSignatureUrl) {
-        techSigData = await loadImage(data.technicianSignatureUrl);
-      }
-
-      const formatDate = (ts: number | null | undefined) => {
-        if (!ts) return "-";
-        return new Date(ts).toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "numeric" });
-      };
-
-      const docDef: any = {
-        defaultStyle: { font: "Sarabun", fontSize: 10 },
-        pageMargins: [40, 40, 40, 40],
-        content: [
-          { text: "ใบส่งมอบงาน", style: "header", alignment: "center", margin: [0, 0, 0, 10] },
-          { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: "#ddd" }], margin: [0, 5, 0, 10] },
-          { text: "ข้อมูลลูกค้า", style: "subheader", margin: [0, 0, 0, 5] },
-          {
-            table: {
-              widths: [120, "*"],
-              body: [
-                [{ text: "ชื่อลูกค้า", bold: true }, data.customerName || "-"],
-                [{ text: "เบอร์โทร", bold: true }, data.customerPhone || "-"],
-                [{ text: "ที่อยู่", bold: true }, data.customerAddress || "-"],
-                ...(data.systemSize ? [[{ text: "ขนาดระบบ", bold: true }, `${data.systemSize} kW`]] : []),
-                ...(data.panelBrand ? [[{ text: "แผงโซลาร์", bold: true }, data.panelBrand]] : []),
-                ...(data.inverterModel ? [[{ text: "อินเวอร์เตอร์", bold: true }, data.inverterModel]] : []),
-              ],
-            },
-            layout: "lightHorizontalLines",
-            margin: [0, 0, 0, 15],
-          },
-          // Checklist
-          ...(data.checklistItems && data.checklistItems.length > 0 ? [
-            { text: "รายการตรวจสอบส่งมอบ", style: "subheader", margin: [0, 0, 0, 5] },
-            ...data.checklistItems.map((item: any) => ({
-              columns: [
-                { text: item.checked ? "☑" : "☐", width: 15, fontSize: 12 },
-                { text: item.label, fontSize: 10 },
-              ],
-              margin: [0, 2, 0, 2],
-            })),
-          ] : []),
-          // Installation photos
-          ...await (async () => {
-            if (!data.photos || data.photos.length === 0) return [];
-            const photoContent: any[] = [{ text: "รูปภาพติดตั้ง", style: "subheader", margin: [0, 15, 0, 5] }];
-            for (const photo of data.photos.slice(0, 6)) {
-              try {
-                const imgData = await loadImage(photo.url);
-                if (imgData) {
-                  photoContent.push({ image: imgData, width: 240, margin: [0, 5, 0, 5], alignment: "center" as const });
-                  if (photo.caption) photoContent.push({ text: photo.caption, fontSize: 8, alignment: "center" as const, color: "#666", margin: [0, 0, 0, 5] });
-                }
-              } catch { /* skip */ }
-            }
-            return photoContent;
-          })(),
-          // Disclaimer text
-          ...(data.disclaimerText ? [
-            { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: "#ddd" }], margin: [0, 15, 0, 10] },
-            { text: data.disclaimerText, fontSize: 9, color: "#444", margin: [0, 0, 0, 15] },
-          ] : []),
-          // Signatures
-          { text: "ลายเซ็น", style: "subheader", margin: [0, 20, 0, 10] },
-          {
-            columns: [
-              {
-                width: "*",
-                stack: [
-                  { text: "ลายเซ็นลูกค้า", bold: true, alignment: "center", margin: [0, 0, 0, 5] },
-                  customerSigData
-                    ? { image: customerSigData, width: 150, height: 60, alignment: "center" }
-                    : { text: "(ยังไม่ได้เซ็น)", alignment: "center", color: "#999", italics: true },
-                  { canvas: [{ type: "line", x1: 20, y1: 0, x2: 200, y2: 0, lineWidth: 0.5 }], margin: [0, 5, 0, 0] },
-                  ...(data.customerSignerName ? [{ text: data.customerSignerName, alignment: "center", fontSize: 9, margin: [0, 3, 0, 0] }] : []),
-                ],
-              },
-              {
-                width: "*",
-                stack: [
-                  { text: "ลายเซ็นช่าง", bold: true, alignment: "center", margin: [0, 0, 0, 5] },
-                  techSigData
-                    ? { image: techSigData, width: 150, height: 60, alignment: "center" }
-                    : { text: "(ยังไม่ได้เซ็น)", alignment: "center", color: "#999", italics: true },
-                  { canvas: [{ type: "line", x1: 20, y1: 0, x2: 200, y2: 0, lineWidth: 0.5 }], margin: [0, 5, 0, 0] },
-                  ...(data.technicianName ? [{ text: data.technicianName, alignment: "center", fontSize: 9, margin: [0, 3, 0, 0] }] : []),
-                ],
-              },
-            ],
-          },
-          {
-            text: `วันที่เซ็น: ${data.signedAt ? formatDate(data.signedAt) : "-"}`,
-            alignment: "right", fontSize: 9, color: "#666", margin: [0, 15, 0, 0],
-          },
-        ],
-        styles: {
-          header: { fontSize: 16, bold: true },
-          subheader: { fontSize: 12, bold: true },
-        },
-      };
-
-      const pdfDoc = pdfMake.createPdf(docDef);
-      const blob = await pdfDoc.getBlob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `ใบส่งมอบงาน-${data.customerName || "document"}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      await exportDeliveryPDF(pdfData, undefined, directImageFn, companyInfo);
       toast.success("ดาวน์โหลด PDF สำเร็จ");
     } catch (err: any) {
       console.error("PDF error:", err);

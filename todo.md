@@ -1658,3 +1658,9 @@
 - [x] PDF error: Font 'Sarabun' in style 'italics' is not defined → ต้อง register italics font ใน setFonts
 - [x] เพิ่มข้อความ disclaimer ลงใน PDF ด้วย (ทั้ง 3 จุด)
 - [x] เพิ่มรูปภาพติดตั้งที่เลือกไว้ลงใน PDF ใบส่งมอบงาน (ทั้ง 3 จุด)
+
+## PDF Export Refactoring (Delivery Form)
+- [x] Replace inline PDF code in DeliveryFormSection.tsx with exportDeliveryPDF()
+- [x] Replace inline PDF code in DeliveryFormDetail.tsx with exportDeliveryPDF()
+- [x] Replace inline PDF code in HandoverSign.tsx with exportDeliveryPDF()
+- [x] Ensure all 3 files use centralized pdfExport.ts with company header, grouped checklists, custom sections, and photo grid

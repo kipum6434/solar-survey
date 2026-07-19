@@ -3,6 +3,7 @@ import SignaturePad from "signature_pad";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useRoute, useLocation } from "wouter";
+import { exportDeliveryPDF, type DeliveryPDFData, type CompanyInfo, type ImageProxyFn } from "@/lib/pdfExport";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,16 @@ export default function DeliveryFormDetail() {
     { enabled: !!surveyId }
   );
   const { data: companySettingsData } = trpc.companySettings.get.useQuery();
+  const { data: checklistTemplates = [] } = trpc.checklistTemplate.list.useQuery();
+
+  // Image proxy for CORS images
+  const proxyImageMut = trpc.util.proxyImage.useMutation();
+  const imageProxyFn: ImageProxyFn = async (url: string) => {
+    try {
+      const result = await proxyImageMut.mutateAsync({ url });
+      return result?.data || null;
+    } catch { return null; }
+  };
 
   const isLoading = listLoading || deliveryLoading || surveyLoading;
 
@@ -58,166 +69,56 @@ export default function DeliveryFormDetail() {
     if (!deliveryForm || !surveyData) return;
     setPdfLoading(true);
     try {
-      const pdfMakeModule = await import("pdfmake/build/pdfmake");
-      const pdfMake = (pdfMakeModule as any).default || pdfMakeModule;
-      const { SARABUN_REGULAR_BASE64, SARABUN_BOLD_BASE64 } = await import("@/lib/sarabunFont");
-
-      pdfMake.addVirtualFileSystem({
-        "Sarabun-Regular.ttf": SARABUN_REGULAR_BASE64,
-        "Sarabun-Bold.ttf": SARABUN_BOLD_BASE64,
-      });
-      pdfMake.setFonts({ Sarabun: { normal: "Sarabun-Regular.ttf", bold: "Sarabun-Bold.ttf", italics: "Sarabun-Regular.ttf", bolditalics: "Sarabun-Bold.ttf" } });
-
       const survey = surveyData.survey;
       const customer = surveyData.customer;
-      const checklistItems = deliveryForm.checklistItems || [];
 
-      // Convert signature URLs to base64
-      const loadImage = async (url: string): Promise<string> => {
-        try {
-          const resp = await fetch(url);
-          const blob = await resp.blob();
-          return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(blob);
-          });
-        } catch {
-          return "";
-        }
+      // Build selected photos array
+      const selectedIds: number[] = deliveryForm.selectedPhotoIds ? JSON.parse(deliveryForm.selectedPhotoIds) : [];
+      const selectedPhotos = (installPhotos as any[]).filter((p) => selectedIds.includes(p.id)).map((p) => ({ url: p.url, caption: p.caption }));
+
+      // Build templateNameMap
+      const templateNameMap: Record<number, string> = Object.fromEntries(
+        (checklistTemplates as any[]).map((t) => [t.id, t.name])
+      );
+
+      // Build companyInfo
+      const companyInfo: CompanyInfo | null = companySettingsData ? {
+        companyName: companySettingsData.companyName,
+        phone: companySettingsData.phone,
+        address: companySettingsData.address,
+        logoUrl: companySettingsData.logoUrl,
+        photoBorderColor: companySettingsData.photoBorderColor,
+      } : null;
+
+      // Build full address
+      const fullAddress = [customer?.address, customer?.district, customer?.subDistrict, customer?.province].filter(Boolean).join(" ") || undefined;
+
+      const pdfData: DeliveryPDFData = {
+        formId: deliveryForm.id,
+        surveyId: surveyId!,
+        customerName: customer?.name || "-",
+        customerPhone: customer?.phone,
+        customerAddress: fullAddress,
+        roofType: customer?.roofType,
+        phaseType: customer?.phaseType,
+        systemSize: survey?.systemSize,
+        panelCount: survey?.panelCount,
+        panelBrand: survey?.panelBrand,
+        inverterModel: survey?.inverterModel,
+        checklistItems: deliveryForm.checklistItems || [],
+        templateNameMap,
+        customSections: (typeof deliveryForm.customSections === "string" ? JSON.parse(deliveryForm.customSections) : deliveryForm.customSections) || [],
+        notes: deliveryForm.notes,
+        disclaimerText: companySettingsData?.disclaimerText,
+        photos: selectedPhotos,
+        customerSignatureUrl: deliveryForm.customerSignatureUrl,
+        customerSignerName: customer?.name,
+        technicianSignatureUrl: deliveryForm.technicianSignatureUrl,
+        technicianName: deliveryForm.technicianName,
+        signedAt: deliveryForm.signedAt,
       };
 
-      let customerSigData = "";
-      let techSigData = "";
-      if (deliveryForm.customerSignatureUrl) {
-        customerSigData = await loadImage(deliveryForm.customerSignatureUrl);
-      }
-      if (deliveryForm.technicianSignatureUrl) {
-        techSigData = await loadImage(deliveryForm.technicianSignatureUrl);
-      }
-
-      const formatDate = (ts: number | null | undefined) => {
-        if (!ts) return "-";
-        return new Date(ts).toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "numeric" });
-      };
-
-      const docDef: any = {
-        defaultStyle: { font: "Sarabun", fontSize: 10 },
-        pageMargins: [40, 40, 40, 40],
-        content: [
-          { text: "ใบส่งมอบงาน", style: "header", alignment: "center", margin: [0, 0, 0, 10] },
-          { text: `เลขที่: DF-${String(formId).padStart(6, "0")}`, alignment: "right", fontSize: 9, color: "#666" },
-          { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: "#ddd" }], margin: [0, 5, 0, 10] },
-          // Customer info
-          { text: "ข้อมูลลูกค้า", style: "subheader", margin: [0, 0, 0, 5] },
-          {
-            table: {
-              widths: [120, "*"],
-              body: [
-                [{ text: "ชื่อลูกค้า", bold: true }, customer?.name || "-"],
-                [{ text: "เบอร์โทร", bold: true }, customer?.phone || "-"],
-                [{ text: "ที่อยู่", bold: true }, [customer?.address, customer?.district, customer?.subDistrict, customer?.province].filter(Boolean).join(" ") || "-"],
-                [{ text: "รหัสงาน", bold: true }, `#${surveyId}`],
-                [{ text: "ขนาดระบบ", bold: true }, survey?.systemSize ? `${survey.systemSize} kW` : "-"],
-                [{ text: "อินเวอร์เตอร์", bold: true }, survey?.inverterModel || "-"],
-                [{ text: "แผงโซลาร์", bold: true }, survey?.panelBrand || "-"],
-              ],
-            },
-            layout: "lightHorizontalLines",
-            margin: [0, 0, 0, 15],
-          },
-          // Checklist
-          { text: "รายการตรวจสอบส่งมอบ", style: "subheader", margin: [0, 0, 0, 5] },
-          ...(checklistItems.length > 0
-            ? checklistItems.map((item: any) => ({
-                columns: [
-                  { text: item.checked ? "☑" : "☐", width: 15, fontSize: 12 },
-                  { text: item.label, fontSize: 10 },
-                ],
-                margin: [0, 2, 0, 2],
-              }))
-            : [{ text: "ไม่มีรายการ checklist", italics: true, color: "#999" }]),
-          // Notes
-          ...(deliveryForm.notes
-            ? [
-                { text: "หมายเหตุ", style: "subheader", margin: [0, 15, 0, 5] },
-                { text: deliveryForm.notes, fontSize: 9 },
-              ]
-            : []),
-          // Installation photos
-          ...await (async () => {
-            const selectedIds: number[] = deliveryForm.selectedPhotoIds ? JSON.parse(deliveryForm.selectedPhotoIds) : [];
-            const selectedPhotos = installPhotos.filter((p: any) => selectedIds.includes(p.id));
-            if (selectedPhotos.length === 0) return [];
-            const photoContent: any[] = [{ text: "รูปภาพติดตั้ง", style: "subheader", margin: [0, 15, 0, 5] }];
-            for (const photo of selectedPhotos.slice(0, 6)) {
-              try {
-                const imgData = await loadImage(photo.url);
-                if (imgData) {
-                  photoContent.push({ image: imgData, width: 240, margin: [0, 5, 0, 5], alignment: "center" as const });
-                  if (photo.caption) photoContent.push({ text: photo.caption, fontSize: 8, alignment: "center" as const, color: "#666", margin: [0, 0, 0, 5] });
-                }
-              } catch { /* skip */ }
-            }
-            return photoContent;
-          })(),
-          // Disclaimer text
-          ...(companySettingsData?.disclaimerText ? [
-            { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: "#ddd" }], margin: [0, 15, 0, 10] },
-            { text: companySettingsData.disclaimerText, fontSize: 9, color: "#444", margin: [0, 0, 0, 15] },
-          ] : []),
-          // Signatures
-          { text: "ลายเซ็น", style: "subheader", margin: [0, 20, 0, 10] },
-          {
-            columns: [
-              {
-                width: "*",
-                stack: [
-                  { text: "ลายเซ็นลูกค้า", bold: true, alignment: "center", margin: [0, 0, 0, 5] },
-                  customerSigData
-                    ? { image: customerSigData, width: 150, height: 60, alignment: "center" }
-                    : { text: "(ยังไม่ได้เซ็น)", alignment: "center", color: "#999", italics: true },
-                  { canvas: [{ type: "line", x1: 20, y1: 0, x2: 200, y2: 0, lineWidth: 0.5 }], margin: [0, 5, 0, 0] },
-                ],
-              },
-              {
-                width: "*",
-                stack: [
-                  { text: "ลายเซ็นช่าง", bold: true, alignment: "center", margin: [0, 0, 0, 5] },
-                  techSigData
-                    ? { image: techSigData, width: 150, height: 60, alignment: "center" }
-                    : { text: "(ยังไม่ได้เซ็น)", alignment: "center", color: "#999", italics: true },
-                  { canvas: [{ type: "line", x1: 20, y1: 0, x2: 200, y2: 0, lineWidth: 0.5 }], margin: [0, 5, 0, 0] },
-                  ...(deliveryForm.technicianName ? [{ text: deliveryForm.technicianName, alignment: "center", fontSize: 9, margin: [0, 3, 0, 0] }] : []),
-                ],
-              },
-            ],
-          },
-          // Date
-          {
-            text: `วันที่เซ็น: ${deliveryForm.signedAt ? formatDate(deliveryForm.signedAt) : "-"}`,
-            alignment: "right",
-            fontSize: 9,
-            color: "#666",
-            margin: [0, 15, 0, 0],
-          },
-        ],
-        styles: {
-          header: { fontSize: 16, bold: true },
-          subheader: { fontSize: 12, bold: true },
-        },
-      };
-
-      const pdfDoc = pdfMake.createPdf(docDef);
-      const blob = await pdfDoc.getBlob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `DF-${String(formId).padStart(6, "0")}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      await exportDeliveryPDF(pdfData, undefined, imageProxyFn, companyInfo);
       toast.success("ดาวน์โหลด PDF สำเร็จ");
     } catch (err: any) {
       console.error("PDF generation error:", err);
