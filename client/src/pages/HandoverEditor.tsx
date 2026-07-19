@@ -49,17 +49,26 @@ export default function HandoverEditor() {
     onError: (e) => toast.error(e.message),
   });
 
+  // Checklist mutation
+  const updateChecklist = trpc.deliveryForm.updateChecklist.useMutation({
+    onSuccess: () => { toast.success("บันทึก checklist แล้ว"); refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
+
   // Local state
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<number[]>([]);
   const [customSections, setCustomSections] = useState<{ title: string; content: string }[]>([]);
+  const [checklistItems, setChecklistItems] = useState<{ templateId?: number; label: string; checked: boolean }[]>([]);
   const [photosChanged, setPhotosChanged] = useState(false);
   const [sectionsChanged, setSectionsChanged] = useState(false);
+  const [checklistChanged, setChecklistChanged] = useState(false);
 
   // Initialize from server data
   useEffect(() => {
     if (data) {
       setSelectedPhotoIds(data.selectedPhotoIds || []);
       setCustomSections(data.customSections || []);
+      setChecklistItems(data.checklistItems || []);
     }
   }, [data]);
 
@@ -121,6 +130,32 @@ export default function HandoverEditor() {
     setSectionsChanged(false);
   };
 
+  const handleSaveChecklist = () => {
+    if (!formId) return;
+    updateChecklist.mutate({ id: formId, checklistItems });
+    setChecklistChanged(false);
+  };
+
+  const toggleChecklistItem = (index: number) => {
+    setChecklistChanged(true);
+    setChecklistItems((prev) => prev.map((item, i) => i === index ? { ...item, checked: !item.checked } : item));
+  };
+
+  const addChecklistItem = () => {
+    setChecklistChanged(true);
+    setChecklistItems((prev) => [...prev, { label: "", checked: false }]);
+  };
+
+  const removeChecklistItem = (index: number) => {
+    setChecklistChanged(true);
+    setChecklistItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateChecklistLabel = (index: number, label: string) => {
+    setChecklistChanged(true);
+    setChecklistItems((prev) => prev.map((item, i) => i === index ? { ...item, label } : item));
+  };
+
   const addSection = () => {
     setSectionsChanged(true);
     setCustomSections((prev) => [...prev, { title: "", content: "" }]);
@@ -136,9 +171,37 @@ export default function HandoverEditor() {
     setCustomSections((prev) => prev.map((s, i) => (i === index ? { ...s, [field]: value } : s)));
   };
 
-  const handleGenerateLink = () => {
+  const handleGenerateLink = async () => {
     if (!formId) return;
+    // Save ALL data BEFORE generating link (photos, sections, checklist)
+    try {
+      await updatePhotos.mutateAsync({ id: formId, photoIds: selectedPhotoIds });
+      await updateSections.mutateAsync({ id: formId, sections: customSections });
+      await updateChecklist.mutateAsync({ id: formId, checklistItems });
+      setPhotosChanged(false);
+      setSectionsChanged(false);
+      setChecklistChanged(false);
+    } catch (e: any) {
+      toast.error("บันทึกข้อมูลไม่สำเร็จ: " + (e.message || "Unknown error"));
+      return;
+    }
+    // Now generate the link
     generateLink.mutate({ id: formId });
+  };
+
+  const handleUpdateLink = async () => {
+    if (!formId) return;
+    try {
+      await updatePhotos.mutateAsync({ id: formId, photoIds: selectedPhotoIds });
+      await updateSections.mutateAsync({ id: formId, sections: customSections });
+      await updateChecklist.mutateAsync({ id: formId, checklistItems });
+      setPhotosChanged(false);
+      setSectionsChanged(false);
+      setChecklistChanged(false);
+      toast.success("อัปเดตข้อมูลลิงก์เรียบร้อยแล้ว");
+    } catch (e: any) {
+      toast.error("บันทึกไม่สำเร็จ: " + (e.message || "Unknown error"));
+    }
   };
 
   const handoverUrl = data?.form?.handoverToken
@@ -308,6 +371,62 @@ export default function HandoverEditor() {
               </CardContent>
             </Card>
 
+            {/* Checklist */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-amber-500" />
+                    รายการตรวจสอบส่งมอบ
+                    <Badge variant="outline" className="text-xs">{checklistItems.filter(i => i.checked).length}/{checklistItems.length}</Badge>
+                  </CardTitle>
+                  <div className="flex gap-2">
+                    {checklistChanged && (
+                      <Button size="sm" onClick={handleSaveChecklist} disabled={updateChecklist.isPending} className="gap-1.5">
+                        {updateChecklist.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                        บันทึก
+                      </Button>
+                    )}
+                    <Button size="sm" variant="outline" onClick={addChecklistItem} className="gap-1.5">
+                      <Plus className="h-3.5 w-3.5" /> เพิ่มรายการ
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {checklistItems.length === 0 ? (
+                  <p className="text-sm text-muted-foreground italic text-center py-4">
+                    ยังไม่มีรายการตรวจสอบ กดปุ่ม "เพิ่มรายการ" เพื่อเพิ่ม
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {checklistItems.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <Checkbox
+                          checked={item.checked}
+                          onCheckedChange={() => toggleChecklistItem(idx)}
+                        />
+                        <Input
+                          value={item.label}
+                          onChange={(e) => updateChecklistLabel(idx, e.target.value)}
+                          placeholder="รายการตรวจสอบ..."
+                          className={`text-sm flex-1 ${item.checked ? 'line-through text-muted-foreground' : ''}`}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-500 hover:text-red-700 shrink-0 h-8 w-8 p-0"
+                          onClick={() => removeChecklistItem(idx)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Custom Sections */}
             <Card>
               <CardHeader className="pb-3">
@@ -401,14 +520,31 @@ export default function HandoverEditor() {
                         </div>
                       </div>
                     )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open(handoverUrl, "_blank")}
-                      className="gap-1.5"
-                    >
-                      <Eye className="h-3.5 w-3.5" /> ดูตัวอย่างหน้าลูกค้า
-                    </Button>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(handoverUrl, "_blank")}
+                        className="gap-1.5"
+                      >
+                        <Eye className="h-3.5 w-3.5" /> ดูตัวอย่างหน้าลูกค้า
+                      </Button>
+                      {(photosChanged || sectionsChanged || checklistChanged) && (
+                        <Button
+                          size="sm"
+                          onClick={handleUpdateLink}
+                          disabled={updatePhotos.isPending || updateSections.isPending || updateChecklist.isPending}
+                          className="gap-1.5 bg-blue-600 hover:bg-blue-700"
+                        >
+                          {(updatePhotos.isPending || updateSections.isPending || updateChecklist.isPending) ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                          )}
+                          อัปเดตข้อมูลลิงก์
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="text-center py-4">
