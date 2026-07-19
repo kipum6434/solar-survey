@@ -31,6 +31,8 @@ export default function DeliveryFormSection({ surveyId, installationStatus, surv
   // Queries
   const { data: form, isLoading: formLoading, refetch: refetchForm } = trpc.deliveryForm.get.useQuery({ surveyId });
   const { data: checklistTemplates = [] } = trpc.checklistTemplate.list.useQuery();
+  const { data: installPhotos = [] } = trpc.installationPhoto.list.useQuery({ surveyId });
+  const { data: companySettingsData } = trpc.companySettings.get.useQuery();
 
   // Mutations
   const createForm = trpc.deliveryForm.create.useMutation({
@@ -293,6 +295,30 @@ export default function DeliveryFormSection({ surveyId, installationStatus, surv
           ...(form.notes ? [
             { text: "หมายเหตุ", style: "sectionHeader", margin: [0, 0, 0, 5] },
             { text: form.notes, fontSize: 10, margin: [0, 0, 0, 15] },
+          ] : []),
+
+          // Installation photos
+          ...await (async () => {
+            const selectedIds: number[] = form.selectedPhotoIds ? JSON.parse(form.selectedPhotoIds) : [];
+            const selectedPhotos = installPhotos.filter((p: any) => selectedIds.includes(p.id));
+            if (selectedPhotos.length === 0) return [];
+            const photoContent: any[] = [{ text: "รูปภาพติดตั้ง", style: "sectionHeader", margin: [0, 10, 0, 5] }];
+            for (const photo of selectedPhotos.slice(0, 6)) {
+              try {
+                const imgData = await toBase64(photo.url);
+                if (imgData) {
+                  photoContent.push({ image: imgData, width: 240, margin: [0, 5, 0, 5], alignment: "center" as const });
+                  if (photo.caption) photoContent.push({ text: photo.caption, fontSize: 8, alignment: "center" as const, color: "#666", margin: [0, 0, 0, 5] });
+                }
+              } catch { /* skip failed images */ }
+            }
+            return photoContent;
+          })(),
+
+          // Disclaimer text
+          ...(companySettingsData?.disclaimerText ? [
+            { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: "#ddd" }], margin: [0, 15, 0, 10] },
+            { text: companySettingsData.disclaimerText, fontSize: 9, color: "#444", margin: [0, 0, 0, 15] },
           ] : []),
 
           ...sigImages,

@@ -47,7 +47,7 @@ export default function HandoverSign() {
         "Sarabun-Regular.ttf": SARABUN_REGULAR_BASE64,
         "Sarabun-Bold.ttf": SARABUN_BOLD_BASE64,
       });
-      pdfMake.setFonts({ Sarabun: { normal: "Sarabun-Regular.ttf", bold: "Sarabun-Bold.ttf" } });
+      pdfMake.setFonts({ Sarabun: { normal: "Sarabun-Regular.ttf", bold: "Sarabun-Bold.ttf", italics: "Sarabun-Regular.ttf", bolditalics: "Sarabun-Bold.ttf" } });
 
       const loadImage = async (url: string): Promise<string> => {
         try {
@@ -107,6 +107,26 @@ export default function HandoverSign() {
               ],
               margin: [0, 2, 0, 2],
             })),
+          ] : []),
+          // Installation photos
+          ...await (async () => {
+            if (!data.photos || data.photos.length === 0) return [];
+            const photoContent: any[] = [{ text: "รูปภาพติดตั้ง", style: "subheader", margin: [0, 15, 0, 5] }];
+            for (const photo of data.photos.slice(0, 6)) {
+              try {
+                const imgData = await loadImage(photo.url);
+                if (imgData) {
+                  photoContent.push({ image: imgData, width: 240, margin: [0, 5, 0, 5], alignment: "center" as const });
+                  if (photo.caption) photoContent.push({ text: photo.caption, fontSize: 8, alignment: "center" as const, color: "#666", margin: [0, 0, 0, 5] });
+                }
+              } catch { /* skip */ }
+            }
+            return photoContent;
+          })(),
+          // Disclaimer text
+          ...(data.disclaimerText ? [
+            { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: "#ddd" }], margin: [0, 15, 0, 10] },
+            { text: data.disclaimerText, fontSize: 9, color: "#444", margin: [0, 0, 0, 15] },
           ] : []),
           // Signatures
           { text: "ลายเซ็น", style: "subheader", margin: [0, 20, 0, 10] },

@@ -1652,3 +1652,9 @@
 - [x] Checklist ในหน้าส่งมอบ: แยกแสดงเป็นหัวข้อตาม template (งานติดตั้งโครงสร้าง / งานติดตั้งระบบ)
 - [x] เพิ่มข้อความ fix ด้านล่างใบส่งมอบ (ข้อความรับรองส่งมอบงาน) — แก้ไขได้ในตั้งค่า
 - [x] PDF ดาวน์โหลดค้าง/หมุนนานเกิน 10 นาที → แก้ timeout/performance
+
+## Bug Fix: PDF ยังใช้ไม่ได้ + เพิ่มข้อมูลใน PDF (User Report #3)
+
+- [x] PDF error: Font 'Sarabun' in style 'italics' is not defined → ต้อง register italics font ใน setFonts
+- [x] เพิ่มข้อความ disclaimer ลงใน PDF ด้วย (ทั้ง 3 จุด)
+- [x] เพิ่มรูปภาพติดตั้งที่เลือกไว้ลงใน PDF ใบส่งมอบงาน (ทั้ง 3 จุด)

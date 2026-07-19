@@ -37,6 +37,13 @@ export default function DeliveryFormDetail() {
     { enabled: !!surveyId }
   );
 
+  // Fetch installation photos and company settings for PDF
+  const { data: installPhotos = [] } = trpc.installationPhoto.list.useQuery(
+    { surveyId: surveyId! },
+    { enabled: !!surveyId }
+  );
+  const { data: companySettingsData } = trpc.companySettings.get.useQuery();
+
   const isLoading = listLoading || deliveryLoading || surveyLoading;
 
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -59,7 +66,7 @@ export default function DeliveryFormDetail() {
         "Sarabun-Regular.ttf": SARABUN_REGULAR_BASE64,
         "Sarabun-Bold.ttf": SARABUN_BOLD_BASE64,
       });
-      pdfMake.setFonts({ Sarabun: { normal: "Sarabun-Regular.ttf", bold: "Sarabun-Bold.ttf" } });
+      pdfMake.setFonts({ Sarabun: { normal: "Sarabun-Regular.ttf", bold: "Sarabun-Bold.ttf", italics: "Sarabun-Regular.ttf", bolditalics: "Sarabun-Bold.ttf" } });
 
       const survey = surveyData.survey;
       const customer = surveyData.customer;
@@ -137,6 +144,28 @@ export default function DeliveryFormDetail() {
                 { text: deliveryForm.notes, fontSize: 9 },
               ]
             : []),
+          // Installation photos
+          ...await (async () => {
+            const selectedIds: number[] = deliveryForm.selectedPhotoIds ? JSON.parse(deliveryForm.selectedPhotoIds) : [];
+            const selectedPhotos = installPhotos.filter((p: any) => selectedIds.includes(p.id));
+            if (selectedPhotos.length === 0) return [];
+            const photoContent: any[] = [{ text: "รูปภาพติดตั้ง", style: "subheader", margin: [0, 15, 0, 5] }];
+            for (const photo of selectedPhotos.slice(0, 6)) {
+              try {
+                const imgData = await loadImage(photo.url);
+                if (imgData) {
+                  photoContent.push({ image: imgData, width: 240, margin: [0, 5, 0, 5], alignment: "center" as const });
+                  if (photo.caption) photoContent.push({ text: photo.caption, fontSize: 8, alignment: "center" as const, color: "#666", margin: [0, 0, 0, 5] });
+                }
+              } catch { /* skip */ }
+            }
+            return photoContent;
+          })(),
+          // Disclaimer text
+          ...(companySettingsData?.disclaimerText ? [
+            { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: "#ddd" }], margin: [0, 15, 0, 10] },
+            { text: companySettingsData.disclaimerText, fontSize: 9, color: "#444", margin: [0, 0, 0, 15] },
+          ] : []),
           // Signatures
           { text: "ลายเซ็น", style: "subheader", margin: [0, 20, 0, 10] },
           {
