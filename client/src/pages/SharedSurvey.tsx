@@ -5,7 +5,7 @@ import { SURVEY_STATUS_MAP } from "@/lib/constants";
 import { formatPhone } from "@/lib/formatPhone";
 import { useParams } from "wouter";
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
-import SignaturePad from "signature_pad";
+
 import { compressImages } from "@/lib/imageCompression";
 import { useUploadWithRetry } from "@/hooks/useUploadWithRetry";
 import { UploadStatusBar } from "@/components/UploadStatusBar";
@@ -14,7 +14,7 @@ import {
   X, Image, Sun, Wrench, FolderDown, Download, Upload, Trash2,
   Package, CheckCircle2, Clock, AlertTriangle, HardHat, Send, Plus,
   CircleAlert, CircleCheck, Info, XCircle, PauseCircle, FileText, MessageSquare,
-  PenTool, RotateCcw,
+
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -533,44 +533,11 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const activeCategory = useRef<string>("");
 
-  // Technician signature state
-  const [techName, setTechName] = useState("");
-  const sigCanvasRef = useRef<HTMLCanvasElement>(null);
-  const sigPadRef = useRef<SignaturePad | null>(null);
-
-  useEffect(() => {
-    if (confirmSubmit && sigCanvasRef.current && !sigPadRef.current) {
-      const canvas = sigCanvasRef.current;
-      const ratio = Math.max(window.devicePixelRatio || 1, 1);
-      canvas.width = canvas.offsetWidth * ratio;
-      canvas.height = canvas.offsetHeight * ratio;
-      const ctx = canvas.getContext("2d");
-      if (ctx) ctx.scale(ratio, ratio);
-      sigPadRef.current = new SignaturePad(canvas, {
-        backgroundColor: "rgb(255, 255, 255)",
-        penColor: "rgb(0, 0, 0)",
-      });
-    }
-    if (!confirmSubmit) {
-      sigPadRef.current = null;
-    }
-  }, [confirmSubmit]);
-
+  // Direct submit (no signature needed - tech signs on Handover page)
   const handleConfirmSubmit = () => {
-    if (!sigPadRef.current || sigPadRef.current.isEmpty()) {
-      toast.error("กรุณาเซ็นลายเซ็นก่อนส่งมอบ");
-      return;
-    }
-    if (!techName.trim()) {
-      toast.error("กรุณากรอกชื่อช่างผู้ติดตั้ง");
-      return;
-    }
-    const sigData = sigPadRef.current.toDataURL("image/png");
     submitMutation.mutate({
       token,
       surveyId,
-      technicianSignature: sigData,
-      technicianName: techName.trim(),
     });
   };
 
@@ -1006,56 +973,32 @@ function PublicDeliverySection({ surveyId, token, surveyData, customerData }: { 
         )}
       </CardContent>
 
-      {/* Confirm submit dialog with technician signature */}
+      {/* Confirm submit dialog (simplified - no signature needed, tech signs on Handover page) */}
       <Dialog open={confirmSubmit} onOpenChange={setConfirmSubmit}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <PenTool className="h-5 w-5 text-amber-500" />
+              <Send className="h-5 w-5 text-green-500" />
               ยืนยันส่งมอบงาน
             </DialogTitle>
             <DialogDescription>
-              คุณมีรูปติดตั้งทั้งหมด {installPhotos.length} รูป กรุณาเซ็นลายเซ็นช่างเพื่อยืนยันการส่งมอบ
+              คุณมีรูปติดตั้งทั้งหมด {installPhotos.length} รูป ต้องการส่งมอบงานติดตั้งหรือไม่?
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div>
-              <Label className="text-sm font-medium">ชื่อช่างผู้ติดตั้ง</Label>
-              <Input
-                placeholder="กรอกชื่อ-นามสกุล"
-                value={techName}
-                onChange={(e) => setTechName(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label className="text-sm font-medium">ลายเซ็นช่าง</Label>
-              <div className="mt-1 border-2 border-dashed rounded-lg overflow-hidden bg-white">
-                <canvas
-                  ref={sigCanvasRef}
-                  className="w-full touch-none"
-                  style={{ height: "150px" }}
-                />
-              </div>
-              <div className="flex justify-end mt-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => sigPadRef.current?.clear()}
-                  className="gap-1 text-xs"
-                >
-                  <RotateCcw className="h-3 w-3" /> ล้างลายเซ็น
-                </Button>
-              </div>
-            </div>
+          <div className="py-2">
+            <p className="text-sm text-muted-foreground">
+              หลังส่งมอบแล้ว รอแอดมินตรวจสอบและอนุมัติ
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              ลายเซ็นช่างและลูกค้าจะเซ็นพร้อมกันในหน้าส่งมอบงาน (Handover)
+            </p>
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setConfirmSubmit(false)}>ยกเลิก</Button>
             <Button
               onClick={handleConfirmSubmit}
               disabled={submitMutation.isPending}
-              className="gap-1.5"
+              className="gap-1.5 bg-green-600 hover:bg-green-700"
             >
               {submitMutation.isPending ? (
                 <><span className="animate-spin">&#9696;</span> กำลังส่งมอบ...</>

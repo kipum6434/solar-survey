@@ -1712,3 +1712,10 @@
 - [x] Add summary counts at top of DeliveryForms page (รอเซ็น X ราย / เซ็นแล้ว Y ราย)
 - [x] Add signature status badge to Approvals page list items
 - [x] Update backend getPendingApprovals to include delivery form signature data
+
+## Remove Tech Signature from Delivery Submission Dialog
+- [x] Remove SignaturePad, techName state, sigCanvasRef, sigPadRef from SharedSurvey
+- [x] Remove useEffect for signature pad initialization
+- [x] Simplify handleConfirmSubmit to just submit without signature
+- [x] Replace signature dialog with simple confirmation dialog
+- [x] Add note that tech signs on Handover page instead
