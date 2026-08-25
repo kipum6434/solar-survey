@@ -97,6 +97,8 @@ export default function Customers() {
   const [provinceFilter, setProvinceFilter] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [createdFrom, setCreatedFrom] = useState("");
+  const [createdTo, setCreatedTo] = useState("");
 
   const { data: distinctValues } = trpc.customer.distinctValues.useQuery();
   const { data: teamMembersForImport } = trpc.teamMember.listAll.useQuery();
@@ -114,7 +116,9 @@ export default function Customers() {
     source: sourceFilter || undefined,
     sourceGroup,
     surveyStatus: statusFilter || undefined,
-  }), [search, page, filterByMonth, selectedMonth, selectedYear, districtFilter, provinceFilter, sourceFilter, statusFilter, sourceGroup]);
+    createdFrom: createdFrom || undefined,
+    createdTo: createdTo || undefined,
+  }), [search, page, filterByMonth, selectedMonth, selectedYear, districtFilter, provinceFilter, sourceFilter, statusFilter, sourceGroup, createdFrom, createdTo]);
 
   const { data, isLoading, refetch } = trpc.customer.list.useQuery(queryInput);
   const createMutation = trpc.customer.create.useMutation({
@@ -184,7 +188,22 @@ export default function Customers() {
     if (m > 12) { m = 1; y++; }
     setSelectedMonth(m);
     setSelectedYear(y);
+    setCreatedFrom("");
+    setCreatedTo("");
     setFilterByMonth(true);
+    setPage(1);
+  };
+
+  const handleCreatedDateChange = (value: string, field: "from" | "to") => {
+    if (field === "from") setCreatedFrom(value);
+    else setCreatedTo(value);
+    setFilterByMonth(false);
+    setPage(1);
+  };
+
+  const clearCreatedDateRange = () => {
+    setCreatedFrom("");
+    setCreatedTo("");
     setPage(1);
   };
 
@@ -245,7 +264,7 @@ export default function Customers() {
           <Button
             variant={!filterByMonth ? "default" : "outline"}
             size="sm"
-            onClick={() => { setFilterByMonth(false); setPage(1); }}
+            onClick={() => { setFilterByMonth(false); clearCreatedDateRange(); }}
             className="shrink-0"
           >
             ทั้งหมด
@@ -259,7 +278,7 @@ export default function Customers() {
               key={i}
               variant={filterByMonth && selectedMonth === i + 1 ? "default" : "outline"}
               size="sm"
-              onClick={() => { setSelectedMonth(i + 1); setFilterByMonth(true); setPage(1); }}
+              onClick={() => { setSelectedMonth(i + 1); setCreatedFrom(""); setCreatedTo(""); setFilterByMonth(true); setPage(1); }}
               className="shrink-0 text-xs px-2.5"
             >
               {m}
@@ -338,6 +357,33 @@ export default function Customers() {
               ))}
             </SelectContent>
           </Select>
+          <div className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1.5">
+            <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <label className="sr-only" htmlFor="customer-created-from">เพิ่มตั้งแต่</label>
+            <Input
+              id="customer-created-from"
+              type="date"
+              value={createdFrom}
+              max={createdTo || undefined}
+              onChange={(e) => handleCreatedDateChange(e.target.value, "from")}
+              className="h-7 w-[132px] border-0 bg-transparent p-0 text-xs shadow-none focus-visible:ring-0"
+            />
+            <span className="text-xs text-muted-foreground">ถึง</span>
+            <label className="sr-only" htmlFor="customer-created-to">เพิ่มถึง</label>
+            <Input
+              id="customer-created-to"
+              type="date"
+              value={createdTo}
+              min={createdFrom || undefined}
+              onChange={(e) => handleCreatedDateChange(e.target.value, "to")}
+              className="h-7 w-[132px] border-0 bg-transparent p-0 text-xs shadow-none focus-visible:ring-0"
+            />
+            {(createdFrom || createdTo) && (
+              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={clearCreatedDateRange} aria-label="ล้างช่วงวันที่เพิ่มรายชื่อ">
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
           <div className="flex items-center border rounded-md">
             <Button
               variant={viewMode === "grid" ? "default" : "ghost"}
@@ -385,7 +431,12 @@ export default function Customers() {
 
         {/* Filter info */}
         <div className="text-sm text-muted-foreground">
-          {filterByMonth ? (
+          {createdFrom || createdTo ? (
+            <>
+              แสดงลูกค้าที่เพิ่มในช่วง <span className="font-semibold text-foreground">{createdFrom ? formatCustomerCreatedDate(createdFrom) : "วันแรก"} – {createdTo ? formatCustomerCreatedDate(createdTo) : "ปัจจุบัน"}</span>
+              {data && <span className="ml-2">({data.total} ราย)</span>}
+            </>
+          ) : filterByMonth ? (
             <>
               แสดงลูกค้าที่สร้างในเดือน <span className="font-semibold text-foreground">{THAI_MONTHS[selectedMonth - 1]} {selectedYear + 543}</span>
               {data && <span className="ml-2">({data.total} ราย)</span>}

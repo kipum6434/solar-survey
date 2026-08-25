@@ -29,6 +29,8 @@ const customerRouter = router({
       source: z.string().optional(),
       sourceGroup: z.string().optional(),
       surveyStatus: z.string().optional(),
+      createdFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      createdTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     }))
     .query(async ({ input, ctx }) => {
       const scope = await getUserScope(ctx.user);

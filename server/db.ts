@@ -2,6 +2,7 @@ import { eq, and, or, like, desc, gte, lte, sql, inArray, not, asc, isNotNull, i
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, customers, InsertCustomer, surveys, InsertSurvey, surveyPhotos, InsertSurveyPhoto, surveyDocuments, InsertSurveyDocument, followUps, InsertFollowUp, shareLinks, InsertShareLink, notifications, InsertNotification, activityLog, InsertActivityLog, sources, InsertSource, surveyAssignments, InsertSurveyAssignment, teamMembers, InsertTeamMember, customStatuses, InsertCustomStatus, photoCategories, InsertPhotoCategory, documentCategories, InsertDocumentCategory, installationPhotos, InsertInstallationPhoto, installationPhotoCategories, InsertInstallationPhotoCategory, installerTeams, InsertInstallerTeam, deliveryComments, InsertDeliveryComment, lineGroups, InsertLineGroup, lineNotificationTargets, InsertLineNotificationTarget, companySettings, InsertCompanySettings, postponeCancelLogs, InsertPostponeCancelLog, deliveryForms, InsertDeliveryForm, deliveryChecklistTemplates, InsertDeliveryChecklistTemplate, payments, InsertPayment, sourceGroups, InsertSourceGroup, surveyTemplates, InsertSurveyTemplate, surveyTemplateFields, InsertSurveyTemplateField, surveyTemplateData, InsertSurveyTemplateData, paymentCollections, InsertPaymentCollection, technicalFieldDefinitions, InsertTechnicalFieldDefinition, surveyTechnicalValues, InsertSurveyTechnicalValue, documentSettings, InsertDocumentSetting, companyProfiles, InsertCompanyProfile } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { getCustomerCreationDateRange } from "../shared/customerDate";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -90,10 +91,10 @@ export async function getUserByOpenId(openId: string) {
 }
 
 // ==================== CUSTOMER QUERIES ====================
-export async function getCustomers(opts: { search?: string; page?: number; limit?: number; month?: number; year?: number; district?: string; province?: string; source?: string; sourceGroup?: string; surveyStatus?: string; scopedCustomerIds?: number[] }) {
+export async function getCustomers(opts: { search?: string; page?: number; limit?: number; month?: number; year?: number; district?: string; province?: string; source?: string; sourceGroup?: string; surveyStatus?: string; createdFrom?: string; createdTo?: string; scopedCustomerIds?: number[] }) {
   const db = await getDb();
   if (!db) return { data: [], total: 0 };
-  const { search, page = 1, limit = 20, month, year, district, province, source, sourceGroup, surveyStatus, scopedCustomerIds } = opts;
+  const { search, page = 1, limit = 20, month, year, district, province, source, sourceGroup, surveyStatus, createdFrom, createdTo, scopedCustomerIds } = opts;
   const offset = (page - 1) * limit;
   const conditions: any[] = [];
   // Data scoping: เซลล์เห็นเฉพาะลูกค้าที่เกี่ยวข้องกับงานของตัวเอง
@@ -127,6 +128,9 @@ export async function getCustomers(opts: { search?: string; page?: number; limit
   } else if (year) {
     conditions.push(sql`YEAR(${customers.createdAt}) = ${year}`);
   }
+  const creationDateRange = getCustomerCreationDateRange(createdFrom, createdTo);
+  if (creationDateRange.start) conditions.push(gte(customers.createdAt, creationDateRange.start));
+  if (creationDateRange.end) conditions.push(lte(customers.createdAt, creationDateRange.end));
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
   const data = await db.select({
     id: customers.id,
