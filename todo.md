@@ -1719,3 +1719,9 @@
 - [x] Simplify handleConfirmSubmit to just submit without signature
 - [x] Replace signature dialog with simple confirmation dialog
 - [x] Add note that tech signs on Handover page instead
+
+## Website Availability Incident
+- [x] ตรวจสอบและแก้ไขปัญหาเว็บหรือ Preview เปิดไม่ขึ้น
+- [x] ตรวจสอบสถานะโดเมนที่ใช้งานจริงและยืนยัน URL ที่เปิดได้
+
+ผลตรวจสอบ 25 ส.ค. 2569: `tcssurvey.com` ตอบกลับ HTTP 200 และโหลดหน้า Login ของ Solar Survey ได้สำเร็จ, `www.tcssurvey.com` redirect 301 ไปโดเมนหลัก, SSL ครอบคลุมทั้งโดเมนหลักกับ wildcard, และ Browser console ไม่มีข้อผิดพลาด
