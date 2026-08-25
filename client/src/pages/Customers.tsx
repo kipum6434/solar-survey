@@ -7,13 +7,14 @@ import { SourceCombobox } from "@/components/SourceCombobox";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useSort } from "@/hooks/useSort";
 import { formatPhone, formatPhoneInput } from "@/lib/formatPhone";
+import { formatCustomerCreatedDate } from "@shared/customerDate";
 import { Pagination } from "@/components/Pagination";
 import { SortableHeader } from "@/components/SortableHeader";
 import { StatusDropdown } from "@/components/StatusDropdown";
 import { useLocation } from "wouter";
 import { useSourceGroup } from "@/hooks/useSourceGroup";
 import {
-  Users, Plus, Search, Phone, MapPin, ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Trash2, Eye,
+  Users, Plus, Search, Phone, MapPin, Calendar, ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Trash2, Eye,
   LayoutList, Table2, Zap, FileUp, Download, ExternalLink, X, MessageSquareText, Sparkles, Loader2, ClipboardPaste,
   ClipboardCopy, FileText, Check, AlertTriangle,
 } from "lucide-react";
@@ -551,6 +552,7 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete, selectedIds, on
               </th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap"><SortableHeader label="ชื่อลูกค้า" sortKey="name" sortConfig={sortConfig} onSort={requestSort} /></th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap"><SortableHeader label="เบอร์โทร" sortKey="phone" sortConfig={sortConfig} onSort={requestSort} /></th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell"><SortableHeader label="วันที่เพิ่มรายชื่อ" sortKey="createdAt" sortConfig={sortConfig} onSort={requestSort} /></th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell"><SortableHeader label="ที่อยู่" sortKey="fullAddress" sortConfig={sortConfig} onSort={requestSort} /></th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell"><SortableHeader label="โลเคชั่น" sortKey="address" sortConfig={sortConfig} onSort={requestSort} /></th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden md:table-cell"><SortableHeader label="ช่องทาง" sortKey="source" sortConfig={sortConfig} onSort={requestSort} /></th>
@@ -561,7 +563,6 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete, selectedIds, on
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell"><SortableHeader label="ประเภทหลังคา" sortKey="roofType" sortConfig={sortConfig} onSort={requestSort} /></th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell"><SortableHeader label="ระบบไฟ" sortKey="phaseType" sortConfig={sortConfig} onSort={requestSort} /></th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell"><SortableHeader label="หมายเหตุ" sortKey="notes" sortConfig={sortConfig} onSort={requestSort} /></th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap hidden xl:table-cell"><SortableHeader label="วันที่สร้าง" sortKey="createdAt" sortConfig={sortConfig} onSort={requestSort} /></th>
               <th className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap"><SortableHeader label="สถานะ" sortKey="surveyStatus" sortConfig={sortConfig} onSort={requestSort} /></th>
               <th className="text-right px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap w-10"></th>
             </tr>
@@ -587,6 +588,9 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete, selectedIds, on
                   </td>
                   <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
                     {formatPhone(c.phone)}
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap hidden lg:table-cell text-muted-foreground text-xs tabular-nums">
+                    {formatCustomerCreatedDate(c.createdAt)}
                   </td>
                   <td className="px-3 py-2.5 max-w-[180px] truncate hidden md:table-cell text-muted-foreground">
                     {c.fullAddress || "-"}
@@ -632,9 +636,6 @@ function CustomerTableView({ data, onRowClick, onEdit, onDelete, selectedIds, on
                   </td>
                   <td className="px-3 py-2.5 max-w-[150px] truncate hidden xl:table-cell text-muted-foreground text-xs">
                     {c.notes || "-"}
-                  </td>
-                  <td className="px-3 py-2.5 whitespace-nowrap hidden xl:table-cell text-muted-foreground text-xs">
-                    {new Date(c.createdAt).toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "2-digit" })}
                   </td>
                   <td className="px-3 py-2.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                     <StatusDropdown
@@ -772,6 +773,12 @@ function CustomerGridView({ data, onRowClick, onEdit, onDelete, selectedIds, onT
                           <ExternalLink className="h-3 w-3" /> เปิดแผนที่
                         </a>
                       ) : <span className="truncate">{customer.address}</span>}
+                    </div>
+                  )}
+                  {customer.createdAt && (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-3 w-3 shrink-0" />
+                      <span>เพิ่มรายชื่อ: {formatCustomerCreatedDate(customer.createdAt)}</span>
                     </div>
                   )}
                 </div>
