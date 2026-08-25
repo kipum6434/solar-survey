@@ -14,7 +14,7 @@ import { notifyOwner } from "./_core/notification";
 import { invokeLLM } from "./_core/llm";
 import { sendLineNotification } from "./lineNotify";
 import { ENV } from "./_core/env";
-
+import { buildPublicInstallationPhotoDeletionDetails } from "../shared/installationPhotoAudit";
 // ==================== CUSTOMER ROUTER ====================
 const customerRouter = router({
   list: protectedProcedure
@@ -2121,6 +2121,19 @@ const installationPhotoRouter = router({
       if (link.surveyId !== input.surveyId) throw new TRPCError({ code: "NOT_FOUND", message: "ลิงก์ไม่ตรงกับงาน" });
       const photo = await db.deleteInstallationPhoto(input.id);
       if (photo) {
+        await db.logActivity({
+          userId: null,
+          action: "delete",
+          entityType: "installation_photo",
+          entityId: photo.id,
+          details: buildPublicInstallationPhotoDeletionDetails({
+            surveyId: photo.surveyId,
+            shareLinkId: link.id,
+            photoId: photo.id,
+            fileKey: photo.fileKey,
+            fileName: photo.fileName,
+          }),
+        });
         try { await storageDelete(photo.fileKey); } catch (e) { console.warn("Failed to delete from S3:", e); }
       }
       return { success: true };
